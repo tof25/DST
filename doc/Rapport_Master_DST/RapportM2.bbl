@@ -1,0 +1,123 @@
+\newcommand{\etalchar}[1]{$^{#1}$}
+\begin{thebibliography}{SMK{\etalchar{+}}01}
+
+\bibitem[AD01]{ROWSTRONA.:2001}
+Rowstron Antony and Peter Druschel.
+\newblock Pastry : Scalable, distributed object location and routing for
+  large-scale peer-to-peer systems.
+\newblock {\em International Conference on Distributed Systems Platforms
+  (Middleware), Heidelberg, Germany, November, 2001}, 2001.
+
+\bibitem[CLQ08]{simgrid}
+Henri Casanova, Arnaud Legrand, and Martin Quinson.
+\newblock {SimGrid: a Generic Framework for Large-Scale Distributed
+  Experiments}.
+\newblock In {\em 10th IEEE International Conference on Computer Modeling and
+  Simulation}, March 2008.
+
+\bibitem[CNO99]{cowie:42}
+James~H. Cowie, David~M. Nicol, and Andy~T. Ogielski.
+\newblock Modeling the global internet.
+\newblock {\em Computing in Science \& Engineering}, 1(1):42--50, 1999.
+
+\bibitem[Dah05]{Dah05}
+S.~Dahan.
+\newblock {\em M\'ecanismes de recherche de services extensibles pour les
+  environnements de grilles de calcul}.
+\newblock Th\`ese de {D}octorat, LIFC, Universit\'e de Franche-Comt\'e, 13
+  d\'ecembre 2005.
+\newblock Rapporteurs~: J.-F.~M\`ehaut, Professeur (IMAG, Univ. J. Fourier,
+  Grenoble 1), P.~Sens, Professeur (LIP6, Univ. Paris 6). Examinateurs~: E.
+  Caron, MdC (LIP, ENS Lyon), H.~Guyennet, Professeur (LIFC, Univ.
+  Franche-Comt\'e), J.-M.~Nicod, MdC (LIFC, Univ. Franche-Comt\'e). Directeur~:
+  L.~Philippe, Professeur (LIFC, Univ. Franche-Comt\'e).
+
+\bibitem[DDNP07]{ddnp07:ir}
+Sylvain Dahan, Alexandru Dobrila, Jean-Marc Nicod, and Laurent Philippe.
+\newblock Performances study of management and traversal algorithms on the
+  {DST} overlay network.
+\newblock Research Report RR2007-02, LIFC - Laboratoire d'{I}nformatique de
+  l'{U}niversit\'{e} de {F}ranche {C}omt\'{e}, November 2007.
+
+\bibitem[DDNP08]{ddnp08:np}
+Sylvain Dahan, Alexandru Dobrila, Jean-Marc Nicod, and Laurent Philippe.
+\newblock {\'E}tude des performances du distributed spanning tree~: un overlay
+  network pour la recherche de services.
+\newblock In {\em CFSE'6, 6\`eme Conf. Fran\c{c}aise en Syst\`emes
+  d'Exploitation}, page (6 pages), Fribourg, Switzerland, February 2008.
+\newblock Publication \'electronique.
+
+\bibitem[DNP05]{dnp05:oip}
+Sylvain Dahan, Jean-Marc Nicod, and Laurent Philippe.
+\newblock The {D}istributed {S}panning {T}ree: A scalable interconnection
+  topology for efficient and equitable traversal.
+\newblock In {\em 5th Int. Symposium on Cluster Computing and the Grid (CCGrid
+  2005), workshop on Global and Peer-to-Peer Computing, GP2PC~2005}, Cardiff,
+  United Kingdom, May 2005. IEEE Computer Society Press.
+\newblock CD-ROM.
+
+\bibitem[Dob07]{dobrila07:mr}
+Alexandru Dobrila.
+\newblock {\em Distributed Spanning Tree : une topologie pour la recherche de
+  services de calcul sur la grille}.
+\newblock M\'emoire de {M}aster {R}echerche, LIFC, Universit\'e de
+  Franche-Comt\'e, 28 ao\^ut 2007.
+\newblock Jury~: J.-M. Nicod, F. Bouquet, L. Philippe.
+
+\bibitem[KLL{\etalchar{+}}97]{Karger:1997:CHR:258533.258660}
+David Karger, Eric Lehman, Tom Leighton, Rina Panigrahy, Matthew Levine, and
+  Daniel Lewin.
+\newblock Consistent hashing and random trees: distributed caching protocols
+  for relieving hot spots on the world wide web.
+\newblock In {\em Proceedings of the twenty-ninth annual ACM symposium on
+  Theory of computing}, STOC '97, pages 654--663, New York, NY, USA, 1997. ACM.
+
+\bibitem[{K}ta09]{KTARI:2009:PASTEL-00005737:1}
+{S}alma {K}tari.
+\newblock {\em {I}nterconnexion et routage dans les syst{\`e}mes pair {\`a}
+  pair}.
+\newblock PhD thesis, {T}{\'e}l{\'e}com {P}aris{T}ech, 12 2009.
+
+\bibitem[LCP{\etalchar{+}}05]{Ommunications_asurvey}
+Eng~Keong Lua, Jon Crowcroft, Marcelo Pias, University~Of Cambridge, Ravi
+  Sharma, Nanyang~Technological University, Steven Lim, and Microsoft Asia.
+\newblock A survey and comparison of peer-to-peer overlay network schemes,
+  2005.
+
+\bibitem[ns2]{ns2}
+The network simulator (ns2)\quad \url{http://nsnam.isi.edu/nsnam/}.
+
+\bibitem[RFH{\etalchar{+}}01]{Ratnasamy:2001:SCN:383059.383072}
+Sylvia Ratnasamy, Paul Francis, Mark Handley, Richard Karp, and Scott Shenker.
+\newblock A scalable content-addressable network.
+\newblock In {\em Proceedings of the 2001 conference on Applications,
+  technologies, architectures, and protocols for computer communications},
+  SIGCOMM '01, pages 161--172, New York, NY, USA, 2001. ACM.
+
+\bibitem[Ril03]{riley2003georgia}
+G.F. Riley.
+\newblock The {G}eorgia {T}ech {N}etwork {S}imulator.
+\newblock In {\em Proceedings of the ACM SIGCOMM workshop on Models, {M}ethods
+  and {T}ools for {R}eproducible {N}etwork {R}esearch}, pages 5--12. ACM, 2003.
+
+\bibitem[SMK{\etalchar{+}}01]{Stoica:2001:CSP:964723.383071}
+Ion Stoica, Robert Morris, David Karger, M.~Frans Kaashoek, and Hari
+  Balakrishnan.
+\newblock Chord: A scalable peer-to-peer lookup service for internet
+  applications.
+\newblock {\em SIGCOMM Comput. Commun. Rev.}, 31:149--160, August 2001.
+
+\bibitem[SR04]{Stutzbach:2004}
+D.~Stutzbach and R.~Rejaie.
+\newblock Characterizing today's gnutella topology.
+\newblock Technical Report CIS-TR-04-02, University of Oregon, November 2004.
+
+\bibitem[WGR05]{springerlink:10.1007/11530657_7}
+Klaus Wehrle, Stefan G\"otz, and Simon Rieche.
+\newblock 7. distributed hash tables.
+\newblock In Ralf Steinmetz and Klaus Wehrle, editors, {\em Peer-to-Peer
+  Systems and Applications}, volume 3485 of {\em Lecture Notes in Computer
+  Science}, pages 79--93. Springer Berlin / Heidelberg, 2005.
+\newblock 10.1007/11530657\_7.
+
+\end{thebibliography}

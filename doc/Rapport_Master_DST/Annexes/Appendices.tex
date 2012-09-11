@@ -1,0 +1,1120 @@
+%!TEX root=../RapportM2.tex
+
+\begin{appendices}
+
+\chapter{Gestion des ajouts de sommets à un DST}
+\adjustmtc
+\adjustmtc
+\minitoc
+\label{a:ar}
+
+Dans cette partie, j'ai repris les algorithmes proposés par Sylvain Dahan pour les implémenter en langage C dans \emph{Simgrid}, au moyen de l'API \emph{MSG}. Ces expérimentations sur simulateur ont permis de tester et de valider ces algorithmes, moyennant parfois quelques modifications. Je les présente donc à nouveau avec modifications et commentaires, le cas échéant. Par souci de clarté, je n'ai pas fait figurer les fonctions de synchronisation dans ces algorithmes. Elles seront détaillées plus loin.
+
+\begin{center}
+$\star\star\star$
+\end{center}
+
+Voici des exemples d'arrivées de sommets dans un DST ($a=2,\ b=4$):
+
+\begin{figure}[htb]
+\begin{center}
+\includegraphics[width=11cm]{./Partie2/Exemple_scission.pdf}
+\caption{Arrivée d'un n\oe ud: scission simple}
+\label{sci1}
+\end{center}
+\end{figure}
+
+La figure \ref{sci1} montre l'arrivée du sommet {\tt 54} via un des membres du groupe {\tt AAA}.
+
+\begin{itemize}
+	\item Le groupe {\tt AAA} ayant déjà 4 membres, il doit se scinder pour faire de la place à {\tt 54}. Cette scission donne les groupes {\tt AAA0} et {\tt AAA1}.
+	
+	\item Le groupe {\tt AA} passe de 3 à 4 membres, il n'a donc pas besoin de se scinder.
+	
+	\item {\tt 54} peut rejoindre le groupe {\tt AAA} qui a maintenant de la place pour l'accueillir.
+\end{itemize}
+
+\begin{figure}[htb]
+\begin{center}
+\includegraphics[width=11cm]{./Partie2/Exemple_scission_ajout.pdf}
+\caption{Arrivée d'un n\oe ud: scissions avec ajout d'étage}
+\label{sci2}
+\end{center}
+\end{figure}
+
+La figure \ref{sci2} montre l'arrivée du sommet {\tt 52} dans le groupe {\tt AA}.
+\begin{itemize}
+	\item Le groupe {\tt AA} a 4 membres et doit se scinder pour donner les groupes {\tt AA0} et {\tt AA1}.
+	
+	\item Le groupe {\tt A} doit alors également se scinder puisqu'il avait aussi déjà 4 membres. Cette scission donne les groupes {\tt A0} et {\tt A1}.
+	
+	\item Le groupe {\tt A} était la racine. Un DST ne pouvant avoir qu'une seule racine, il est donc nécessaire d'ajouter un étage: c'est le groupe {\tt A'}.
+\end{itemize}
+  
+L'algorithme distribué permettant d'insérer un sommet à un DST est défini par un ensemble de
+fonctions. Ces fonctions sont exécutées lorsqu'un message correspondant est
+reçu.
+
+\section{Données enregistrées sur chaque sommet}
+
+Les sommets possèdent un ensemble de variables liées à la structure du
+DST. Chacun des sommets possède les variables suivantes :
+
+\begin{description}
+
+\item[nom] Nom ou adresse d'un sommet. Cela peut correspondre à un couple
+\guilsinglleft adresse IP, port\guilsinglright, à un {\small IOR CORBA},
+etc. L'important est d'avoir la possibilité de contacter le sommet grâce à son
+\nom\ et que chaque \nom\ soit unique.
+
+\item[frères] Liste triée de listes des représentants des n\oe uds frères pour
+chaque étage. La première liste correspondant aux feuilles contenues par le
+n\oe ud du premier étage, et la dernière liste correspond aux représentants des
+fils de la racine pour le sommet courant. Chaque n\oe ud est composé de n\oe
+uds frères, qui sont les fils du n\oe ud. Les frères sont triés par ordre
+chronologique de leur arrivée. Chaque frère correspond au nom d'un représentant
+du n\oe ud frère.
+
+\item[pred] Liste triée contenant une liste de prédécesseurs par étage du
+DST. La $n^{\grave{e}me}$ liste contient le nom de tous les sommets qui
+utilisent le sommet courant comme représentant du n\oe ud de l'étage $n+1$
+auquel il appartient.
+
+\item[moi] Cette variable fait référence au sommet courant.
+
+\item[hauteur] La hauteur courante du DST.
+
+\end{description}
+
+Il existe aussi deux constantes qui sont :
+
+\begin{description}
+  \item[$a$:] Nombre minimum de frères pouvant être contenus dans un
+  n\oe ud à l'exception du n\oe ud racine.
+
+  \item[$b$:] Nombre maximum de frères pouvant être contenus dans un
+  n\oe ud.
+\end{description}
+
+Nous définissons deux fonctions de communication~: {\tt
+  send\_msg\_sync} et {\tt send\_msg\_async} qui permettent
+respectivement l'envoi synchrone et asynchrone de messages. Ces fonctions
+permettent l'appel de fonctions à distance. Les paramètres des
+fonctions sont le nom de l'émetteur, le nom du récepteur, la fonction
+appelée avec la liste de ses arguments.
+
+On définit également une fonction {\tt diffuser} qui comprend 4
+arguments: le nom de l'initiateur de la diffusion, le numéro de
+l'étage ({\tt 1\dots moi.hauteur}) d'où part cette diffusion (la
+\emph{racine} de la diffusion), le nom de la fonction diffusée et ses
+arguments. Cette fonction permet de diffuser un message à l'ensemble
+des feuilles accessibles depuis la racine de la diffusion.
+
+\section{Fonctions gérant la construction d'un DST}
+
+\subsection{Fonction \texttt{init} d'initialisation d'un sommet}
+
+La fonction \texttt{init} est activée à l'initialisation d'un
+sommet. L'initialisation d'un sommet consiste à créer un DST\ ne contenant
+qu'un seul sommet, lui-même. Si le n\oe ud veut se rattacher à un autre DST,
+il devra utiliser la fonction \texttt{joindre}.
+
+\begin{listing}{1}
+def init (nom):
+  moi.pred = [[nom]]
+  moi.frères = [[nom]]
+  moi.nom = nom
+  moi.hauteur = 1
+\end{listing}
+
+Lors de l'initialisation, le sommet a son propre {\small DST} d'un étage
+contenant une seule feuille. Ainsi, \texttt{frères} n'est constitué que d'un
+unique étage contenant une feuille\ligne{3}. Le sommet sert de représentant à un
+seul sommet, lui-même\ligne{2}.
+
+\subsection{Fonction \texttt{joindre}}
+
+La fonction \joindre\ permet à un sommet isolé de se rattacher à un {\small
+DST}. Pour cela, il doit connaître un membre du {\small DST} que nous appelons
+\contact. À la fin de l'appel, le sommet fait partie du {\small DST}.
+
+\begin{listing}{1}
+def joindre (contact):
+  (moi.frères[][],contact) = send_msg_sync(moi.nom, contact,
+                                           demander_connexion, moi.nom)
+\end{listing}
+
+La fonction demande au sommet \contact\ l'autorisation d'entrer dans le {\small
+DST}. La manière dont le sommet connaît ce contact n'est pas prise en compte
+par l'algorithme. \footnote{Dans la simulation, le contact est choisi aléatoirement parmi
+les sommets plus anciens que le nouvel arrivant.} Le sommet contacté retourne la 
+liste \freres\ du sommet qui sera son nouveau contact\lignes{2--3}. Ce nouveau
+\contact\ a préparé une place pour le sommet et attend son arrivée qui doit être
+imminente.  Si le sommet prend trop de temps à arriver, le contact considérera
+que le sommet est mort et annulera sa demande d'entrée dans le {\small DST}.
+
+\begin{listing}{4}
+  moi.pred[0] = moi.frères[0][:]
+  pour tout etage dans 1...moi.hauteur-1:
+    moi.pred[etage].ajouter([])
+\end{listing}
+
+L'ensemble des fils d'un n\oe ud du premier étage forme un graphe
+complet. Ainsi, tous les fils du n\oe ud du premier étage pointent sur notre
+sommet. La fonction copie donc la liste des frères du premier étage dans la
+liste des prédécesseurs\ligne{4}. Comme notre sommet n'est pas encore intégré
+à notre DST, aucun sommet ne peut utiliser le sommet comme représentant d'un
+n\oe ud. Ainsi, la liste des prédécesseurs de tous les étages sont vides à
+l'exception du premier\lignes{5--6}.
+
+\begin{listing}{7}
+  pour tout étage dans 1...moi.hauteur-1:
+    nouv_noeuds = []
+    pour tout f dans moi.frères[étage]:
+      si f == contact:
+        nouv_noeuds.ajouter(moi.nom)
+	ajouter_predecesseur(moi, étage, moi.nom)
+      sinon:
+        nouveau_rep = send_msg_sync(moi.nom, f,
+                                             demander_nouveau_rep,
+                                             (étage))
+	nouv_noeuds.ajouter(nouveau_rep)
+	send_msg_async(moi.nom, nouveau_rep,
+	                        ajouter_predecesseur,
+	                        (étage, moi.nom))
+    moi.frères[étage] = nouv_noeuds
+\end{listing}
+
+Le fait qu'un sommet possède les mêmes représentants que \contact\lignes{2--3}
+est incompatible avec la notion de distribution de la charge entre les sommets
+car tous les sommets utiliseraient les mêmes représentants. Nous cherchons donc
+d'autres représentants équivalents de manière à distribuer la charge entre tous
+les représentants possibles.
+
+Ainsi, nous modifions tout les représentants des n\oe uds\ligne{9} de chaque
+étage à l'exception du premier\ligne{7} qui est toujours un graphe
+complet de sommets.
+
+D'après la définition du DST, chaque sommet doit être le représentant des n\oe
+uds dont il fait partie. Ainsi, le sommet \contact\ s'utilise lui-même comme
+représentant des n\oe uds auxquels il appartient. Notre sommet contient une
+copie de la variable \freres\ de \contact\lignes{2--3}. Il utilise donc à cet
+instant \contact\ comme représentant de tous les n\oe uds auxquels il
+appartient car le sommet \contact\ et le sommet courant font partie des mêmes
+n\oe uds. Comme notre sommet doit être le représentant des n\oe uds auxquels il
+appartient, il suffit de remplacer les références sur \contact\ par des
+références sur le sommet\lignes{10--11}.
+
+Pour les autres représentants, le sommet leur demande le nom d'un représentant
+qui pourrait être utilisé pour représenter son n\oe ud de l'étage
+\texttt{étage}\ligne{14}. C'est le représentant qui s'occupe de la répartition
+de la charge entre tous les représentants possibles. Pour finir, nous prévenons
+les représentants choisis afin qu'ils puissent mettre le nom du sommet dans
+leur liste de prédécesseurs\lignes{12--18}.
+
+\subsection{Fonction \texttt{demander\_nouveau\_rep}}
+
+La fonction \texttt{demander\_nouveau\_rep} permet d'obtenir le nom d'un
+nouveau représentant d'un n\oe ud, pour un étage donné.
+
+\begin{listing}{1}
+def demander_nouveau_rep(étage):
+  nouveau_rep = moi.nom
+  charge = demander_nb_prédécesseurs(moi, étage)
+  pour tout f dans moi.frères[0]:
+    si f == moi:
+      charge_de_f = demander_nb_prédécesseurs(étage)
+    sinon
+      charge_de_f = send_msg_sync(moi.nom, f,
+                                           demander_nb_prédécesseurs,
+                                           (étage))
+    si charge_de_f < charge:
+      charge = charge_de_f
+      nouveau_rep = f
+  retourner nouveau_rep
+\end{listing}  
+
+Toutes les feuilles d'un n\oe ud du premier étage sont capables de représenter
+les mêmes n\oe uds. Cette fonction retourne un fils du n\oe ud du premier étage
+qui remplacera le sommet courant en tant que représentant. Afin d'équilibrer la
+charge entre les divers représentants, l'algorithme recherche le sommet ayant
+le moins de prédécesseurs pour un étage donné\lignes{4--8} pour qu'il soit
+utilisé comme représentant.
+
+Il est possible d'utiliser d'autres heuristiques de choix de représentant afin
+d'optimiser d'autres paramètres comme la distance en termes de liens réseaux ou
+la résistance aux pannes.
+
+\subsection{Fonction \texttt{demander\_connexion}}
+
+La fonction \texttt{demander\_connexion} a pour rôle de préparer l'arrivée
+d'un nouveau sommet dans le {\small DST}. Pour cela, elle fait en sorte qu'il
+y ait une place disponible dans le n\oe ud en le divisant si nécessaire.
+
+Afin d'avoir une cohésion dans le n\oe ud, il est nécessaire d'avoir un leader
+qui gère les entrées et les sorties des éléments du n\oe ud. Afin de simplifier
+le choix du leader, nous considérons que c'est le plus ancien sommet du
+n\oe ud qui se charge de cette tâche.
+
+\begin{listing}{1}
+def demander_connexion(nouv_sommet):
+  si moi.nom != moi.frères[0][0]:
+    retourner send_msg_sync(moi.nom, moi.frères[0][0],
+                            demander_connexion, (nouv_sommet))
+\end{listing}
+
+Si le sommet devant introduire le nouveau sommet n'est pas le leader\ligne{2},
+alors l'action d'accepter un nouveau membre est transférée au leader du n\oe ud
+du premier étage\lignes{3--4}.
+
+\begin{listingcont}
+  n = 0
+  tant que n < moi.hauteur et \
+           taille(moi.frères[n]) ==  b:
+    n = n + 1
+  si n > 0:
+    pour tout étage dans n...1:
+      moi.demander_scission(étage)
+\end{listingcont}
+
+Afin d'accepter un nouveau membre, il faut qu'il y ait de la place dans le n\oe
+ud. Si le n\oe ud du premier étage est plein, il faut alors le diviser. Mais si
+le n\oe ud du deuxième étage contenant le n\oe ud du premier étage est déjà
+plein, il faudra aussi le diviser afin de laisser de la place au nouveau n\oe
+ud créé par la division du n\oe ud du premier étage. Et ainsi de suite jusqu'à
+ce que nous ayons atteint la racine du {\small DST}\ligne{6} ou qu'il y ait
+assez de place pour accepter la division d'un n\oe ud de niveau
+inférieur\ligne{7}.
+
+A ce niveau, l'algorithme sait combien de n\oe uds vont devoir être
+divisés, c'est à dire \texttt{n}\ligne{8}. Ensuite, l'algorithme
+demande la scission de ces n\oe uds par ordre d'étage
+décroissant\lignes{9--11}, ce qui permet à chaque n\oe ud d'avoir la
+place nécessaire à sa division.
+
+\begin{listingcont}
+  pour tout f dans moi.frères[0][:]:
+    si f == moi:
+      nouveau_frère_reçu(nouv_sommet)
+    sinon
+      send_msg_async(moi.nom, f, nouveau_frère_reçu, (nouv_sommet))    
+\end{listingcont}
+
+Finalement, la fonction indique à tous les fils du n\oe ud du premier étage de
+prendre en compte l'arrivée d'un nouveau sommet \lignes{12--16}. La commande
+\verb!moi.frères[0][:]! indique que la fonction travaille sur une copie de
+\verb!moi.frères[0]! plutôt que sur \verb!moi.frères[0]!  directement. Cela est
+nécessaire car son contenu va être modifié par la boucle en y ajoutant le
+nouveau fils du n\oe ud du premier étage.
+
+\subsection{Fonction \texttt{nouveau\_frère\_reçu}}
+
+La fonction \texttt{nouveau\_frère\_reçu} gère la prise en compte de l'arrivée
+d'un nouveau sommet dans le n\oe ud du premier étage.
+
+\begin{listing}{1}
+def nouveau_frère_reçu(nouv_sommet):
+  moi.frères[0].ajouter(nouv_sommet)
+  moi.pred[0].ajouter(nouv_sommet)
+\end{listing}
+
+Comme le sommet est implicitement le dernier arrivé dans le n\oe ud, il est
+ajouté à la fin de la liste des fils du n\oe ud du premier
+étage\ligne{2}. Comme le nouveau sommet va lui aussi pointer sur le sommet
+courant, il est ajouté à la liste des prédécesseurs du premier étage\ligne{3}.
+
+\subsection{Fonction \texttt{demander\_scission}}
+
+La fonction \texttt{demander\_scission} permet d'envoyer une demande
+de scission d'un n\oe ud, ainsi que la scission de ses pères si
+nécessaire.
+La fonction gère l'envoi de la commande au leader, responsable de la division,
+ainsi que l'envoi de l'ordre à l'ensemble des sommets concernés.
+
+\label{split_req}
+\begin{listing}{1}
+def demander_scission(n):
+  étage = n-1
+  si (moi.frères[étage][0] != moi.nom):
+  
+    // transfert au leader
+    send_msg_sync(moi.nom, moi.frères[étage][0],
+                           demander_scission, (n))
+  sinon
+    si n == moi.hauteur:
+      diffuser(moi, moi.hauteur-1, ajouter_étage, ())
+    fsi 
+    diffuser(moi, étage, scission, (étage) )
+  fsi
+fin
+\end{listing}
+
+Si le sommet n'est pas le leader du n\oe ud\ligne{3}, alors la fonction le
+décharge de la gestion de la division à un sommet plus proche du
+leader\lignes{6--7} jusqu'à ce que le leader soit atteint.
+
+On constate que les sommets accessibles par une diffusion depuis un étage {\tt n} sont toujours inclus dans ceux accessibles depuis un étage {\tt n+1}. Il n'y a donc pas de risque de changer de groupe pendant ces transferts au leader.
+
+Si la racine doit être divisée\ligne{9}, l'algorithme ajoute alors un
+nouvel étage\ligne{10} car un {\small DST} ne peut avoir qu'une
+racine. Pour cela, il informe tous les sommets du {\small DST} qu'un
+nouvel étage a été ajouté. Cette simple information suffit pour
+ajouter un niveau au {\small DST}.
+
+A cet instant, le leader peut envoyer l'ordre de division à tous les sommets
+membres du n\oe ud qui sera divisé\ligne{12}.
+
+\subsection{Fonction \texttt{ajouter\_étage}}
+
+Afin d'ajouter un nouvel étage, il suffit que la fonction suivante soit appelée
+par tous les sommets du {\small DST}.
+
+\begin{listing}{1}
+def ajouter_étage():
+  moi.hauteur++
+  moi.frères.ajouter([moi.nom])
+  moi.pred.ajouter([moi.nom])
+\end{listing}
+
+Pour un sommet, ajouter un étage signifie ajouter un élément dans sa liste de
+n\oe ud. Le nouveau n\oe ud ajouté, qui est le n\oe ud de plus haut niveau,
+devient alors la nouvelle racine. C'est le sommet courant qui est choisi comme
+représentant local de ce nouveau n\oe ud racine\lignes{2--3} car tous les
+sommets peuvent représenter la racine.
+
+\subsection{Fonction \texttt{connecter\_les\_groupes\_scindés}}
+
+Cette fonction permet de prévenir un n\oe ud qu'un de ses fils de
+l'étage \texttt{étage} s'est divisé en deux et qu'il doit en tant que père
+avoir un lien sur ces deux fils.  
+
+\begin{listing}{1}
+def connecter_les_groupes_scindés(étage, init_idx, init_rep,
+                                         nouv_idx, nouv_rep)
+  si nouv_idx < taille(moi.frères[étage]):
+    retourner
+\end{listing}
+
+\texttt{étage} indique l'étage qui possède un nouveau fils.
+
+\texttt{init\_idx} et \texttt{nouv\_idx} sont les positions du fils originel et du nouveau fils, dans la table de routage du n\oe ud appelant (le n\oe ud qui s'est scindé, voir fonction {\tt scission}), à l'étage {\tt étage}. Donc {\tt nouv\_idx} désigne en fait la taille de {\tt moi.frères[étage]} du n\oe ud appelant, c'est à dire le prochain emplacement libre pour un nouveau frère à cet étage.
+
+\texttt{init\_rep} et \texttt{nouv\_rep} sont respectivement un
+représentant du n\oe ud originel et un représentant du nouveau n\oe ud.
+
+Il est possible que la fonction \texttt{connecter\_les\_groupes\_scindés} soit
+appelée plusieurs fois sur un sommet pour une même division. Si le sommet
+courant a déjà accès au nouveau n\oe ud\ligne{3}, cela signifie qu'il a déjà
+été informé de la division, il est alors inutile de prendre en compte ce nouvel
+appel\ligne{4}.
+
+\begin{listingcont}
+  si (init_idx < taille(moi.frères[étage])):
+    rep = moi.frères[étage][init_idx]
+  sinon
+    rep = init_rep
+  fsi
+\end{listingcont}
+
+Si {\tt init\_idx} pointe à la fin de la liste de frères, alors aucun n\oe ud n'est remplacé puisqu'on en ajoute un. (voir ligne 19)
+
+\begin{listingcont}
+  pos = moi.frères[étage].index(moi.nom)
+  si pos == init_idx:
+    si nouv_rep != moi.nom:
+      init_rep = moi.nom
+\end{listingcont}
+
+Le sommet doit toujours être sa propre référence sur les n\oe uds auxquels il
+appartient. Si le sommet fait partie du n\oe ud restant\ligne{11}, alors il doit être utilisé comme référence de son nouveau n\oe ud plutôt que d'utiliser la référence qui a été fournie par l'appel de la fonction.
+
+L'algorithme est écrit
+de telle manière que si le sommet fait partie du nouveau n\oe ud, alors la
+fonction \texttt{connecter\_les\_groupes\_scindés} est uniquement appelée par
+le sommet courant qui passe son propre nom en paramètre
+\texttt{nouv\_rep}. Si \texttt{nouv\_rep} n'est pas le nom du sommet
+courant, alors le sommet courant fait partie du n\oe ud originel\ligne{12} et le nom du sommet courant doit être utilisé comme référence au n\oe ud originel\ligne{13}.
+
+\begin{listingcont}
+  si init_rep et nouv_rep sont déjà connus:
+    retourner
+    
+\end{listingcont}
+
+On ajoute ces deux lignes par précaution, pour être certain de ne pas ajouter de frères en double.
+
+\begin{listingcont}  
+  moi.frères[étage][init_idx] = init_rep
+  moi.frères[étage].ajouter(nouv_rep)
+\end{listingcont}
+
+L'ancienne référence sur le n\oe ud originel ayant été mémorisée\lignes{5--9}, l'algorithme peut remplacer cette ancienne référence par la nouvelle\ligne{17} et il ajoute la référence du nouveau n\oe ud\ligne{18}.
+
+\begin{listingcont}
+  si rep != init_rep:
+    si rep != moi.nom:
+      send_msg_async(moi.nom, rep, effacer_predecesseur,
+                                   (étage, moi.nom));
+    fsi
+    send_msg_async(moi.nom, init_rep, ajouter_predecesseur,
+                                      (étage, moi.nom));
+  fsi
+  
+  si nouv_rep != moi.nom:
+    send_msg_async(moi.nom, nouv_rep, ajouter_predecesseur,
+                                      (étage, moi.nom));  
+\end{listingcont}
+
+Si l'ancienne référence sur le n\oe ud originel a été remplacée\ligne{19}, alors l'algorithme doit indiquer à cette ancienne référence qu'elle n'est plus utilisée\ligne{21} et à la nouvelle référence qu'elle l'est\ligne{24}.
+
+L'algorithme indique à {\tt nouv\_rep} qu'il est utilisé par le n\oe ud courant\lignes{28--29}. Cela n'est bien sûr nécessaire que si {\tt nouv\_rep} n'est pas le n\oe ud courant.
+
+\begin{center}
+$\star\star\star$
+\end{center}
+
+Ici, l'ordre des opérations est inversé par rapport à la proposition initiale de Sylvain. (je parle des blocs 19-26 et 28-30) En effet, voici un cas de figure dans lequel l'ancien ordre pose problème:
+
+\renewcommand{\arraystretch}{1.2}
+Le n\oe ud 677 dont voici la table de routage:
+\begin{tabular}{|c|c|c|c|c|} \hline
+	E0 & 42 & 677 & 387 & \phantom{387}\\ \hline
+	E1 & 677 & 467 & &\\ \hline
+\end{tabular}\\
+
+re\c coit la tâche {\tt connecter\_les\_groupes\_scindés} depuis le n\oe ud 467, avec les arguments suivants:\\
+{\tt étage = 1, init\_rep = 556, init\_idx = 1, nouv\_idx = 2, nouv\_rep = 467}
+
+Au final, on doit donc obtenir la table de routage suivante:
+\begin{tabular}{|c|c|c|c|c|} \hline
+	E0 & 42 & 677 & 387 & \phantom{387}\\ \hline
+	E1 & 677 & {\color{red}556} & 467 &\\ \hline
+\end{tabular}\\
+
+A l'issue du bloc 5-9, {\tt rep} vaut 467. La ligne 21 ôte donc 677 des prédécesseurs de 467 et la ligne 29 l'y ajoute. Comme on peut donc le voir, si on laisse l'ordre des opérations tel qu'il était, 677 ne figurera plus dans les prédécesseurs de 467 alors qu'il continue à pointer dessus.
+
+\subsection{Fonction \texttt{scission}}
+\label{s:sci}
+
+Lorsqu'un n\oe ud se divise, tous les sommets appartenant à ce n\oe ud
+exécutent la fonction \texttt{scission}. La moitié des sommets décideront en
+fonction de l'algorithme de quitter le n\oe ud pour en former un nouveau. Ceci
+scinde le n\oe ud en deux n\oe uds de tailles équivalentes.
+
+\begin{listing}{1}
+def scission(étage):
+  pos = moi.frères[étage].index(moi.nom)
+  reste = (pos+1) % 2
+\end{listing}
+
+Le n\oe ud de l'étage \etage\ va être divisé. Nous avons choisi comme
+heuristique de division que les frères ayant une place paire dans la liste
+\verb|frères[étage]| restent et que les autres sortent du n\oe ud pour en
+former un autre\lignes{2--3}.
+
+\begin{listingcont}
+  si non reste:
+    l_autre_noeud = moi.frères[étage][pos - 1]
+  sinon si pos == taille(moi.frères[étage]) - 1:
+    l_autre_noeud = moi.frères[étage][pos - 1]
+  sinon:
+    l_autre_noeud = moi.frères[étage][pos + 1]
+\end{listingcont}
+
+La variable \texttt{l\_autre\_noeud} contient le nom d'un sommet qui aura un
+statut privilégié avec le sommet courant lors de la division. Ce sommet doit
+être un sommet qui appartiendra à l'autre n\oe ud. À chaque fois que le sommet
+courant aura besoin d'un représentant de l'autre n\oe ud, il utilisera
+\texttt{l\_autre\_noeud} plutôt que de rechercher à chaque fois un autre
+représentant. L'attribution de \texttt{l\_autre\_noeud}\lignes{5--9} est
+faite de fa\c con à répartir la charge entre les membres du n\oe ud.
+
+\begin{listingcont}
+  si reste:
+    nouv_grp = []
+    pour tout i dans 0...taille(moi.frères[étage])-1:
+    si i%2 = 0:
+      nouv_grp.ajout(moi.frères[étage][i])
+    sinon:
+      send_msg_async(moi.nom, moi.frères[étage][i],
+                     effacer_prédécesseur, (étage, moi.nom))
+    moi.frères[étage] = nouv_grp
+\end{listingcont}
+
+La suite de la fonction forme les deux n\oe uds. Les actions entreprises pour
+créer ces n\oe uds ne sont pas identiques selon que le sommet reste dans le n\oe ud ou
+part rejoindre le nouveau.
+
+S'il reste dans le n\oe ud, c'est qu'il est sur une place paire. Lorsqu'une
+division est réalisée, seuls les fils du n\oe ud ayant une place paire
+restent dans le n\oe ud\lignes{13-14}. Les autres membres sont rejetés et le
+lien entre le sommet et ce membre est coupé\lignes{16--17}.
+
+\begin{listingcont}
+    init_rep=moi.nom
+    nouv_rep=l_autre_noeud
+\end{listingcont}
+
+Il faut choisir qui représentera le n\oe ud initial et qui représentera le nouveau n\oe ud
+issu de la division. Le sommet courant reste le représentant du n\oe ud initial\ligne{19}
+et \texttt{l\_autre\_noeud} devient le représentant du nouveau n\oe ud\ligne{20}
+
+\begin{listingcont}
+  sinon:
+    nouv_grp = []
+    pour tout i dans 0..taille(moi.frères[étage])-1:
+      si i%2 = 1:
+        nouv_grp.ajout(moi.frères[étage][i])
+      sinon:
+        send_msg_async(moi.nom, moi.frères[étage][i],
+	               effacer_prédécesseur, (étage, moi.nom))
+    moi.frères[étage] = nouv_grp
+\end{listingcont}
+
+Si le sommet doit quitter le n\oe ud pour en former un autre, c'est qu'il est à
+une place impaire. Le nouveau n\oe ud est formé de tous les fils
+situés à une place impaire\lignes{24--25}. Les liens avec les membres qui
+resteront dans le n\oe ud originel sont coupés\lignes{27--28} car ils ne font
+plus partie du n\oe ud de notre sommet.
+
+\begin{listingcont}
+    init_rep=l_autre_noeud
+    nouv_rep=moi.nom
+\end{listingcont}
+
+Ces deux lignes choisissent à nouveau qui deviendra le représentant du n\oe ud originel
+et qui sera le représentant du nouveau n\oe ud. \texttt{l\_autre\_noeud} faisant
+partie du n\oe ud originel est utilisé pour représenter le n\oe ud
+originel\ligne{30}. Quant au nouveau n\oe ud, il est représenté par le sommet
+courant\ligne{31}.
+
+\begin{listingcont}
+    init_idx = moi.frères[étage+1].index(moi.nom)
+    nouv_idx = taille(moi.frères[étage+1])
+
+    pour tout p dans moi.pred[étage+1][:]:
+      si p == moi:
+        connecter_les_groupes_scindés(étage+1, init_idx, init_rep,
+                                               nouv_idx, nouv_rep)
+      sinon:
+        send_msg_async(moi.nom, p, connecter_les_groupes_scindés,
+                       (étage+1, init_idx, init_rep, nouv_idx, nouv_rep))
+\end{listingcont}
+
+L'ensemble des prédécesseurs de l'étage supérieur à celui qui s'est scindé ({\tt moi.pred[étage+1]}) forme l'ensemble des sommets du n\oe ud père. Pour prévenir ce n\oe ud père qu'il vient d'avoir un nouveau fils, il faut donc tous les contacter. Il s'agit pour chacun d'eux d'acquérir un nouveau frère (le représentant du nouveau n\oe ud\ligne{33}) tout en s'assurant que l'ordre d'arrivée des n\oe uds est toujours maintenu.\ligne{32}
+
+C'est ce qui est finalement fait ici.
+
+\chapter{Gestion des retraits de sommets du DST}
+
+\minitoc
+\label{a:dep}
+
+Cette partie est nouvelle. Il s'agit d'une proposition d'algorithmes permettant de gérer les départs de sommets du DST, y compris les fusions éventuellement rendues nécessaires par ces départs. L'équilibrage de charge n'est pas réalisé, cela reste à faire.
+
+Je n'ai étudié que le cas de départs ``volontaires''. C'est à dire que les sommets souhaitant quitter le DST doivent le signaler en exécutant la fonction {\tt quitte}. En cas de panne d'un sommet -- détectée par un moyen restant à définir -- il ne pourrait pas exécuter lui-même cette fonction puisqu'il serait déjà arrêté. Il faudrait alors étudier la possibilité de la faire exécuter par l'un de ses frères.
+
+Ces fonctions également écrites en C ont pu être testées et validées sous Simgrid. Toutefois et contrairement au travail réalisé sur l'ajout de sommets, j'estime que  les fonctions présentées ici n'ont pas été soumises à suffisamment de cas de figure pour pouvoir dire avec certitude qu'elles sont validées, bien que les différents tests se soient bien déroulés. De plus, toujours par manque de temps, les problèmes de synchronisation n'ont pas été étudiés ici.
+
+\begin{center}
+$\star\star\star$
+\end{center}
+
+Pour décrire ces algorithmes, je propose un exemple de DST -- voir figure \ref{Ex1} -- qui servira de support tout au long de ces explications.
+
+Dans cet exemple, le départ du sommet {\tt 8} laisse un sommet ``orphelin'': le {\tt 21}.
+\begin{description}
+	\item[Étage 0:] Le groupe {\tt 0B} ayant de la place pour accueillir {\tt 21}, il va pouvoir fusionner avec {\tt 0A} pour donner le groupe {\tt 0AB}.
+	
+	\item[Étage 1:] En conséquence, le groupe {\tt 1A} n'a plus qu'un seul membre et va devoir fusionner avec {\tt 1B} pour donner le groupe {\tt 1AB}.
+	
+	\item[Étage 2:] À son tour, le groupe {\tt 2B} n'a plus qu'un membre et doit fusionner avec {\tt 2A} pour obtenir le groupe {\tt 2AB}
+\end{description}
+Ici, le DST ne perd pas de niveau.
+
+\begin{figure}[]
+\begin{center}
+\includegraphics[width=16cm]{Partie2/Exemple_fusion.pdf}
+\end{center}
+\caption{Exemple de fusion: le sommet 8 quitte le DST}
+\label{Ex1}
+\end{figure}
+
+\section{Fonctions gérant le départ d'un sommet}
+
+\subsection{Fonction \texttt {quitte}}
+Cette fonction est appelée par un sommet qui souhaite quitter le DST.
+
+\begin{listing}{1}
+def quitte()
+  
+  // informe mes prédécesseurs de mon départ
+  pour tout étage dans 0 ... moi.hauteur-1:
+    pour tout pred dans moi.pred[étage]:
+      si (pred != moi):
+        si (étage == 0):
+          send_msg_async(moi, pred, efface_frère, (étage, moi.nom))
+        sinon:
+          nouveau_rep = choisir_frère_aléatoirement
+          send_msg_async(moi, pred, remplace_frère, (étage, nouv_rep))
+         fsi
+      fsi
+    fpour
+    
+    // informe mes frères de mon départ
+    pour chaque frère dans moi.frère[étage]:
+      si (frère != moi):
+        send_msg_async(moi, frère, efface_pred, (étage, moi.nom))
+      fsi
+    fpour
+  fpour
+\end{listing}
+
+Puisque le sommet courant ({\tt moi}) s'en va, il ne peut plus être utilisé comme représentant du groupe auquel il appartient. Il va donc être remplacé par un autre de ses frères de niveau~0 partout où cela est nécessaire. Dans l'exemple, {\tt 8} va donc être remplacé par {\tt 21}.
+
+{\tt choisir\_frère\_aléatoirement} est une fonction qui retourne n'importe quel frère de {\tt moi} de niveau 0, autre que {\tt moi} bien sûr.
+
+{\tt remplace\_frère} est une fonction détaillée plus loin qui permet de remplacer un frère par un autre, à un étage donné.
+
+\begin{listingcont}
+  // gère les éventuelles fusions
+  si (taille(moi.frères[0]) <= a):
+    
+    prend le premier idx tel que moi.frères[0][idx] != moi
+    send_msg_sync(moi,
+                  moi.frères[0][idx],
+                  demande_fusion,
+                  ())
+  fsi
+fin
+\end{listingcont}
+
+Si les opérations précédentes laissent des sommets \emph{orphelins}\footnote{c'est à dire des sommets en nombre insuffisant pour qu'ils se regroupent -- donc inférieur à la borne {\tt a} du DST}, des fusions vont être nécessaires. On demande ici à l'un des frères du sommet sortant de démarrer ce processus. Dans l'exemple, c'est donc le sommet {\tt 21} qui va lancer la fonction {\tt demande\_fusion}.
+
+\subsection{Fonction \texttt {remplace\_frère}}
+Cette fonction est chargée de remplacer un frère par un autre à l'étage {\tt étage}. {\tt init\_idx} désigne l'emplacement où ce remplacement doit se produire et {\tt nouv\_sommet} est le rempla\c cant.
+\begin{listing}{1}
+def remplace_frère(étage, init_idx, nouv_sommet)
+  
+  // rien à faire
+  si (moi.frères[étage][init_idx] == nouv_sommet) retourner
+\end{listing}
+
+Si l'emplacement désigné par {\tt init\_idx} contient déjà {\tt nouv\_sommet}, c'est que la fonction a déjà été exécutée et il ne faut donc rien faire.
+
+\begin{listingcont}
+  si (init_idx < taille(moi.frères[étage])):
+
+    // remplace frère
+    ancien_sommet = moi.frères[étage][init_idx]
+    moi.frères[étage][init_idx] = nouv_sommet
+  sinon:
+
+    // ajoute nouveau frère
+    ajoute_frère(étage, nouv_sommet);
+  fsi
+\end{listingcont}
+
+Si {\tt init\_idx} pointe au-delà de la liste courante, alors on ne procède pas à un remplacement, mais à un ajout.
+
+À noter qu'on mémorise l'ancien sommet\ligne{8} parce qu'on en a besoin pour la mise à jour des prédécesseurs (voir ligne 19).
+
+\begin{listingcont}
+  // efface ancien prédécesseur
+  si ((ancien_sommet != moi) &&
+      (init_idx < taille(moi.frères[étage]))):
+        send_msg_async(moi,
+                       ancien_sommet.nom,
+                       efface_pred,
+                       (étage,
+                        moi.nom))
+  fsi
+
+  // ajoute nouveau predecesseur
+  si (nouv_sommet != moi):
+        send_msg_async(moi,
+                       nouv_sommet.nom,
+                       ajoute_pred,
+                       (étage,
+                        moi.nom))
+  fsi
+fin
+\end{listingcont}
+Les prédécesseurs sont mis à jour en conséquence.
+
+\subsection{Fonction \texttt {demande\_fusion}}
+Cette fonction est chargée de gérer les fusions suite au départ d'un sommet. (voir fonction {\tt quitte} plus haut) Elle parcourt le DST de bas en haut, tant que des fusions sont requises\ligne{4}, comme on le voit sur l'exemple.
+\begin{listing}{1}
+def demande_fusion()
+  étage = 0
+  recp = -2
+  tant que ((taille(moi.frères[étage]) <= a) && (étage < moi.hauteur - 1)):
+    
+    /* fusion_ou_transfert(étage) retourne l'indice du représentant
+       à l'étage étage + 1 du groupe à rejoindre.
+       Retourne -1 si aucun groupe ne peut accueillir le groupe courant */
+  
+    pos_contact = moi.fusion_ou_transfert(étage)
+    si (pos_contact > - 1):
+      pos_moi = moi.index(étage + 1, moi.nom)
+
+      // demande à contact d'effectuer une première fusion
+      send_msg_sync(moi,
+                    moi.frères[étage + 1][pos_contact],
+                    fusion,
+                      (moi.frères[étage],
+                       taille(moi.frères[étage]),
+                       étage,
+                       pos_moi,
+                       pos_contact))
+                       
+      // demande à contact de lancer la tâche diffuse_fusion
+      send_msg_sync(moi,
+                    moi.frères[étage + 1][pos_contact],
+                    diffuse_fusion,
+                      (étage,
+                       pos_moi,
+                       pos_contact))                      
+    sinon
+      // transfert plutôt que fusion
+    fsi
+\end{listing}
+
+{\tt fusion\_ou\_transfert(étage)} retourne l'indice d'un représentant à l'étage {\tt étage + 1} du groupe à rejoindre. (Retourne -1 si aucun groupe ne peut accueillir le groupe courant, auquel cas il ne faut pas faire une fusion, mais un transfert. (voir plus loin) )
+
+Dans notre exemple \ref{Ex1}, cette fonction retourne les indices des sommets 32, 42 et 1 pour les fusions des étages 0, 1 et 2, respectivement. Ce seront les sommets \emph{contacts}.
+
+Après la ligne 12, {\tt pos\_moi} représente donc le groupe courant et {\tt pos\_contact}, le groupe à rejoindre.
+
+Si une fusion est possible\ligne{11}, on commence par demander à {\tt contact} d'effectuer une première fusion\ligne{15}. Sa table de routage étant alors correcte, on peut demander à ce sommet de lancer la tâche {\tt diffuse\_fusion}\ligne{25} qui va permettre à tous les sommets concernés de prendre cette fusion en compte.
+
+On peut remarquer qu'en procédant de la sorte, le sommet {\tt contact} exécute au moins deux fois la fonction {\tt fusion}. Ce n'est pas gênant dans la mesure où la deuxième exécution ne fera rien -- puisque sa table de routage comportera déjà les nouveaux sommets -- mais il peut être utile d'empêcher la deuxième exécution pour des raisons de performance.
+
+Il faut aussi noter qu'on utilise à chaque fois des envois synchrones\lignes{15, 25} parce que l'ordre des étapes est important: il faut que la première tâche de fusion soit terminée avant de pouvoir lancer {\tt diffuse\_fusion} puisque celle-ci utilise la table de routage à jour de {\tt contact}. De même, {\tt diffuse\_fusion} doit être terminée avant de passer à la suite: par exemple, le test\ligne{4} et la lecture de la taille de la racine\ligne{52} doivent avoir lieu sur des données à jour.
+
+Dans le cas où aucun groupe n'a suffisamment de place pour accueillir les nouveaux venus, on a recours à la fonction {\tt transfert} qui travaille dans le sens contraire de {\tt fusion}: cette fois, c'est le groupe des sommets orphelins qui va accueillir d'autres sommets des groupes voisins de telle sorte que les bornes {\tt a} et {\tt b} restent respectées pour tout le monde. Par manque de temps, je n'ai pas écrit d'algorithme pour cette fonction. (voir remarque page \pageref{rq1})
+
+\begin{listingcont}
+    /* recherche le noeud qui va diffuser la tâche de mise
+       à jour de la racine sur la partie du DST non concernée
+       par les fusions */
+       
+    si (étage == moi.hauteur - 2):
+      
+      recp = -1
+      si (pos_moi <= pos_contact):
+        
+        recp = moi.frères[étage + 1][pos_moi - 1]
+      sinon:
+      
+        recp = moi_frères[étage + 1][pos_contact + 1]
+      fsi
+    fsi
+    étage ++
+  ftq
+\end{listingcont}
+
+Une fois les fusions réalisées et si elles ont atteint la racine\ligne{38}, celle-ci doit comporter un membre de moins (à moins qu'elle ne s'en aille -- voir plus loin). Les opérations de {\tt fusion} réalisent cela, mais seulement dans les sommets impactés par ces opérations. Il faut donc mettre à jour la racine dans les autres sommets en diffusant la fonction chargée de cela dans la bonne partie du DST. Ici\lignes{38--48}, on détermine le sommet {\tt recp} d'où devra partir cette diffusion qui sera réalisée plus loin.\ligne{59}
+
+Si les fusions n'atteignent pas la racine, {\tt recp} restera égal à -2\ligne{3}.
+
+À la fin de l'exemple \ref{Ex1}, tous les membres du groupe 2AB sont à jour puisqu'ils sont concernés par les opérations de fusion. Mais la partie droite -- les membres du groupe 2C -- n'a pas eu connaissance que des fusions se produisaient. C'est donc dans cette partie que doit être diffusée la tâche {\tt nettoie\_etage\_sup} et {\tt recp} sera ici le sommet~14.
+
+\begin{listingcont}
+  choisir i tel que moi.frères[0][i] != moi
+  taille_dernier_étage = send_msg_sync(moi,
+                                       moi.frères[0][i],
+                                       lit_taille,
+                                        (moi.hauteur-1))
+                                                                                  
+  si (taille_dernier_étage > 1):
+    si (recp > -1):
+      send_msg_sync(moi, recp, diffuse, (moi,
+                                         moi.hauteur - 2,
+                                         nettoie_etage_sup,
+                                          (moi.hauteur - 2,
+                                           pos_moi,
+                                           pos_contact)))
+    fsi
+  fsi
+\end{listingcont}
+
+Si la racine ne s'en va pas\ligne{57}, on demande donc au sommet {\tt recp} de diffuser la fonction de mise à jour de cette racine.\\
+
+\begin{listingcont}                                     
+  si (taille_dernier_étage == 1):
+    moi.diffuser(moi, moi.hauteur - 1, supprimer_racine, (moi.hauteur))
+  fsi
+fin
+\end{listingcont}
+
+Si la racine doit s'en aller\ligne{67}, alors on diffuse une fonction de suppression de la racine sur la totalité du DST.
+
+\subsection{Fonction \texttt {fusion\_ou\_transfert}}
+
+Cette fonction sert à déterminer si une fusion est possible ou s'il faut plutôt réaliser un transfert. La fusion sera possible si l'un des groupes voisins de celui qui a perdu un membre possède suffisamment de place pour accueillir les membres restants. Le transfert consiste au contraire à remplir le groupe devenu trop petit avec des membres pris aux groupes voisins.
+
+\begin{listing}{1}
+def fusion_ou_transfert(étage)
+  idx_frère = 0
+  fusion = 0
+
+  tant que ((fusion == 0) && (idx_frère < taille(moi.frères[étage + 1]))):
+    si (moi.frères[étage + 1][idx_frère] != moi):
+    
+      taille_frères = send_msg_sync(moi,
+                                    moi.frères[étage + 1][idx_frère].nom,
+                                    taille,
+                                    (étage))
+      si (taille_frères <= b - taille(moi.frères[étage])):
+      
+        fusion = 1
+      fsi
+    fsi
+    idx_frère ++
+  ftq
+\end{listing}
+
+Chacun des frères de l'étage parent de {\tt étage} représentant un groupe susceptible d'accueillir les sommets restants, on les interroge pour connaître leur taille. Dès qu'on en a trouvé un avec une taille suffisamment petite\lignes{12-14}, on arrête, la fusion étant alors possible.
+
+\begin{listingcont}
+si (fusion == 1):
+    retourne idx_frère - 1
+  else
+    retourne -1
+fin
+\end{listingcont}
+
+Dans ce cas, on retourne l'indice du représentant de ce groupe, sinon on retourne -1.
+
+\subsection{Fonction \texttt{fusion}}
+
+Cette fonction se charge de fusionner deux groupes. {\tt pos\_moi} et {\tt pos\_contact} représentent les groupes ``arrivant'' et ``accueillant'', respectivement. La fusion est réalisée à l'étage {\tt étage}. {\tt liste\_frères} contient la liste des frères à accueillir et {\tt nb\_frères} est la taille de cette liste.
+\begin{listing}{1}
+def fusion(liste_frères, nb_frères, étage, pos_moi, pos_contact)
+
+  loc_pos_moi = moi.index(étage + 1, moi.nom)
+  contact_nom = moi.frères[étage + 1][pos_contact].nom
+  
+  si (moi.index(moi.hauteur - 1, moi.nom) != 0 &&
+      ((loc_pos_moi > pos_contact) ||
+       ((loc_pos_moi == pos_contact) &&
+        ((moi.nom == contact_nom) ||
+         (index(étage, moi.nom) > index(étage, contact_nom))))))
+
+    droite = 1
+  sinon:
+    droite = 0
+  fsi
+\end{listing}
+
+Ici, il s'agit d'inclure les nouveaux frères dans le sommet courant. La liste de frères fournie en argument est celle du premier sommet qui a réalisé une fusion -- le sommet {\tt contact} (voir ligne 15 de l'algo {\tt demande\_fusion}) -- et il ne faut donc pas forcément prendre la totalité de ces frères sous peine d'avoir des doublons. (deux représentants d'un même groupe)
+
+Voici donc l'idée:
+\begin{itemize}
+	\item Si le sommet courant {\tt moi} est à droite du contact, on prend la partie gauche de la liste de frères et on l'insère à gauche de la liste courante.
+	
+	\item Si le sommet courant est à gauche du contact, on prend la partie droite de la liste de frères et on l'ajoute à droite de la liste courante
+\end{itemize}
+En procédant de la sorte, l'ordre chronologique des frères est maintenu. Cette première partie de l'algo consiste donc à déterminer où se situe le sommet courant par rapport à {\tt contact}.
+
+On rappelle que {\tt loc\_pos\_moi}\footnote{{\tt pos\_moi} est l'indice à l'étage parent de l'étage courant du sommet qui exécute {\tt demande\_fusion}, c'est à dire le point de départ des fusions. (voir {\tt demande\_fusion}\ligne{12}) On en a besoin plus loin\ligne{78}} et {\tt pos\_contact} sont les indices des sommets courant et contact (respectivement) à l'étage supérieur. Si donc ces deux indices sont égaux, il faut regarder ce qui se passe à l'étage en dessous pour déterminer l'ordre de ces frères. C'est ce qui est fait aux lignes 8 à 10.
+
+Au début\ligne{6}, on s'assure de ne pas être sur le plus vieux sommet du DST. Si c'est le cas, nous sommes donc sur le sommet le plus à gauche et on ne peut qu'ajouter les nouveaux frères en fin de liste. (voir aussi ligne 55)
+
+\begin{listingcont}
+  si (étage > 0):
+    si (droite == 1):
+
+        // prend la partie gauche de la liste de frères        
+        si (nb_frères >= taille(moi.frères[étage])):
+          loc_nb_frères = nb_frères - taille(moi.frères[étage]);
+        sinon:
+          loc_nb_frères = nb_frères;
+        fsi
+
+        si (loc_nb_frères > 0):
+          pour i de 0 à loc_nb_frères - 1:
+            loc_liste_frères[i] = liste_frères[i]
+          fpour
+        fsi
+    sinon:
+
+      // prend la partie droite de la liste de frères
+      si (nb_frères < taille(moi.frères[étage]):
+        loc_nb_frères = nb_frères;
+      sinon:
+        loc_nb_frères = nb_frères - taille(moi.frères[étage]);
+      fsi
+
+      si (loc_nb_frères > 0):
+        pour i de (nb_frères - loc_nb_frères) à nb_frères - 1:
+          loc_liste_frères[i - (nb_frères - loc_nb_frères)] = liste_frères[i]
+        fpour
+      fsi
+    fsi
+  sinon:
+
+    // étage 0
+    loc_nb_frères = nb_frères;
+    loc_liste_frères = liste_frères;
+  fsi
+\end{listingcont}
+
+Dans cette partie, on constitue la liste de frères {\tt loc\_liste\_frères} qui sera effectivement ajoutée au sommet courant.
+
+\begin{listingcont}
+  si (loc_nb_frères > 0):
+
+    si (droite == 1 &&
+        moi.index(moi.hauteur - 1, moi.nom) > 0):
+
+      // insère les nouveaux frères en tête de liste
+      pour (i dans loc_nb_frères - 1 ... 0):
+        insère_frère(étage, loc_liste_frères[i])
+        send_msg_async(moi,
+                       loc_liste_frères[i],
+                       ajoute_pred,
+                       (étage,
+                        moi.nom))
+      fpour
+    sinon:
+
+      // ajoute les nouveaux frères en fin de liste
+      pour (i dans 0 ... loc_nb_frères-1):
+        ajoute_frère(étage, loc_liste_frères[i])
+        send_msg_async(moi,
+                       loc_liste_frères[i],
+                       ajoute_pred,
+                       (étage,
+                        moi.nom))
+      fpour
+    fsi
+\end{listingcont}
+
+C'est dans cette partie qu'on insère ces nouveaux frères au début ou qu'on les ajoute en fin de liste. Les prédécesseurs sont mis à jour en conséquence.
+
+\begin{listingcont}
+    nettoie_étage_sup(étage, pos_moi, pos_contact);
+  fsi
+fin
+\end{listingcont}
+
+Cette fusion qui vient d'avoir lieu entraîne la perte d'un membre dans le groupe parent. La fonction {\tt nettoie\_étage\_sup} se charge donc de la mise à jour de l'étage supérieur.
+
+\subsection{Fonction \texttt {nettoie\_étage\_sup}}
+Comme indiqué plus haut, cette fonction est chargée de supprimer le membre en trop de l'étage parent de celui qui vient de subir une fusion.
+
+Reprenons l'exemple \ref{Ex1}. Voici la table de routage du sommet 32 avant l'arrivée de 21 au niveau 0:\footnote{On rappelle que 8 a déjà été remplacé par 21 partout où il se trouvait par la première partie de la fonction {\tt quitte}.}
+
+Sommet 32:
+\begin{tabular}{|c|c|c|c|c|} \hline
+	E0 & 32 & 48 & \phantom{48} & \phantom{48} \\ \hline
+	E1 & 21 & 32 & & \\ \hline
+	E2 & 32 & 42 & & \\ \hline
+	E3 & 1  & 32 & 14 & \\ \hline
+\end{tabular}\ \\\\
+
+Et voici la même table après l'arrivée de 21:\\
+
+Sommet 32:
+\begin{tabular}{|c|c|c|c|c|} \hline
+	E0 & 21 & 32 & 48 & \phantom{48} \\ \hline
+	E1 & {\color{red}21} & 32 & & \\ \hline
+	E2 & 32 & 42 & & \\ \hline
+	E3 & 1  & 32 & 14 & \\ \hline
+\end{tabular}\ \\
+
+On peut voir qu'il y a un problème puisque l'étage 1 pointe sur 2 représentants du même étage 0. Cette fonction va donc corriger le problème en supprimant 21 à l'étage 1.
+
+\begin{listing}{1}
+def nettoie_etage_sup(étage, pos_moi, pos_contact)
+
+  recp = -1;
+  si (moi.frères[étage + 1][pos_moi].nom == moi.nom &&
+      pos_contact < taille(moi.frères[étage + 1])):
+
+    recp = moi.frères[étage + 1][pos_contact].nom
+  sinon:
+    si (pos_moi < taille(moi.frères[étage + 1])):
+
+      recp = moi.frères[étage + 1][pos_moi].nom
+    fsi
+  fsi
+\end{listing}
+
+Dans cette partie, on cherche qui doit être supprimé. Ce sera {\tt recp}.
+Si on se trouve sur {\tt pos\_moi}, il faut détruire {\tt pos\_contact} et réciproquement.
+
+\begin{listingcont}
+  si (recp > -1):
+    moi.efface_frère(étage + 1, recp);
+    send_msg_async(moi,
+                   recp,
+                   efface_pred,
+                   (étage + 1,
+                    moi.nom))
+  fsi
+fin
+\end{listingcont}
+
+Ici, on efface simplement le frère désigné par {\tt recp} en mettant bien sûr le prédécesseur concerné à jour.
+
+\subsection{Fonction \texttt {diffuse\_fusion}}
+Cette fonction est chargée de diffuser la tâche de fusion à tous les sommets concernés. La fonction {\tt demande\_fusion} demande au sommet {\tt contact} de lancer cette fonction. (voir {\tt demande\_fusion}\ligne{25})
+
+{\tt pos\_moi} est l'indice du sommet qui exécute {\tt demande\_fusion} à l'étage parent de l'étage courant, c'est à dire le point de départ des fusions. (voir {\tt demande\_fusion\ligne{12}}) {\tt pos\_contact} est l'indice -- toujours à l'étage supérieur -- du représentant du groupe à rejoindre.
+
+\begin{listing}{1}
+def diffuse_fusion(étage, pos_moi, pos_contact)
+
+  moi.diffuse(moi, étage, fusion, (moi.frères[étage],
+                                   taille(moi.frères[étage]),
+                                   étage,
+                                   pos_moi,
+                                   pos_contact))
+fin
+\end{listing}
+
+On réalise ici simplement une diffusion de la tâche de fusion à partir de l'étage courant.
+
+\subsection{Fonction \texttt{supprimer\_racine}}
+Cette fonction supprime simplement le niveau le plus haut dans la table de routage courante.
+\begin{listing}{1}
+def supprimer_racine(hauteur_init)
+  si (moi.hauteur == hauteur_init):
+    moi.hauteur--
+  fsi
+fin
+\end{listing}
+
+Cette fonction étant diffusée, un même sommet peut l'exécuter plusieurs fois. L'argument {\tt hauteur\_init} permet de s'assurer qu'on n'exécute qu'une fois cette fonction: si la hauteur courante est la même que la hauteur initiale, c'est que la fonction n'a pas encore été exécutée.
+
+\chapter{Reste à faire (code)}
+
+\begin{list}{$\bullet$}{}
+	\item Compléter la gestion de l'état {\tt 'g'} comme indiqué dans la remarque de la page \pageref{rqg}.
+	\item Étudier et implémenter les fonctions de transfert lors du départ d'un sommet (lorsqu'une fusion n'est pas possible).
+	\label{rq1}
+	\item Étudier l'ensemble des cas de figure pouvant survenir lorsqu'une fusion ou un transfert doivent avoir lieu (que deviennent les orphelins, qui accueille qui, etc \ldots), puis concevoir et implémenter les fonctions permettant de gérer ces cas. Pour cela, il est possible de partir des indications données dans la publication ``\emph{The Distributed Spanning Tree: A Scalable Interconnection Topology for Efficient and Equitable Traversal}'' \cite{dnp05:oip}, section 3.2 page 6:
+	\begin{quotation}
+	\emph{``Merging two groups together is a little more difficult than splitting a group into two parts. If we suppose that the first group has $a$ elements and the second has $x$ elements with $a \leq x \leq b$, three cases appear. In the first case $a + x < 2a$, then the two groups must be merged in one. In the second case $a + x > b$, then the two groups must not be merged in one. Instead, some nodes of the bigger group are transfered to the smaller group. In the third case $2a \leq a+x \leq b$, then the two previous actions are possible.''}
+	\end{quotation}
+	
+	\item Toujours pour les retraits de sommets, je pense qu'il n'y a pas eu assez de cas de figure testés. Il faut donc poursuivre les tests pour achever de valider ces algorithmes.
+	
+	\item Ajouter des fonctions d'équilibrage de charge suite au départ d'un sommet.
+	
+	\item Comme expliqué en page \pageref{p:att}, la fonction {\tt attente\_terminaison} présente un problème qui doit être corrigé. Pour mettre en \oe uvre la solution proposée, il faut gérer dynamiquement des tableaux dont on ne peut connaître la taille à l'avance. Il serait alors certainement mieux d'utiliser une autre structure comme les {\ti dynar} (\emph{generic dynamic array}) mis à disposition dans Simgrid.\footnote{\url{http://simgrid.gforge.inria.fr/3.6.1/doc/group__XBT__dynar.html}}
+	
+	\item En ayant recours à \emph{Valgrind}\footnote{\url{http://valgrind.org}}, on peut constater des fuites mémoire lors de l'utilisation des \emph{dynars} dans les fonctions de communication. Leurs éléments ne semblent pas libérés correctement. Ce point est à corriger si on veut pouvoir travailler sur de grandes plates-formes.
+	
+	\item Il me paraît utile d'inclure dans le code une fonction chargée de vérifier la cohérence du DST en cours de construction. J'ai écrit pour cela une fonction nommée {\tt check()}, mais je n'ai pas trouvé quand ni comment la lancer. En effet, ce n'est pas parce qu'un sommet a terminé ses opérations d'intégration dans le DST que tous les sommets figurant dans sa table de routage en ont fait autant. Vu que la fonction {\tt check()} interroge ces sommets, on pourrait obtenir des réponses erronées si on le fait trop tôt.  Ce point est donc également à étudier.
+	
+	\item Les auteurs de Simgrid fournissent un script en Python nommé {\tt generate.py} destiné à générer des descriptions de plates-formes en XML. Ce script se plante dès qu'on dépasse un peu plus de 4 000 n\oe uds. Il faut corriger ce problème pour pouvoir faire des tests à plus grande échelle.
+	
+	\item Il y a un projet (déjà bien avancé, semble-t-il) d'ajouter un {\ti model-checker} dans Simgrid. Cet outil pourrait permettre de vérifier la pertinence de certaines options choisies lors de la conception de l'application. La seule API qui ne pourra pas l'utiliser sera GRAS, donc il ne devrait pas y avoir de problème avec MSG. Ce serait donc intéressant de soumettre mon programme à cet outil pour voir qu'il en ressortirait.
+
+\end{list}
+
+\end{appendices}

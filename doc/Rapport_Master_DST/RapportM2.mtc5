@@ -1,0 +1,16 @@
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {5.1}Observations}{\reset@font\mtcSfont 65}{section.5.1}}
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {5.2}Suite des travaux}{\reset@font\mtcSfont 65}{section.5.2}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {5.2.1}Concernant le DST lui-m\^eme}{\reset@font\mtcSSfont 65}{subsection.5.2.1}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode Probl\`emes de synchronisation}{\reset@font\mtcSSSfont 66}{section*.22}}
+{\reset@font\mtcPfont\mtc@string\contentsline{paragraph}{\noexpand \leavevmode Synchronisation des fonctions de d\'epart}{\reset@font\mtcPfont 66}{section*.23}}
+{\reset@font\mtcPfont\mtc@string\contentsline{paragraph}{\noexpand \leavevmode La fonction {\tt attente\_terminaison}}{\reset@font\mtcPfont 66}{section*.24}}
+{\reset@font\mtcSPfont\mtc@string\contentsline{subparagraph}{\noexpand \leavevmode Id\'ee de solution}{\reset@font\mtcSPfont 66}{section*.25}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode Solutions de synchronisation}{\reset@font\mtcSSSfont 67}{section*.26}}
+{\reset@font\mtcPfont\mtc@string\contentsline{paragraph}{\noexpand \leavevmode Simgrid et les traces}{\reset@font\mtcPfont 67}{section*.27}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode Tol\'erance aux pannes}{\reset@font\mtcSSSfont 68}{section*.28}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode Conception des algorithmes}{\reset@font\mtcSSSfont 68}{section*.29}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode Charge du r\'eseau}{\reset@font\mtcSSSfont 68}{section*.30}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {5.2.2}Utilisation du DST}{\reset@font\mtcSSfont 69}{subsection.5.2.2}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode Simgrid vs simulateur s\'equentiel}{\reset@font\mtcSSSfont 69}{section*.31}}
+{\reset@font\mtcPfont\mtc@string\contentsline{paragraph}{\noexpand \leavevmode Un exemple:}{\reset@font\mtcPfont 69}{section*.32}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode Parcours du DST}{\reset@font\mtcSSSfont 71}{section*.33}}

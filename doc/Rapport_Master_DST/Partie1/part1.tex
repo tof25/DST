@@ -1,0 +1,390 @@
+%!TEX root=../RapportM2.tex
+
+%\newcommand{\mysection}[1]{%
+%\section*{#1}%
+%\markboth{\MakeUppercase{\parttitle}}{\MakeUppercase{#1}}%
+%\addcontentsline{toc}{section}{#1}%
+%}
+
+\pagestyle{fancy}
+\renewcommand{\subsectionmark}[1]{\markright{\MakeUppercase{\thesubsection.\ #1}}}
+\renewcommand{\sectionmark}[1]{\markboth{\MakeUppercase{\thesection.\ #1}}{}}
+
+\pagenumbering{arabic}
+
+\part{Contexte}
+\chapter{Préambule}
+\section{Introduction}
+
+Aujourd'hui, il est possible d'accéder aisément via Internet à de grands systèmes distribués tels que les réseaux \emph{peer-to-peer}. Ceux-ci permettent toutes sortes d'applications très utiles telles que le partage de fichiers à grande échelle, le stockage redondant, le nommage hiérarchique ou le calcul scientifique partagé. De telles structures vont bien au-delà des classiques systèmes client/serveur puisque chacun des pairs peut jouer les deux rôles.
+
+Dans le cadre de cette étude, nous nous intéressons plus particulièrement aux réseaux \emph{peer-to-peer} totalement dépourvus de structure de contrôle centralisée, s'organisant eux-mêmes et capables de répartir la charge requise par les requêtes qui leur sont soumises entre les différents pairs. De tels systèmes sont robustes, tolérants aux pannes et peuvent être déployés à très grande échelle. Ce peut être le cas de machines raccordées à Internet comme on vient de le dire, mais aussi de réseaux de capteurs sans fils communiquant de fa\c con \emph{ad-hoc}. Ces réseaux sont également fortement dynamiques: des n\oe uds y arrivent et en repartent à tout instant.
+
+Pour pouvoir utiliser efficacement les ressources offertes par ces systèmes, il est nécessaire d'y adjoindre une structure dite de \emph{recouvrement} qui doit fournir des services essentiels tels que la recherche de données ou la découverte d'applications. L'efficacité de ces services étant étroitement liée à la topologie de cette structure de recouvrement, il est important de l'étudier et de la choisir avec soin. De plus, différents services peuvent utiliser différentes topologies de recouvrement.
+
+Ici, nous nous focalisons plus précisément sur les services de recherche et de diffusion. Classiquement, lorsqu'on veut effectuer des recherches sur un réseau \emph{peer-to-peer}, on a le choix entre deux grandes familles de solutions: soit on cherche dans un annuaire, soit les différentes ressources sont directement interrogées.
+
+Pouvoir disposer d'un annuaire implique d'une part la présence d'une structure centralisée liée aux données à rechercher, et d'autre part, que les différentes ressources ne soient pas placées n'importe où dans la structure mais selon certaines règles. Cela ne correspond pas au contexte évoqué plus haut et nous optons pour une solution permettant d'interroger directement les ressources.
+
+Il s'agit donc de mettre en \oe uvre une topologie permettant d'effectuer des recherches ou des diffusions sur des réseaux \emph{peer-to-peer} tels que nous venons de les décrire. Pour être efficace, supporter le passage à l'échelle et perturber le moins possible les applications et services que les pairs doivent fournir, cette topologie de recouvrement doit utiliser un minimum de ressources -- bande passante, puissance de calcul et mémoire. Elle doit en outre bien supporter la forte dynamicité du système ainsi construit, et offrir une bonne tolérance aux pannes.
+
+Les topologies majoritairement utilisées pour cet usage sont les arbres et les graphes, bien adaptés aux algorithmes de recherche par inondation. Ils ont été largement étudiés et leurs propriétés sont bien connues. Les arbres peuvent être parcourus avec peu de messages, mais la charge y est mal répartie (seuls les n\oe uds intermédiaires participent à la transmission des messages alors qu'ils sont moins nombreux que les feuilles) et leur racine constitue un important goulot d'étranglement. D'un autre côté, les graphes répartissent bien la charge entre leurs différents n\oe uds, mais nécessitent un grand nombre de messages et consomment donc beaucoup de bande passante.
+
+Le LIFC\footnote{Laboratoire d'Informatique de l'université de Franche-Comté} de Besan\c con a proposé une nouvelle structure originale, le DST -- \emph{Distributed Spanning Tree} -- qui combine le meilleur de ces deux familles, ainsi que cela a été montré dans la thèse de Sylvain Dahan.~\cite{Dah05} Voici un extrait de son \emph{abstract}:
+
+\begin{quote}
+\ti{``Afin d'améliorer les performances des découvertes de services utilisant des algorithmes de recherches par voisinage, nous proposons une nouvelle topologie permettant de créer des arbres sans point de contention. Pour y parvenir, nous avons réussi à créer un arbre où tous les n\oe uds jouent à la fois le rôle de feuille, de racine et de n\oe uds intermédiaires. [ \ldots\ ]\\
+
+La nouvelle topologie d'arbre proposée est dénuée des points de contention typiques des arbres classiques. Si chaque n\oe ud de l'arbre était un ordinateur, des ordinateurs seraient des feuilles se contentant de recevoir des messages et les autres ordinateurs seraient des n\oe uds intermédiaires acheminant les messages de recherche. Afin de mettre tous les ordinateurs sur un pied d'égalité, nous distribuons le rôle des n\oe uds intermédiaires entre plusieurs ressources. Ce nouvel arbre que nous proposons est construit de manière récursive de la manière suivante : toutes les ressources sont des feuilles ; un n\oe ud intermédiaire est non pas une ressource mais un graphe complet de ses fils. Nous avons montré qu'un tel arbre était réalisable et qu'il permettait de réaliser des recherches par voisinage avec des algorithmes de parcours d'arbre tout en répartissant la charge d'une manière similaire aux parcours de graphe. Il en résulte des performances concernant la vitesse de recherche et de charge supportée qui sont supérieures aux mêmes recherches sur des arbres classiques ou sur des graphes pseudo-aléatoires.''}
+\end{quote}
+
+\section{Présentation du problème}
+\label{s:pb}
+
+Dans ses travaux, Sylvain Dahan a montré les bonnes propriétés de cette nouvelle structure de fa\c con théorique. En particulier, il les a comparées avec celles des arbres et des graphes conventionnels. Pour la partie pratique, il a mis au point les algorithmes de construction d'un DST et les a soumis à un simulateur qu'il a réalisé, permettant ainsi de vérifier la théorie.
+
+Toutefois, ce simulateur était basé sur une architecture centralisée dans laquelle une horloge globale permettait de séquencer les opérations. Il a été con\c cu essentiellement pour réaliser des tests de performance -- en comptant le nombre de messages échangés, par exemple -- mais il n'est pas adapté à l'étude du comportement du DST en situation.
+
+Dans un vrai réseau \emph{peer-to-peer}, il n'y a pas de structure centralisée, donc pas d'horloge globale pour cadencer les différents événements. Du fait de la parallélisation existante dans ce type de structure, ces événements se produisent donc non seulement n'importe quand, mais éventuellement simultanément. Et il faut ajouter à cela l'influence de l'état du réseau utilisé: sur un réseau tel qu'Internet, la bande passante disponible et la latence ne peuvent pas être maîtrisées. On n'y maîtrise donc pas non plus les instants d'arrivée des messages envoyés.
+
+Ces contraintes vont bien sûr avoir des conséquences sur le fonctionnement du DST et font apparaître des problèmes. En particulier, la parallélisation et l'absence d'horloge globale provoquent des problèmes de synchronisation qu'il faut solutionner. Certaines opérations mises en \oe uvre dans la vie du DST ont besoin d'être ordonnancées, et il faut pouvoir gérer les ajouts et/ou retraits simultanés. De plus, il est maintenant nécessaire de contrôler la cohérence de la structure pendant les phases de construction/destruction. Dans un simulateur séquentiel, l'ordre maîtrisé des opérations assurait cette cohérence, ce qui n'est plus le cas en environnement réel.
+
+Les travaux présentés ici prennent donc la suite de ceux de Sylvain Dahan. Vu la complexité des algorithmes distribués mis en \oe uvre, les prouver formellement est difficile. Ma démarche sera donc de montrer qu'ils sont justes en effectuant une validation expérimentale. Il s'agit
+\begin{inparaenum}[(a)]
+	\item de porter les algorithmes de construction du DST sur un simulateur basé sur des modèles plus proches du monde réel,
+	\item d'étudier et de proposer des solutions aux problèmes de synchronisation qui se posent alors et enfin,
+	\item de proposer de nouveaux algorithmes gérant le départ de n\oe uds du DST, également soumis à ce nouveau simulateur.
+\end{inparaenum}
+Ce travail sera donc à compléter par une étude supplémentaire visant à démontrer et prouver ces algorithmes de fa\c con formelle.
+
+Comme on le verra -- et avant de parler de problèmes de synchronisation -- le fait de porter ces algorithmes sur ce nouveau simulateur a révélé quelques erreurs dans leur conception, qui ne se produisaient certainement pas avec le simulateur initial du fait que l'ordre des opérations y était toujours identique. Mais la difficulté principale de ce travail réside dans le très grand nombre de cas de figure qui peuvent apparaître lors du passage à l'échelle et ce, de fa\c con aléatoire. La parallélisation massive des tâches, l'importante profondeur de récursivité de certaines fonctions clés, le fait qu'on ne maîtrise pas l'instant d'arrivée des différents événements et le recours à des méthodes de type {\tt RPC} -- \emph{Remote Procedure Call} -- pour exécuter les différentes fonctions sont les principales difficultés à surmonter.
+
+Une solution possible aurait pu être de mettre en place un mécanisme à base de {\ti mutex} distribués pour n'autoriser l'arrivée que d'un seul n\oe ud à la fois dans le DST. Mais il m'a semblé que cette méthode aurait eu deux inconvénients:
+\begin{enumerate}
+	\item si un grand nombre de n\oe uds cherchent à rejoindre le DST dans un court laps de temps, alors il faut organiser de grandes files d'attentes, le temps que les n\oe uds précédents aient terminé de rejoindre le DST. Ces files n'étant pas extensibles à l'infini, cela pourrait poser des problèmes d'extensibilité.
+	
+	\item les performances de construction en seraient probablement très affectées. En ne laissant les nouveaux n\oe uds rejoindre le DST que l'un après l'autre, il paraît évident que le temps total pour qu'un groupe soit intégré sera plus long que s'ils peuvent tous entrer en même temps.
+\end{enumerate}
+
+\label{c:pb}J'ai donc fait le choix d'étudier une solution qui tente de tirer parti au maximum de la parallélisation. Toutefois, lorsque les arrivées de différents nouveaux n\oe uds impactent des zones communes du DST, cette solution va alors nécessiter la mise en place de synchronisations plus ou moins complexes et donc, plus ou moins consommatrices de bande passante, ainsi que nous allons le voir.
+
+Dans la suite de cet exposé, nous nous intéresserons au contexte d'utilisation du DST, puis le DST lui-même ainsi que le simulateur \emph{Simgrid} seront présentés. En deuxième partie, nous rentrerons dans le vif du sujet avec le compte-rendu des travaux réalisés. Nous commencerons par le portage des fonctions de construction du DST sur Simgrid et l'étude des problèmes de synchronisation que cela fait apparaître. Après quoi nous présenterons les nouveaux algorithmes de gestion des retraits de n\oe uds du DST. Nous terminerons en examinant les perspectives qu'ouvre cette étude avant de conclure. Les travaux seront détaillés en annexes.
+
+\chapter{État de l'art}
+\minitoc
+
+Dans cette partie, nous allons faire un rapide tour d'horizon de ce qui se fait par ailleurs en matière de structures de recouvrement de réseaux \emph{peer-to-peer}. Ainsi que nous le verrons, ces solutions ne sont pas pleinement adaptées au contexte qui nous intéresse.
+
+\section{Autres travaux}
+
+Le DST n'est bien sûr pas la première tentative de réalisation d'une structure de recouvrement de réseaux \emph{peer-to-peer}. On peut citer ici une étude comparative des différentes solutions existantes: ``\emph{A survey and comparison of peer-to-peer overlay network schemes}'' \cite{Ommunications_asurvey}. Dans le cadre des structures adaptées aux environnements dynamiques, cette étude classe les différentes solutions proposées selon deux familles principales: les systèmes structurés et les systèmes non structurés.
+
+Dans l'ensemble des systèmes structurés, le principe est d'associer une clé à une donnée particulière (au moyen d'une fonction de hachage), et d'organiser les différents pairs selon un graphe qui permettra le rangement des clés chez des pairs déterminés. Connaissant une clé, il devient ainsi possible de savoir qui en est responsable et de s'adresser à lui pour retrouver les données associées. C'est le principe des \emph{DHT} -- \emph{Distributed Hash Tables} \cite{springerlink:10.1007/11530657_7}. Il s'agit d'une amélioration des systèmes basés sur un unique index (comme Napster, par exemple) puisqu'ici, l'index est distribué. Dans cette famille, on peut citer \emph{Chord} \cite{Stoica:2001:CSP:964723.383071}, \emph{CAN} \cite{Ratnasamy:2001:SCN:383059.383072} ou \emph{Pastry}. \cite{ROWSTRONA.:2001}
+
+Bien que les systèmes structurés possèdent de bonnes propriétés démontrées et éprouvées, l'étude citée plus haut souligne quelques défauts: consommation inutile de bande passante, goulots d'étranglement possibles, vulnérabilité à la sécurité. Il faut en outre souligner que les recherches effectuées au moyen de ces structures sont des recherches exactes (on parle de \emph{Key Based Routing} \cite{KTARI:2009:PASTEL-00005737:1}). Si les recherches souhaitées utilisent des mots-clés, des expressions ou d'autres critères (ce qui est le cas pour la recherche d'applications ou de services), elles sont susceptibles de retourner un ensemble de réponses, ce que ces protocoles ne savent pas gérer seuls.
+
+\subsection{Un exemple de système structuré: Chord}
+À titre d'exemple, nous pouvons examiner ce protocole plus en détails. Chord est une des déclinaisons possible des DHT et en possède donc les propriétés: bon équilibrage de charge, bonne extensibilité et robustesse.
+
+Essentiellement, ce protocole doit spécifier:
+\begin{enumerate}
+	\item comment attribuer les clés aux différents n\oe uds
+	\item comment retrouver les clés
+	\item comment intégrer les nouveaux n\oe uds
+	\item comment gérer leur départ (ou leur défaillance)
+\end{enumerate}
+
+\subsubsection{Génération et distribution des clés}
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[]{./Partie1/Chord_fig.pdf}
+\caption{Un cercle d'identifiants constitué des 3 n\oe uds 0, 1 et 3. Sur cet exemple, la clé 1 est située sur le n\oe ud 1, la clé 2 est sur le 3 et la 6 sur le 0.}
+\label{f:chord}
+\end{center}
+\end{figure}
+
+	Pour attribuer les clés aux n\oe uds, Chord utilise le \emph{consistent hashing} \cite{Karger:1997:CHR:258533.258660} qui permet deux propriétés essentielles:
+	\begin{itemize}
+		\item les n\oe uds re\c coivent approximativement le même nombre de clés (nécessaire pour une bonne répartition de charge)
+		
+		\item lorsqu'un n\oe ud rejoint ou quitte le réseau, seule une petite fraction des clés doit être déplacée sur d'autres n\oe uds. (nécessaire pour limiter le coût de maintenance des tables de routage)
+	\end{itemize}
+
+		SHA-1 est utilisée comme fonction de hachage de base pour générer des identifiants de $m$ bits. (Il est important de choisir $m$ suffisamment grand pour éviter les collisions.) Chaque n\oe ud et chaque clé se voit ainsi attribuer un identifiant.
+	
+	Les $2^{m}$ identifiants sont ordonnés sur un \emph{cercle d'identifiants} (modulo $2^{m}$) comme on le voit sur la figure \ref{f:chord}. Une clé $k$ est attribuée au premier n\oe ud qui possède le même identifiant qu'elle, ou à défaut, qui le suit immédiatement sur le cercle. Chaque n\oe ud devient ainsi responsable des clés situées dans l'intervalle compris entre lui-même et son prédécesseur sur le cercle.
+	
+	Pour assurer un cheminement correct des requêtes de recherche, le minimum requis est que chaque n\oe ud connaisse son successeur et son prédécesseur. Chord fait donc en sorte que cette information soit toujours à jour. Mais pour améliorer les performances, on montre que chaque n\oe ud n'a besoin de connaître que $O(\log N)$ autres n\oe uds en plus, améliorant ainsi l'extensibilité du \emph{constistent hashing} (qui lui, demande que chaque n\oe ud puisse contacter \emph{tous} les autres). Chord assure la mise à jour de ces tables de routage en $O(\log^{2}N)$ messages.
+	
+\begin{quote}
+\tb{Les n\oe uds virtuels}: La répartition des n\oe uds dans l'espace d'identification (c'est à dire sur le cercle) n'est pas forcément uniforme, ce qui nuit à la répartition de charge: certains n\oe uds pourraient se voir attribuer davantage de clés que leurs voisins.
+		
+	On solutionne ce problème à l'aide de n\oe uds virtuels. En ajoutant suffisamment de ces n\oe uds virtuels sur le cercle, l'espace d'identification est partagé plus équitablement. On montre ensuite que si on affecte $\log N$ n\oe uds virtuels (choisis aléatoirement) à chaque n\oe ud réel, on atteint une répartition de charge bien plus équitable.
+\end{quote}
+	
+\subsubsection{Recherche d'une clé}
+	
+	La recherche d'une clé consiste à rechercher le successeur de l'\emph{id} de la clé. Chord s'y prend donc en deux temps: il recherche tout d'abord le prédécesseur $n'$ du n\oe ud recherché $n$, et le successeur de $n'$ est alors le n\oe ud $n$ recherché.
+	
+	Pour trouver le prédécesseur $n'$, on approche de la cible par sauts successifs (en utilisant la plus grande entrée inférieure à l'\emph{id} de la table de routage courante \footnote{Dans cette table de routage de $m$ n\oe uds, la distance entre deux n\oe uds $m_{i}$ et $m_{i+1}$ est le double de celle entre $m_{i-1}$ et $m_{i}$. Lors de la recherche, chaque saut divise donc au moins par deux la distance restant à parcourir.}) jusqu'à ce que l'\emph{id} recherché soit compris entre le n\oe ud courant et son successeur; le n\oe ud courant est donc $n'$. Ce dernier connaissant son successeur, il ne reste plus qu'à l'interroger pour trouver $n$.
+	
+	Avec Chord, tant que le temps mis pour reconstruire les tables de routage ( $O(\log^{2} N)$ ) est inférieur au temps pris par le réseau pour doubler sa taille, les recherches continueront à se faire en $O(\log N)$ étapes.
+	
+	Les recherches peuvent continuer à aboutir, même pendant la mise à jour des tables de routage, au prix toutefois de performances dégradées puisque la recherche ne pourrait alors utiliser que les informations de successeurs.
+	
+\subsubsection{Lors de l'arrivée d'un nouveau n\oe ud}
+	
+	Pour intégrer un nouveau n\oe ud $n$ sans perturber les recherches, Chord doit réaliser 3 tâches:
+	\begin{enumerate}
+		\item Initialiser le prédécesseur et la table de routage de $n$
+		\item Mettre à jour les prédécesseurs et les tables de routage des n\oe uds existants pour tenir compte de ce nouveau n\oe ud.
+		\item Indiquer à l'application construite sur Chord qu'elle peut transférer les données concernées vers ce nouveau n\oe ud.
+	\end{enumerate}
+	
+	\begin{description}
+		\item[1 --\ ] Pour que $n$ puisse s'insérer dans le système, il doit connaître un n\oe ud quelconque $n'$ appartenant déjà au système. $n$ va donc pouvoir demander à $n'$ de calculer son prédécesseur et sa table de routage. Le successeur de $n$ est donc le premier n\oe ud situé après son \emph{id} sur le cercle, et son prédécesseur est le prédécesseur de ce successeur. (puisqu'il n'est pas encore ``au courant'' de la présence de $n$)
+	
+	Ensuite, on remplit la table de routage de $n$ en recherchant les successeurs de chaque entrée de cette table. Pour améliorer les performances, on n'effectue cette recherche que si on est sûr que l'intervalle considéré n'est pas vide.
+		
+		\item[2 --\ ] L'idée ici est de parcourir le cercle à l'envers, pour trouver les n\oe uds dont une entrée de la table de routage devrait pointer sur $n$. Chaque entrée concernée des tables de ces n\oe uds est mise à jour en conséquence.
+		
+		\item[3 --\ ] $n$ ne peut devenir responsable que des clés auparavant attribuées à son successeur immédiat. Il n'a donc besoin de contacter que ce seul n\oe ud pour connaître les clés impactées et les indiquer à l'application.
+		
+	\end{description}
+	
+\subsubsection{Lors du départ (ou d'une défaillance) d'un n\oe ud}
+	
+	Lors de la défaillance d'un n\oe ud $n$, les n\oe uds qui le pointaient doivent pouvoir trouver son successeur. À cette fin et en plus des tables de routage, chaque n\oe ud maintient une liste de ses $r$ successeurs. Ainsi, lors de la défaillance de $n$, son prédécesseur pourra le remplacer par son plus proche successeur vivant.
+
+Ces tâches sont difficiles à réaliser lors d'arrivées et/ou de départs simultanés en grand nombre dans le réseau. Ainsi, Chord a recours à une routine dite de ``stabilisation'' qui est exécutée périodiquement par chaque n\oe ud du réseau. Cette routine a pour but de maintenir à jour les listes de successeurs et les tables de routage.
+
+Lorsqu'un n\oe ud $n$ exécute cette routine, il cherche à connaître le prédécesseur de son successeur. Si ce n'est pas $n$, c'est qu'un nouveau n\oe ud s'est inséré et qu'il doit donc être le nouveau successeur de $n$. De plus, $n$ signale son existence à son successeur, permettant ainsi à ce successeur de mettre à jour son prédécesseur.
+
+Quant aux tables de routage, leurs entrées sont interrogées aléatoirement et mises à jour le cas échéant.
+
+\begin{center}
+$\star\star\star$
+\end{center}
+
+Les systèmes non structurés quant à eux, organisent leurs pairs selon des graphes semi-aléatoires plats ou hiérarchiques. Ils sont bien adaptés à la recherche par voisinage par inondation ou par vagues et sont davantage extensibles. Dans cette famille, on peut citer \emph{Gnutella} \cite{Stutzbach:2004}, \emph{KaZaA} ou \emph{eDonkey}.
+
+\subsection{Un exemple de système non structuré : Gnutella}
+
+Gnutella est un protocole décentralisé permettant d'effectuer des recherches distribuées sur une topologie à plat de pairs appelés ``servants''. Bien que Gnutella permette la recherche client/serveur centralisé classique, il se distingue par le modèle \emph{peer-to-peer}, décentralisé mis en \oe uvre pour le rangement et la recherche de documents, comme le montre la figure~\ref{f:gnu}.
+
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[scale=1.1]{./Partie1/Gnutella.pdf}
+\caption{Gnutella utilise une architecture décentralisée pour ranger et rechercher des documents (source: \cite{Ommunications_asurvey})}
+\label{f:gnu}
+\end{center}
+\end{figure}
+
+Dans ce modèle, chaque pair peut être à la fois serveur et client. Ce système n'est pas un annuaire centralisé et il n'a pas de contrôle précis sur la topologie, pas plus que sur la fa\c con dont les données y sont rangées. Le réseau est formé de pairs qui le rejoignent selon des règles peu contraignantes. Le réseau qui en résulte possède certaines propriétés, mais le placement des différentes données se fait sans avoir de connaissance particulière de la topologie comme c'est le cas dans les systèmes structurés. Pour situer une donnée sur le réseau, un pair doit interroger ses voisins et la méthode de recherche typique dans ce cadre est la recherche par inondation. La requête est ainsi propagée de proche en proche sur un périmètre donné. Cette conception supporte très bien la forte dynamicité du réseau (des pairs le rejoignent ou le quittent à tout instant). Cependant, les mécanismes de recherche actuels ne sont pas très extensibles du fait de la grande charge qu'ils génèrent sur le réseau.
+
+Les servants accomplissent des tâches normalement dévolues à la fois à des clients et à des serveurs. Ils fournissent une interface client permettant aux utilisateurs de lancer leurs recherches et recevoir leurs réponses. En même temps, ils acceptent des requêtes provenant d'autres servants, les traitent et leur répondent. Ces pairs sont chargés de gérer tout le trafic permettant le maintient de l'intégrité du réseau. De part sa nature distribuée, un tel réseau de servants est très tolérant aux pannes: un ensemble de pairs qui quitteraient le réseau ne provoquerait pas l'arrêt des opérations en cours.
+
+Pour rejoindre le système, un nouveau servant (un pair, donc) contacte l'un de ses hôtes presque toujours disponibles dont la liste est disponible sur Internet. Dès qu'ils sont raccordés au réseau, les pairs envoient des messages pour interagir entre eux. Ces messages peuvent être diffusés vers les autres pairs dont on a connaissance, ou retournés aux pairs dont on vient de recevoir une diffusion, en suivant son chemin dans le sens inverse (c'est la propagation arrière). Trois règles sont respectées pour ces échanges:
+\begin{enumerate}
+	\item chaque message possède un identifiant généré aléatoirement
+	
+	\item chaque pair garde en mémoire les messages récemment routés, afin d'éviter de nouvelles diffusions inutiles; cela lui permet également de conserver les informations utiles à la propagation arrière
+	
+	\item les sauts sont comptés pour limiter les inondations à un périmètre donné (c'est le principe appelé \emph{TTL} pour \emph{Time To Live})
+\end{enumerate}
+Il y a trois familles de messages sur le réseau:
+\begin{itemize}
+	\item pour l'appartenance aux groupes: un pair qui veut signaler sa présence diffuse un message \emph{PING} à son entourage qui répond -- au moyen de la propagation arrière -- un message \emph{PONG} contenant des informations telles que l'adresse IP, la taille et le nombre de données stockées, etc.
+	
+	\item pour les recherches: un pair qui re\c coit un message \emph{QUERY} contenant des critères de recherche, effectue une recherche localement puis le propage à ses voisins. En réponse, un message \emph{QUERY RESPONSE} est propagé dans le sens inverse pour fournir au demandeur les informations nécessaires au téléchargement des données recherchées.
+	
+	\item pour le transfert de données: les téléchargements se déroulent directement entre deux pairs utilisant les messages \emph{GET} et \emph{PUSH}.
+\end{itemize}
+
+Ainsi, un pair qui souhaite faire partie du réseau doit ouvrir un certain nombre de liens avec d'autres. Cet environnement étant très dynamique, chaque pair doit régulièrement mettre à jour la connaissance qu'il a de son voisinage au moyen de messages \emph{PING}. Ce système constitué de servants reliés entre eux par des connections TCP forme donc un réseau auto-organisé et dynamique d'entités indépendantes.
+
+Pour améliorer les performances de routage sur ce type de réseau, les dernières évolutions de Gnutella utilisent des \emph{super-pairs} fournissant une plus grande bande passante. Un nouveau pair souhaitant rejoindre le réseau va alors se raccorder à l'un de ces super-pairs pour lui fournir sa liste de données partagées. Une requête émise par un autre pair va alors être adressée à son super-pair, qui va la propager de super-pair en super-pair, jusqu'à celui auquel est rattaché le pair possédant la ressource. Toutefois, la recherche par inondation mise en \oe uvre pour la recherche entre les super-pairs continue de limiter l'extensibilité du système. De plus, cette approche pose le problème du choix des super-pairs (quel pair peut ou pas être considéré comme un super-pair, selon quels critères), ainsi que de son évolution dans le temps.
+
+\begin{center}
+$\star\star\star$
+\end{center}
+
+Dans le cadre qui nous intéresse, nous souhaitons utiliser une structure qui privilégie la robustesse, l'extensibilité et la tolérance aux pannes. Nous souhaitons donc qu'aucun pair ne joue de rôle prépondérant, ce qui exclut les solutions basées sur des index ou les \emph{super-n\oe uds} (comme \emph{KaZaA} et \emph{Gnutella} que nous venons de voir). Nous souhaitons également nous affranchir des points de contentions possibles et limiter la bande passante requise par les recherches. Le DST a été con\c cu pour répondre à ces besoins.
+
+\section{Présentation du DST}
+
+La topologie originale de recouvrement étudiée ici se nomme donc \emph{DST} pour \emph{Distributed Spanning Tree}. Ainsi que cela a été dit plus haut, l'idée du DST est de réunir les qualités des graphes et des arbres: limiter le nombre de messages échangés comme le ferait un arbre tout en répartissant la charge comme un graphe. Dans cette topologie, chaque serveur agit à la fois comme feuille, comme n\oe ud intermédiaire, ou comme racine selon l'étage sollicité; chaque ordinateur est la racine de son propre arbre de recouvrement.
+
+Le principe général de cette structure est qu'un n\oe ud parent est formé du graphe complet de ses enfants. Le DST se comporte alors comme un arbre en ce qui concerne le nombre de messages échangés, mais évite ses goulots d'étranglement en répartissant la charge de chaque n\oe ud entre chacun de ses fils. Du fait que dans un DST, chaque ordinateur n'a besoin de mémoriser qu'une faible quantité de données (en logarithme du nombre de n\oe uds) pour pouvoir contacter les autres n\oe uds de la structure, il supporte bien le passage à l'échelle. Cette structure est bien adaptée aux algorithmes de recherche et de diffusion. Il permet également la découverte de services.
+
+\subsection{Les trois niveaux de description du DST}
+
+\subsubsection{Le niveau logique}
+
+Le niveau logique est une vue abstraite de la structure dans laquelle les n\oe uds -- dont on rappelle qu'ils sont des groupes d'ordinateurs -- sont reliés entre eux par des liens abstraits respectant deux règles de base:
+
+\begin{enumerate}
+	\item tout n\oe ud parent est le graphe complet de ses enfants
+	
+	\item tout n\oe ud qui n'est ni une feuille ni la racine possède entre $a$ et $b$ enfants ( la racine peut avoir moins de $a$ enfants et une feuille n'a bien sûr pas d'enfant )
+\end{enumerate}
+
+Le DST étant un arbre, c'est une structure récursive dans laquelle chaque étage se construit avec des éléments de l'étage inférieur.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[width=10cm]{./Partie1/Vue_logique1.pdf}
+\caption{Niveau logique -- étage 0}
+\label{et0}
+\end{center}
+\end{figure}
+
+L'étage 0 (figure \ref{et0}) contient les feuilles du DST. Chaque feuille est un ordinateur et chaque ordinateur participant au DST doit être une feuille.
+
+\begin{figure}[hp]
+\begin{center}
+\includegraphics[width=10cm]{./Partie1/Vue_logique2.pdf}
+\caption{Niveau logique -- étage 1}
+\label{et1}
+\end{center}
+\end{figure}
+
+\begin{figure}[hp]
+\begin{center}
+\includegraphics[width=10cm]{./Partie1/Vue_logique3.pdf}
+\caption{Niveau logique -- étage 2}
+\label{et2}
+\end{center}
+\end{figure}
+
+L'étage $n+1$ ($n\ge 0$) (figures \ref{et1} et \ref{et2}) contient les parents des n\oe uds de l'étage $n$. Comme indiqué plus haut, chaque parent est le graphe complet de ses enfants. Ici, $a=2$ et $b=3$.
+	
+\begin{figure}[hp]
+\begin{center}
+\includegraphics[width=10cm]{./Partie1/Vue_logique4.pdf}
+\caption{Niveau logique -- étage 3}
+\label{et3}
+\end{center}
+\end{figure}
+
+L'étage $h$ (si $h$ est la hauteur du DST) (figure \ref{et3}) est la racine du DST et peut donc avoir moins de $a$ enfants.
+	
+\subsubsection{Le niveau d'interconnexion}
+
+Ce niveau est la mise en \oe uvre concrète de la vue logique. Il décrit comment les n\oe uds sont distribués entre les ordinateurs et comment les liens logiques inter-n\oe uds sont réalisés avec des liens physiques.
+
+Il faut introduire ici la notion de représentant d'un n\oe ud: pour un étage donné, un représentant d'un n\oe ud est un des descendants de ce n\oe ud, dont le rôle est de servir de contact à certains de ceux qui ont besoin de communiquer avec le n\oe ud qu'il représente. Concrètement, trois règles doivent être ici respectées:
+\begin{enumerate}
+	\item si un lien logique existe entre deux n\oe uds $A$ et $B$, alors:
+	\begin{enumerate}
+		\item chaque descendant de $A$ doit posséder un lien physique vers un des descendants de $B$ (qui devient alors le représentant de $B$ pour ce descendant de $A$)
+		
+		\item chaque descendant de $B$ doit posséder un lien physique vers un des descendants de $A$ (qui devient alors le représentant de $A$ pour ce descendant de $B$)
+	\end{enumerate}
+	
+	\item pour des raisons de répartition de charge et de tolérance de panne, les descendants d'un n\oe ud $A$ ne doivent pas tous être liés avec le même descendant de $B$ et vice-versa (Autrement dit, les descendants de $A$ ne doivent pas utiliser le même représentant de $B$).
+	
+	\item à chaque étage du DST, tout ordinateur s'utilise lui-même comme représentant des n\oe uds auxquels il appartient
+\end{enumerate}
+
+Les figures \ref{etc1}, \ref{etc2} et \ref{etc3} montrent ces liens TCP/IP à chaque étage. \footnote{Pour ces raisons de clarté, le lien qu'un ordinateur possède avec lui-même n'y figure pas.}
+
+\begin{figure}[htb]
+\begin{center}
+\includegraphics[width=10cm]{./Partie1/Vue_connect2.pdf}
+\caption{Niveau d'interconnexion -- étage 1}
+\label{etc1}
+\end{center}
+\end{figure} 
+
+\begin{figure}[htb]
+\begin{center}
+\includegraphics[width=10cm]{./Partie1/Vue_connect3.pdf}
+\caption{Niveau d'interconnexion -- étage 2}
+\label{etc2}
+\end{center}
+\end{figure}
+
+\begin{figure}[htb]
+\begin{center}
+\includegraphics[width=10cm]{./Partie1/Vue_connect4.pdf}
+\caption{Niveau d'interconnexion -- étage 3}
+\label{etc3}
+\end{center}
+\end{figure}
+
+Comme on peut le voir, chaque membre d'un n\oe ud est capable de joindre chacun de ses n\oe uds frères via l'un de ses membres et ce, à chaque étage.
+
+Concrètement, chaque ordinateur possède une \emph{table de routage} qui contient les adresses des membres qu'il peut joindre -- ses frères, donc -- à chaque étage. Il possède également une \emph{table des prédécesseurs} qui lui permet de connaître l'ensemble des ordinateurs qui l'utilisent comme représentant du n\oe ud courant. Le nombre de prédécesseurs pour un étage constitue donc la \emph{charge} de cet ordinateur pour cet étage.
+
+\subsubsection{Le niveau topologique}
+
+Dans ce niveau, on s'intéresse à la manière de placer cette structure sur un réseau réel. Deux exemples:
+\begin{itemize}
+	\item sur Internet: en transposant la structure du DST sur celle, hiérarchique, d'Internet, on s'assure que la majorité des échanges a lieu dans les LANs où les performances sont les meilleures.
+	
+	\item sur un réseau de type sémantique: il est possible de réaliser les groupes par centres d'intérêts communs, là encore pour concentrer les recherches -- et donc les échanges~-- dans les parties où elles ont le plus de chances d'aboutir.
+\end{itemize}
+À noter que ce niveau constitue un domaine de recherche récent.
+
+\section{Le simulateur Simgrid}
+\label{s:sim}
+
+\subsection{Pourquoi Simgrid}
+
+En matière d'applications distribuées, un des principaux problèmes auxquels on se trouve confronté est de pouvoir scientifiquement comparer différentes solutions entre elles, en fonctions de métriques données. (temps de réponse moyen de recherches, probabilité de disponibilité de certains services, etc \ldots) Dans de très rares cas, il est possible de le faire sur la seule base d'études théoriques, mais la plupart du temps, on est obligé d'avoir recours à des évaluations empiriques obtenues lors d'expérimentations pratiques.
+
+Outre le fait que cela demande beaucoup de travail, réaliser des tests sur des plates-formes réelles ne permet pas d'obtenir des résultats reproductibles, principalement à cause de la non maîtrise de paramètres comme la charge du réseau à un moment donné. Les émulateurs eux aussi sont difficiles à utiliser et le sont donc rarement par les chercheurs du domaine. Il existe également plusieurs simulateurs de réseaux \cite{ns2, cowie:42, riley2003georgia}, mais ils sont mal adaptés à la simulation d'applications distribuées telles que celles qui nous intéressent.
+
+Il existe un certain nombre de simulateurs très spécialisés, développés isolément pour les besoins de communautés précises. Comme on peut s'y attendre, ils deviennent difficiles à utiliser dès lors qu'on sort du domaine pour lequel ils ont été con\c cus. De plus, leur nombre est un obstacle à la comparaison des différents résultats obtenus.
+
+Simgrid est un \emph{framework} qui a été con\c cu pour la simulation d'un large éventail d'applications distribuées sur toutes sortes de plates-formes distribuées. Il possède trois caractéristiques essentielles pour notre usage:
+\begin{inparaenum}[(1)]
+	\item le moteur du simulateur utilise des modèles de réseau connus et validés. Il est ainsi capable de simuler différentes topologies de réseau, ainsi que les ressources fournies par les plates-formes (puissance de calcul, état du réseau) de fa\c con dynamique. Il peut aussi simuler les défaillances.
+	\item Simgrid possède des interfaces évoluées aisément utilisables par les chercheurs qui peuvent réaliser leurs prototypes de simulation en C ou en Java.
+	\item Simgrid met à disposition des développeurs d'applications distribuées les APIs nécessaires leur permettant de passer facilement du mode ``simulation'' au mode ``monde réel''.
+\end{inparaenum}
+
+\subsection{Présentation de Simgrid}
+
+Simgrid 3.6.1 (la version utilisée pour cette étude) est présenté ici:\\\url{http://simgrid.gforge.inria.fr/3.6.1/doc/} (voir aussi \cite{simgrid})
+
+Il y est défini comme:
+\begin{quote}
+\emph{\ldots \ une boîte à outils mettant à disposition l'ensemble des fonctionnalités nécessaires à la simulation d'applications distribuées en environnements distribués hétérogènes.}
+\end{quote}
+
+\begin{figure}[htb]
+\begin{center}
+\includegraphics[width=16cm]{./Partie1/Simgrid.pdf}
+\caption{Les différents composants de Simgrid}
+\label{sim}
+\end{center}
+\end{figure}
+
+Comme le montre la figure \ref{sim}, l'architecture de Simgrid est modulaire et multi-couches:
+
+\paragraph{En haut} On trouve la couche des interfaces utilisateurs qu'on peut scinder en deux catégories: \emph{SimDag} est destiné aux chercheurs désireux d'étudier leurs algorithmes, alors que \emph{GRAS} s'adresse plutôt aux développeurs souhaitant éprouver leurs applications. \emph{MSG} peut être utilisé dans ces deux contextes.
+\begin{description}
+	\item[MSG] est l'interface la plus utilisée. C'est l'API de choix pour étudier des problèmes théoriques et comparer des heuristiques. Elle peut travailler sur les algorithmes d'ordonnancement, de \emph{peer-to-peer} ou des grilles de calcul. Elle a été con\c cue pour être utilisée en C, mais Java est également proposé.
+	
+	\item[GRAS] (\emph{Grid Reality And Simulation}) permet le développement d'applications distribuées. Cette API est implémentée deux fois: une fois pour la simulation et une fois pour le monde réel. Il est ainsi possible de facilement passer d'un mode à l'autre sans modification de code. Il suffit d'utiliser la bibliothèque souhaitée lors de la compilation.
+	
+	\item[SMPI] (\emph{simulated MPI}) est utilisée pour directement exécuter des applications MPI\footnote{\emph{Message Passing Interface}} sur le simulateur sans modification de leur code, en interceptant les primitives MPI.
+	
+	\item[SimDag] est con\c cue pour travailler sur des heuristiques d'ordonnancement d'applications vues comme des graphes de tâches. Elle permet de créer les tâches et leurs dépendances, de planifier leur exécution sur certaines ressources et finalement de calculer le temps d'exécution globale du graphe.
+	
+\end{description}
+
+\paragraph{Au milieu} \tb{SURF} est le moteur de simulation proprement dit. Il est hautement modulaire, de fa\c con à pouvoir utiliser différents modèles de réseaux et de plates-formes, rendant ainsi leur comparaison possible. De plus, il est con\c cu pour permettre aux chercheurs d'y inclure librement de nouveaux modèles. SURF étant la base de Simgrid, il a été très optimisé de sorte qu'il ne vienne pas perturber les performances de la simulation.
+
+Au dessus de \emph{SURF}, il faut également mentionner le module \emph{SimIX} qui permet la mise en \oe uvre de multiples process concurrents.
+
+\paragraph{En bas} On trouve la couche \tb{XBT} (pour \emph{eXtended Bundle of Tools}). Il s'agit d'une collection d'outils génériques de base tels que: types de collections de données, gestion des logs, des exceptions, etc \ldots\\
+
+Enfin, il faut également préciser que Simgrid est fourni gratuitement sous licence LGPL et qu'il a été porté sous Linux, Windows, Mac OS X and AIX.
+
+Les algorithmes du DST étudiés ici ont été implémentés avec l'API MSG.
+
+%\blankpage

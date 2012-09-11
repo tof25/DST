@@ -1,0 +1,1464 @@
+%!TEX root=../RapportM2.tex
+
+\newcommand{\lignes}[1]{ (lignes~#1)}
+\newcommand{\ligne}[1]{ (ligne~#1)}
+\newcommand{\nom}{\texttt{nom}}
+\newcommand{\pred}{\texttt{pred}}
+\newcommand{\freres}{\texttt{frères}}
+\newcommand{\contact}{\texttt{contact}}
+\newcommand{\joindre}{\texttt{joindre}}
+\newcommand{\etage}{\texttt{étage}}
+
+%\definecolor{dark_green}{rgb}{0,0.6,0}
+
+%\newcommand{\red}[1]{\color{red}{#1}}
+%\newcommand{\green}[1]{\color{dark_green}{#1}}
+
+\part{Réalisations}
+\chapter{Ajout de nouveaux sommets à un DST}
+\minitoc
+
+\section{Mise en \oe uvre dans Simgrid}
+
+Dans sa thèse \cite{Dah05}, Sylvain Dahan a con\c cu un algorithme distribué destiné à intégrer de nouveaux sommets dans un DST. Cet algorithme se compose d'un ensemble de fonctions exécutées par les différents sommets concernés selon la méthode {\ti RPC}\footnote{\emph{Remote Procedure Call}}. Il a décrit ces fonctions et les a implémentées dans un simulateur qu'il a également réalisé (en Python) pour pouvoir en étudier le comportement et les performances. Ce simulateur était séquentiel -- les opérations se déroulant les unes à la suite des autres, sans parallélisation possible -- et possédait une architecture centralisée offrant à un n\oe ud un accès direct aux structures de données décrivant les autres n\oe uds.
+
+Comme expliqué page \pageref{s:pb}, notre but dans cette étude est de poursuivre ces travaux en étudiant le comportement du DST dans un environnement plus proche de la réalité des réseaux \emph{peer-to-peer} -- sans centralisation et avec parallélisation -- d'où l'utilisation cette fois, du simulateur \emph{Simgrid}. (voir section \ref{s:sim} page \pageref{s:sim})
+
+La première partie du travail a donc consisté à implémenter ces fonctions dans \emph{Simgrid} -- en utilisant l'API \emph{MSG} en langage \emph{C} -- pour y faire fonctionner le DST. Ce travail, ainsi que les quelques modifications d'algorithmes qu'il a impliquées, est présenté en détails en \tb{annexe \ref{a:ar}} (page \pageref{a:ar}). Il a permis la construction de plates-formes jusqu'à 4 000 n\oe uds.
+
+\subsection{Quelques notions de base au sujet de Simgrid et MSG}
+\vspace{0.1cm}
+\begin{quote}
+\tb{Remarque préalable}: Dans Simgrid -- tout comme dans le domaine des topologies de recouvrement en général -- ce qu'on appelle des n\oe uds sont des ordinateurs. Dans le DST, les n\oe uds sont des \emph{groupes} d'ordinateurs. Pour éviter toute confusion lorsqu'on parle de DST, les ordinateurs seront plutôt appelés \emph{sommets}. Le terme \emph{n\oe ud} a toutefois été conservé lorsqu'il n'y a pas d'ambigu\"ité; par exemple, lorsqu'on dit qu'un ``nouveau n\oe ud joint le DST'', on comprend bien qu'il s'agit d'un ordinateur.
+\end{quote}
+
+\subsubsection{La plate-forme}
+La plate-forme souhaitée est décrite dans un fichier XML. Deux formats sont possibles.\footnote{J'ai volontairement utilisé des descriptions simples, mais il est possible d'indiquer davantage de caractéristiques, comme le nombre de CPU par hôte, par exemple.}
+
+Une première fa\c con de faire est de décrire chaque ressource de la plate-forme en indiquant ses caractéristiques individuellement. On a donc:
+\begin{description}
+	\item [des machines ({\tt host})] auxquelles on attribue un identifiant et une puissance:\\
+	{\tt <host id="Gaston" power="98095000"/>}
+	
+	\item [des liens réseau ({\tt link})] qui re\c coivent un identifiant, une latence et une bande passante:\\
+	{\tt <link id="127" bandwidth="3430125" latency="0.000536941"/>}
+	
+	\item [des routes ({\tt route})] entre les hôtes, utilisant les liens définis:\\
+	{\tt <route src="Gaston" dst="Marcel" symmetrical="NO"><link\_ctn id="153"/>\\<link\_ctn id="155"/></route>}
+	
+\end{description}
+
+L'autre possibilité est d'indiquer qu'on souhaite utiliser un \emph{cluster} de {\tt x} machines identiques, toutes reliées entre elles par des liens identiques.
+
+\subsubsection{L'application}
+Les hôtes exécutent des \emph{process}, appelés également \emph{agents}\footnote{Dans \emph{Simgrid}, il y a un fil d'exécution par \emph{process}.}. Ceux-ci sont décrits et affectés aux hôtes, également dans un fichier XML, dit de ``déploiement''. En voici un exemple:
+
+\begin{listing}{1}
+<process host="Gaston" function="node">
+    <argument value="57"/>         <!-- my id -->
+    <argument value="1"/>          <!-- known id -->
+    <argument value="1200"/>       <!-- time to sleep before it starts -->
+    <argument value ="20000"/>     <!-- deadline -->
+</process>
+\end{listing}
+
+Ici, on choisit d'avoir un \emph{process} par hôte, chargé de se comporter comme un n\oe ud qui voudrait rejoindre le DST. Dans \emph{MSG}, ces \emph{process} sont des fonctions écrites en C. {\tt ``node''}~\ligne{1} est donc le nom de cette fonction, et les quatre valeurs qui suivent sont les arguments qui lui seront passés: l'identifiant de ce nouveau n\oe ud, l'identifiant du contact connu par ce nouveau n\oe ud et son heure d'arrivée. Lorsque la \emph{deadline} est atteinte, il demande à quitter le DST.
+
+Simgrid fournit des scripts en Python destinés à générer ces fichiers XML.
+
+%\subsubsection{La simulation {\color{blue} (partie utile ?)}}
+%\emph{MSG} dispose de quelques primitives permettant de gérer la simulation:
+%
+%\begin{tabular}{l@{$\quad\rightarrow\quad$}l}
+%	Initialisation                  & {\tt MSG\_global\_init()}        \\
+%	Plate-forme                     & {\tt MSG\_create\_environment()} \\
+%	Association process/fonctions C & {\tt MSG\_function\_register()}  \\
+%	Simulation                      & {\tt MSG\_launch\_application()} \\
+%\end{tabular}
+ 
+\subsubsection{Le déroulement du programme}
+En environnement distribué, l'exécution des fonctions se fait au moyen d'échanges de messages. Dans Simgrid, on parle de \emph{tâches}. Lorsqu'un \emph{agent} souhaite qu'un autre exécute une fonction, il lui envoie une \emph{tâche}. Celle-ci est caractérisée par la puissance de calcul nécessaire à son exécution, elle peut également être nommée et contenir des données.
+
+Dans notre application, nous n'avons pas besoin de simuler le temps passé à exécuter une tâche et nous n'utilisons pas cette caractéristique de puissance de calcul. Par contre, le nom de la tâche permettra de différencier les messages (requêtes, réponses, etc \ldots) et les données attachées à une tâche seront le nom et les arguments de la fonction souhaitée. À réception de cette tâche, l'agent destinataire exécute la fonction demandée et retourne éventuellement une réponse, toujours sous la forme d'une tâche (dont les données sont alors toujours le nom de la fonction à laquelle on répond et les données de réponse proprement dites).
+
+\begin{quote}
+\emph{Remarque:} Dans Simgrid, plusieurs n\oe uds peuvent être simultanément en écoute puisqu'il y a un \emph{thread} par n\oe ud. Pour un n\oe ud donné, j'ai choisi de n'utiliser qu'un seul \emph{thread} qui traite les opérations de fa\c con séquentielle: une fois un message re\c cu, le \emph{thread} du n\oe ud traite ce message puis revient se mettre en écoute. Simgrid offre la possibilité de créer plusieurs \emph{threads} par n\oe ud, auquel cas il serait possible d'avoir un \emph{thread} chargé de l'écoute et un autre chargé du traitement. J'ai manqué de temps pour tester cette autre fa\c con de faire et les comparer.
+\end{quote}
+
+L'API \emph{MSG} de Simgrid fournit les primitives nécessaires à la gestion des tâches, ainsi qu'à leur transmission sur le réseau. Ces fonctions de communications sont fournies sous plusieurs versions dont nous retiendrons les trois principales:
+\begin{description}
+	\item [bloquante:] pour une réception, par exemple, on attend jusqu'à ce qu'on ait re\c cu quelque chose.\\(par exemple, {\tt MSG\_task\_send/MSG\_task\_recv})
+	
+	\item [non-bloquante:] toujours pour une réception, on se met en écoute et on vient voir de temps en temps si on a re\c cu quelque chose (on peut faire d'autres choses en attendant).\\(par exemple, {\tt MSG\_task\_isend/MSG\_task\_irecv})
+	
+	\item [détachée:] pour une émission, il s'agit d'une émission de type \emph{best-effort}: on envoie et on passe à la suite sans se soucier de savoir si la tâche a été re\c cue ou pas.\\({\tt MSG\_task\_dsend})
+\end{description}\vspace{\baselineskip}
+
+\label{rq:sync}Par la suite, on appellera ``requête \tb{synchrone}'' une requête qui attend une réponse et ``requête \tb{asynchrone}'' une requête qui n'en attend pas. Par exemple, une requête qui demanderait à un sommet quelle est sa charge est une requête synchrone; et une requête demandant à un autre sommet d'ajouter un étage à ses tables est une requête asynchrone. Les deux fonctions {\tt send\_msg\_sync} et {\tt send\_msg\_async} ont été écrites pour gérer l'envoi de ces deux types de requêtes. {\tt send\_msg\_sync} doit donc également gérer la réception de la réponse, comme nous le verrons en détails en \ref{ss:sync}, page \pageref{ss:sync}.
+
+Ce portage sur Simgrid étant réalisé, nous pouvons maintenant examiner les conséquences de l'introduction de la parallélisation et de la décentralisation sur les algorithmes de construction du DST. Quelques erreurs apparaissent, entraînant les modifications citées plus haut et détaillées dans l'\tb{annexe \ref{a:ar}}. Mais pour l'essentiel, on a maintenant affaire à un certain nombre de problèmes de synchronisation. La suite de cette étude se propose donc de les étudier en détails pour tenter de leur apporter des solutions.
+
+\section{Exposé du problème}
+
+Comme cela a été dit, les ordres à exécuter peuvent être émis de deux fa\c cons: synchrone ou asynchrone (avec ou sans attente de réponse, respectivement). Dans le cas des requêtes asynchrones, l'émetteur ne connaît pas l'état d'avancement de l'ordre qu'il a envoyé et cela peut éventuellement poser problème pour la suite des opérations.
+
+Une première solution qui vient à l'esprit serait de remplacer systématiquement toutes les requêtes asynchrones qui posent problème par de simples requêtes synchrones. Mais après expérimentation, il apparaît que ce n'est pas une bonne solution pour deux raisons:
+\begin{inparaenum}[(1)]
+	\item seules les requêtes asynchrones permettent de profiter pleinement de la parallélisation et on perd alors en performances et
+	\item des \emph{deadlocks}\footnote{Des boucles sans fin d'attentes mutuelles entre deux ou plusieurs n\oe uds.} apparaissent très fréquemment.
+\end{inparaenum}
+On en conclut que les requêtes synchrones ne doivent être utilisées que lorsque c'est vraiment nécessaire et que d'autres solutions doivent être trouvées pour synchroniser les tâches asynchrones qui le nécessitent.
+
+Dans le cas de tâches diffusées -- les diffusions étant réalisées de fa\c con asynchrone -- le problème se complique davantage. Si de la synchronisation est nécessaire, il faut pouvoir s'assurer que tous les n\oe uds contactés ont bien terminé l'exécution de la tâche diffusée avant de passer à la suite. Cela peut être requis au sein même de la diffusion, lorsqu'on ne veut descendre d'un étage que si l'étage courant a bien été traité. C'est ce que nous ferons à l'aide d'un mécanisme d'attente basé sur des accusés réception, détaillé plus loin. (voir \ref{s:att} page \pageref{s:att}) De plus, il faut aussi tenir compte du fait que ce n'est pas parce qu'une tâche est terminée que les opérations qu'elle a lancées le sont, toujours à cause de ces envois asynchrones.
+
+Enfin, lors de toutes ces opérations, il faut s'assurer que la taille des groupes impactés reste toujours bien comprise entre les bornes $a$ et $b$, ce qui constitue une difficulté supplémentaire.
+
+Nous examinons donc le déroulement des opérations lors de l'arrivée d'un nouveau n\oe ud, afin de déterminer les endroits où de la synchronisation est nécessaire. Autrement dit, il s'agit d'examiner chaque endroit où une requête asynchrone est émise pour voir si cela pose problème ou pas.
+
+\begin{quote}
+\emph{Remarque}: Tous les exemples donnés dans les explications qui suivent sont issus des traces générées lors de mes expérimentations.
+\end{quote}
+
+\section{Déroulement des opérations}
+Pour rappel, voici un exemple de l'arrivée d'un nouveau n\oe ud dans un DST avec ajout d'étage:
+
+\begin{figure}[htb]
+\begin{center}
+\includegraphics[width=11cm]{./Partie2/Exemple_scission_ajout.pdf}
+\caption{Arrivée d'un n\oe ud: scissions avec ajout d'étage}
+\label{f:sci2b}
+\end{center}
+\end{figure}
+
+La figure \ref{f:sci2b} montre l'arrivée du n\oe ud {\tt 52} dans le groupe {\tt AA}.
+\begin{itemize}
+	\item Le groupe {\tt AA} a 4 membres et doit se scinder pour donner les groupes {\tt AA0} et {\tt AA1}.
+	
+	\item Le groupe {\tt A} doit alors également se scinder puisqu'il avait aussi déjà 4 membres. Cette scission donne les groupes {\tt A0} et {\tt A1}.
+	
+	\item Le groupe {\tt A} était la racine. Un DST ne pouvant avoir qu'une seule racine, il est donc nécessaire d'ajouter un étage: c'est le groupe {\tt A'}.
+\end{itemize}
+
+\begin{center}
+$\star\star\star$
+\end{center}
+\label{s:expo}
+Dans l'exposé qui suit, chacun des endroits pouvant nécessiter de la synchronisation est repéré de cette fa\c con: \ding{192}
+
+Lors de l'arrivée d'un n\oe ud, on a la séquence d'appels de fonctions suivante\footnote{On se place bien sûr dans le cas le plus complet, c'est à dire le cas où des scissions qui provoquent un ajout d'étage sont nécessaires.}:
+%\begin{listing}{1}
+%joindre                   // un nouvel arrivant se présente
+%  demander_connexion      // son contact lui fait de la place
+%    demander_scission*    // des scissions de groupes sont requises
+%      ajouter_étage       // ajoute un étage
+%      scission            // effectue les scissions
+%        connecter_les_groupes_scindés*    /* informe les groupes pères
+%                                             qu'ils ont des nouveaux fils
+%                                             suite aux scissions */
+%\end{listing}
+\begin{algorithm}[H]
+\caption{: Algorithme général de l'ajout d'un n\oe ud}
+\begin{algorithmic}[1]
+\Statex
+\State un nouvel arrivant se présente : \phantom{s : } {\tt joindre}
+\State son contact lui fait de la place : \phantom{s : } {\tt\ \ demander\_connexion} 
+\State des scissions de groupes sont requises : {\tt\ demander\_scission*}
+\State ajoute un étage : \phantom{ groupes sont requises : } {\tt ajouter\_étage}
+\State effectue les scissions : \phantom{roupes sont requises : } {\tt scission}
+\State informe les groupes pères qu'ils ont \phantom{quises : } {\tt\quad connecter\_les\_groupes\_scindés*}
+\Statex des nouveaux fils :
+\end{algorithmic}
+\end{algorithm}
+Les * indiquent les boucles: {\tt demander\_scission} s'exécute sur chaque étage à scinder et\\{\tt connecter\_les\_groupes\_scindés} est appelée sur chaque prédécesseur de l'étage supérieur à celui de la scission.
+
+\subsubsection{\small{LES APPELS}}
+
+\begin{description}
+	\item [{\tt joindre}:] L'appel à {\tt demander\_connexion} se fait de fa\c con synchrone. Le n\oe ud qui attend est le nouveau n\oe ud qui, à se stade, ne fait pas encore partie du DST et ne peut donc pas être sollicité par d'autres. Il n'y a donc pas de risque de \emph{deadlock}.
+	
+	\item [{\tt demander\_connexion}:] Ici, les appels à {\tt demander\_scission} se font en local. Pas de souci non plus.
+		
+	\item[{\tt demander\_scission}:]  On réalise ici essentiellement deux tâches: ajouter un étage si besoin et effectuer les scissions proprement dites. Ces deux tâches sont diffusées.
+	
+	L'ajout d'étage doit être entièrement réalisé sur l'ensemble des n\oe uds \emph{avant} de passer aux scissions sans quoi il y aurait un risque de travailler sur un étage qui n'existe pas. \ding{192}
+	
+	\begin{description}
+		\item[{\tt ajouter\_étage}:] On n'effectue ici que des opérations locales et il n'y a pas de problème: les opérations sont bien terminées lorsque la diffusion l'est.
+	
+		\item[{\tt scission}:]  Ici, des envois asynchrones sont utilisés pour mettre à jour des prédécesseurs \ding{193} et des tables de routage \ding{194} (avec {\tt connecter\_les\_groupes\_scindés}). Ces prédécesseurs étant différents de ceux qui sont utilisés pour les appels à {\tt connecter\_les\_groupes\_scindés} (ils ne sont pas situés au même étage), il n'y a pas de souci de synchronisation locale ici.		
+	\end{description}
+		
+	\item[{\tt connecter\_les\_groupes\_scindés}:]  Des envois asynchrones sont utilisés pour la mise à jour de certains prédécesseurs. \ding{195}
+\end{description}
+
+\subsubsection{\small{LES RETOURS}}
+
+\begin{description}
+	\item [{\tt connecter\_les\_groupes\_scindés}:] Conséquence de \ding{195}: au retour de cette fonction, des prédécesseurs ne sont pas à jour. Pas de problème pour {\tt scission} qui ne les utilise pas.
+	
+	\item[{\tt scission}:] À cause des points \ding{193} et \ding{195}, des prédécesseurs ne sont pas à jour au retour de cette fonction. Le point \ding{194} fait que des tables de routage ne sont pas à jour non plus, mais seulement aux étages supérieurs à 0 du fait que {\tt connecter\_les\_groupes\_scindés} ne touche pas aux n\oe uds de l'étage 0.
+	
+	\item[{\tt demander\_scission}:] La fonction de diffusion de {\tt scission} est maintenant considérée comme terminée et {\tt demander\_scission} rend la main à {\tt demander\_connexion}. À ce moment, tous les n\oe uds qui devaient se scinder l'ont fait -- le mécanisme d'attente mis en \oe uvre dans la diffusion l'assure\footnote{Voir détails page \pageref{s:att}} -- mais des prédécesseurs et des tables de routage peuvent encore ne pas être à jour à cause des points \ding{193}, \ding{194} et \ding{195} déjà mentionnés.
+	
+	\item[{\tt demander\_connexion}:] Au retour ici, on peut éventuellement lancer un nouvel appel à\\{\tt demander\_scission} pour un autre étage et donc, à {\tt scission}. Celle-ci ne fonctionnera pas correctement si les tables de routage et les prédécesseurs concernés ne sont pas à jour. Ici, les points \ding{193}, \ding{194} et \ding{195} posent donc problème.\\
+	
+	Au retour des appels à {\tt demander\_scission}, l'arrivée du nouveau n\oe ud est prise en compte par l'ensemble des sommets de l'étage 0 au moyen d'appels asynchrones à la fonction {\tt nouveau\_frère\_re\c cu} \ding{196}. Pour que cette fonction puisse s'exécuter, il doit y avoir suffisamment de place à l'étage 0. C'est bien le cas puisqu'à ce stade, tous les n\oe uds concernés se sont bien scindés, comme expliqué plus haut.
+			
+	Du fait de \ding{196}, tous les frères ne seront donc pas à jour lors du retour de cette fonction, mais le sommet local transmis à {\tt joindre} l'est forcément puisque sa mise à jour est réalisée en local et pas au moyen d'appels de fonction.
+	
+	\item[{\tt joindre}:]  Ici, on doit recevoir de {\tt demander\_connexion} la table de routage de son sommet courant. Il est bien sûr important que cette table soit bien à jour puisqu'elle va devenir la table du nouveau n\oe ud. C'est le cas, comme expliqué ci-dessus.\\
+	
+	Ensuite, l'équilibrage de charge est réalisé. Pour qu'il puisse fonctionner correctement, il est important que les prédécesseurs soient tous à jour puisque c'est en les comptant qu'on calcule la charge.	C'est le cas si les points \ding{193} et \ding{195} sont déjà solutionnés.	
+	
+	L'équilibrage de charge s'effectue au moyen d'appels synchrones\footnote{Il y a donc un risque de \emph{deadlock} dans la fonction d'équilibrage de charge qui devra être pris en compte. (voir page \pageref{rqeq})} pour la table de routage et asynchrones pour les prédécesseurs.\ding{197} Il y a donc un risque que {\tt joindre} rende la main avant que tous les prédécesseurs ne soient à jour.\\
+	
+	En conséquence de \ding{196} et \ding{197}, {\tt joindre} peut donc rendre la main alors que les tables de routage et les prédécesseurs ne sont pas encore à jour, ce qui peut poser problème pour d'autres ajouts de n\oe uds, si ce n\oe ud nouvellement intégré sert tout de suite de contact à un autre nouveau n\oe ud.
+\end{description}
+
+Il y a donc deux problèmes à résoudre:\footnote{Le point \ding{192} est résolu par la fonction de diffusion synchronisée détaillée plus loin. (voir page \pageref{s:diff})} les points \ding{193}, \ding{194} et \ding{195} d'une part et les points \ding{196} et \ding{197} d'autre part. On peut les résoudre en mettant en \oe uvre le mécanisme d'attente déjà mentionné, excepté pour le point \ding{197} qui présente une particularité. Pour mémoire, l'algorithme de l'équilibrage de charge est présenté page \pageref{a:lb}.
+
+%\begin{listing}{1}
+%pour tout étage dans 1...moi.hauteur-1:
+%| nouv_noeuds = []
+%| pour tout f dans moi.frères[étage]:
+%| | si f == contact:
+%| | |  nouv_noeuds.ajouter(moi.nom)
+%| | |  ajouter_predecesseur(moi, étage, moi.nom)
+%| | sinon:
+%| | | nouveau_rep = send_msg_sync(moi.nom, f, demander_nouveau_rep,
+%| | |                                         (étage))
+%| | | nouv_noeuds.ajouter(nouveau_rep)
+%| | | send_msg_async(moi.nom, nouveau_rep, ajouter_prédécesseur,
+%| | |                                      (étage, moi.nom))
+%| | fsi
+%| fpour
+%| moi.frères[étage] = nouv_noeuds
+%fpour
+%\end{listing}
+
+\newcommand{\e}{\acute{e}}
+\newcommand{\ee}{\grave{e}}
+\newcommand{\eee}{\hat{e}}
+
+\begin{algorithm}
+\caption{: L'équilibrage de charge}\label{a:lb}
+\begin{algorithmic}[1]
+\Statex
+\For{$\e tage \gets 1,moi.hauteur-1$}
+  \State $nouv\_noeuds \gets []$
+  \ForAll{$f \in moi.fr\ee res[\e tage]$}
+    \If{$(f = contact)$}
+       \State $nouv\_noeuds.{\tt ajouter}(moi.nom)$
+       \State ${\tt ajouter\_predecesseur}(moi,\ \e tage,\ moi.nom)$
+    \Else
+      \State $nouveau\_rep \gets\ {\tt send\_msg\_sync}(moi.nom,\ f,\ {\tt demander\_nouveau\_rep},$\label{a1:sync}
+      \Statex $\hspace{5em}(\e tage))$
+      \State $nouv\_noeuds.{\tt ajouter}(nouveau\_rep)$
+      \State ${\tt send\_msg\_async}(moi.nom,\ nouveau\_rep,\ {\tt ajouter\_pr\e d\e cesseur},$\label{a1:async}
+      \Statex $\hspace{5em}(\e tage,\ moi.nom))$
+    \EndIf
+  \EndFor
+  \State $moi.fr\ee res[\e tage] \gets nouv\_noeuds$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{algorithm}
+%\DontPrintSemicolon
+%
+%\SetKw{KwA}{à}
+%
+%\SetKwData{Etage}{étage}
+%\SetKwData{Hauteur}{moi.hauteur}
+%\SetKwData{Noeuds}{nouv\_n\oe uds}
+%\SetKwData{Rep}{nouveau\_rep}
+%\SetKwData{F}{f}
+%\SetKwData{Contact}{contact}
+%\SetKwData{Moi}{moi}
+%\SetKwData{Nom}{moi.nom}
+%\SetKwData{Freres}{moi.frères[étage]}
+%
+%\Pour{$\Etage \leftarrow 1$ $\KwA$ $\Hauteur -1$}{
+%  \Noeuds $\leftarrow$ {\tt []}\;
+%  \PourCh{\F $\in$ \Freres}{
+%    \eSi {$(\F = \Contact)$}{
+%      \Noeuds.ajouter(\Nom)\;
+%      ajouter\_prédecesseur(\Moi, \Etage, \Nom)\;
+%    }{
+%      \Rep $\leftarrow$ send\_msg\_sync(\Nom, \F, demander\_nouveau\_rep, $(\Etage)$)\;\label{a1:sync}
+%      \Noeuds.ajouter(\Rep)\;
+%      send\_msg\_async(\Nom, \Rep, ajouter\_predecesseur, $(\Etage, \Nom)$)\;\label{a1:async}
+%    }
+%  }
+%  \Freres $\leftarrow$ \Noeuds\;
+%}
+%\end{algorithm}
+On peut y voir que pour un même étage, on peut avoir successivement un envoi asynchrone de {\tt ajouter\_prédécesseur} (ligne \ref{a1:async}) puis un envoi synchrone de {\tt demander\_nouveau\_rep} (ligne \ref{a1:sync}) au tour suivant. Il est donc possible de recevoir l'accusé réception de {\tt ajouter\_prédécesseur} pendant l'attente de la réponse de {\tt demander\_nouveau\_rep}. Si la fonction d'attente est placée entre chaque étage, alors elle ne serait pas encore lancée et cet accusé réception ne sera pas re\c cu, aboutissant à un blocage. La solution est donc d'attendre entre chaque frère, mais la fonction d'attente n'est alors plus utile; il suffit d'utiliser un envoi synchrone pour l'ajout de prédécesseur à la ligne \ref{a1:async}.
+
+\section{La gestion des synchronisations}
+
+Comme nous venons de le dire, dans une structure totalement décentralisée comme celle recouverte par le DST, on utilise des appels distants pour exécuter les différentes tâches. Ces appels sont de préférence asynchrones, tant pour des raisons de performance (on profite ainsi de la parallélisation possible dans un tel environnement) que de stabilité (il n'y a pas de risque de \emph{deadlocks} avec des communications asynchrones).
+
+Mais il y a essentiellement deux cas de figure pour lesquels de tels échanges asynchrones ne sont pas adaptés:
+\begin{inparaenum}[(a)]
+	\item quand une requête attend une réponse \label{cas1}
+	\item quand il y a besoin d'ordonner ou de synchroniser certaines séquences d'opérations entre elles. \label{cas2}
+\end{inparaenum}
+Dans ces deux cas, les n\oe uds concernés doivent attendre de recevoir certaines réponses avant de pouvoir continuer leur travail et c'est cette attente qui peut poser problème. Pour le cas (\ref{cas1}), on crée la fonction {\tt send\_msg\_sync} qui est chargée de gérer l'envoi d'une requête et la réception de sa réponse. Pour le cas (\ref{cas2}), c'est la fonction {\tt send\_msg\_async}\footnote{pour {\tt send\_msg\_sync} et {\tt send\_msg\_async}, voir remarque page \pageref{rq:sync}} qui est chargée de l'envoi du message. On lui adjoint la fonction {\tt attente\_terminaison} dont le rôle sera de placer des points de synchronisation aux endroits mentionnés précédemment (en \ref{s:expo}). Dans cette partie, nous allons détailler ce que doivent faire {\tt send\_msg\_sync} et {\tt attente\_terminaison} qui comportent toutes deux des attentes. Nous verrons que chacune de ces deux fonctions doit être capable de recevoir et traiter les réponses attendues par l'autre.
+
+Si on se contente d'une simple attente, on aboutit à des blocages. Prenons un exemple: un n\oe ud {\tt a} qui attend une réponse d'un n\oe ud {\tt b} peut très bien être sollicité par un n\oe ud {\tt c} pendant ce temps. Si {\tt b} attend sur {\tt c} pour donner sa réponse à {\tt a} et que {\tt c} attend sur {\tt a}, il y a blocage. L'expérience montre que plus il y a d'échanges synchrones et plus on rencontre ce genre problème.
+
+Le problème général est alors celui-ci:
+\begin{enumerate}
+	\item insérer les points de synchronisation déjà mentionnés (ce qui implique d'introduire de nouvelles attentes)
+	
+	\item identifier les problèmes que ces attentes peuvent poser
+	
+	\item trouver des solutions à ces problèmes
+\end{enumerate}{\vskip 0.3cm}
+\begin{quote}
+Remarque: Dans ce qui suit, ce que je présente s'appuie sur la notion de \emph{leaders} introduite par Sylvain Dahan dans sa thèse: chaque n\oe ud (chaque groupe de sommets, donc) doit posséder un \emph{leader} qu'il faut consulter pour effectuer certaines opérations sur le groupe. Cette fa\c con de faire va permettre de détecter d'éventuels conflits et d'agir en conséquence pour maintenir la cohérence du groupe.
+\end{quote}
+
+\begin{center}
+$\star\star\star$
+\end{center}
+
+Comme nous l'avons dit, en introduisant des attentes, on augmente le risque de \emph{deadlock}. Pour remédier à cela, il faut donc trouver un moyen de rendre ces attentes non bloquantes. On peut agir à trois niveaux:
+
+\begin{enumerate}
+	\item L'\tb{émission} de la requête synchrone (utilisée dans {\tt send\_msg\_sync}) utilise une fonction d'envoi asynchrone. De la sorte, on n'attend pas que la requête soit re\c cue pour se mettre à attendre une réponse.\footnote{Dans ce contexte, il est important de ne choisir une communication synchrone que lorsque c'est indispensable pour ne pas risquer d'ajouter de nouveaux problèmes.}
+	
+	\item Pour l'\tb{attente} de la réponse, j'ai expérimenté deux solutions: synchrone simple ou synchrone avec \emph{timeout}. Cette dernière se déroule comme ceci: on écoute jusqu'à ce qu'on re\c coive une réponse \emph{ou} pendant un certain temps (\emph{timeout}). À l'issue de chaque \emph{timeout}, on endort le process en cours un peu de temps pour passer la main à d'autres process avant de se remettre à écouter .
+	
+	Cette méthode présente l'avantage de ne pas bloquer tout le système si un n\oe ud ne répond pas, ce qui sera intéressant pour la tolérance aux pannes. Mais j'ai rencontré des cas de messages perdus (messages jamais re\c cus) avec cette méthode, et il semble que le temps de ``sommeil'' ait une importance, ce que je ne comprends pas. L'équipe de Simgrid contactée à ce sujet ne confirme pas ces observations et il faudra donc revoir cette méthode pour corriger le problème.
+	
+	La méthode synchrone simple fonctionne bien et elle n'entraîne pas de blocage puisque toutes les tâches re\c cues dans l'intervalle sont traitées. J'ai donc choisi cette solution, bien qu'elle ne prenne pas en compte la tolérance aux pannes.\footnote {En effet, telle que l'attente est actuellement réalisée, il est possible ici d'attendre indéfiniment la réponse d'un n\oe ud qui serait en panne.} On se concentre ici sur les problèmes de synchronisation.
+	
+	\item Le \tb{traitement} du message re\c cu pendant l'attente, qu'il s'agisse d'une requête, d'\emph{une} réponse ou de \emph{la} réponse attendue, doit lui aussi être con\c cu de manière à éviter les blocages.\\Voyons ce point dans le détail.
+\end{enumerate}
+
+\section{Gestion des messages re\c cus pendant l'attente}
+
+\subsection{Le message re\c cu pendant l'attente est une réponse}
+
+Pour qu'un message re\c cu soit identifié comme \emph{la} réponse attendue, 3 conditions doivent être remplies:
+\begin{enumerate}
+	\item ce message doit \emph{être} une réponse. (il s'agit d'éviter que des requêtes puissent être prises pour des réponses) \label{cond1}
+	\item ce message doit provenir du destinataire de la requête à laquelle il répond.
+	\item le type de ce message doit être le même que celui de la requête à laquelle il répond.\footnote{S'il s'agit d'une diffusion, il faut aussi que les types diffusés correspondent.}
+\end{enumerate}
+
+Si cette réponse n'est pas \emph{la} réponse attendue, mais \emph{une} réponse attendue, il va falloir la prendre en compte. (voir détails plus loin)
+
+Si le message est une réponse non attendue, on peut simplement l'ignorer. En effet, dès lors qu'une tâche peut être appelée de fa\c con synchrone, elle est con\c cue pour retourner une réponse. Mais il est possible qu'on appelle aussi cette même tâche de fa\c con asynchrone, auquel cas la réponse qu'elle retourne doit simplement être ignorée.\label{expl1}
+
+Pour distinguer les messages-requêtes des messages-réponses, on utilise une possibilité offerte par Simgrid: le nommage des tâches. Les réponses seront ainsi nommées {\tt 'ans'}.
+
+\subsection{Le message re\c cu pendant l'attente est une requête}
+
+Trois cas de figure peuvent se présenter:
+\begin{description}
+	\item [requête asynchrone:] S'il s'agit d'une simple requête asynchrone, on exécute la tâche requise et on se remet en écoute. Mais si cette tâche utilise elle-même la fonction {\tt attente\_terminaison}, d'autres messages peuvent être re\c cus par cette nouvelle attente. Il va falloir en tenir compte.
+	
+	\item [requête synchrone:] La tâche qu'on va exécuter va alors utiliser {\tt send\_msg\_sync} et se mettre à son tour en écoute, rendant ainsi possible des attentes en cascade. Comme précédemment, il faut donc trouver un moyen de faire en sorte que la dernière écoute accepte les réponses attendues par les ``écoutes parentes'', ainsi que tous les autres messages.
+			
+	\item [requête non autorisée:] Au moment où cette requête est re\c cue, on ne veut pas l'exécuter. Par exemple, lors de l'équilibrage de charge effectué à la fin de la fonction {\tt joindre}, il faut refuser d'exécuter une scission requise par un nouvel arrivant. En effet, à ce stade, le n\oe ud courant n'est pas encore utilisé comme représentant de son groupe à chaque étage et de plus, la scission changerait la table de routage qu'on est en train de parcourir. Il y a ici deux problèmes à résoudre: trouver un moyen de différer l'exécution de la requête et décider quand l'exécuter.
+\end{description}
+
+Comme pour les réponses, l'identification des requêtes se fait en les nommant: {\tt 'async'} et {\tt 'sync'}. Reste à identifier les requêtes non autorisées.
+
+\section[Gestion des requêtes non autorisées]{Reconnaissance et traitement des requêtes non autorisées}
+	
+La reconnaissance de ces requêtes est plus complexe. Un même type de requête sera accepté ou refusé selon le contexte et ce n'est pas parce qu'une requête est synchrone ou asynchrone qu'on va toujours la refuser ou toujours l'accepter. Par exemple, la scission déjà mentionnée -- qu'on souhaite donc refuser -- est diffusée et les diffusions sont asynchrones. Les ajouts/suppressions de prédécesseurs aussi, et on peut les accepter la plupart du temps. De plus, il faut aussi tenir compte du fait qu'une requête de diffusion peut être lancée de fa\c con synchrone ou asynchrone\footnote{La propagation d'une diffusion est toujours faite de fa\c con asynchrone, mais le lancement peut être synchrone si on souhaite attendre que la diffusion soit terminée avant de poursuivre.}. Pour établir des règles permettant de déterminer si une requête doit être refusée ou pas, il faut donc examiner chaque cas. (voir tableau \ref{tab2})
+	
+Puisque la décision d'accepter ou de refuser une requête dépend -- entre autres -- de l'état actuel du n\oe ud courant, il faut le définir. Il va s'agir d'une structure comportant deux champs: un \emph{code état} et l'\emph{id} du nouveau n\oe ud arrivant qui a provoqué le dernier changement d'état.
+
+\subsection{Les codes état}
+
+Voici les codes état utilisés:
+\begin{itemize}
+	\item Les états au cours de l'arrivée d'un nouveau n\oe ud:
+		\begin{enumerate}
+			\item {\tt 'b'} $\rightarrow$ \emph{en construction}: attribué à l'arrivée d'un nouveau n\oe ud
+			\item {\tt 'n'} $\rightarrow$ \emph{non actif}: si le n\oe ud a échoué à rejoindre le DST
+			\item {\tt 'l'} $\rightarrow$ \emph{équilibrage de charge} en cours: une fois le DST rejoint, le nouveau n\oe ud procède à un équilibrage de charge
+			\item {\tt 'a'} $\rightarrow$ \emph{actif}: le nouveau n\oe ud est intégré
+		\end{enumerate}\vspace{\baselineskip}
+
+	\item Les états au cours de la vie d'un n\oe ud actif:
+		\begin{itemize}
+			\item {\tt 'o'} $\rightarrow$ \emph{ok} pour mise à jour (optionnel -- voir explications)
+			\item {\tt 'u'} $\rightarrow$ \emph{mise à jour} en cours: permet d'empêcher les modifications concurrentes des tables du n\oe ud
+			\item {\tt 'g'} $\rightarrow$ {\tt demander\_nouveau\_rep} en cours: on demande au n\oe ud quel est le frère de niveau 0 le moins chargé, en vue de l'utiliser comme représentant du n\oe ud.
+		\end{itemize}
+\end{itemize}
+
+\begin{figure}[htb]
+\begin{center}
+\begin{tikzpicture}[scale=0.2]
+\tikzstyle{every node}+=[inner sep=0pt]
+\draw [black] (10.4,-16.2) circle (3);
+\draw (10.4,-16.2) node {$b$};
+\draw [black] (10.4,-16.2) circle (2.4);
+\draw [black] (22.8,-16.2) circle (3);
+\draw (22.8,-16.2) node {$l$};
+\draw [black] (35.4,-16.2) circle (3);
+\draw (35.4,-16.2) node {$a$};
+\draw [black] (43.6,-24.3) circle (3);
+\draw (43.6,-24.3) node {$g$};
+\draw [black] (10.4,-27.2) circle (3);
+\draw (10.4,-27.2) node {$n$};
+\draw [black] (43.6,-8.6) circle (3);
+\draw (43.6,-8.6) node {$u$};
+\draw [black] (13.5,-16.2) -- (19.8,-16.2);
+\fill [black] (19.8,-16.2) -- (19,-15.7) -- (19,-16.7);
+\draw [black] (25.8,-16.2) -- (32.4,-16.2);
+\fill [black] (32.4,-16.2) -- (31.6,-15.7) -- (31.6,-16.7);
+\draw [black] (40.661,-23.791) arc (-110.4579:-158.83909:8.088);
+\fill [black] (35.95,-19.13) -- (35.77,-20.06) -- (36.7,-19.7);
+\draw [black] (10.4,-19.3) -- (10.4,-24.2);
+\fill [black] (10.4,-24.2) -- (10.9,-23.4) -- (9.9,-23.4);
+\draw [black] (35.928,-13.267) arc (-201.71744:-252.63205:7.466);
+\fill [black] (35.93,-13.27) -- (36.69,-12.71) -- (35.76,-12.34);
+\draw [black] (43.099,-11.537) arc (-21.30901:-73.04048:7.395);
+\fill [black] (43.1,-11.54) -- (42.34,-12.1) -- (43.27,-12.46);
+\draw [black] (38.28,-16.993) arc (65.31516:25.38785:9.247);
+\fill [black] (42.77,-21.43) -- (42.88,-20.49) -- (41.98,-20.92);
+\draw [black] (6.3,-10.6) -- (8.63,-13.78);
+\fill [black] (8.63,-13.78) -- (8.56,-12.84) -- (7.75,-13.43);
+\end{tikzpicture}
+
+\caption{Les différents états des sommets du DST}
+\label{f:aut}
+\end{center}
+\end{figure}
+
+Voici comment se passent les choses en détail:
+\begin{list}{$\bullet$}{}
+	\item Un nouvel arrivant re\c coit l'état {\tt 'b'}. S'il échoue à rejoindre le DST, son état devient {\tt 'n'}.
+	
+	\item Il passe de {\tt 'b'} à {\tt 'l'} au début de l'équilibrage de charge.\vspace{\baselineskip}
+	
+	Voici un exemple tiré des traces générées par le programme sous Simgrid, montrant la nécessité de cet état {\tt 'l'}:
+\begin{list}{--}{}
+	\item 109 envoie {\tt ajouter\_prédécesseur} à 142 et attend sa réponse (un accusé réception)
+	
+    \item 142 est en train de faire l'équilibrage de charge: il est donc en {\tt 'b'} et diffère alors l'exécution de {\tt ajouter\_prédécesseur}
+    
+    \item 142 continue son équilibrage de charge et envoie des {\tt demander\_nouveau\_rep} à toute sa table de routage, dont 42
+    
+	\item 42 envoie des {\tt demander\_nb\_prédécesseurs} à tous ses frères, dont 569
+	
+    \item 569 étant aussi en équilibrage de charge à ce moment -- en {\tt 'b'}, donc -- diffère l'exécution de {\tt demander\_nb\_prédécesseurs}
+    
+    \item 569 ne passe pas en {\tt 'a'} parce qu'il attend lui-même sur 109 (indirectement)
+\end{list}
+
+Donc 569 ne répond pas à 42, qui ne répond pas à 142 qui ne répond pas à 109: on est bloqué.
+
+Pour corriger ce type de problème, on peut intervenir à deux niveaux:
+\begin{enumerate}
+	\item Faire en sorte que 142 ne diffère pas {\tt ajouter\_prédécesseur}, c'est à dire qu'il ne soit pas à l'état {\tt 'b'}. Une solution pourrait être de passer ce n\oe ud à {\tt 'a'} dès le début de l'équilibrage de charge, mais il y aurait un risque d'accepter des requêtes telles qu'une scission. Passer à l'état {\tt 'u'} ne conviendrait pas non plus puisqu'il doit laisser passer {\tt connecter\_les\_groupes\_scindés} (voir détails plus loin). Il faut donc bien créer un nouvel état: {\tt 'l'}.
+	
+	\item Accepter un message {\tt demander\_nb\_prédécesseurs} sur un sommet en {\tt 'b'}. La valeur retournée -- qui est la charge du sommet -- peut être fausse puisque sur un sommet en construction, la table des prédécesseurs peut ne pas être à jour; mais si c'est le cas, elle ne peut être que trop basse. Cela aurait pour conséquence de favoriser le choix de ce sommet comme représentant, en le considérant comme moins chargé qu'il ne l'est réellement. Ce nouveau sommet n'est pas encore très utilisé par les autres et il y a de fortes chances pour qu'il soit de toutes fa\c cons le moins chargé. Admettre cette erreur paraît donc une meilleure solution que de risquer des \emph{deadlocks}.
+\end{enumerate}{\vskip 0.2cm}
+        
+J'ai donc choisi de faire les deux: la solution 1 -- passer à l'état {\tt 'l'} -- permet de répondre plus tôt et la 2 intervient même si le premier report de tâche a lieu alors qu'on n'est pas dans l'équilibrage de charge.
+	
+	\item Cet état passe à {\tt 'a'} lorsque le n\oe ud est effectivement intégré au DST et opérationnel, c'est à dire après cet équilibrage de charge. \footnote{Un n\oe ud peut donc être actif alors que certains des n\oe uds pointés dans sa table de routage ne sont pas encore forcément prêts. Les n\oe uds n'arrivent pas à l'état actif dans le même ordre que leur ordre d'arrivée mais d'après mes expérimentations, cela ne semble pas être un problème du fait que d'éventuelles requêtes seraient alors mises en attente jusqu'à l'état {\tt 'a'} effectif.}
+	
+	\item Un n\oe ud passe à l'état {\tt 'g'} lorsqu'il exécute la fonction {\tt demander\_nouveau\_rep}. Dans celle-ci, il interroge chacun des frères de l'étage 0 pour connaître leur nombre de prédécesseurs et il est important que cette phase ne soit pas interrompue par l'arrivée d'un nouveau n\oe ud. En effet, la fonction {\tt demander\_connexion} peut engendrer des scissions et donc modifier la liste des frères en train d'être parcourue, ce qui aboutirait à des erreurs. Prenons un exemple:
+	\begin{itemize}
+		\item Le n\oe ud 1570 demande à 2739 d'exécuter {\tt demander\_nouveau\_rep} pour obtenir un nouveau représentant de l'étage courant.
+		\item 2739 envoie des {\tt demander\_nb\_prédécesseurs} à ses frères de l'étage 0: 1445, 4093 et 1847 (dans cet ordre)
+		\item Alors qu'il attend la réponse de 1847, 2739 re\c coit {\tt demander\_connexion} de 1847 (c'est une coïncidence, il se trouve que 1847 est leader pour le contact d'un nouveau n\oe ud).
+		\item 2739 lance donc les opérations pour faire de la place au nouvel arrivant.
+		\item Ceci fait, il revient regarder s'il a re\c cu la réponse de 1847 (le nombre de ses prédécesseurs): oui, c'est bien le cas et il se trouve que c'est précisément 1847, le frère n°3, qui est le moins chargé.
+		\item 2739 répond donc à 1570 que le frère n°3 peut le remplacer. Ce frère n° 3 devrait être 1847 mais puisque des scissions ont eu lieu, il est maintenant vide. Au lieu de répondre '1847', il répond donc '0' (les cases vides de la table de routage sont à 0 par défaut)
+		\item 1570 remplace donc 2739 par 0 et lui envoie {\tt ajouter\_prédécesseurs}. Si le n\oe ud 0 existe, le rempla\c cant de 2739 n'est simplement pas le bon, mais s'il n'existe pas, alors cet envoi échoue et provoque une erreur.
+	\end{itemize}
+	Pour corriger ce problème, il faut faire en sorte de ne pas accepter de {\tt demander\_connexion} pendant l'exécution de {\tt demander\_nouveau\_rep}. L'idée est donc de changer l'état du n\oe ud courant au début et de restaurer son état initial à la fin.
+	
+	Aucun des états existants {\tt 'b'}, {\tt 'l'} ou {\tt 'u'} ne convient, on obtient toujours des {\ti deadlocks} dûs au fait que ces états reportent trop de types de tâches à ce stade. En effet, un n\oe ud qui peut exécuter {\tt demander\_nouveau\_rep} est généralement un n\oe ud actif qui ne bloque rien. On va donc créer un nouvel état pour ce cas qu'on va nommer {\tt 'g'} (pour {\tt get\_rep}). Au début de la fonction, on mémorise l'état courant, puis on le passe à {\tt 'g'}. A la fin, si l'état n'est pas passé à {\tt 'a'} entre temps -- parce que le n\oe ud aurait re\c cu une diffusion d'un tel changement d'état -- on restaure l'état initial. Il suffit alors de faire en sorte qu'un n\oe ud à l'état {\tt 'g'} diffère {\tt demander\_connexion}.
+	
+	{\quote \textbf{Remarque:} \label{rqg}Par manque de temps, je ne suis pas allé plus loin dans la résolution de ce problème, mais je pense que cette solution est incomplète. En effet, comme je l'ai mentionné, il est possible que le n\oe ud à {\tt 'g'} passe à {\tt 'a'} avant la fin de la fonction. Dès qu'il est à {\tt 'a'}, il peut accepter une requête {\tt demander\_connexion} et le problème se pose à nouveau. Il faudrait donc mettre en place un mécanisme qui ne passe le n\oe ud à {\tt 'a'} qu'à la fin de la fonction, s'il a re\c cu un tel ordre entre temps, bien sûr. Sinon, on restaure l'état initial de début de fonction.{\vskip 0.2cm}}
+	
+	\item L'état {\tt 'u'} indique que le n\oe ud est en cours de mise à jour, c'est à dire que ses tables de routage ou de prédécesseurs sont susceptibles d'être modifiées. Les différentes expérimentations que j'ai menées ont montré que la gestion correcte de cet état par la fonction {\tt demander\_connexion} constitue le principal problème de synchronisation à résoudre. Il s'agit ici de protéger des sections critiques tout en s'assurant de ne pas provoquer de \emph{deadlocks}. Voyons donc cela dans le détail.
+\end{list}
+	
+\subsection{La gestion de l'état {\tt 'u'}} \label{ss:u} Cet état a pour but de verrouiller un n\oe ud en cours de mise à jour, de sorte qu'aucun autre événement ne puisse provoquer une mise à jour concurrente de ses tables pendant ce temps: le modifier ferait échouer la mise à jour et l'interroger risque de donner des réponses inconsistantes puisque ses informations ne seront fiables qu'une fois la mise à jour terminée.
+
+S'il y a suffisamment de place pour accueillir un nouveau n\oe ud dans le DST, seul le n\oe ud exécutant {\tt demander\_connexion} -- c'est à dire le contact (ou son leader) du nouvel arrivant -- va être modifié. Il suffit donc de le passer à {\tt 'u'} au début de la fonction et de le repasser à {\tt 'a'} à la fin\footnote{Il est forcément à {\tt 'a'} au début puisque s'il avait été dans un autre état, on n'aurait pas accepté de lancer cette fonction.}.
+	
+S'il faut faire de la place, {\tt demander\_connexion} et {\tt demander\_scission} se chargent de ce travail et c'est tout un ensemble de n\oe uds qui vont devoir être scindés. L'idée est alors de rendre cette phase de scissions atomique: sur le même modèle qu'une transaction dans une base de données, soit on exécute la totalité des scissions, soit on n'en fait aucune, mais il faut absolument éviter de n'en réaliser qu'une partie. Le DST serait alors incohérent et ne fonctionnerait plus.
+
+On passe donc tous ces n\oe uds à l'état {\tt 'u'} au moyen d'une diffusion synchrone: on attend que tout le monde ait retourné son accusé réception pour passer aux scissions. Cette diffusion peut échouer, comme on le verra plus loin (on peut rencontrer une autre phase de scissions, déclenchée par l'arrivée d'un autre n\oe ud, par exemple). Comment faire alors pour s'arrêter là et remettre cette phase à plus tard ?
+
+Si on se contente d'arrêter la diffusion en cours, des n\oe uds déjà passés à l'état {\tt 'u'} vont y rester et demeureront ainsi verrouillés. Puisqu'il est également possible que plusieurs arrivées de n\oe uds soient dans ce cas, on peut avoir beaucoup de n\oe uds à {\tt 'u'} pendant une durée non négligeable (le temps de recommencer les intégrations des nouveaux n\oe uds qui ont échoué), ce qui constitue un risque élevé de \emph{deadlocks}. Les expérimentations que j'ai réalisées sur ce problème aboutissent presque toujours à des \emph{deadlocks}, confirmant l'intuition.
+
+Une autre idée pourrait être de relancer une diffusion qui remettrait les n\oe uds qu'on vient de passer à {\tt 'u'} à leur état d'origine, c'est à dire {\tt 'a'}\footnote{J'appelle cette diffusion un \emph{rollback}, toujours par analogie avec ce qui se pratique sur les bases de données.}. Dans ce cas, il faut pouvoir distinguer deux sortes de n\oe uds à {\tt 'u'}: ceux qu'on veut effectivement remettre à {\tt 'a'} et ceux qu'il ne faut pas toucher parce qu'ils ont été mis à {\tt 'u'} suite à l'arrivée d'un autre n\oe ud\footnote{Il peut s'agir de ceux-là même qui ont fait échouer la diffusion qu'on est en train d'annuler.}. C'est la raison de la présence du champ \emph{id} dans la structure représentant l'état courant d'un n\oe ud, comme on l'a indiqué plus haut. Ainsi, un nouveau n\oe ud donné ne repassera à {\tt 'a'} que les n\oe uds qu'il a lui-même passé à {\tt 'u'} et ne touchera pas aux autres. De plus, il faut faire en sorte que cette diffusion supplémentaire n'augmente pas les risques de blocage.
+
+De prime abord, cette solution paraît gourmande en messages. De plus, si la diffusion des {\tt 'u'} a été rapidement arrêtée et qu'on diffuse un ``\emph{rollback}'' sur l'ensemble des n\oe uds potentiellement impactés -- le mécanisme à mettre en \oe uvre pour limiter cette diffusion aux seuls n\oe uds passés à {\tt 'u'} paraît complexe --, il semble qu'on gaspille beaucoup de messages. J'ai donc cherché un moyen de limiter ce nombre de messages.
+	
+Pour essai, j'ai donc mis en \oe uvre une autre fa\c con de faire qui consiste à procéder en deux temps: on commence par diffuser un état supplémentaire {\tt 'o'} vers tous les n\oe uds à scinder. Si cette diffusion se passe bien, on diffuse l'état {\tt 'u'}. Un n\oe ud passé à {\tt 'o'} suite à l'arrivée d'un nouveau n\oe ud {\tt x} n'acceptera de passer à {\tt 'u'} que si l'ordre de le faire est déclenché par l'arrivée du même n\oe ud {\tt x}.
+
+L'idée est de faire en sorte que l'état {\tt 'o'} bloque moins de choses que l'état {\tt 'u'} pour pouvoir se permettre, en cas d'échec de la diffusion des {\tt 'o'}, de ne pas revenir en arrière. On se contenterait alors d'arrêter la diffusion pour la reprendre un peu plus tard. (Ce temps de reprise étant aléatoire) Le nombre d'échecs est surveillé: au-delà d'un certain seuil, on se résout finalement à repasser les n\oe uds en question à {\tt 'a'} comme on l'aurait fait avec la solution précédente.
+
+Pour comparer les deux approches, il faut examiner la fréquence à laquelle ce seuil est atteint. S'il l'est trop souvent, alors cette solution est finalement plus coûteuse que la précédente. En effet, pla\c cons-nous dans le cas où deux tentatives ratées sont suivies d'une réussie. La première solution réalise alors 6 diffusions: {\tt 'u'}, {\tt 'a'} deux fois puis à nouveau {\tt 'u'} et {\tt 'a'} (pour se remettre comme on était avant le premier {\tt 'u'}). Avant le seuil, la deuxième approche n'en réalise que 5: {\tt 'o'} deux fois puis {\tt 'o'}, {\tt 'u'} et {\tt 'a'}. Mais si on est au-delà du seuil, on en fait 7: {\tt 'o'} {\tt 'a'} deux fois puis {\tt 'o'}, {\tt 'u'} et {\tt 'a'}.
+\renewcommand{\arraystretch}{1.5}
+Le résultat d'une exécution de chacune de ces deux solutions sur un DST de 4 000 n\oe uds est exposé dans le tableau \ref{tab1}.
+
+\begin{table}[htb]
+\centering
+\begin{tabular}{|c|c|c|}\hline
+               & Nombre total de messages & Durée d'exécution \\ \hline
+Avec {\tt 'o'} & 1 170 762                & 2435.821          \\ \hline
+Sans {\tt 'o'} & 1 076 592                & 2761.161          \\ \hline
+\end{tabular}
+\caption{Exécutions comparées des deux solutions}
+\label{tab1}
+\end{table}
+
+Comme on le voit, la solution avec {\tt 'o'} (le seuil a été fixé à 2 tentatives) ne donne pas le résultat escompté. La durée d'exécution est un peu meilleure mais le nombre de messages est finalement supérieur. J'ai donc opté pour la solution sans {\tt 'o'} parce que le critère de bande passante me paraît plus important.
+
+\begin{quote}
+J'ai également tenté une autre approche qui consiste à ne diffuser l'état {\tt 'u'} qu'aux leaders de chaque étage concerné, mais cela ne fonctionne pas correctement: le contact d'un nouvel arrivant peut obtenir l'autorisation de procéder aux scissions alors qu'il ne le faudrait pas. Ces cas de figure étant complexes à analyser -- les cas d'erreur ne commencent à apparaître qu'à partir de 2 500 - 3 000 n\oe uds -- j'ai manqué de temps pour le faire et je n'ai pas d'explication claire sur ce phénomène. Pour cette raison, j'ai choisi de changer l'état de tous les n\oe uds concernés et pas seulement celui des leaders.
+\end{quote}
+
+\subsection{Les règles de changement d'état} Il faut considérer deux problèmes: comment gérer la diffusion des changements d'état d'une part, et comment gérer le changement d'état d'un n\oe ud d'autre part. Intéressons-nous tout d'abord aux problèmes de diffusion.
+
+\begin{description}
+	\item [À l'état {\tt 'b'}:] un n\oe ud ne peut transmettre aucune diffusion. Sa table de routage n'est pas encore utilisable.
+	\item [À l'état {\tt 'u'}:] il faut laisser passer la diffusion des opérations de construction -- c'est pour réaliser cette construction qu'on a mis le n\oe ud à {\tt 'u'} -- c'est à dire {\tt ajouter\_étage} et {\tt scission}. Il faut également laisser passer les tâches de changement d'état déclenchées par les bons nouveaux n\oe uds: vers {\tt 'u'} pour permettre à un n\oe ud de recevoir plusieurs fois le même ordre de changement d'état (ce qui peut arriver lors d'une diffusion) et vers {\tt 'a'} lorsqu'on fait marche arrière lors d'un échec, ou à la fin des opérations d'intégration.
+\end{description}
+
+Si les diffusions refusées sont des changements d'état vers {\tt 'a'} ou {\tt 'u'}, les stocker -- pour différer leur exécution -- aboutit à des {\ti deadlocks} lorsque deux nouveaux n\oe uds utilisent des contacts proches. À la place, on peut répondre à l'appelant: pour un changement d'état vers {\tt 'u'}, on répond {\tt 'NOK'} pour indiquer l'échec de la diffusion -- nécessaire pour pouvoir la relancer plus tard -- et pour un changement vers {\tt 'a'}, on répond {\tt 'OK'}. En effet, on refuse un passage à {\tt 'a'} si l'ordre ne provient pas du bon n\oe ud et ce bon ordre finira par arriver de toutes fa\c cons. Il n'est donc pas utile d'informer l'appelant de cet échec.
+
+Les autres états laissent passer les diffusions normalement.
+
+Ensuite, il faut définir comment se passe le changement d'état d'un n\oe ud.
+\begin{description}
+	\item [Passage à {\tt 'u'}:] Un n\oe ud accepte de passer à {\tt 'u'} s'il est à {\tt 'a'} ou déjà à {\tt 'u'} suite à l'arrivée du même nouveau n\oe ud. Si le n\oe ud est à {\tt 'l'} -- en équilibrage de charge -- on ne change pas l'état, mais on répond tout de même '{\tt OK'} puisque dans ce cas, l'ordre de changement d'état est stocké et interviendra plus tard. Dans tous les autres cas, on répond {\tt 'NOK'} pour indiquer l'échec de l'opération.
+	
+	\item [Passage à {\tt 'a'}:] Un n\oe ud accepte de passer à {\tt 'a'} s'il est à {\tt 'u'} suite à l'arrivée du même nouveau n\oe ud ou s'il n'est pas à {\tt 'u'}. S'il est déjà à {\tt 'a'} suite à l'arrivée d'un autre nouveau n\oe ud, il peut passer à {\tt 'a'} avec le nouveau n\oe ud courant, \c ca ne pose pas de problème.
+\end{description}
+
+\subsection{Les règles d'autorisation des requêtes}
+
+\newcolumntype{M}[1]{>{\centering}m{#1}}
+
+L'ensemble des requêtes mises en \oe uvre pour la construction d'un DST figure dans le tableau \ref{tab2}. Les colonnes \emph{Modif. routage} et \emph{Modif. préd.} indiquent si les tables de routage ou des prédécesseurs du n\oe ud courant peuvent être modifiées par les fonctions.\footnote{Il n'y a pas d'indication pour la diffusion puisque cela dépend de la fonction diffusée.} Les colonnes \emph{...~diffère} indiquent si un n\oe ud à l'état indiqué diffère ou pas l'exécution de la fonction re\c cue. L'état {\tt 'o'} n'y figure pas puisque j'ai finalement choisi de ne pas l'utiliser. Pour ne pas alourdir le tableau, l'état {\tt 'g'} n'y figure pas non plus puisqu'on a dit qu'il ne différait que {\tt demander\_connexion}.
+
+	\begin{table}[htb]
+	\centering
+	\begin{tabular}{|l|c|c|M{1.2cm}|M{1.1cm}|M{1cm}|M{1cm}|M{1cm}|} \hline
+		                                 & SYNC & ASYNC & Modif. routage & Modif. préd. & {\tt 'u'} diffère & {\tt 'b'} diffère & {\tt 'l'} diffère\tabularnewline \hline
+		{\tt demander\_nouveau\_rep}     & X    &       & \red{NON}      & \red{NON}    &                   & X                 &         \tabularnewline \hline
+		{\tt demander\_connexion}        & X    &       & \green{OUI}    & \green{OUI}  & X                 & X                 & X       \tabularnewline \hline
+		{\tt nouveau\_frère\_re\c cu}    &      & X     & \green{OUI}    & \green{OUI}  &                   &                   &         \tabularnewline \hline
+		{\tt demander\_scission}         &      & X     & \green{OUI}    & \green{OUI}  &                   & X                 &         \tabularnewline \hline
+		{\tt ajouter\_étage}             &      & X     & \green{OUI}    & \green{OUI}  &                   &                   & ?       \tabularnewline \hline
+		{\tt connecter\_grp\_scindés}&     & X     & \green{OUI}    & \red{NON}    &                   & X                 & X       \tabularnewline \hline
+		{\tt scission}                   &      & X     & \green{OUI}    & \red{NON}    &                   & X                 & X       \tabularnewline \hline
+		{\tt demander\_nb\_prédéc.}& X    &       & \red{NON}      & \red{NON}    & ?                 & ?                 &         \tabularnewline \hline
+		{\tt ajouter\_prédécesseur}      &      & X     & \red{NON}      & \green{OUI}  &                   & X                 &         \tabularnewline \hline
+		{\tt effacer\_prédécesseur}      &      & X     & \red{NON}      & \green{OUI}  &                   &                   &         \tabularnewline \hline
+		{\tt diffusion}                  & X    & X     & -              & -            &                   & X                 &         \tabularnewline \hline
+	\end{tabular}
+	\caption{Les requêtes de construction}
+	\label{tab2}
+	\end{table}
+		
+\paragraph {L'état {\tt 'u'} diffère:}
+\begin{list}{$\bullet$}{}
+	\item {\tt demander\_connexion}: un n\oe ud en cours de mise à jour ne peut pas fournir sa table de routage à un nouvel arrivant dont il serait le contact, avant qu'elle ne soit stabilisée. Mais il faut tout de même laisser passer cette requête si elle est lancée par le même nouveau n\oe ud que celui qui a mis le n\oe ud courant à {\tt 'u'}. Ce cas peut se produire si une première tentative a échoué et qu'on n'a pas re-diffusé des {\tt 'a'} après l'échec.
+	
+	La question qui se pose alors est de savoir qui, du contact ou de son leader, va être chargé de mettre cette requête en attente.
+	Si on choisit la deuxième solution (c'est le leader qui s'en charge), il faut être sûr que ce leader choisi par un n\oe ud contact non leader à {\tt 'u'} soit le bon. Pour cette fonction {\tt demander\_connexion}, le leader est le plus ancien n\oe ud du niveau 0. Celui-ci ne risque pas d'être changé parce que d'une part, si une scission devait avoir lieu à cet étage, les n\oe uds aux places paires -- dont le leader, donc -- sont les n\oe uds qui restent et d'autre part, {\tt connecter\_les\_groupes\_scindés} ne touche pas au niveau 0. Il ne semble donc pas y avoir de souci.
+	
+	Mais à l'expérience, on se rend compte que cette solution amène à des \emph{deadlocks}. Voici un exemple issu des traces d'exécution du programme sous Simgrid:
+\begin{enumerate}
+	\item 958 diffuse une scission vers 514: il attend sa réponse ({\tt attente\_terminaison})
+	\item 514 exécute cette scission et envoie {\tt ajouter\_prédécesseur} à 563: il attend sa réponse ({\tt attente\_terminaison})
+    \item pendant cette attente, 514 reçoit {\tt demander\_connexion} de 314. Il transfert au leader 958 et attend sa réponse ({\tt send\_msg\_sync})
+    \item 958 reçoit {\tt demander\_connexion} de 514 mais il la met de côté puisqu'il est à {\tt 'u'}. 958 continue ensuite l'attente commencée en 1. ({\tt attente\_terminaison})
+    \item 563 exécute {\tt ajouter\_prédécesseur} re\c cu de 514 et lui répond.
+    \item 514 reçoit cette réponse de 563 mais il la met de côté parce qu'il s'agit d'une réponse asynchrone (un accusé réception) re\c cue pendant une attente synchrone commencée en 3 ({\tt send\_msg\_sync}).
+\end{enumerate}
+
+À ce stade, on est effectivement bloqué: 514 ne peut répondre à 958 que s'il a la réponse de 563 (point 2). Or il l'a mise de côté (point 6) parce qu'il attend une réponse de 958 (point 3).
+
+On voit sur cet exemple qu'au point 3, si 514 mettait la requête {\tt demander\_connexion} de côté au lieu de la transférer au leader 958, il resterait dans l'attente commencée au point 2. Il ne mettrait alors pas la réponse de 563 de côté au point 6 et il n'y aurait plus de blocage.
+
+C'est donc le \textbf{contact} qui est chargé de différer une requête {\tt demander\_connexion} quand il est à l'état {\tt 'u'}.
+	
+	\item {\tt demander\_nb\_prédécesseurs}: cette fonction pourrait retourner une mauvaise valeur si la table des prédécesseurs n'est pas à jour. Mais cela ne porte pas atteinte à l'intégrité du DST -- cette fonction intervient dans l'équilibrage de charge -- et il semble préférable de la laisser passer -- toujours dans l'idée d'avoir le moins de risques de blocages possibles à un moment donné.
+\end{list}
+
+Les autres fonctions doivent être exécutées tout de suite puisqu'il s'agit précisément des fonctions qui mettent le n\oe ud à jour.
+	
+\paragraph {L'état {\tt 'b'} diffère:}
+\begin{list}{$\bullet$}{}
+	\item {\tt demander\_nouveau\_rep}: la charge d'un n\oe ud en construction n'est pas fiable.
+	\item {\tt demander\_connexion}: on ne peut pas fournir une table de routage en construction à un nouvel arrivant. Cette fonction doit être différée, que le n\oe ud courant soit le leader ou pas puisque le choix du leader n'est pas fiable sur un n\oe ud en construction.
+	\item {\tt demander\_scission}: on ne peut pas exécuter cette fonction avant que la table de routage ne soit stable, sans quoi on ne sait pas combien d'étages doivent être scindés, par exemple.
+	\item {{\tt connecter\_les\_groupes\_scindés}}: il est évident qu'on ne peut exécuter cette fonction que si on est stable.
+	\item {\tt scission}: on ne lance pas de scissions en même temps qu'on construit.
+	\item {\tt demander\_nb\_prédécesseurs}: la table des prédécesseurs n'est pas forcément à jour à ce stade. Mais puisqu'on est en construction, si le nombre de prédécesseurs est incorrect, il ne peut qu'être inférieur à ce qu'il devrait être. Comme déjà mentionné, cela aurait pour conséquence de favoriser le choix de ce nouvel arrivant comme nouveau représentant, ce qui ne paraît pas aberrant puisqu'un nouvel arrivant est à priori encore peu chargé. J'ai donc choisi de ne pas bloquer cette requête dans ce cas.
+	\item {\tt ajout\_prédécesseur}: il faut attendre la fin de la construction pour ne pas la perturber en y ajoutant un prédécesseur.
+	\item {\tt diffusion}: comme déjà mentionné, une diffusion ne serait pas transmise correctement avec une table de routage en construction.
+\end{list}
+
+Là encore, les autres fonctions ne doivent pas être bloquées puisque ce sont elles qui permettent de construire un n\oe ud.
+
+\paragraph {L'état {\tt 'l'} diffère:}
+\begin{list}{$\bullet$}{}
+	\item {\tt demander\_connexion}: Tant que l'équilibrage de charge n'est pas terminé, la table de routage n'est pas en état d'être fournie à un nouvel arrivant.
+	
+	\item {\tt ajouter\_étage}: Si on ajoute un étage à la table qui est en train d'être parcourue, on risque de perturber les opérations d'équilibrage de charge et il paraît nécessaire de différer cette requête. Toutefois, on se rend compte qu'il est possible de la laisser passer en prenant quelques précautions, ce qui permettrait d'éviter d'ajouter de nouveaux risques de \emph{deadlocks}, 
+	
+	Lorsqu'un étage est ajouté, le n\oe ud courant est inscrit dans les tables de routage et de prédécesseurs. Pendant l'équilibrage de charge, on envoie {\tt demander\_nouveau\_rep} à chacun des n\oe uds de la table de routage. Du coup, en arrivant sur cet étage supplémentaire, le n\oe ud courant risque de s'envoyer un message à lui-même, perturbant du même coup la réception de son accusé réception. Il faut donc prévoir ce cas pour ne pas envoyer de message et conserver le n\oe ud courant sans le remplacer.
+	
+	En procédant de la sorte, il n'est plus nécessaire de différer {\tt ajouter\_étage} à ce stade.
+
+	\item {\tt connecter\_les\_groupes\_scindés}: C'est lors de l'équilibrage de charge que le n\oe ud courant est inscrit à chaque étage comme représentant du groupe auquel il appartient. Si ce n'est pas encore fait, {\tt connecter\_les\_groupes\_scindés} va échouer.
+
+	\item {\tt scission}: Il ne faut pas modifier la table de routage qui est en train d'être parcourue en totalité par l'équilibrage de charge.	
+	
+\end{list}
+
+\section {Solutions proposées}
+
+Nous venons de voir les problèmes posés et les moyens qu'il est possible d'utiliser pour les solutionner. Dans la suite, nous allons montrer comment mettre en \oe uvre concrètement ces concepts, afin d'arriver à des solutions pouvant être testées sur Simgrid.
+
+\subsection {Requêtes croisées et en cascade}
+	
+Les requêtes croisées se produisent lorsque {\tt attente\_terminaison} est lancée par une requête re\c cue dans {\tt send\_msg\_sync} et réciproquement.\\Les requêtes en cascade se produisent lorsque {\tt send\_msg\_sync} est appelée depuis {\tt send\_msg\_sync} (de même pour {\tt attente\_terminaison}).
+
+Aux données de chaque sommet, on ajoute deux structures: une pile pour stocker les requêtes synchrones et un tableau pour les requêtes asynchrones. Les requêtes y sont ajoutées lors de leur envoi. Lorsqu'une réponse est re\c cue, on y cherche la requête correspondante: s'il s'agit de la réponse attendue par la requête courante, celle-ci est simplement supprimée de la structure. S'il s'agit d'une autre réponse attendue, on l'inscrit dans la structure aux côtés de sa requête et on  continue d'attendre la réponse à la requête courante. Dès qu'elle est re\c cue, il suffira d'examiner l'enregistrement suivant de la structure pour savoir si les réponses attendues ont été re\c cues ou pas et ainsi décider de la suite à donner. (voir algorithmes en \ref{s:algo} pour plus de détails)
+		
+Il faut noter ici que l'ordre des enregistrements dans ces structures est important: les requêtes y sont enregistrées dans l'ordre de leur appel et le sommet de la pile (ou le dernier enregistrement du tableau) contient donc la requête courante.
+
+\subsection{Requêtes non autorisées}
+
+J'ai expérimenté deux solutions pour différer l'exécution d'une requête: renvoyer un message à l'émetteur pour lui demander de réitérer sa demande un peu plus tard, ou stocker ces requêtes chez le destinataire en vue de les exécuter au moment opportun.
+		
+Avec la première solution, deux problèmes apparaissent. On rencontre des cas de boucles causées par des n\oe uds qui se répondent tous entre eux qu'ils sont occupés. Ce problème se produit même si le temps d'attente avant de réitérer la requête est aléatoire. Le deuxième problème est que le n\oe ud émetteur d'une requête ne peut tenir compte d'un message d'occupation que si la requête est synchrone. Si elle était asynchrone, il n'attendrait pas de réponse et un message d'occupation serait alors ignoré.
+
+Avec la deuxième solution, on peut aussi obtenir quelques {\ti deadlocks} lors des diffusions de certains changements d'état.
+
+J'ai donc choisi d'utiliser la deuxième solution -- le stockage des requêtes -- la majeure partie du temps et de réserver la première solution aux seules diffusions de changements d'état qui peuvent échouer. Lorsqu'il faut faire de la place pour un nouvel arrivant, voici comment cette première solution est mise en \oe uvre:
+
+\begin{algorithm}[h]
+\caption{: Faire de la place pour un nouveau n\oe ud (vue globale)}
+\begin{algorithmic}[1]
+\Statex
+\State un nouveau n\oe ud $N$ veut rejoindre le DST via son contact $C$
+\Statex
+\State $u\_rep \gets \mathtt{OK}$ \Comment $u\_rep$ est la réponse retournée par la diffusion de \texttt{'u'}
+\State $cpt \gets 0$ \Comment $cpt$ est le compteur de diffusions
+\Statex
+\Repeat
+	\State $N$ demande à $C$ de lui faire de la place
+	\State $C$ diffuse {\tt 'u'} à l'ensemble des n\oe uds à modifier
+	\If {$(u\_rep = \mathtt{NOK})$}
+		\If {$(cpt \ge \mathtt{SEUIL})$}
+			\Statex \Comment En dessous de \texttt{SEUIL} tentatives, on ne repasse pas à \texttt{'a'}
+			\State $C$ diffuse {\tt 'a'} vers les n\oe uds qu'il a passés à {\tt 'u'} sur ordre de $N$ \label{a3:l9}
+		\EndIf
+		\State $C$ informe $N$ de l'échec de la diffusion
+		\State $cpt++$
+		\State $N$ attend un certain temps aléatoire borné
+	\Else
+		\State {\tt break}
+	\EndIf
+\Until{$(u\_rep = \mathtt{NOK}\ \ \&\&\ \ cpt < \mathtt{MAX})$}
+\Statex
+\If {$(u\_rep \neq \mathtt{NOK})$}
+	\State suite des opérations \dots
+\Else
+	\State $N$ renonce à joindre le DST
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+La diffusion de {\tt 'a'} (ligne \ref{a3:l9}) se fait avec le mécanisme des accusés réception pour être certain que chaque n\oe ud a bien re\c cu l'ordre de repasser à {\tt 'a'}, mais toujours dans l'idée de diminuer le risque de blocage,  on ne se soucie pas de savoir si l'ordre a pu ou pas être exécuté. En fait, il n'y a qu'un cas où ce passage à {\tt 'a'} pourrait être refusé: si le destinataire a été mis à {\tt 'u'} suite à l'arrivée d'un autre n\oe ud que $N$. Faire remonter cette information à $N$ n'a pas d'intérêt ici puisqu'il va de toutes fa\c cons refaire une tentative de diffusion de {\tt 'u'} un peu plus tard.
+
+Dans cet algorithme, il n'y a plus de risque de {\tt deadlock} puisque le seul n\oe ud qui attend est le nouvel arrivant $N$ qui, n'étant pas encore intégré au DST, ne participe pas encore aux échanges. Il ne peut donc bloquer personne. À titre de précaution, j'ai tout de même choisi de surveiller le nombre de tentatives de rejoindre le DST: au-delà de {\tt MAX} tentatives, on abandonne. Avec 4 000 n\oe uds, des bornes $a$ et $b$ fixées à 2 et 4, et {\tt MAX} à 10, je n'ai pas rencontré de cas d'abandon.
+
+Le problème qui se pose maintenant est de choisir le moment d'exécution des requêtes stockées, dès lors que le n\oe ud qui les a stockées devient actif. Il y en a trois:
+\begin{itemize}
+	\item dès qu'un nouveau n\oe ud a effectivement intégré le DST, c'est à dire au retour de la fonction {\tt joindre}. En effet, les requêtes qui pourraient lui être adressées doivent attendre -- état {\tt 'b'} -- que toutes les opérations d'arrivée soient terminées -- état {\tt 'a'}~-- pour s'exécuter.
+			
+	\item dans {\tt send\_msg\_sync}, dès que la réponse attendue à la requête courante est re\c cue.
+			
+	\item enfin, pour un n\oe ud quelconque actif du DST, on peut exécuter ces requêtes après chaque exécution de tâche (avant de se remettre en écoute)
+\end{itemize}{\vskip 0.2cm}
+
+De plus, il ne faut pas oublier le fait que l'exécution d'une de ces tâches stockées peut provoquer un nouveau stockage. Une fois les tâches stockées exécutées, il faut donc s'assurer que le stockage est bien vide avant de poursuivre.
+
+\section{Algorithmes des fonctions de synchronisation}
+\label{s:algo}
+Toute la problématique de synchronisation ayant été posée, nous présentons ici en détails les algorithmes des deux fonctions {\tt send\_msg\_sync} et {\tt attente\_terminaison} mentionnées en début de chapitre. (voir page \pageref{rq:sync})
+
+Pour rappel, {\tt send\_msg\_sync} est utilisée pour envoyer une requête synchrone et attendre sa réponse. Et {\tt attente\_terminaison} est utilisée chaque fois qu'on a besoin de s'assurer qu'un ensemble de requêtes asynchrones a bien été exécuté par ses destinataires. Ces deux fonctions impliquent donc des attentes qui doivent être con\c cues de telle sorte qu'elles ne présentent pas de risque de blocage.
+
+\subsection{Fonction {\tt send\_msg\_sync}}
+\label{ss:sync}
+Les arguments de cette fonction sont {\tt type} (le type de requête à envoyer), {\tt dest} (le destinataire de l'envoi) et {\tt args} (les arguments de la requête).\\
+{\tt réponse} contient la réponse qui sera finalement retournée par {\tt send\_msg\_sync}.
+
+%\algblock[Name]{Def}{End}
+\newcounter{partie}\stepcounter{partie}
+\begin{algorithm}[h]
+\caption{: Fonction {\tt send\_msg\_sync}}\label{a3}
+\begin{algorithmic}[1]
+\Statex
+\Def $\mathtt{\ send\_msg\_sync}(type,\ dest,\ args)$
+\State $\mathtt{cr\e er\ } requ\eee te$
+\State $\mathtt{envoi\_async}(requ\eee te,\ dest)$
+\State {\tt empiler} \emph{infos requêtes} {\tt sur} \emph{pile\_infos\_requêtes} \label{a3:l4}
+%\algstore{bkbreak}
+%\end{algorithmic}
+%\end{algorithm}
+
+%\begin{listing}{1}
+%def send_msg_sync(type, dest, args)
+%  créer requête
+%  envoi_async(requête, dest)
+%  empiler infos requêtes sur pile_infos_requêtes
+%\end{listing}
+
+%\addtocounter{algorithm}{-1}
+%\stepcounter{partie}
+%\begin{algorithm}[h]
+%\caption{: partie \thepartie}
+%\begin{algorithmic}[1]
+%\algrestore{bkbreak}
+\Statex
+\State  $timeout \gets \mathtt{get\_clock}()$
+\While {$(\mathtt{get\_clock}() - timeout \leq \mathtt{MAX}$\ {\tt ||}\label{a3:l6}
+\Statex \hspace{6.5em}$type\ \neq \mathtt{demander\_nouveau\_rep})$}
+\State \emph{tâche\_reçue} $\gets$ {\tt reçoit\_sync}$()$\label{a3:l7}
+\State \emph{réponse} $\gets$ \emph{tâche\_reçue.données}\label{a3:l8}
+\algstore{bkbreak}
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listingcont}
+%  timeout = get_clock()
+%  tant que (get_clock() - timeout < MAX ||
+%  |         type != demander_nouveau_rep):
+%  | tâche_reçue = reçoit_sync()
+%  | réponse = tâche_reçue.données
+%\end{listingcont}
+
+Comme déjà indiqué, les caractéristiques de chaque requête sont empilées dès leur envoi. On peut remarquer que la requête courante se trouve bien au sommet de la pile. (algorithme \ref{a3} ligne \ref{a3:l4})
+
+\label{rqeq}Lors de mes expérimentations, j'ai remarqué que l'équilibrage de charge pouvait poser problème. En effet, il parcourt la totalité d'une table de routage en interrogeant chacun de ses n\oe uds. Ces échanges synchrones interférant avec d'éventuelles arrivées de nouveaux n\oe uds, le passage à l'état {\tt 'a'} du n\oe ud en cours d'équilibrage peut être considérablement retardé, ce qui peut amener à des blocages.\\
+L'équilibrage de charge n'étant pas une fonction indispensable au fonctionnement du DST, une solution simple à ce problème est de limiter le temps d'attente d'une requête {\tt demander\_nouveau\_rep}. Si la réponse n'est pas re\c cue au bout d'un certain temps {\tt MAX}\footnote{{\tt get\_clock()} est une fonction qui retourne l'heure courante.}, on garde le représentant actuel et on passe au suivant, d'où la condition de la boucle de réception (ligne \ref{a3:l6}).\\
+L'attente d'une réponse se fait de fa\c con synchrone (ligne \ref{a3:l7}). Il n'y aura pas de blocage puisque toutes les tâches re\c cues sont traitées.
+
+\addtocounter{algorithm}{-1}
+\stepcounter{partie}
+\begin{algorithm}[h]
+\caption{: partie \thepartie}
+\begin{algorithmic}[1]
+\algrestore{bkbreak}
+\Statex
+\If {$(${\ti tâche\_reçue} est une requête$)$}
+\State {\tt exécute} {\ti tâche\_reçue}\label{a3:l10}
+  \If {$(${\tt sommet}{\ti (pile\_infos\_requêtes)} contient la réponse)}\label{a3:l11}
+  	\Statex\Comment réponse reçue entre temps ?
+    \State {\ti réponse} $\gets$ {\tt sommet}{\ti (pile\_infos\_requêtes).réponse}
+    \State {\tt dépile} {\ti pile\_infos\_requêtes}\label{a3:l13}
+    \If {{\ti (moi.actif = }{\tt 'a' \&\&} {\ti pile\_tâches} pas vide)}\label{a3:l14}
+      \ForAll {{\ti tâche} $\in$ {\ti pile\_tâches}}
+        \State {\tt exécute} \emph{tâche}
+        \State {\tt dépile} {\ti pile\_tâches}
+      \EndFor
+    \EndIf\label{a3:l19}
+    \State {\tt break}
+  \EndIf
+\algstore{bkbreak}
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listingcont}
+%  | si (tâche_reçue est une requête):
+%  | | exécute tâche_reçue
+%  | | // réponse reçue entre temps ?
+%  | | si (sommet(pile_infos_requêtes) contient la réponse):
+%  | | | réponse = sommet(pile_infos_requêtes).réponse
+%  | | | dépile pile_infos_requêtes
+%  | | | si (moi.actif == 'a' && pile_tâches pas vide):
+%  | | | | pour chaque tâche dans pile_tâches:
+%  | | | |   exécute(tâche)
+%  | | | |   dépile tâche de pile_tâches
+%  | | | | fpour
+%  | | | fsi
+%  | | | break
+%  | | fsi
+%\end{listingcont}
+
+La tâche re\c cue est une requête qu'il faut exécuter.\footnote{C'est la fonction chargée d'exécuter la requête qui vérifie si la requête est autorisée ou pas et qui agit en conséquence.} (ligne \ref{a3:l10}) Lorsqu'elle est terminée, il faut regarder si la réponse attendue est arrivée entre temps (lignes \ref{a3:l11} -- \ref{a3:l13}). En effet, si la tâche qui vient d'être exécutée a appelé {\tt send\_msg\_sync} ou la fonction d'attente décrite plus loin, elle peut très bien avoir re\c cu la réponse attendue ici et l'aurait donc stockée dans {\tt pile\_infos\_requêtes}.\\
+La réponse attendue ayant été re\c cue, on peut exécuter les tâches éventuellement stockées si le n\oe ud courant est actif (lignes \ref{a3:l14} -- \ref{a3:l19}).
+
+\addtocounter{algorithm}{-1}
+\stepcounter{partie}
+\begin{algorithm}[h]
+\caption{: partie \thepartie}
+\begin{algorithmic}[1]
+\algrestore{bkbreak}
+\Statex
+    \Else \Comment \emph{tâche\_reçue} est une réponse
+      \State $index \gets$ position \emph{requête} dans \emph{pile\_infos\_requêtes}\label{a3:l23}
+      \Statex \Comment \emph{index} = -1 si requête pas trouvée
+\algstore{bkbreak}
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listingcont}  
+%  | sinon:
+%  | | // tâche_reçue est une réponse
+%  | | index = position requête dans pile_infos_requêtes
+%  | | // index = -1 si requête pas trouvée
+%\end{listingcont}
+
+La tâche re\c cue est une réponse. On commence par vérifier si elle répond à une des requêtes synchrones stockées (ligne \ref{a3:l23}).\\
+Comme indiqué plus haut, on cherche dans la pile une requête adressée à l'émetteur de la réponse re\c cue et ayant le même type qu'elle. Parmi l'ensemble des requêtes stockées satisfaisant ces critères, il faut en choisir une qui n'a pas encore re\c cu de réponse. {\tt index} indique la position de cette requête dans la pile.
+
+\addtocounter{algorithm}{-1}
+\stepcounter{partie}
+\begin{algorithm}[H]
+\caption{: partie \thepartie}
+\begin{algorithmic}[1]
+\algrestore{bkbreak}
+\Statex
+      \If {$(index = \mathtt{taille}$\emph{(pile\_infos\_requêtes))}}\label{a3:l24}
+        \Statex \Comment c'est la réponse attendue
+        \State {\tt dépile} \emph{pile\_infos\_requêtes}
+		\Statex
+        \If {$(moi.actif\ =\ ${\tt 'a'} $\&\&$ \emph{pile\_tâches} pas vide$)$}\label{a3:l26}
+          \ForAll {\emph{tâche} $\in$ \emph{pile\_tâches}}
+            \State {\tt exécute} \emph{tâche}
+            \State {\tt dépile} \emph{pile\_tâches}
+          \EndFor
+        \EndIf\label{a3:l31}
+        \State {\tt break}
+\algstore{bkbreak}
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listingcont}
+%  | | si (index == taille(pile_infos_requêtes)):
+%  | | | // c'est la réponse attendue
+%  | | | dépile pile_infos_requêtes      
+%  | | |
+%  | | | si (moi.actif == 'a' && pile_tâches pas vide):
+%  | | | | pour chaque tâche dans pile_tâches:
+%  | | | |   exécute(tâche)
+%  | | | |   dépile tâche de pile_tâches
+%  | | | | fpour
+%  | | | fsi
+%  | | | break
+%\end{listingcont}
+
+Si {\tt index} désigne le sommet de la pile (ligne \ref{a3:l24}), alors cette réponse est la réponse à la requête courante. Puisqu'elle a déjà été récupérée (ligne \ref{a3:l8}), il suffit de dépiler {\tt pile\_infos\_requêtes}.\\
+Si le n\oe ud courant est actif, on peut exécuter l'ensemble des tâches stockées, le cas échéant (lignes \ref{a3:l26} -- \ref{a3:l31}).\\[.5cm]
+
+\addtocounter{algorithm}{-1}
+\stepcounter{partie}
+\begin{algorithm}[H]
+\caption{: partie \thepartie}
+\begin{algorithmic}[1]
+\algrestore{bkbreak}
+\Statex
+      \Else
+        \Statex \Comment \emph{tâche\_reçue} n'est pas la réponse attendue
+        \If {$(index > -1)$}\label{a3:l34}
+          \State stocke cette réponse à la position \emph{index} dans \emph{pile\_infos\_requêtes}\label{a3:l35}
+        \Else
+          \Statex \Comment s'agit-il d'un accusé réception de requêtes asynchrones ?
+          \State $idx \gets$ position \emph{requête} dans \emph{tableau\_infos\_requêtes}\label{a3:l37}
+          \If {$(idx \neq -1)$}\label{a3:l38}
+            \State marque \emph{tableau\_infos\_requêtes}{\tt [}\emph{idx}{\tt ]} comme reçue
+            \State enregistre \emph{réponse} dans \emph{tableau\_infos\_requêtes}{\tt [}\emph{idx}{\tt ]}
+          \EndIf
+        \EndIf
+      \EndIf
+    \EndIf
+  \EndWhile
+\algstore{bkbreak}
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listingcont}
+%  | | sinon:
+%  | | | // tâche_reçue n'est pas la réponse attendue
+%  | | | si (index > -1):
+%  | | | | stocke cette réponse à la position index dans pile_infos_requêtes
+%  | | | sinon
+%  | | | | // s'agit-il d'un accusé réception de requêtes asynchrones ?
+%  | | | | idx = position requête dans tableau_infos_requêtes
+%  | | | | si (idx != -1):
+%  | | | |   marquer tableau_infos_requêtes[idx] comme reçue
+%  | | | |   enregistrer réponse dans tableau_infos_requêtes[idx]
+%  | | | | fsi
+%  | | | fsi
+%  | | fsi
+%  | fsi
+%  ftq
+%\end{listingcont}
+
+Si {\tt index} désigne une autre position que le sommet, on stocke la réponse à cette position, à condition qu'elle soit valide (lignes \ref{a3:l34} -- \ref{a3:l35}). Sinon, peut-être que cette réponse est un accusé réception de requêtes asynchrones (lignes \ref{a3:l37} -- \ref{a3:l38}). Si c'est le cas, la requête correspondante est marquée comme ``re\c cue'', on y ajoute la réponse re\c cue et on se remet en écoute.
+
+Si la requête n'est trouvée dans aucune des deux structures, cela signifie que la réponse re\c cue n'était pas attendue et on peut simplement l'ignorer.
+
+\addtocounter{algorithm}{-1}
+\stepcounter{partie}
+\begin{algorithm}[H]
+\caption{: partie \thepartie}
+\begin{algorithmic}[1]
+\algrestore{bkbreak}
+\Statex
+  \If {$(\mathtt{get\_clock}() - timeout \ge \mathtt{MAX}\quad \&\&\quad type = \mathtt{demander\_nouveau\_rep})$}
+    \If {$(\mathtt{taille}(pile\_infos\_requ\eee tes) > 0)$}
+      \If {$(\mathtt{sommet}(pile\_infos\_requ\eee tes).type = \mathtt{demander\_nouveau\_rep})$}
+        \State {\tt dépile} \emph{pile\_infos\_requêtes}
+      \EndIf	
+    \EndIf
+  \EndIf
+  \State {\tt retourne} \emph{réponse}
+\Fin
+\end{algorithmic}
+\end{algorithm}
+\setcounter{partie}{0}
+
+%\begin{listingcont}
+%  si (get_clock() - timeout >= MAX && type == demander_nouveau_rep):
+%  | si (taille(pile_infos_requêtes) > 0):
+%  | | si (sommet(pile_infos_requêtes).type == demander_nouveau_rep):
+%  | |   dépiler pile_infos_requêtes
+%  | | fsi	
+%  | fsi
+%  fsi
+%  retourner réponse
+%fin
+%\end{listingcont}
+
+Si on est sorti de la boucle de réception pour cause de \emph{timeout}, il faut dépiler la requête dont la réponse ne sera donc jamais re\c cue.
+
+À la fin, la réponse est retournée.
+
+\subsection{Fonction {\tt attente\_terminaison}}
+\label{s:att}
+
+Comme expliqué précédemment, il est parfois nécessaire de s'assurer qu'un ensemble de tâches asynchrones est bien terminé avant de passer à la suite. Par exemple, lorsqu'on réalise les scissions d'un étage donné, il faut qu'elles soient toutes terminées avant de passer aux scissions de l'étage inférieur.
+
+Pour réaliser cela, on va mettre en \oe uvre une fonction d'attente dont voici l'idée: après avoir lancé toutes les tâches souhaitées de fa\c con asynchrone, on attend que tous les n\oe uds destinataires de ces messages signalent qu'ils ont terminé leur travail. Ce n'est que lorsque l'ensemble des réponses a été re\c cu qu'on peut quitter cette attente pour passer à la suite.\footnote{Les derniers essais de simulation de construction du DST que j'ai pu effectuer remettent partiellement en cause ce principe. Voir page \pageref{p:att} pour plus d'explications.}
+
+La problématique ici est semblable à celle de {\tt send\_msg\_sync}: l'attente ne doit pas être bloquante. Donc pendant cette attente:
+\begin{itemize}
+	\item parmi les requêtes re\c cues, certaines doivent être différées et d'autres exécutées de suite
+	\item il faut gérer les possibles appels en cascade de cette fonction d'attente
+	\item il faut pouvoir recevoir et traiter des réponses destinées à des requêtes synchrones
+\end{itemize}
+
+On met donc en \oe uvre des mécanismes semblables à ceux que nous venons de voir.
+
+\begin{center}
+$\star \star \star$
+\end{center}
+
+Lorsqu'il est nécessaire d'attendre qu'un ensemble de tâches asynchrones soit terminé avant de poursuivre, cette fonction d'attente est appelée. {\tt cpt} est le nombre d'accusés de réception attendus, {\tt dest\_tab} est un tableau contenant des structures \{\emph{id, type, réponse}\} -- les n\oe uds dont on attend des réponses, le type de réponse attendu et la réponse -- et {\tt taille\_tab} est la taille de ce tableau.
+
+La fonction retourne la valeur {\tt ret}: '{\tt NOK}' si au moins l'un des destinataires renvoie cela au lieu de son accusé de réception normal, ou '{\tt OK}' si tout s'est bien passé. Cette fonction d'attente étant utilisée par la fonction de diffusion, il s'agit de faire remonter le fait qu'une diffusion se passe mal pour agir en conséquence (\emph{cf.} explications sur l'état {\tt 'u'} en \ref{ss:u} page \pageref{ss:u}).
+
+Voici l'algorithme de cette fonction:
+
+\stepcounter{partie}
+\begin{algorithm}[H]
+\caption{: Fonction {\tt attente\_terminaison}}
+\begin{algorithmic}[1]
+\Statex
+\Def {\tt\ attente\_terminaison}$(cpt,\ dest\_tab,\ taille\_tab)$
+  \State $ret \gets \mathtt{OK}$
+  \Statex
+  \If {$(moi.dest\_tab$ n'{\tt existe} pas$)$}
+    \State {\tt crée} \emph{moi.dest\_tab}
+    \State y {\tt recopie} \emph{dest\_tab}		\Comment ne doit pas contenir \emph{moi}
+  \Else
+    \State y {\tt ajoute} \emph{dest\_tab}
+  \EndIf
+\algstore{bkbreak}
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listing}{1}
+%def attente_terminaison(cpt, dest_tab, taille_tab)
+%  ret = OK
+%  
+%  si (moi.dest_tab n'existe pas):
+%  | crée moi.dest_tab
+%  | y recopie dest_tab		//ne doit pas contenir moi
+%  sinon
+%  | y ajoute dest_tab
+%  fsi
+%\end{listing}
+
+Comme déjà mentionné, chaque sommet possède un tableau contenant l'ensemble des sommets dont on attend l'accusé réception. Pour gérer correctement les possibles appels en cascade de {\tt attente\_terminaison} (ligne \ref{a4:l31}), on commence par ajouter la liste des sommets fournie en argument ({\tt dest\_tab}) à ce tableau global ({\tt moi.dest\_tab}). On s'assure ainsi de ne manquer aucune réponse.
+
+\addtocounter{algorithm}{-1}
+\stepcounter{partie}
+\begin{algorithm}[H]
+\caption{: partie \thepartie}
+\begin{algorithmic}[1]
+\algrestore{bkbreak}
+\Statex
+  \While {$(dur\e e < attente\_max\quad \&\&\quad cpt > 0)$} \label{a4:l9}
+    \State \emph{tâche\_reçue} $\gets$ {\tt reçoit\_sync}$()$
+%\algstore{bkbreak}
+%\end{algorithmic}
+%\end{algorithm}
+
+%\begin{listingcont}
+%  tant que (durée < attente_max && cpt > 0):
+%  | tâche_reçue = reçoit_sync()
+%\end{listingcont}
+
+%\addtocounter{algorithm}{-1}
+%\stepcounter{partie}
+%\begin{algorithm}[H]
+%\caption{: partie \thepartie}
+%\begin{algorithmic}[1]
+%\algrestore{bkbreak}
+\Statex
+    \If {(\emph{tâche\_reçue} est une réponse)}\label{a4:l11}
+      \State $pos\_rep \gets \mathtt{index\_tab}$\emph{(tâche\_reçue.émetteur, tâche\_reçue.type, }\label{a4:l12}
+      \Statex \hspace{15.3em}$moi.dest\_tab)$
+      \If {$(pos\_rep \neq -1)$}\label{a4:l13}
+        \If {$(pos\_rep \leq moi.taille\_tab-1\quad \&\&$\label{a4:l14}
+          \Statex \hspace{7.5em}$pos\_rep \ge moi.taille\_tab - cpt)$}
+          \Statex
+          \Statex \Comment tâche\_reçue est une des réponses attendues par l'appel courant
+          \Statex
+          \If {$(ret \neq \mathtt{NOK})$}\label{a4:l15}
+            \State $ret \gets$ \emph{tâche\_reçue.réponse}
+          \EndIf \label{a4:l17}
+         
+          \State $cpt--$ \label{a4:l16}
+          \State ôte l'entrée \emph{pos\_rep} de \emph{moi.dest\_tab}
+          \State $moi.taille\_tab--$ \label{a4:l18}
+\algstore{bkbreak}
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listingcont}
+%  | si (tâche_reçue est une réponse):
+%  | | pos_rep = index_tab({tâche_reçue.émetteur,
+%  | |                      tâche_reçue.type}, moi.dest_tab)
+%  | | si (pos_rep != -1):
+%  | | | si (pos_rep <= moi.taille_tab-1 && pos_rep >= moi.taille_tab - cpt):
+%  | | | | // tâche_reçue est une des réponses attendues par l'appel courant
+%  | | | |
+%  | | | | si (ret != NOK):
+%  | | | |   ret = tâche_reçue.réponse
+%  | | | | fsi
+%  | | | |
+%  | | | | cpt--
+%  | | | | ôte l'entrée pos_rep de moi.dest_tab
+%  | | | | moi.taille_tab--
+%\end{listingcont}
+
+La boucle d'attente (synchrone) des réponses se déroule tant que toutes les réponses n'ont pas été re\c cues. (ligne \ref{a4:l9})
+
+On utilise {\tt attente\_max} pour arrêter le programme si on n'a pas re\c cu tous les accusés réception dans le temps imparti, ce qui permet de détecter d'éventuelles anomalies.\footnote{A ce stade, je ne me suis pas intéressé à la tolérance aux pannes, il s'agit plutôt de détecter des dysfonctionnements en marche normale.}
+
+Le message re\c cu est une \tb{réponse.} (ligne \ref{a4:l11})
+
+S'il s'agit d'une des réponses asynchrones attendues\footnote{accusé réception ou {\tt 'NOK'}, donc} (lignes \ref{a4:l12}--\ref{a4:l13}), on regarde s'il s'agit d'une de celles attendues par l'appel courant de cette fonction d'attente (ligne \ref{a4:l14}).
+
+Si c'est le cas, on commence par positionner la valeur de retour {\tt ret}\footnote{On rappelle que {\tt ret} doit valoir {\tt 'OK'}, à moins qu'un des destinataires réponde {\tt 'NOK'}.} (lignes \ref{a4:l15}--\ref{a4:l17}), puis on décrémente le compteur de réponses et on ôte l'entrée correspondante du tableau global (lignes \ref{a4:l16}--\ref{a4:l18}): l'un des destinataires a répondu.
+
+\addtocounter{algorithm}{-1}
+\stepcounter{partie}
+\begin{algorithm}[H]
+\caption{: partie \thepartie}
+\begin{algorithmic}[1]
+\algrestore{bkbreak}
+\Statex
+        \Else \Comment \emph{tâche reçue} est une réponse attendue par un appel parent \label{a4:l21}
+          \Statex
+          \State marque \emph{moi.dest\_tab}{\tt [}\emph{pos\_rep}{\tt ]} comme reçue
+          \State \emph{moi.dest\_tab}{\tt [}\emph{pos\_rep}{\tt ]}\emph{.réponse} $\gets$ \emph{tâche\_reçue.réponse}	 
+        \EndIf \label{a4:l24}
+\algstore{bkbreak}
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listingcont}
+%  | | | sinon
+%  | | | | // tâche reçue est une réponse attendue par un appel parent
+%  | | | | marque moi.dest_tab[pos_rep] comme reçue
+%  | | | | moi.dest_tab[pos_rep].réponse = tâche_reçue.réponse	 
+%  | | | fsi
+%\end{listingcont}
+
+Si ce n'est pas une des réponses à l'appel courant, c'est une de celles attendues par un appel parent. Il faut alors marquer cette requête comme étant re\c cue et y enregistrer la réponse. (toujours pour pouvoir gérer les {\tt 'OK'} et {\tt 'NOK'})\\[.5cm]
+
+\addtocounter{algorithm}{-1}
+\stepcounter{partie}
+\begin{algorithm}[H]
+\caption{: partie \thepartie}
+\begin{algorithmic}[1]
+\algrestore{bkbreak}
+\Statex
+      \Else \Comment \emph{tâche\_reçue} est-elle attendue par {\tt send\_msg\_sync} ?
+        \Statex
+        \State $pos\_pile \gets$ position de \emph{\{tâche\_reçue.émetteur, tâche\_reçue.type\}} dans
+        \Statex \hspace{11.4em}\emph{pile\_infos\_requêtes} \label{a4:l26}
+        \If {$(pos\_pile > -1)$} \label{a4:l27}
+          \State {\tt enregistre} \emph{tâche\_reçue.données}
+          \Statex \hspace{7.5em}dans \emph{pile\_infos\_requêtes} à la position \emph{pos\_pile} \label{a4:l28}
+        \EndIf
+      \EndIf
+\algstore{bkbreak}
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listingcont}
+%  | | sinon
+%  | | | // tâche_reçue est-elle attendue par send_msg_sync ?
+%  | | | pos_pile = position de {tâche_reçue.émetteur, tâche_reçue.type}
+%  | | |            dans pile_infos_requêtes
+%  | | | si (pos_pile > -1):
+%  | | | | enregistre tâche_reçue.données dans pile_infos_requêtes à la
+%  | | | |            position pos_pile
+%  | | | fsi
+%  | | fsi
+%\end{listingcont}
+	
+	Si ce n'est pas une réponse asynchrone, alors c'est peut-être une des réponses attendues par {\tt send\_msg\_sync} (ligne \ref{a4:l26}). Si oui, (ligne \ref{a4:l27}) il faut alors enregistrer cette réponse au bon endroit de la pile des requêtes synchrones (ligne \ref{a4:l28}).
+
+	Si on n'est dans aucun de ces cas, on peut ignorer cette réponse qui n'était donc pas attendue. (voir explications à la section \ref{expl1}, page \pageref{expl1})
+
+%\addtocounter{algorithm}{-1}
+%\stepcounter{partie}
+%\begin{algorithm}[H]
+%\caption{: partie \thepartie}
+%\begin{algorithmic}[1]
+%\algrestore{bkbreak}	
+%    \Else \label{a4:l31}
+%       \Comment \emph{tâche\_reçue} est une requête
+%       \State {\tt exécute} \emph{tâche\_reçue}
+%\algstore{bkbreak}
+%\end{algorithmic}
+%\end{algorithm}
+
+%\begin{listingcont}
+%  | sinon (l40)
+%  | |  // tâche_reçue est une requête
+%  | |  | exécute tâche_reçue
+%\end{listingcont}
+
+\addtocounter{algorithm}{-1}
+\stepcounter{partie}
+\begin{algorithm}[H]
+\caption{: partie \thepartie}
+\begin{algorithmic}[1]
+\algrestore{bkbreak}
+\Statex
+    \Else \label{a4:l31}
+      \Comment \emph{tâche\_reçue} est une requête
+      \State {\tt exécute} \emph{tâche\_reçue} \label{a4:l32}
+      \Statex \Comment réponses reçues entre temps ?
+      \For {$idx \gets moi.taille\_tab - 1, moi.taille\_tab - cpt$}
+        \If {$(moi.dest\_tab[idx]$ marqué comme reçu$)$}
+          \Statex
+          \Statex \Comment regarde si l'une des réponses est {\tt 'NOK'}
+          \If {$(moi.dest\_tab[idx].r\e ponse \mathrm{\ \mathtt{existe}\ } \&\&\ ret \neq ${\tt\ 'NOK'}$)$} \label{a4:l35}
+            \State $ret \gets moi.dest\_tab[idx].r\e ponse$
+          \EndIf \label{a4:l37}
+          \Statex
+          \State $cpt--$ \label{a4:l38}
+          \State ôte l'entrée \emph{idx} de \emph{moi.dest\_tab}
+          \State $moi.taille\_tab--$ \label{a4:l40}
+        \EndIf
+      \EndFor 
+    \EndIf
+  \EndWhile
+  \Statex
+  \If {$(cpt \neq 0)$} \label{a4:l45}
+    \State {\tt affiche} "Erreur: attente trop longue"
+    \State {\tt arrête} le programme
+  \EndIf
+\Fin
+\end{algorithmic}
+\end{algorithm}
+\setcounter{partie}{0}
+
+%\begin{listingcont}
+%  | |  | // réponses reçues entre temps ?
+%  | |  | pour idx dans moi.taille_tab - 1 ... moi.taille_tab - cpt:
+%  | |  | | si (moi.dest_tab[idx] marqué comme reçu):
+%  | |  | | |  
+%  | |  | | | // regarde si l'une des réponses est 'NOK'
+%  | |  | | | si (moi.dest_tab[idx].réponse existe &&  
+%  | |  | | |     ret != 'NOK'):
+%  | |  | | |   ret = moi.dest_tab[idx].réponse
+%  | |  | | | fsi
+%  | |  | | |
+%  | |  | | | cpt--
+%  | |  | | | ôte l'entrée idx de moi.dest_tab
+%  | |  | | | moi.taille_tab--
+%  | |  | | fsi
+%  | |  | fpour 
+%  | |  fsi
+%  | fsi
+%  ftq
+%  
+%  si (cpt != 0):
+%    "Erreur: attente trop longue"    
+%fin
+%\end{listingcont}
+Le message re\c cu est une \tb{requête} qui est immédiatement exécutée (ligne \ref{a4:l32}).\footnote{On rappelle que c'est la fonction d'exécution des tâches qui se charge de gérer les éventuelles requêtes non autorisées.}
+
+Ceci fait, on regarde si des réponses sont arrivées entre temps (lors d'une autre exécution de {\tt attente\_terminaison} --- lignes \ref{a4:l21}--\ref{a4:l24}) pour éventuellement les récupèrer (lignes~\ref{a4:l35}--\ref{a4:l37}) et mettre le tableau {\tt dest\_tab} et le compteur de réponses à jour en conséquence (lignes \ref{a4:l38}--\ref{a4:l40}).
+
+En sortie de la boucle d'attente (ligne \ref{a4:l45}), si le compteur de réponses attendues par l'appel courant n'est pas nul, cela signifie que le délai d'attente {\tt attente\_max} (ligne \ref{a4:l9}) a été dépassé, auquel cas le programme est arrêté: c'est probablement le signe d'un \emph{deadlock}.
+\clearpage
+
+\subsubsection{Exemple d'utilisation de {\tt attente\_terminaison} dans la diffusion}
+\label{s:diff}
+Voici l'algorithme utilisé pour la diffusion:
+
+\begin{algorithm}[H]
+\caption{: Diffusion simple}
+\begin{algorithmic}[1]
+\Statex
+\Def {\tt\ diffuser}$(\e tage,\ req)$ \Comment diffuse la requête \emph{req} depuis l'étage \emph{étage}
+   \If {$(\e tage = 0)$}
+     \State traiter \emph{req} localement
+   \Else
+      \ForAll {$f \mathtt{\ dans\ } moi.fr\ee res[\e tage][:]$}
+         \If {$(f \neq moi)$}
+            \State {\tt send\_msg\_async}$(moi.nom,\ f,\ \mathtt{diffuser},\ (\e tage-1,\ req))$ \label{a5:l7}
+         \Else
+            \State {\tt diffuser}$(\e tage-1,\ req)$
+         \EndIf
+      \EndFor
+   \EndIf
+\Fin
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listing}{1}
+%def diffuser(étage, req)
+%   si (étage == 0):
+%      traiter req localement
+%   sinon
+%      pour tout f dans moi.frères[étage][:]:
+%         si f != moi:
+%            send_msg_async(moi.nom, f, diffuser, (étage-1, req))
+%         sinon
+%            diffuser(étage-1, req)
+%         fsi
+%      fpour
+%   fsi
+%fin
+%\end{listing}
+
+Si on ne prend pas de précaution dans le déroulement de cet algo, voici ce qu'il se passe pour un étage donné: un message de diffusion est envoyé à chaque frère, la diffusion locale a lieu et on rend la main. A ce stade, on n'a aucune garantie que les diffusions soient achevées, les envois étant asynchrones (ligne \ref{a5:l7}). Cela pose problème par exemple dans {\tt demander\_scission} (\ref{split_req}): on utilise cette fonction de diffusion pour tout d'abord ajouter un étage, puis pour scinder. Il va de soi que l'ajout d'étage doit être terminé avant que la diffusion de la scission ne puisse commencer.
+
+C'est donc ici que {\tt attente\_terminaison} entre en jeu: (voir algorithme page \pageref{a7})
+
+\begin{algorithm}[htb]
+\caption{: Diffusion synchronisée} \label{a7}
+\begin{algorithmic}[1]
+\Statex
+\Def {\tt \ diffuser}$(\e tage,\ req)$
+   \If {$(\e tage = 0)$}
+      \State {\tt traite} \emph{req} localement
+   \Else
+      \State $cpt \gets \mathtt{taille}(moi.fr\ee res[\e tage])$
+      \State $dest \gets []$
+      \State $taille \gets 0$
+      \State {\ti diffusion\_locale\ }$\gets 0$
+      
+      \ForAll {$f \mathtt{\ dans\ } moi.fr\ee res[\e tage]$}
+         \If {$(f \neq moi)$}
+            \State {\tt send\_msg\_async}$(moi.nom,\ f,\ \mathtt{diffuser},\ (\e tage-1,\ req))$
+            \State $dest.\mathtt{ajoute}({req.type,\ f.nom})$ \label{a6:l12}
+            \State $taille++$
+         \Else
+            \State $cpt --$ \label{a6:l15}
+            \State {\ti diffusion\_locale\ }$\gets 1$
+         \EndIf
+      \EndFor
+      \State $moi.\mathtt{attente\_terminaison}(cpt,\ dest,\ taille)$ \label{a6:l19}
+      \If {{\ti (diffusion\_locale = 1)}}
+        \State $moi.\mathtt{diffuser}(\e tage-1,\ req)$ \label{a6:l21}
+      \EndIf
+   \EndIf
+\Fin
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listing}{1}
+%def diffuser(étage, req)
+%   si (étage == 0):
+%      traiter req localement
+%   sinon
+%      cpt = taille(moi.frères[étage])
+%      dest = []
+%      taille = 0
+%      diffusion_locale = 0
+%      
+%      pour tout f dans moi.frères[étage]:
+%         si f != moi:
+%            send_msg_async(moi.nom, f, diffuser, (étage-1, req))
+%            dest.ajoute({req.type, f.nom})
+%            taille++
+%         sinon
+%            cpt --
+%            diffusion_locale = 1 
+%         fsi
+%      fpour
+%      moi.attente_terminaison(cpt, dest, taille)
+%      si (diffusion_locale == 1):
+%        moi.diffuser(étage-1, req)
+%      fsi
+%   fsi
+%fin
+%\end{listing}
+
+Après avoir envoyé la tâche de diffusion de fa\c con asynchrone, le type de la requête et son destinataire sont enregistrés dans le tableau {\tt dest} (ligne \ref{a6:l12}) transmis à {\tt attente\_terminaison} (ligne \ref{a6:l19}).
+
+À noter que la diffusion locale est réalisée en tout dernier (ligne \ref{a6:l21}), une fois les autres diffusions terminées. Si elle est réalisée avant, il y a un risque de descendre trop tôt à des étages inférieurs pas encore à jour et d'aboutir à des incohérences de construction. Il faut s'assurer de travailler étage par étage.
+
+Il faut aussi remarquer (ligne \ref{a6:l15}) qu'on décrémente le compteur de réponses, puisqu'on n'attend pas de réponse de la diffusion locale.
+
+\chapter{Retrait de sommets d'un DST}
+
+\section{Introduction}
+
+Pour cette partie, les algorithmes n'avaient pas encore été précisément décrits, seules des idées avaient été proposées ( \cite{dobrila07:mr, ddnp07:ir, ddnp08:np} ). Cette étude se poursuit donc par la conception de ces algorithmes et leur mise en \oe uvre dans \emph{Simgrid}. Voici une présentation globale de ce travail dont les détails figurent dans l'\tb{annexe \ref{a:dep}} page \pageref{a:dep}.
+
+\section{Conception des algorithmes}
+
+Tout comme l'arrivée d'un sommet dans le DST peut nécessiter des scissions de groupes pour que leur taille reste comprise entre les bornes $a$ et $b$, le départ d'un sommet peut entraîner des fusions pour la même raison, comme nous le voyons sur la figure \ref{f:Ex1b}. Celle-ci montre un exemple de ce qu'il se passe lors du retrait d'un sommet d'un DST: le départ du sommet {\tt 8} laisse un sommet \emph{orphelin}\footnote{J'appelle sommets \emph{orphelins} des sommets qui se retrouvent en trop petit nombre pour constituer un groupe, suite au départ d'un sommet.}: le {\tt 21}.
+
+\begin{description}
+	\item[Étage 0:] Le groupe {\tt 0B} ayant de la place pour accueillir {\tt 21}, il va pouvoir fusionner avec {\tt 0A} pour donner le groupe {\tt 0AB}.
+	
+	\item[Étage 1:] En conséquence, le groupe {\tt 1A} n'a plus qu'un seul membre et va devoir fusionner avec {\tt 1B} pour donner le groupe {\tt 1AB}.
+	
+	\item[Étage 2:] À son tour, le groupe {\tt 2B} n'a plus qu'un membre et doit fusionner avec {\tt 2A} pour obtenir le groupe {\tt 2AB}
+\end{description}
+Dans cet exemple, le DST ne perd pas de niveau.
+
+\begin{figure}[]
+\begin{center}
+\includegraphics[width=\textwidth]{Partie2/Exemple_fusion.pdf}
+\end{center}
+\caption{Exemple de fusion: le sommet 8 quitte le DST}
+\label{f:Ex1b}
+\end{figure}
+
+Un point important de cette partie est donc la gestion de ces sommets orphelins (c'est à dire en nombre inférieur à la borne $a$ du DST). Il y a deux fa\c cons de faire: soit ils peuvent être répartis dans un ou plusieurs groupes voisins -- on parle alors de \emph{fusion} -- soit il est possible que les groupes dont ils sont membres puissent eux-mêmes être complétés par des sommets pris aux voisins -- auquel cas on parle de \emph{transfert}. Tout ceci en respectant les bornes $a$ et $b$ du DST, bien sûr.
+
+Par manque de temps, le seul cas présenté dans cette étude est celui où la fusion dans un seul groupe accueillant est possible et les autres cas restent donc à étudier. (voir remarque à ce sujet page \pageref{rq1})
+
+Selon le même principe que pour les ajouts de sommets, l'algorithme de retrait se compose d'un ensemble de fonctions mises en \oe uvre comme indiqué dans l'algorithme général \ref{a8}.
+\begin{algorithm}[H]
+\caption{: Algorithme général du retrait d'un n\oe ud} \label{a8}
+\begin{algorithmic}[1]
+\Statex
+\State un n\oe ud souhaite se retirer : \hspace{3.8em}{\tt\ quitte}
+\State gère les demandes de fusions : \hspace{5em}{\tt demande\_fusion} 
+\State réalise les fusions de chaque étage : \hspace{3.8em}{\tt fusion*}
+\State ôte le membre en trop de l'étage supérieur : {\tt nettoie\_étage\_sup}
+\State supprime la racine : \hspace{10.5em}{\tt supprimer\_racine}
+\end{algorithmic}
+\end{algorithm}
+
+Dans la suite, ces fonctions sont sommairement présentées.
+
+\subsection{Fonction {\tt quitte}}
+Il s'agit de la fonction principale, celle qui est appelée par le sommet qui souhaite quitter le DST. Elle se compose de deux parties:
+
+\begin{enumerate}
+	\item Tout d'abord, puisque le sommet courant s'en va, il ne peut plus être utilisé comme représentant de son groupe. Cette partie est donc chargée de remplacer ce sommet courant -- voir {\tt remplace\_frère} -- par un autre de ses frères de niveau 0 (choisi aléatoirement), partout où cela est nécessaire. Dans l'exemple, {\tt 8} est remplacé par {\tt 21}.
+	
+	\item Ensuite, si des fusions sont nécessaires (c'est à dire s'il y a moins de $a$ frères au niveau 0 du groupe courant), cette fonction charge un des frères restants de déclencher les opérations de fusion. (voir {\tt demande\_fusion}) Dans l'exemple, c'est donc {\tt 21} qui en sera chargé.
+\end{enumerate}
+
+\subsection{Fonction {\tt remplace\_frère}}
+Cette fonction remplace un frère par un autre à un étage et un emplacement donnés et met à jour les prédécesseurs en conséquence.
+
+\subsection{Fonction {\tt demande\_fusion}}
+
+Cette fonction est chargée de gérer les fusions. Elle parcourt le DST de bas en haut tant que des orphelins subsistent, comme on le voit sur l'exemple.
+
+Si c'est le cas, on regarde à chaque étage s'il faut réaliser une fusion ou un transfert. Si une fusion est possible, on dispose d'un représentant du groupe à rejoindre. Ce représentant est alors chargé de réaliser une première fusion pour lui-même. Sa table de routage étant alors à jour, on peut lui demander de diffuser une tâche de fusion à l'ensemble des sommets concernés par la fusion, c'est à dire les membres des deux groupes qui fusionnent.
+	
+À la fin, il faut s'occuper de la racine si les fusions successives l'ont atteinte:
+\begin{enumerate}
+	\item Si elle doit s'en aller, il faut en informer l'ensemble du DST au moyen d'une diffusion globale.
+		
+	\item Si elle reste, elle comporte un membre de moins à cause des fusions. Les sommets impactés par les opérations de fusion en ont été informés et leur table de routage est à jour, mais ce n'est pas le cas des autres sommets du DST. Sur notre exemple, à la dernière étape, tous les sommets membres du groupe {\tt 2AB} sont à jour puisqu'ils sont concernés par les opérations de fusion. Mais la partie droite -- les sommets membres du groupe {\tt 2C} -- n'a pas eu connaissance que des fusions se produisaient. Il faut donc diffuser la tâche {\tt nettoie\_étage\_sup} chargée de cette mise à jour dans cette partie droite.
+\end{enumerate}
+
+\subsection{Fonction {\tt fusion\_ou\_transfert}}
+
+Cette fonction détermine si une fusion est possible. Ce sera le cas si l'un des groupes voisins de celui qui a perdu un membre possède suffisamment de place pour accueillir les membres restants. Chaque membre de l'étage parent de celui où se trouvent les orphelins représente un groupe susceptible de les accueillir. Ces membres sont donc successivement interrogés jusqu'à ce que l'un d'entre eux réponde que son groupe a de la place. Dans ce cas, cette fonction retourne l'identifiant de ce membre qui servira donc de représentant du groupe à rejoindre. Sinon, elle retourne -1.
+
+\subsection{Fonction {\tt fusion}}
+
+C'est cette fonction qui réalise la fusion proprement dite de deux groupes, à un étage donné. L'opération consiste essentiellement à prendre un membre dans chaque groupe, puis à ``concaténer'' leurs tables de routage à l'étage en question. Il faut également modifier les tables de prédécesseurs en conséquence. Cette fonction réalise cela tout en maintenant l'ordre chronologique d'arrivée des sommets dans les tables. Cela est important pour la cohérence du DST, ainsi que pour le choix du leader (qui est toujours le plus ancien sommet du n\oe ud).
+
+\subsection{Fonction {\tt nettoie\_étage\_sup}}
+
+Cette fonction est chargée de supprimer le membre en trop de l'étage parent de celui qui vient de subir une fusion. En effet, lorsque les fusions sont terminées, cet étage doit comporter un membre de moins. C'est aussi cette fonction qui est appelée pour corriger la racine, comme cela a été vu plus haut.
+
+Reprenons l'exemple \ref{f:Ex1b}. Voici la table de routage du n\oe ud {\tt 32} avant l'arrivée de {\tt 21} au niveau 0:\footnote{On rappelle que {\tt 8} a déjà été remplacé par {\tt 21} partout où il se trouvait par la première partie de la fonction {\tt quitte}.}
+
+N\oe ud 32:
+\begin{tabular}{|c|c|c|c|c|} \hline
+	E0 & 32 & 48 & \phantom{48} & \phantom{48} \\ \hline
+	E1 & 21 & 32 & & \\ \hline
+	E2 & 32 & 42 & & \\ \hline
+	E3 & 1  & 32 & 14 & \\ \hline
+\end{tabular}\ \\\\
+
+Et voici la même table après l'arrivée de {\tt 21}:\\
+
+N\oe ud 32:
+\begin{tabular}{|c|c|c|c|c|} \hline
+	E0 & 21 & 32 & 48 & \phantom{48} \\ \hline
+	E1 & {\color{red}21} & 32 & & \\ \hline
+	E2 & 32 & 42 & & \\ \hline
+	E3 & 1  & 32 & 14 & \\ \hline
+\end{tabular}\ \\
+
+On peut voir qu'il y a un problème puisque l'étage 1 pointe sur 2 représentants du même étage 0. Cette fonction va donc corriger le problème en supprimant {\tt 21} à l'étage 1.
+
+\subsection{Fonction {\tt diffuse\_fusion}}
+
+Cette fonction est simplement chargée de diffuser la tâche de fusion à tous les n\oe uds concernés. J'en ai fait une fonction parce que {\tt demande\_fusion} doit demander à son contact -- le représentant du groupe à rejoindre -- de lancer cette fonction.
+
+\subsection{Fonction {\tt supprimer\_racine}}
+
+Cette fonction supprime simplement l'étage racine des tables courantes. C'est elle qui est diffusée à l'ensemble du DST en cas de disparition de la racine suite aux opérations de fusion.
+
+\section{Étude des problèmes de synchronisation}
+
+Dans cette partie, il faut s'intéresser à deux aspects du problème:
+\begin{inparaenum}[(a)]
+	\item les problèmes de synchronisation dûs aux seules fonctions de gestion des retraits
+	\item et ceux posés par la simultanéité de départs et d'arrivées.
+\end{inparaenum}
+
+Plusieurs des solutions déjà éprouvées dans le cas des fonctions d'ajout pourront certainement être ré-utilisées ici -- en particulier les mécanismes d'attente -- mais il convient de mener ici le même travail d'analyse que précédemment. Par manque de temps, cela n'a pas pu être fait.

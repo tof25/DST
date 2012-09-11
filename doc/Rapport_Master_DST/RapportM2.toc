@@ -1,0 +1,113 @@
+\select@language {french}
+\contentsline {part}{I\hspace {1em}Contexte}{1}{part.1}
+\contentsline {xpart}{Contexte}{3}{part.1}
+\contentsline {chapter}{\numberline {1}Pr\'eambule}{3}{chapter.1}
+\contentsline {section}{\numberline {1.1}Introduction}{3}{section.1.1}
+\contentsline {section}{\numberline {1.2}Pr\'esentation du probl\`eme}{5}{section.1.2}
+\contentsline {chapter}{\numberline {2}\'Etat de l'art}{7}{chapter.2}
+\contentsline {section}{\numberline {2.1}Autres travaux}{7}{section.2.1}
+\contentsline {subsection}{\numberline {2.1.1}Un exemple de syst\`eme structur\'e: Chord}{8}{subsection.2.1.1}
+\contentsline {subsubsection}{G\'en\'eration et distribution des cl\'es}{8}{section*.3}
+\contentsline {subsubsection}{Recherche d'une cl\'e}{9}{section*.4}
+\contentsline {subsubsection}{Lors de l'arriv\'ee d'un nouveau n\oe ud}{10}{section*.5}
+\contentsline {subsubsection}{Lors du d\'epart (ou d'une d\'efaillance) d'un n\oe ud}{11}{section*.6}
+\contentsline {subsection}{\numberline {2.1.2}Un exemple de syst\`eme non structur\'e : Gnutella}{11}{subsection.2.1.2}
+\contentsline {section}{\numberline {2.2}Pr\'esentation du DST}{13}{section.2.2}
+\contentsline {subsection}{\numberline {2.2.1}Les trois niveaux de description du DST}{14}{subsection.2.2.1}
+\contentsline {subsubsection}{Le niveau logique}{14}{section*.7}
+\contentsline {subsubsection}{Le niveau d'interconnexion}{16}{section*.8}
+\contentsline {subsubsection}{Le niveau topologique}{17}{section*.9}
+\contentsline {section}{\numberline {2.3}Le simulateur Simgrid}{18}{section.2.3}
+\contentsline {subsection}{\numberline {2.3.1}Pourquoi Simgrid}{18}{subsection.2.3.1}
+\contentsline {subsection}{\numberline {2.3.2}Pr\'esentation de Simgrid}{18}{subsection.2.3.2}
+\contentsline {paragraph}{En haut}{19}{section*.10}
+\contentsline {paragraph}{Au milieu}{20}{section*.11}
+\contentsline {paragraph}{En bas}{20}{section*.12}
+\contentsline {part}{II\hspace {1em}R\'ealisations}{21}{part.2}
+\contentsline {xpart}{R\'ealisations}{23}{part.2}
+\contentsline {chapter}{\numberline {3}Ajout de nouveaux sommets \`a un DST}{23}{chapter.3}
+\contentsline {section}{\numberline {3.1}Mise en \oe uvre dans Simgrid}{23}{section.3.1}
+\contentsline {subsection}{\numberline {3.1.1}Quelques notions de base au sujet de Simgrid et MSG}{24}{subsection.3.1.1}
+\contentsline {subsubsection}{La plate-forme}{24}{section*.13}
+\contentsline {subsubsection}{L'application}{25}{section*.14}
+\contentsline {subsubsection}{Le d\'eroulement du programme}{25}{section*.15}
+\contentsline {section}{\numberline {3.2}Expos\'e du probl\`eme}{26}{section.3.2}
+\contentsline {section}{\numberline {3.3}D\'eroulement des op\'erations}{27}{section.3.3}
+\contentsline {subsubsection}{\relax \fontsize {10.95}{13.6}\selectfont \abovedisplayskip 11\p@ plus3\p@ minus6\p@ \abovedisplayshortskip \z@ plus3\p@ \belowdisplayshortskip 6.5\p@ plus3.5\p@ minus3\p@ \def \leftmargin \leftmargini \topsep \z@ \parsep \parskip \itemsep \z@ {\leftmargin \leftmargini \topsep 9\p@ plus3\p@ minus5\p@ \parsep 4.5\p@ plus2\p@ minus\p@ \itemsep \parsep }\belowdisplayskip \abovedisplayskip {LES APPELS}}{29}{section*.16}
+\contentsline {subsubsection}{\relax \fontsize {10.95}{13.6}\selectfont \abovedisplayskip 11\p@ plus3\p@ minus6\p@ \abovedisplayshortskip \z@ plus3\p@ \belowdisplayshortskip 6.5\p@ plus3.5\p@ minus3\p@ \def \leftmargin \leftmargini \topsep \z@ \parsep \parskip \itemsep \z@ {\leftmargin \leftmargini \topsep 9\p@ plus3\p@ minus5\p@ \parsep 4.5\p@ plus2\p@ minus\p@ \itemsep \parsep }\belowdisplayskip \abovedisplayskip {LES RETOURS}}{29}{section*.17}
+\contentsline {section}{\numberline {3.4}La gestion des synchronisations}{31}{section.3.4}
+\contentsline {section}{\numberline {3.5}Gestion des messages re\c cus pendant l'attente}{33}{section.3.5}
+\contentsline {subsection}{\numberline {3.5.1}Le message re\c cu pendant l'attente est une r\'eponse}{33}{subsection.3.5.1}
+\contentsline {subsection}{\numberline {3.5.2}Le message re\c cu pendant l'attente est une requ\^ete}{33}{subsection.3.5.2}
+\contentsline {section}{\numberline {3.6}Gestion des requ\^etes non autoris\'ees}{34}{section.3.6}
+\contentsline {subsection}{\numberline {3.6.1}Les codes \'etat}{34}{subsection.3.6.1}
+\contentsline {subsection}{\numberline {3.6.2}La gestion de l'\'etat {\tt 'u'}}{37}{subsection.3.6.2}
+\contentsline {subsection}{\numberline {3.6.3}Les r\`egles de changement d'\'etat}{40}{subsection.3.6.3}
+\contentsline {subsection}{\numberline {3.6.4}Les r\`egles d'autorisation des requ\^etes}{40}{subsection.3.6.4}
+\contentsline {paragraph}{L'\'etat {\tt 'u'} diff\`ere:}{41}{section*.18}
+\contentsline {paragraph}{L'\'etat {\tt 'b'} diff\`ere:}{42}{section*.19}
+\contentsline {paragraph}{L'\'etat {\tt 'l'} diff\`ere:}{43}{section*.20}
+\contentsline {section}{\numberline {3.7}Solutions propos\'ees}{44}{section.3.7}
+\contentsline {subsection}{\numberline {3.7.1}Requ\^etes crois\'ees et en cascade}{44}{subsection.3.7.1}
+\contentsline {subsection}{\numberline {3.7.2}Requ\^etes non autoris\'ees}{44}{subsection.3.7.2}
+\contentsline {section}{\numberline {3.8}Algorithmes des fonctions de synchronisation}{46}{section.3.8}
+\contentsline {subsection}{\numberline {3.8.1}Fonction {\tt send\_msg\_sync}}{46}{subsection.3.8.1}
+\contentsline {subsection}{\numberline {3.8.2}Fonction {\tt attente\_terminaison}}{50}{subsection.3.8.2}
+\contentsline {subsubsection}{Exemple d'utilisation de {\tt attente\_terminaison} dans la diffusion}{54}{section*.21}
+\contentsline {chapter}{\numberline {4}Retrait de sommets d'un DST}{57}{chapter.4}
+\contentsline {section}{\numberline {4.1}Introduction}{57}{section.4.1}
+\contentsline {section}{\numberline {4.2}Conception des algorithmes}{57}{section.4.2}
+\contentsline {subsection}{\numberline {4.2.1}Fonction {\tt quitte}}{59}{subsection.4.2.1}
+\contentsline {subsection}{\numberline {4.2.2}Fonction {\tt remplace\_fr\`ere}}{59}{subsection.4.2.2}
+\contentsline {subsection}{\numberline {4.2.3}Fonction {\tt demande\_fusion}}{60}{subsection.4.2.3}
+\contentsline {subsection}{\numberline {4.2.4}Fonction {\tt fusion\_ou\_transfert}}{60}{subsection.4.2.4}
+\contentsline {subsection}{\numberline {4.2.5}Fonction {\tt fusion}}{60}{subsection.4.2.5}
+\contentsline {subsection}{\numberline {4.2.6}Fonction {\tt nettoie\_\'etage\_sup}}{61}{subsection.4.2.6}
+\contentsline {subsection}{\numberline {4.2.7}Fonction {\tt diffuse\_fusion}}{61}{subsection.4.2.7}
+\contentsline {subsection}{\numberline {4.2.8}Fonction {\tt supprimer\_racine}}{61}{subsection.4.2.8}
+\contentsline {section}{\numberline {4.3}\'Etude des probl\`emes de synchronisation}{62}{section.4.3}
+\contentsline {part}{III\hspace {1em}Perspectives}{63}{part.3}
+\contentsline {xpart}{Perspectives}{65}{part.3}
+\contentsline {chapter}{\numberline {5}Synth\`ese}{65}{chapter.5}
+\contentsline {section}{\numberline {5.1}Observations}{65}{section.5.1}
+\contentsline {section}{\numberline {5.2}Suite des travaux}{65}{section.5.2}
+\contentsline {subsection}{\numberline {5.2.1}Concernant le DST lui-m\^eme}{65}{subsection.5.2.1}
+\contentsline {subsubsection}{Probl\`emes de synchronisation}{66}{section*.22}
+\contentsline {paragraph}{Synchronisation des fonctions de d\'epart}{66}{section*.23}
+\contentsline {paragraph}{La fonction {\tt attente\_terminaison}}{66}{section*.24}
+\contentsline {subparagraph}{Id\'ee de solution}{66}{section*.25}
+\contentsline {subsubsection}{Solutions de synchronisation}{67}{section*.26}
+\contentsline {paragraph}{Simgrid et les traces}{67}{section*.27}
+\contentsline {subsubsection}{Tol\'erance aux pannes}{68}{section*.28}
+\contentsline {subsubsection}{Conception des algorithmes}{68}{section*.29}
+\contentsline {subsubsection}{Charge du r\'eseau}{68}{section*.30}
+\contentsline {subsection}{\numberline {5.2.2}Utilisation du DST}{69}{subsection.5.2.2}
+\contentsline {subsubsection}{Simgrid vs simulateur s\'equentiel}{69}{section*.31}
+\contentsline {paragraph}{Un exemple:}{69}{section*.32}
+\contentsline {subsubsection}{Parcours du DST}{71}{section*.33}
+\contentsline {chapter}{\numberline {6}Conclusion}{73}{chapter.6}
+\contentsline {chapter}{Bibliographie}{76}{chapter*.34}
+\contentsline {chapter}{Annexes}{77}{section*.35}
+\contentsline {chapter}{\numberline {A}Gestion des ajouts de sommets \`a un DST}{79}{Annexe.a.A}
+\contentsline {section}{\numberline {A.1}Donn\'ees enregistr\'ees sur chaque sommet}{80}{section.a.A.1}
+\contentsline {section}{\numberline {A.2}Fonctions g\'erant la construction d'un DST}{82}{section.a.A.2}
+\contentsline {subsection}{\numberline {A.2.1}Fonction \texttt {init} d'initialisation d'un sommet}{82}{subsection.a.A.2.1}
+\contentsline {subsection}{\numberline {A.2.2}Fonction \texttt {joindre}}{82}{subsection.a.A.2.2}
+\contentsline {subsection}{\numberline {A.2.3}Fonction \texttt {demander\_nouveau\_rep}}{84}{subsection.a.A.2.3}
+\contentsline {subsection}{\numberline {A.2.4}Fonction \texttt {demander\_connexion}}{85}{subsection.a.A.2.4}
+\contentsline {subsection}{\numberline {A.2.5}Fonction \texttt {nouveau\_fr\`ere\_re\c cu}}{86}{subsection.a.A.2.5}
+\contentsline {subsection}{\numberline {A.2.6}Fonction \texttt {demander\_scission}}{86}{subsection.a.A.2.6}
+\contentsline {subsection}{\numberline {A.2.7}Fonction \texttt {ajouter\_\'etage}}{87}{subsection.a.A.2.7}
+\contentsline {subsection}{\numberline {A.2.8}Fonction \texttt {connecter\_les\_groupes\_scind\'es}}{87}{subsection.a.A.2.8}
+\contentsline {subsection}{\numberline {A.2.9}Fonction \texttt {scission}}{89}{subsection.a.A.2.9}
+\contentsline {chapter}{\numberline {B}Gestion des retraits de sommets du DST}{93}{Annexe.a.B}
+\contentsline {section}{\numberline {B.1}Fonctions g\'erant le d\'epart d'un sommet}{94}{section.a.B.1}
+\contentsline {subsection}{\numberline {B.1.1}Fonction \texttt {quitte}}{94}{subsection.a.B.1.1}
+\contentsline {subsection}{\numberline {B.1.2}Fonction \texttt {remplace\_fr\`ere}}{96}{subsection.a.B.1.2}
+\contentsline {subsection}{\numberline {B.1.3}Fonction \texttt {demande\_fusion}}{97}{subsection.a.B.1.3}
+\contentsline {subsection}{\numberline {B.1.4}Fonction \texttt {fusion\_ou\_transfert}}{100}{subsection.a.B.1.4}
+\contentsline {subsection}{\numberline {B.1.5}Fonction \texttt {fusion}}{101}{subsection.a.B.1.5}
+\contentsline {subsection}{\numberline {B.1.6}Fonction \texttt {nettoie\_\'etage\_sup}}{104}{subsection.a.B.1.6}
+\contentsline {subsection}{\numberline {B.1.7}Fonction \texttt {diffuse\_fusion}}{105}{subsection.a.B.1.7}
+\contentsline {subsection}{\numberline {B.1.8}Fonction \texttt {supprimer\_racine}}{106}{subsection.a.B.1.8}
+\contentsline {chapter}{\numberline {C}Reste \`a faire (code)}{107}{Annexe.a.C}

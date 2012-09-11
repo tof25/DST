@@ -1,0 +1,28 @@
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {3.1}Mise en \oe uvre dans Simgrid}{\reset@font\mtcSfont 23}{section.3.1}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.1.1}Quelques notions de base au sujet de Simgrid et MSG}{\reset@font\mtcSSfont 24}{subsection.3.1.1}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode La plate-forme}{\reset@font\mtcSSSfont 24}{section*.13}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode L'application}{\reset@font\mtcSSSfont 25}{section*.14}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode Le d\'eroulement du programme}{\reset@font\mtcSSSfont 25}{section*.15}}
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {3.2}Expos\'e du probl\`eme}{\reset@font\mtcSfont 26}{section.3.2}}
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {3.3}D\'eroulement des op\'erations}{\reset@font\mtcSfont 27}{section.3.3}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode \relax \fontsize {10.95}{13.6}\selectfont \abovedisplayskip 11\p@ plus3\p@ minus6\p@ \abovedisplayshortskip \z@ plus3\p@ \belowdisplayshortskip 6.5\p@ plus3.5\p@ minus3\p@ \def \leftmargin \leftmargini \topsep \z@ \parsep \parskip \itemsep \z@ {\leftmargin \leftmargini \topsep 9\p@ plus3\p@ minus5\p@ \parsep 4.5\p@ plus2\p@ minus\p@ \itemsep \parsep }\belowdisplayskip \abovedisplayskip {LES APPELS}}{\reset@font\mtcSSSfont 29}{section*.16}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode \relax \fontsize {10.95}{13.6}\selectfont \abovedisplayskip 11\p@ plus3\p@ minus6\p@ \abovedisplayshortskip \z@ plus3\p@ \belowdisplayshortskip 6.5\p@ plus3.5\p@ minus3\p@ \def \leftmargin \leftmargini \topsep \z@ \parsep \parskip \itemsep \z@ {\leftmargin \leftmargini \topsep 9\p@ plus3\p@ minus5\p@ \parsep 4.5\p@ plus2\p@ minus\p@ \itemsep \parsep }\belowdisplayskip \abovedisplayskip {LES RETOURS}}{\reset@font\mtcSSSfont 29}{section*.17}}
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {3.4}La gestion des synchronisations}{\reset@font\mtcSfont 31}{section.3.4}}
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {3.5}Gestion des messages re\c cus pendant l'attente}{\reset@font\mtcSfont 33}{section.3.5}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.5.1}Le message re\c cu pendant l'attente est une r\'eponse}{\reset@font\mtcSSfont 33}{subsection.3.5.1}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.5.2}Le message re\c cu pendant l'attente est une requ\^ete}{\reset@font\mtcSSfont 33}{subsection.3.5.2}}
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {3.6}Gestion des requ\^etes non autoris\'ees}{\reset@font\mtcSfont 34}{section.3.6}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.6.1}Les codes \'etat}{\reset@font\mtcSSfont 34}{subsection.3.6.1}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.6.2}La gestion de l'\'etat {\tt 'u'}}{\reset@font\mtcSSfont 37}{subsection.3.6.2}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.6.3}Les r\`egles de changement d'\'etat}{\reset@font\mtcSSfont 40}{subsection.3.6.3}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.6.4}Les r\`egles d'autorisation des requ\^etes}{\reset@font\mtcSSfont 40}{subsection.3.6.4}}
+{\reset@font\mtcPfont\mtc@string\contentsline{paragraph}{\noexpand \leavevmode L'\'etat {\tt 'u'} diff\`ere:}{\reset@font\mtcPfont 41}{section*.18}}
+{\reset@font\mtcPfont\mtc@string\contentsline{paragraph}{\noexpand \leavevmode L'\'etat {\tt 'b'} diff\`ere:}{\reset@font\mtcPfont 42}{section*.19}}
+{\reset@font\mtcPfont\mtc@string\contentsline{paragraph}{\noexpand \leavevmode L'\'etat {\tt 'l'} diff\`ere:}{\reset@font\mtcPfont 43}{section*.20}}
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {3.7}Solutions propos\'ees}{\reset@font\mtcSfont 44}{section.3.7}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.7.1}Requ\^etes crois\'ees et en cascade}{\reset@font\mtcSSfont 44}{subsection.3.7.1}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.7.2}Requ\^etes non autoris\'ees}{\reset@font\mtcSSfont 44}{subsection.3.7.2}}
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {3.8}Algorithmes des fonctions de synchronisation}{\reset@font\mtcSfont 46}{section.3.8}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.8.1}Fonction {\tt send\_msg\_sync}}{\reset@font\mtcSSfont 46}{subsection.3.8.1}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {3.8.2}Fonction {\tt attente\_terminaison}}{\reset@font\mtcSSfont 50}{subsection.3.8.2}}
+{\reset@font\mtcSSSfont\mtc@string\contentsline{subsubsection}{\noexpand \leavevmode Exemple d'utilisation de {\tt attente\_terminaison} dans la diffusion}{\reset@font\mtcSSSfont 54}{section*.21}}

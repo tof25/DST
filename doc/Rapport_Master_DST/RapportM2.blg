@@ -1,0 +1,54 @@
+This is BibTeX, Version 0.99d (TeX Live 2011)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: RapportM2.aux
+A level-1 auxiliary file: Partie1/part1.aux
+A level-1 auxiliary file: Partie2/part2.aux
+A level-1 auxiliary file: Partie3/part3.aux
+The style file: alpha.bst
+A level-1 auxiliary file: Annexes/Appendices.aux
+Database file #1: biblio.bib
+Warning--entry type for "ns2" isn't style-file defined
+--line 36 of file biblio.bib
+Warning--to sort, need author or key in ns2
+You've used 17 entries,
+            2543 wiz_defined-function locations,
+            675 strings with 8822 characters,
+and the built_in function-call counts, 7335 in all, are:
+= -- 735
+> -- 401
+< -- 12
++ -- 147
+- -- 142
+* -- 528
+:= -- 1211
+add.period$ -- 58
+call.type$ -- 17
+change.case$ -- 119
+chr.to.int$ -- 17
+cite$ -- 19
+duplicate$ -- 295
+empty$ -- 482
+format.name$ -- 158
+if$ -- 1509
+int.to.chr$ -- 1
+int.to.str$ -- 0
+missing$ -- 10
+newline$ -- 91
+num.names$ -- 50
+pop$ -- 123
+preamble$ -- 1
+purify$ -- 137
+quote$ -- 0
+skip$ -- 250
+stack$ -- 0
+substring$ -- 286
+swap$ -- 70
+text.length$ -- 12
+text.prefix$ -- 4
+top$ -- 0
+type$ -- 136
+warning$ -- 1
+while$ -- 60
+width$ -- 19
+write$ -- 234
+(There were 2 warnings)

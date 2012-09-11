@@ -1,0 +1,339 @@
+<?xml version='1.0'?>
+<!-- <!DOCTYPE platform SYSTEM "simgrid.dtd"> -->
+<!DOCTYPE platform SYSTEM "http://simgrid.gforge.inria.fr/simgrid.dtd">
+<platform version="3">
+  <process host="Jocelyne" function="node">
+	<argument value="89"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="5900"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Robert" function="node">
+	<argument value="88"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="5900"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Drouin" function="node">
+	<argument value="87"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="5700"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Gordon" function="node">
+	<argument value="86"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="5500"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Lafontaine" function="node">
+	<argument value="85"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="5300"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Julian" function="node">
+	<argument value="84"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="5100"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Lapointe" function="node">
+    <argument value="83"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="4900"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="King" function="node">
+    <argument value="82"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="4700"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Kansas" function="node">
+	<argument value="81"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="4500"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Pointe_Claire" function="node">
+	<argument value="80"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="4300"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Boucherville" function="node">
+	<argument value="79"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="4100"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Olivier" function="node">
+	<argument value="78"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="3900"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Rubin" function="node">
+	<argument value="77"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="3700"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Jamie" function="node">
+    <argument value="76"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="3500"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Pierre" function="node">
+    <argument value="75"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="3300"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Bescherelle" function="node">
+	<argument value="74"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="3100"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Gavrel" function="node">
+	<argument value="73"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="2800"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Marcoux" function="node">
+	<argument value="72"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="2700"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Florient" function="node">
+	<argument value="71"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="2600"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Lessard" function="node">
+    <argument value="70"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="2500"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Victoria" function="node">
+    <argument value="69"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="2400"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Ste_Julie" function="node">
+	<argument value="68"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="2300"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Soucy" function="node">
+	<argument value="67"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="2200"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Fernand" function="node">
+	<argument value="66"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="2100"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Jackson" function="node">
+	<argument value="65"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1910"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Wright" function="node">
+    <argument value="64"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1900"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Marcel" function="node">
+    <argument value="63"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1800"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Jill" function="node">
+	<argument value="62"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1700"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="St_Jean" function="node">
+	<argument value="61"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1600"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Paul" function="node">
+	<argument value="60"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1500"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Bousquet" function="node">
+	<argument value="59"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1400"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Harry" function="node">
+    <argument value="58"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1300"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Gaston" function="node">
+    <argument value="57"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1200"/>			<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Kuenning" function="node">
+	<argument value="56"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1100"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Bellemarre" function="node">
+	<argument value="55"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="1000"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Ethernet" function="node">
+    <argument value="54"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="900"/>			<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Morin" function="node">
+    <argument value="53"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="800"/>		<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Tanguay" function="node">
+	<argument value="52"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="700"/>			<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Laroche" function="node">
+	<argument value="51"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="600"/>			<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Disney" function="node">
+    <argument value="50"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="500"/>			<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Gatien" function="node">
+    <argument value="48"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="400"/>			<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="McGee" function="node">
+    <argument value="42"/>			<!-- my id -->
+    <argument value="1"/>			<!-- known id -->
+    <argument value="300"/>			<!-- time to sleep before it starts -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="iRMX" function="node">
+    <argument value="38"/>          <!-- my id -->
+    <argument value="1"/>           <!-- known id -->
+    <argument value="200"/>         <!-- time to sleep before it starts-->
+    <argument value ="20000"/> 		<!-- deadline -->
+  </process>
+
+  <process host="Geoff" function="node">
+    <argument value="32"/>          <!-- my id -->
+    <argument value="1"/>           <!-- known id -->
+    <argument value="100"/>         <!-- time to sleep before it starts-->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="TeX" function="node">
+    <argument value="21"/>          <!-- my id -->
+    <argument value="1"/>           <!-- known id -->
+    <argument value="40"/>          <!-- time to sleep before it starts-->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+  <process host="Jean_Yves" function="node">
+    <argument value="14"/>          <!-- my id -->
+    <argument value="1"/>           <!-- known id -->
+    <argument value="16"/>          <!-- time to sleep before it starts-->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+  
+  <process host="Boivin" function="node">
+    <argument value="8"/>           <!-- my id -->
+    <argument value="1"/>           <!-- known id -->
+    <argument value="1"/>           <!-- time to sleep before it starts-->
+    <argument value ="6500"/>		<!-- deadline -->
+  </process>
+
+  <process host="Jacquelin" function="node">
+    <argument value="1"/>           <!-- my id -->
+    <argument value ="20000"/>		<!-- deadline -->
+  </process>
+
+</platform>

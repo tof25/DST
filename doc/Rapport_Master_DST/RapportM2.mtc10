@@ -1,0 +1,9 @@
+{\reset@font\mtcSfont\mtc@string\contentsline{section}{\noexpand \leavevmode \numberline {B.1}Fonctions g\'erant le d\'epart d'un sommet}{\reset@font\mtcSfont 94}{section.a.B.1}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {B.1.1}Fonction \texttt {quitte}}{\reset@font\mtcSSfont 94}{subsection.a.B.1.1}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {B.1.2}Fonction \texttt {remplace\_fr\`ere}}{\reset@font\mtcSSfont 96}{subsection.a.B.1.2}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {B.1.3}Fonction \texttt {demande\_fusion}}{\reset@font\mtcSSfont 97}{subsection.a.B.1.3}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {B.1.4}Fonction \texttt {fusion\_ou\_transfert}}{\reset@font\mtcSSfont 100}{subsection.a.B.1.4}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {B.1.5}Fonction \texttt {fusion}}{\reset@font\mtcSSfont 101}{subsection.a.B.1.5}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {B.1.6}Fonction \texttt {nettoie\_\'etage\_sup}}{\reset@font\mtcSSfont 104}{subsection.a.B.1.6}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {B.1.7}Fonction \texttt {diffuse\_fusion}}{\reset@font\mtcSSfont 105}{subsection.a.B.1.7}}
+{\reset@font\mtcSSfont\mtc@string\contentsline{subsection}{\noexpand \leavevmode \numberline {B.1.8}Fonction \texttt {supprimer\_racine}}{\reset@font\mtcSSfont 106}{subsection.a.B.1.8}}

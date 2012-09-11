@@ -1,0 +1,216 @@
+%!TEX root=../RapportM2.tex
+
+\part{Perspectives}
+\chapter{Synthèse}
+\section{Observations}
+
+Au début de ces travaux et comme expliqué en section \ref{c:pb} (page \pageref{c:pb}), j'ai fait le choix d'étudier une solution qui, en tentant de tirer le meilleur parti de la parallélisation présente dans ce contexte, devait présenter les meilleures performances. A l'issue de cette étude, je remarque les points suivants:
+\begin{enumerate}
+	\item les problèmes de synchronisation sont complexes à détecter et à analyser.
+	
+	\item il est difficile de montrer que tous les cas de figure ont bien été couverts par les solutions proposées.
+	
+	\item ces solutions génèrent un nombre de messages supplémentaires non négligeable.
+	
+	\item l'affirmation posée au début de l'étude qui disait qu'intégrer un groupe de nouveaux n\oe uds les uns après les autres allait prendre plus de temps que de les accepter tous en même temps, ne paraît maintenant plus si évidente. En effet, quand on voit la progression du nombre de messages nécessaires à la construction du DST en fonction de sa taille (voir figure \ref{f:graph1} page \pageref{f:graph1}), il semble nécessaire d'effectuer davantage de mesures avec et sans synchronisations pour les comparer et ainsi vérifier cette affirmation.
+\end{enumerate}
+
+\section{Suite des travaux}
+\subsection{Concernant le DST lui-même}
+
+Il reste encore du travail concernant l'étude de la vie du DST sur Simgrid. En voici quelques exemples.
+
+\subsubsection{Problèmes de synchronisation}
+
+\paragraph{Synchronisation des fonctions de départ}
+Par manque de temps, je n'ai pas étudié les synchronisations à mettre en place sur les algorithmes gérant le départ d'un n\oe ud. Il s'agit d'une part, de réaliser le même travail sur ces fonctions de départ que celui qui a été fait sur les fonctions d'arrivée, et d'autre part, d'étudier le problème de la synchronisation entre les départs et les arrivées. Pour ce dernier point, on se retrouve dans une problématique semblable à celles déjà étudiées: faut-il simplement empêcher toute simultanéité de départ et d'arrivée ou peut on en autoriser certaines (si elles ont lieu dans des parties éloignées du DST, par exemple) ?
+
+\paragraph{La fonction {\tt attente\_terminaison}}
+
+Lors d'ultimes tests de ces solutions de synchronisation, j'ai trouvé des cas de figure où cette fonction d'attente a été prise en défaut. Je n'ai pas eu le temps de la reprendre, mais voici quelques pistes de réflexion issues de ces observations, pour corriger le problème.
+
+\label{p:att}
+
+%\begin{center}
+%{$\star\star\star$}
+%\end{center}
+
+Pour mémoire, voici l'usage général qui est fait de cette fonction:
+\begin{itemize}
+	\item un ensemble d'envois asynchrones a lieu
+	\item on constitue un tableau de l'ensemble des destinataires de ces envois \ldots
+	\item \ldots\ qu'on passe en argument à {\tt attente\_terminaison}
+	\item {\tt attente\_terminaison} se met à l'écoute des réponses de ces destinataires
+\end{itemize}
+\vspace{\baselineskip}
+Prenons par exemple, la fin de la fonction {\tt scission} (\ref{s:sci}) à laquelle la synchronisation est ajoutée (voir algorithme \ref{a:sci}, page \pageref{a:sci}):
+
+\begin{algorithm}[h]
+\caption{: Scission (extrait)}\label{a:sci}
+\begin{algorithmic}[0]
+\Statex
+    \State $cpt \gets \mathtt{taille}(moi.pred[\e tage+1][:])$
+	\Statex
+    \ForAll {$p \mathtt{\ dans\ } moi.pred[\e tage+1][:]$}
+      \If {$(p = moi)$}
+        \State $cpt--$
+        \State {\tt connecter\_les\_groupes\_scindés}$(\e tage+1,\ init\_idx,\ init\_rep,\ nouv\_idx,$
+        \Statex \hspace{19em}$nouv\_rep)$
+      \Else
+        \State {\tt send\_msg\_async}$(moi.nom,\ p,\ \mathtt{connecter\_les\_groupes\_scind\e s},$
+        \State \hspace{8em}$(\e tage+1,\ init\_idx,\  init\_rep,\ nouv\_idx,\ nouv\_rep))$
+      \EndIf
+    \EndFor
+	\Statex
+    \If {$(cpt > 0)$}
+      \ForAll {$idx \gets 0, \mathtt{\ taille}(moi.pred[\e tage+1][:])-1$}
+        \State {$dest\_tab[idx] \gets moi.pred[\e tage+1][idx]$}
+      \EndFor
+      \State {\tt attente\_terminaison}$(cpt,\ dest\_tab,\ \mathtt{taille}(moi.pred[\e tage+1]))$
+    \EndIf
+\end{algorithmic}
+\end{algorithm}
+
+%\begin{listing}{33}
+%    cpt = taille(moi.pred[étage+1][:])
+%
+%    pour tout p dans moi.pred[étage+1][:]:
+%      si (p == moi):
+%        cpt--
+%        connecter_les_groupes_scindés(étage+1, init_idx, init_rep,
+%                                               nouv_idx, nouv_rep)
+%      sinon:
+%        send_msg_async(moi.nom, p, connecter_les_groupes_scindés,
+%                       (étage+1, init_idx, init_rep, nouv_idx, nouv_rep))
+%	
+%    si (cpt > 0):
+%      pour tout idx dans 0 ... taille(moi.pred[étage+1][:])-1:
+%        dest_tab[idx] = moi.pred[étage+1][idx]
+%		
+%        attente_terminaison(cpt, dest_tab, taille(moi.pred[étage+1]))
+%\end{listing}
+%\vspace{\baselineskip}
+
+Si on augmente la borne $b$\footnote{on peut constater le phénomène à $b=15$} du DST pour allonger la durée de la boucle d'envoi, on constate que des accusés de réception peuvent être renvoyés avant que la fonction d'attente ne soit lancée (et donc, avant que le tableau des destinataires ne soit constitué).\\
+Or, il est possible qu'au même moment, d'autres instances d'{\tt attente\_terminaison} -- lancées par le même n\oe ud -- soient en cours d'exécution. Du coup, ces accusés de réception sont re\c cus par ces attentes et rejetés, puisque leur émetteur n'est alors pas encore connu. L'instance courante d'{\tt attente\_terminaison} ne re\c coit donc jamais ces réponses et le programme s'arrête en \emph{timeout}.\footnote{Il ne s'agit pas ici d'un \emph{deadlock} à proprement parler puisque nous ne sommes pas dans le cas où deux n\oe uds attendent l'un sur l'autre. Il s'agit plutôt d'un n\oe ud qui attend une réponse qui a été ``consommée'' par un autre et qui ne la recevra donc jamais.}
+
+\subparagraph{Idée de solution} Comme expliqué plus haut (\ref{s:att}), {\tt attente\_terminaison} s'appuie sur le tableau global des destinataires pour savoir de qui on doit attendre une réponse. Ce tableau global est constitué de l'agrégation des groupes de destinataires successivement passés en argument à la fonction d'attente. Puisque cet ajout a lieu trop tard dans notre exemple, il faudrait procéder différemment: ne plus passer les destinataires en argument de la fonction, mais les inscrire directement dans le tableau global dès que l'envoi de message a eu lieu. Ainsi, n'importe quelle instance de {\tt attente\_terminaison} a connaissance de l'ensemble des destinataires dont elle peut recevoir une réponse et elle ne risque pas d'en rejeter par erreur.
+
+%\begin{quote}
+%Il faut remarquer que dans ce cas, on ne peut pas connaître à l'avance la taille du tableau et il devient difficile de le gérer dynamiquement. Il serait alors certainement mieux d'utiliser une autre structure comme les {\ti dynar} (\emph{generic dynamic array}) mis à disposition dans Simgrid.\footnote{\url{http://simgrid.gforge.inria.fr/3.6.1/doc/group__XBT__dynar.html}}
+%\end{quote}
+
+\subsubsection{Solutions de synchronisation}
+
+Il serait intéressant de développer la solution de synchronisation qui consiste à ne laisser entrer qu'un seul nouveau n\oe ud à la fois. Le but serait double:
+\begin{inparaenum}[(a)]
+	\item vérifier si la gestion des files d'attentes pose bien un problème d'extensibilité ainsi qu'on le pressent,
+	\item comparer les résultats obtenus avec la solution présentée dans cette étude, en termes de nombre de messages et temps  d'exécution.
+\end{inparaenum}
+
+On peut remarquer que cette solution revient à rendre les arrivées de n\oe uds séquentielles.
+
+\paragraph{Simgrid et les traces} Pour étudier ce qu'il se passe lors de la vie du DST, le programme génère des traces sous forme de texte qu'il faut ensuite examiner. Dès que la plate-forme mise en \oe uvre atteint quelques milliers de n\oe uds, cette trace devient vite très volumineuse et difficile à exploiter. Simgrid propose d'autres solutions de générations de traces (dont une graphique) que je n'ai pas eu le temps d'étudier. Il serait certainement intéressant de le faire pour pouvoir ensuite augmenter la taille des plates-formes de test.
+
+\subsubsection{Tolérance aux pannes}
+
+Il s'agit d'un point important qui conditionne, entre autres, la robustesse du DST. Pour cela, il faut faire en sorte de détecter un sommet qui ne répond plus et définir ce qu'il faut faire dans ce cas. En particulier, il faut étudier le moyen de déclencher les opérations de retrait d'un sommet dont l'arrêt a été détecté.
+
+En outre, il faut examiner les conséquences d'une panne d'un leader. Comment se passerait son remplacement ? Dans sa thèse, (\cite{Dah05}, page 82) Sylvain Dahan évoque la possibilité de distribuer le rôle de leader à plusieurs sommets en vue d'améliorer la tolérance aux pannes. Il est possible de tester tout cela avec Simgrid.
+
+\subsubsection{Conception des algorithmes}
+
+Lors de la conception des algorithmes de construction du DST, différents choix ont été faits et là encore, il serait intéressant de pouvoir construire et mettre en \oe uvre d'autres options pour en comparer les performances.
+
+\begin{enumerate}
+	%\item {\color{blue} pour {\tt demander\_nouveau\_rep}, faut-il parler d'aller chercher un représentant plus loin que le groupe local ? pas clair ...}
+	
+	\item Si le contact utilisé par un nouveau n\oe ud représente un groupe déjà plein, on va lancer des scissions. C'est ce qui a été fait ici. Une autre solution pourrait être de chercher un autre n\oe ud qui aurait de la place, évitant ainsi des scissions, mais générant bien sûr des messages pour trouver le bon groupe. (L'étendue de cette recherche pourrait d'ailleurs être bornée.) Cela reviendrait à équilibrer le DST au maximum avant de procéder aux scissions et il faut en vérifier l'intérêt.
+	
+	\item Dans ce même ordre d'idée, les regroupements de n\oe uds réalisés par les algorithmes présentés ici se font sans respecter de critères précis concernant les n\oe uds joints. Il serait donc intéressant d'y ajouter cette possibilité pour ensuite pouvoir grouper les n\oe uds par centre d'intérêt commun, ou par distance géographique, par exemple.
+	
+	\item Il me semble utile de vérifier les conséquences des choix de leaders, en particulier sur leur charge par rapport aux autres n\oe uds.
+	
+	\item Pour réaliser l'équilibrage de charge, les nouveaux représentants sont choisis en fonction de leur charge. On peut les choisir selon d'autres critères; aléatoirement ou en fonction de leur distance sur le réseau, par exemple.
+
+\end{enumerate}
+
+\subsubsection{Charge du réseau}
+
+Comme cela a déjà été dit, il est possible lors des diffusions, que le même message parvienne plusieurs fois à un même n\oe ud. Ce trafic représentant une occupation du réseau inutile, il faudrait étudier la possibilité d'optimiser ces algorithmes pour éviter cette charge.
+
+\subsection{Utilisation du DST}
+
+Une fois le DST pleinement opérationnel sur Simgrid, il devient possible d'étudier son utilisation dans ce nouvel environnement.
+
+\subsubsection{Simgrid vs simulateur séquentiel}
+
+Les études menées sur le DST jusqu'ici -- \cite{Dah05}, \cite{ddnp07:ir}, \cite{ddnp08:np} -- ont montré que tant en utilisation stable que soumis à une forte dynamicité du réseau (jusqu'à un certain seuil), le DST tenait ses promesses par rapport aux arbres et aux graphes. Mais que deviendraient ces résultats avec le surcoût des solutions de synchronisation ? Les bonnes propriétés du DST seraient-elles impactées par ces surcoûts ou seraient-ils négligeables ? 
+
+Il me paraît essentiel de pouvoir refaire ces mêmes études de performances avec les solutions exposées ici. Il s'agit de comparer les résultats avec ceux obtenus avec le simulateur séquentiel, pour valider ou pas les solutions de synchronisation proposées.
+
+\paragraph{Un exemple:} le tableau \ref{t:dst} et les figures \ref{f:graph1} et \ref{f:graph2}  montrent le nombre de messages émis pour construire un DST du nombre de n\oe uds indiqué, à l'aide des fonctions utilisant les synchronisations.
+
+\begin{quote}\emph{Remarque}: Les nouveaux n\oe uds utilisent des contacts choisis aléatoirement dans le DST et se présentent toutes les 10 unités de temps. Mais du fait des fonctions de synchronisations, les n\oe uds peuvent se voir refuser l'entrée et tentent à nouveau de se présenter un certain temps -- aléatoire et borné -- après. À partir d'une certaine taille de DST, la première tentative est majoritairement refusée et on peut donc considérer qu'ils se présentent finalement de fa\c con aléatoire.
+\end{quote}
+
+Ces relevés ne sont pas comparables en l'état avec ceux présentés dans la thèse (pages 83 et 85). En effet, dans celle-ci, un étage est ajouté au DST dès qu'il est plein alors que dans mes expérimentations, les contacts sont choisis aléatoirement et un étage peut donc très bien être ajouté alors qu'il restait de la place ailleurs dans le DST. De plus, je n'ai pas regardé la distribution des intervalles de nombres de messages, mais leur nombre total absolu. Enfin, mon DST a pour bornes 2 et 4 alors que dans la thèse elles valent 4 et 8.
+\mbox{}
+\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|}\hline
+\tb{Nb N\oe uds} & \tb{Nb Msg} & \tb{Nb Moy} & \tb{Nb Max} & \tb{Nb Étages}  \\ \hline
+      \tb{   10} &         352 &  35,2  &    119 & 2 \\ \hline
+      \tb{   50} &       4 228 &  84,56 &    811 & 4 \\ \hline
+      \tb{  100} &      13 016 & 130,16 & 	1 389 & 4 \\ \hline
+      \tb{  200} &      28 720 & 143,6  & 	2 876 & 5 \\ \hline
+      \tb{  500} &      91 770 & 183,54 & 	8 009 & 6 \\ \hline
+      \tb{1 000} &     215 608 & 215,61 & 13 912 & 6 \\ \hline
+      \tb{1 500} &     361 486 & 240,99 & 27 107 & 7 \\ \hline
+      \tb{2 000} &     517 620 & 258,81 & 34 602 & 7 \\ \hline
+      \tb{2 500} &     662 382 & 264,95 & 34 668 & 7 \\ \hline
+      \tb{3 000} &     824 214 & 274,74 & 41 898 & 7 \\ \hline
+      \tb{3 500} &     943 086 & 269,45 & 41 701 & 7 \\ \hline
+      \tb{4 000} &   1 177 142 & 294,29 & 41 718 & 7 \\ \hline
+\end{tabular}
+\end{center}
+\caption{Construction d'un DST ($a=2,\ b=4$)}
+\label{t:dst}
+\end{table}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[width=\textwidth]{./Partie3/graph1.pdf}
+\caption{Nombre de messages utilisés lors de la construction du DST}
+\label{f:graph1}
+\end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics[width=\textwidth]{./Partie3/graph2.pdf}
+\caption{Nombre moyen de messages utilisés lors de la construction du DST}
+\label{f:graph2}
+\end{center}
+\end{figure}
+
+Pour pouvoir effectuer ces comparaisons, il faudrait d'une part, ajouter toutes les fonctions et données nécessaires à ces études statistiques dans le code proposé dans cette étude, et d'autre part, arriver à faire fonctionner le simulateur séquentiel sur les mêmes plates-formes que celles utilisées avec Simgrid. (En particulier, il faut travailler sur les mêmes modèles de réseau et de plates-formes si on veut que les données obtenues soient comparables entre elles.)
+
+\subsubsection{Parcours du DST}
+Dans cette étude, je n'ai utilisé qu'une seule fa\c con de parcourir un DST pour réaliser des diffusions. Dans la thèse \cite{Dah05}, pages 84 à 94, plusieurs parcours sont présentés et peuvent donc être étudiés avec Simgrid.
+
+\chapter{Conclusion}
+
+La structure de recouvrement DST a jusqu'ici été étudiée sur des simulateurs basés sur des architectures centralisées n'autorisant pas de parallélisation.
+
+Le DST étant con\c cu pour s'appliquer à des réseaux \emph{peer-to-peer} totalement décentralisés, le but de cette étude était de poursuivre ces travaux en le faisant fonctionner sur un simulateur basé sur des modèles plus proches de cet environnement et permettant la parallélisation. C'est le simulateur \emph{Simgrid} qui a été choisi à cette fin.
+
+La complexité des algorithmes présentés dans cette étude rend difficile la mise en place de preuves formelles. Ma démarche a donc été d'effectuer une validation expérimentale de ces algorithmes pour vérifier qu'ils étaient justes. Cela a été réalisé en portant l'ensemble des fonctions d'ajout et de retrait de sommets au DST sur \emph{Simgrid}. Ce travail a également permis d'identifier et de proposer des solutions aux problèmes de synchronisation posés par la parallélisation et l'absence d'horloge globale. Ce travail est donc à compléter par une étude supplémentaire visant à démontrer et prouver ces algorithmes de fa\c con formelle.
+
+Une fois ces travaux achevés, on disposera alors d'un outil performant et réaliste pour poursuivre l'étude du comportement de cette nouvelle structure. Comme indiqué plus haut, il serait intéressant et utile de recommencer les études de performances déjà réalisées avec l'ancien simulateur pour comparer les résultats entre eux. Il sera ainsi possible de mesurer le coût des solutions de synchronisation proposées ici et donc de les valider ou pas.
+
+Bien que beaucoup de travail reste à fournir pour exploiter pleinement le potentiel de cette nouvelle structure, elle semble prometteuse et le portage sur \emph{Simgrid} était une étape essentielle pour pouvoir continuer ces travaux. Il faut également souligner le fait que puisque \emph{Simgrid} autorise l'emploi de différents modèles de réseaux et qu'il peut même en simuler les défaillances, il sera possible d'étudier le comportement du DST dans tous ces environnements.
+
+\bibliographystyle{alpha}
+\bibliography{biblio}
+\addcontentsline{toc}{chapter}{Bibliographie}
