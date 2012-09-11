@@ -1,8 +1,8 @@
 
 /*
- *  dst_fusion-3_6.c
+ *  dst.c
  *
- *  Written by Christophe Enderlin on 2012/08/31
+ *  Written by Christophe Enderlin on 2012/09/11
  *
  */
 
