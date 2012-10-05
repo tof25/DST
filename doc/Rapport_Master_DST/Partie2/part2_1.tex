@@ -1,0 +1,32 @@
+% !TEX root = ../RapportM2.tex
+
+\chapter{Retrait de sommets d'un DST (reprise)}
+\section{Transfert}
+
+\begin{algorithm}
+\caption{: Transfert de n\oe uds du groupe courant vers un groupe appelant}\label{a:tr}
+\begin{algorithmic}[1]
+\Statex
+\Procedure {transfer}{$st,\ right,\ cut\_pos, sender$}
+	\If{$(right = 1)$}
+		\State $start \gets cut\_pos$
+		\State $end \gets {\tt taille}(moi.fr\ee res[\e tage]) - 1$
+		\State $r\e ponse.stay\_id \gets moi.fr\ee res[\e tage][cut\_pos - 1].id$
+	\Else
+		\State $start \gets 0$
+		\State $end \gets cut\_pos$
+		\State $r\e ponse.stay\_id \gets moi.fr\ee res[st][cut\_pos + 1].id$
+	\EndIf
+	\Statex
+	\For{$i \gets start, end$}
+		\State $r\e ponse.rep\_array[i - start] = moi.fr\ee res[st][i]$
+	\EndFor
+	\Statex
+	\State \Call {diffuser}{$moi,\ st,\ {\tt cut\_node}{(st,\ right,\ cut\_pos)}$}
+	\Statex
+	\State \Return $r\e ponse$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\section{Fusion}

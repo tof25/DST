@@ -2,7 +2,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2012/09/26
+ *  Written by Christophe Enderlin on 2012/10/05
  *
  */
 
@@ -41,9 +41,9 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                GET_REP request */
 #define MAX_JOIN 10                         // number of joining attempts
 
-static const int a = 3;                     /* min number of brothers in a node
+static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
-static const int b = 6;                     // max number of brothers in a node
+static const int b = 4;                     // max number of brothers in a node
 //static int timeout = 100;                   // timeout for communications
 static double max_simulation_time = 10500;  // max simulation time
 static xbt_dynar_t infos_dst;               /* to store all the routing tables
@@ -706,18 +706,18 @@ static char* routing_table(node_t me) {
 
     for (brother = 0; brother <= b; brother++) {
 
-        sprintf(buf, "----+");
+        sprintf(buf, "-------+");
         s = xbt_strdup(buf);
         xbt_dynar_push(tab, &s);
     }
 
-    sprintf(buf, "  +----+\n");
+    sprintf(buf, "  +-------+\n");
     s = xbt_strdup(buf);
     xbt_dynar_push(tab, &s);
 
     for (stage = 0; stage < me->height; stage++) {
 
-        sprintf(buf, "|S%-3d|", stage);
+        sprintf(buf, "| S%-4d |", stage);
         s = xbt_strdup(buf);
         xbt_dynar_push(tab, &s);
 
@@ -725,28 +725,28 @@ static char* routing_table(node_t me) {
 
             if (brother >= me->bro_index[stage]) {
 
-                sprintf(buf, "    |");
+                sprintf(buf, "       |");
                 s = xbt_strdup(buf);
                 xbt_dynar_push(tab, &s);
             } else {
 
-                sprintf(buf, "%-4d|", me->brothers[stage][brother].id);
+                sprintf(buf, " %-5d |", me->brothers[stage][brother].id);
                 s = xbt_strdup(buf);
                 xbt_dynar_push(tab, &s);
             }
         }
 
-        sprintf(buf, "  |%-4d|\n+", me->dst_infos.load[stage]);
+        sprintf(buf, "  | %-5d |\n+", me->dst_infos.load[stage]);
         s = xbt_strdup(buf);
         xbt_dynar_push(tab, &s);
 
         for (brother = 0; brother <= b; brother++) {
 
-            sprintf(buf, "----+");
+            sprintf(buf, "-------+");
             s = xbt_strdup(buf);
             xbt_dynar_push(tab, &s);
         }
-        sprintf(buf, "  +----+\n");
+        sprintf(buf, "  +-------+\n");
         s = xbt_strdup(buf);
         xbt_dynar_push(tab, &s);
     }
@@ -5526,7 +5526,7 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
         answer.transfer.rep_array[i - start] = me->brothers[st][i];
     }
 
-    // broadcast a DEL_MEMBER_REQ task to split all involved nodes
+    // broadcast a CUT_NODE task to split all involved nodes
     XBT_VERB("Node %d: Broadcast a CUT_NODE task", me->self.id);
 
     args.broadcast.type = TASK_CUT_NODE;
