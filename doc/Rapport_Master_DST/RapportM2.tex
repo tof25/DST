@@ -12,7 +12,7 @@
 \usepackage{textcomp}
 \usepackage[width=16cm,left=3cm,top=3.5cm]{geometry}
 \geometry{a4paper}
-%\usepackage[french,vlined,tworuled,linesnumbered]{algorithm2e}
+%\usepackage[french,vlined,tworuled,linesnumbered,algo2e]{algorithm2e}
 \usepackage[Algorithme]{algorithm}
 \usepackage{algpseudocode}
 \usepackage{alltt}
@@ -86,19 +86,20 @@
 \newcommand{\e}{\acute{e}}
 \newcommand{\ee}{\grave{e}}
 \newcommand{\eee}{\hat{e}}
+\newcommand{\And}{\textbf{and }}
 
 % algorithms customization
-\renewcommand{\algorithmicif}{\textbf{si}}
-\renewcommand{\algorithmicthen}{\textbf{alors}}
-\renewcommand{\algorithmicend}{\textbf{fin}}
-\renewcommand{\algorithmicelse}{\textbf{sinon}}
-\renewcommand{\algorithmicwhile}{\textbf{tant que}}
-\renewcommand{\algorithmicdo}{\textbf{faire}}
-\renewcommand{\algorithmicforall}{\textbf{pour tout}}
-\renewcommand{\algorithmicfor}{\textbf{pour}}
-\renewcommand{\algorithmicrepeat}{\textbf{faire}}
-\renewcommand{\algorithmicuntil}{\textbf{tant que}}
-\renewcommand{\algorithmicreturn}{\textbf{retourne}}
+%\renewcommand{\algorithmicif}{\textbf{si}}
+%\renewcommand{\algorithmicthen}{\textbf{alors}}
+%\renewcommand{\algorithmicend}{\textbf{fin}}
+%\renewcommand{\algorithmicelse}{\textbf{sinon}}
+%\renewcommand{\algorithmicwhile}{\textbf{tant que}}
+%\renewcommand{\algorithmicdo}{\textbf{faire}}
+%\renewcommand{\algorithmicforall}{\textbf{pour tout}}
+%\renewcommand{\algorithmicfor}{\textbf{pour}}
+%\renewcommand{\algorithmicrepeat}{\textbf{faire}}
+%\renewcommand{\algorithmicuntil}{\textbf{tant que}}
+%\renewcommand{\algorithmicreturn}{\textbf{retourne}}
 \algblock[Name]{Def}{Fin}
 
 % for titlepage.
@@ -188,10 +189,10 @@ Pour finir, je souhaite remercier Laurent Philippe, mon encadrant de stage, pour
 % Table Of Contents
 \dominitoc \tableofcontents
 
-%\include{Partie1/part1}
-%\include{Partie2/part2}
+\include{Partie1/part1}
+\include{Partie2/part2}
 \include{Partie2/part2_1}
-%\include{Partie3/part3}
-%\include{Annexes/Appendices}
+\include{Partie3/part3}
+\include{Annexes/Appendices}
 
 \end{document}

@@ -1,32 +1,80 @@
 % !TEX root = ../RapportM2.tex
 
-\chapter{Retrait de sommets d'un DST (reprise)}
+\chapter{Retrait de sommets d'un DST (suite des travaux)}
 \section{Transfert}
 
 \begin{algorithm}
 \caption{: Transfert de n\oe uds du groupe courant vers un groupe appelant}\label{a:tr}
 \begin{algorithmic}[1]
 \Statex
-\Procedure {transfer}{$st,\ right,\ cut\_pos, sender$}
+\Procedure {transfert}{$st,\ right,\ cut\_pos, sender$}
 	\If{$(right = 1)$}
 		\State $start \gets cut\_pos$
-		\State $end \gets {\tt taille}(moi.fr\ee res[\e tage]) - 1$
-		\State $r\e ponse.stay\_id \gets moi.fr\ee res[\e tage][cut\_pos - 1].id$
+		\State $end \gets {\tt size}(me.brothers[stage]) - 1$
+		\State $answer.stay\_id \gets me.brothers[stage][cut\_pos - 1].id$
 	\Else
 		\State $start \gets 0$
 		\State $end \gets cut\_pos$
-		\State $r\e ponse.stay\_id \gets moi.fr\ee res[st][cut\_pos + 1].id$
+		\State $answer.stay\_id \gets me.brothers[st][cut\_pos + 1].id$
 	\EndIf
 	\Statex
 	\For{$i \gets start, end$}
-		\State $r\e ponse.rep\_array[i - start] = moi.fr\ee res[st][i]$
+		\State $answer.rep\_array[i - start] = me.brothers[st][i]$
 	\EndFor
 	\Statex
-	\State \Call {diffuser}{$moi,\ st,\ {\tt cut\_node}{(st,\ right,\ cut\_pos)}$}
+	\State \Call {broadcast}{$me,\ st,\ {\tt cut\_node}{(st,\ right,\ cut\_pos)}$}
 	\Statex
-	\State \Return $r\e ponse$
+	\State \Return $answer$
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
 
 \section{Fusion}
+
+\begin{algorithm}
+\caption{: Scinde un n\oe ud lors d'un transfert}\label{a:cn}
+\begin{algorithmic}[1]
+\Statex
+\Procedure{cut\_node}{$stage,\ right,\ cut\_pos$}
+	\State $pos\_me \gets {\tt index}(me.brothers[stage],\ me.id)$
+	\Statex
+	
+	\If{$(right = 0)$}
+		\State $start \gets 0$
+		\State $end \gets cut\_pos$
+		\State $new\_node \gets me.brothers[stage][cut\_pos + 1]$
+	\Else
+		\State $start \gets cut\_pos$
+		\State $end \gets {\tt size}(me.brothers[stage]) - 1$
+		\State $new\_node \gets me.brothers[stage][0]$
+	\EndIf
+	\Statex
+	
+	\If{$(pos\_me \geq start$ \And $pos\_me \leq end)$}
+		\State \Call {shift\_bro}{$stage + 1,\ new\_node,\ right$}
+	\EndIf
+	\Statex
+	
+	\If{$(right = 0)$}
+		\If{$(pos\_me \leq cut\_pos)$}
+			\State $start \gets cut\_pos + 1$
+			\State $end \gets {\tt size}(me.brothers[stage] - 1)$
+		\Else
+			\State $start \gets 0$
+			\State $end \gets cut\_pos$
+		\EndIf
+	\Else
+		\If{$(pos\_me < cut\_pos)$}
+			\State $start \gets cut\_pos$
+			\State $end \gets {\tt size}(me.brothers[stage] - 1)$
+		\Else
+			\State $start \gets 0$
+			\State $end \gets cut\_pos - 1$
+		\EndIf
+	\EndIf
+	\Statex
+	
+	\State \Call {del\_member}{$stage,\ start,\ end$}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
