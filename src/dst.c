@@ -5484,6 +5484,8 @@ static void leave(node_t me) {
  * \return the array of extracted nodes (the leaving part)
  */
 static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_rep_t sender) {
+    //TODO ôter l'argument sender qui ne sert plus à rien
+
     XBT_IN();
 
     int i, k, start, end, rep_idx;

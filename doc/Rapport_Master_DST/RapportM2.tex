@@ -100,6 +100,8 @@
 %\renewcommand{\algorithmicrepeat}{\textbf{faire}}
 %\renewcommand{\algorithmicuntil}{\textbf{tant que}}
 %\renewcommand{\algorithmicreturn}{\textbf{retourne}}
+\renewcommand{\algorithmiccomment}[1]{{\color{dark_green}\hfill\(\triangleright\) {\small \textsf{#1}}}}
+\algnewcommand\algorithmicto{\textbf{to}}\algrenewtext{For}[3]%  {$\algorithmicfor\ #1 \gets #2\ \algorithmicto\ #3\ \algorithmicdo$}
 \algblock[Name]{Def}{Fin}
 
 % for titlepage.
@@ -189,10 +191,10 @@ Pour finir, je souhaite remercier Laurent Philippe, mon encadrant de stage, pour
 % Table Of Contents
 \dominitoc \tableofcontents
 
-\include{Partie1/part1}
-\include{Partie2/part2}
+%\include{Partie1/part1}
+%\include{Partie2/part2}
 \include{Partie2/part2_1}
-\include{Partie3/part3}
-\include{Annexes/Appendices}
+%\include{Partie3/part3}
+%\include{Annexes/Appendices}
 
 \end{document}
