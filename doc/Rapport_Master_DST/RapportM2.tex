@@ -86,7 +86,7 @@
 \newcommand{\e}{\acute{e}}
 \newcommand{\ee}{\grave{e}}
 \newcommand{\eee}{\hat{e}}
-\newcommand{\And}{\textbf{and }}
+\newcommand{\And}{\textbf{ and }}
 
 % algorithms customization
 %\renewcommand{\algorithmicif}{\textbf{si}}
@@ -101,7 +101,9 @@
 %\renewcommand{\algorithmicuntil}{\textbf{tant que}}
 %\renewcommand{\algorithmicreturn}{\textbf{retourne}}
 \renewcommand{\algorithmiccomment}[1]{{\color{dark_green}\hfill\(\triangleright\) {\small \textsf{#1}}}}
-\algnewcommand\algorithmicto{\textbf{to}}\algrenewtext{For}[3]%  {$\algorithmicfor\ #1 \gets #2\ \algorithmicto\ #3\ \algorithmicdo$}
+\algnewcommand\algorithmicto{\textbf{to}}
+\algrenewtext{For}[3]%
+  {$\algorithmicfor\ #1 \gets #2\ \algorithmicto\ #3\ \algorithmicdo$}
 \algblock[Name]{Def}{Fin}
 
 % for titlepage.

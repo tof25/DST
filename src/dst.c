@@ -5445,6 +5445,7 @@ static void leave(node_t me) {
 
         ans_data_t answer_data = NULL;
 
+        //TODO: Faut-il effacer args ici ?
         res = send_msg_sync(me,
                 TASK_MERGE_REQ,
                 me->brothers[0][idx].id,

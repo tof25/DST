@@ -160,3 +160,147 @@
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
+
+\begin{algorithm}
+\caption{: Procédure exécutée par un n\oe ud qui quitte le DST}
+\begin{algorithmic}[1]
+\Statex
+\Procedure{leave}{ }
+	\Statex \Comment{travaille sur des copies des tables de routage}
+
+	\State $cpy\_brothers \gets me.brothers$
+	\State $cpy\_preds \gets me.preds$
+	\Statex
+
+	\For{stage}{0}{{\tt height}(me.brothers) - 1}
+		\Statex \Comment{\textsc {informe mes prédécesseurs de mon départ}}
+	
+		\For{pred}{0}{{\tt size}(cpy\_preds[stage]) - 1}
+			\Statex
+		
+			\If{$(cpy\_preds[stage][pred].id \neq me.id)$}
+				\Statex
+			
+				\If{$(stage = 0)$}
+					\State \Call{send\_msg\_async}{$cpy\_preds[stage][pred].id,\ {\tt del\_bro}(stage,\ me.id)$}
+				\Else
+					\Statex
+					\State {$new\_rep\_id \gets$ un de mes frères de l'étage 0 choisi aléatoirement}
+					\Statex \Comment{en informe le prédécesseur}
+				
+					\If{$(new\_rep\_id \neq me.id)$}
+						\Statex
+						\State \parbox{\textwidth}{\Call{send\_msg\_async}{$cpy\_preds[stage][pred].id,$
+					
+						$\qquad{\tt repl\_bro}(stage,\ new\_rep\_id)$}}
+					\EndIf
+				\EndIf
+			\EndIf
+		\EndFor \Comment{prédécesseur suivant}
+		\Statex
+		\Statex \Comment{\textsc{informe mes frères de mon départ}}
+	
+		\For{brother}{0}{{\tt size}(cpy\_brothers[stage]) - 1}
+			\Statex
+		
+			\If{$(cpy\_brothers[stage][brother].id \neq me.id)$}
+				\Statex
+			
+				\State \parbox{\textwidth}{\Call{send\_msg\_async}{$cpy\_brothers[stage][brother].id,$
+			
+				$\qquad{\tt del\_pred}(stage,\ me.id)$}}
+			\EndIf
+		\EndFor \Comment{frère suivant}
+	\EndFor	\Comment{étage suivant}
+	\Statex
+	\Statex \Comment{\textsc{charge un de mes frères de traiter les fusions ou transferts}}
+
+	\If{$({\tt size}(me.brothers[0]) \leq a)$}
+		\Statex
+		\State {$idx \gets$ index d'un de mes frères de l'étage 0}
+		\State {\Call{send\_msg\_sync}{$me.brothers[0][idx].id,\ {\tt merge\_req}()$}}
+	\EndIf
+	
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}
+\caption{: Traite les fusions ou transferts rendus nécessaires par un départ}
+\begin{algorithmic}[1]
+\Procedure{merge\_request}{ }
+	\Statex
+
+	\State $stage \gets 0$
+	\State $size\_last\_stage \gets 0$
+	\Statex
+
+	\While{$({\tt size}(me.brothers[stage]) < a) \And stage < {\tt height}(me.brothers) - 1)$}
+		\Statex
+		
+		\State $pos\_contact \gets {\tt merge\_or\_transfer}(me,\ stage)$
+		\Statex
+		
+		\If{$(pos\_contact > -1)$}	\Comment{\textsc{une fusion est possible}}
+			\Statex
+			
+			\State $transfer \gets 0$
+			\State $pos\_me \gets {\tt index}(stage + 1,\ me.id)$
+			\Statex
+			
+			\Statex	\Comment{demande au contact de réaliser une première fusion \ldots}
+			
+			\If{$(pos\_me > pos\_contact)$}
+				\State $right \gets 11$
+			\Else
+				\State $right \gets 10$
+			\EndIf
+			\Statex
+			
+			\State \parbox{\textwidth}{\Call{send\_msg\_sync}{$me.brothers[stage + 1][pos\_contact].id,$
+					
+						$\qquad{\tt merge}(stage,\ pos\_me,\ pos\_contact,\ right,\ me.brothers[stage])$}}
+						
+			\Statex
+			\Statex \Comment{\ldots puis lui demande de diffuser une tâche de fusion}
+			
+			\If{$(pos\_me > pos\_contact)$}
+				\State $right \gets 1$
+			\Else
+				\State $right \gets 0$
+			\EndIf
+			\Statex
+			
+			\State \parbox{\textwidth}{\Call{send\_msg\_sync}{$me.brothers[stage + 1][pos\_contact].id,$
+					
+						$\qquad{\tt broadcast\_merge}(stage,\ pos\_me,\ pos\_contact,\ right,\ me.brothers[stage])$}}
+			\Statex
+			
+			\State \Comment{après la fusion, l'étage supérieur contient deux représentants du même groupe}
+			\Statex
+			
+			\State \Call{clean\_upper\_stage}{stage,\ pos\_me,\ pos\_contact} \Comment{exécution locale}
+			\Statex \Comment{diffuse cette tâche de nettoyage}
+			
+			\State \Call{broadcast}{$me,\ stage + 1,\ {\tt clean\_upper\_stage}{(stage,\ pos\_me,\ pos\_contact)}$}	
+			\Statex
+				
+		\Else	\Comment{\textsc{fusion impossible - il faut faire un transfert}}
+		\EndIf
+	\EndWhile
+	\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+
+
+
+
+
+
+
