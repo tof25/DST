@@ -235,7 +235,8 @@
 	\State $stage \gets 0$
 	\State $size\_last\_stage \gets 0$
 	\Statex
-
+	
+	\Comment{parcourt l'ensemble des étages}
 	\While{$({\tt size}(me.brothers[stage]) < a) \And stage < {\tt height}(me.brothers) - 1)$}
 		\Statex
 		
@@ -281,14 +282,95 @@
 			\Statex
 			
 			\State \Call{clean\_upper\_stage}{stage,\ pos\_me,\ pos\_contact} \Comment{exécution locale}
-			\Statex \Comment{diffuse cette tâche de nettoyage}
+			\Statex \Comment{diffusion}
 			
 			\State \Call{broadcast}{$me,\ stage + 1,\ {\tt clean\_upper\_stage}{(stage,\ pos\_me,\ pos\_contact)}$}	
 			\Statex
 				
-		\Else	\Comment{\textsc{fusion impossible - il faut faire un transfert}}
+		\Else
+		
+		\algstore{algbrk}
+		\end{algorithmic}
+		\end{algorithm}
+		
+		\newpage
+		
+		\begin{algorithm}
+		%\caption{merge\_request (suite)}
+		\begin{algorithmic}[1]
+		\algrestore{algbrk}
+			
+			\Statex \State \Comment{\textsc{fusion impossible - il faut faire un transfert}}
+			\Statex
+			
+			\State $pos\_me\_up \gets {\tt index}(stage + 1,\ me.id)$
+			\Statex
+			
+			\If{$(pos\_me\_up = 0)$}
+				\Statex
+				
+				\State $pos\_contact \gets 1$
+				\State $right \gets 0$
+				\State $cut\_pos \gets b - a - 1$
+			\Else
+				\Statex
+				
+				\State $pos\_contact \gets pos\_me\_up - 1$
+				\State $right \gets 1$
+				\State $cut\_pos \gets a$
+			\EndIf
+			\Statex
+			
+			\State $contact\_id \gets me.brothers[stage + 1][pos\_contact].id$
+			\Statex
+			
+			\State $answer \gets $ \parbox[t]{\textwidth}{\Call{send\_msg\_sync}{$contact\_id,$
+			
+			$\qquad{\tt transfer}(stage,\ right,\ cut\_pos,\ me.id)$}}
+			\Statex \Statex
+			\State \Comment{\textsc{ajoute les n\oe uds re\c cus}}
+			\Statex
+			\State $current\_bro \gets me.brothers[stage]$	\Comment{sauvegarde l'étage courant}
+			\Statex
+			
+			\State \Comment{chaque membre de la branche courante ajoute les n\oe uds re\c cus}
+			\State \Call{br\_add\_bro\_array}{$stage,\ answer.rep\_array,\ \mathrm{mod}((right + 1),\ 2$}
+			\Statex
+			
+			\State \Comment{chaque membre de la branche voisine ajoute les n\oe uds courants}
+			\State \parbox{\textwidth}{\Call{send\_msg\_sync}{$answer.rep\_array[0].id,$
+			
+			$\qquad{\tt br\_add\_bro\_array}(stage,\ current\_bro,\ right)$}}
+			\Statex
+			
+			\State \Comment{nettoyage de l'étage supérieur}
+			\State \Comment{exécution locale}
+			\State \Call{update\_upper\_stage}{$stage,\ pos\_contact,\ answer.stay\_id$}
+			\Statex
+			
+			\State \Comment{diffusion}
+			\State \parbox{\textwidth}{\Call{broadcast}{$me,\ stage + 1,$
+			
+			$\qquad{\tt update\_upper\_stage}{(stage,\ pos\_contact,\ answer.stay\_id)}$}}
+			
 		\EndIf
+		\Statex
+		
+		\State $stage ++$ \Comment{étage suivant}
 	\EndWhile
+	
+	\algstore{algbrk2}
+	\end{algorithmic}
+	\end{algorithm}
+		
+	\newpage
+		
+	\begin{algorithm}
+	%\caption{merge\_request (suite)}
+	\begin{algorithmic}[1]
+	\algrestore{algbrk2}
+		
+	\State \Comment{\textsc{traitement de la racine}}
 	\EndProcedure
 \end{algorithmic}
 \end{algorithm}
