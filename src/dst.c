@@ -706,18 +706,18 @@ static char* routing_table(node_t me) {
 
     for (brother = 0; brother <= b; brother++) {
 
-        sprintf(buf, "-------+");
+        sprintf(buf, "--------+");
         s = xbt_strdup(buf);
         xbt_dynar_push(tab, &s);
     }
 
-    sprintf(buf, "  +-------+\n");
+    sprintf(buf, "  +--------+\n");
     s = xbt_strdup(buf);
     xbt_dynar_push(tab, &s);
 
     for (stage = 0; stage < me->height; stage++) {
 
-        sprintf(buf, "| S%-4d |", stage);
+        sprintf(buf, "| S%-5d |", stage);
         s = xbt_strdup(buf);
         xbt_dynar_push(tab, &s);
 
@@ -725,28 +725,28 @@ static char* routing_table(node_t me) {
 
             if (brother >= me->bro_index[stage]) {
 
-                sprintf(buf, "       |");
+                sprintf(buf, "        |");
                 s = xbt_strdup(buf);
                 xbt_dynar_push(tab, &s);
             } else {
 
-                sprintf(buf, " %-5d |", me->brothers[stage][brother].id);
+                sprintf(buf, " %-6d |", me->brothers[stage][brother].id);
                 s = xbt_strdup(buf);
                 xbt_dynar_push(tab, &s);
             }
         }
 
-        sprintf(buf, "  | %-5d |\n+", me->dst_infos.load[stage]);
+        sprintf(buf, "  | %-6d |\n+", me->dst_infos.load[stage]);
         s = xbt_strdup(buf);
         xbt_dynar_push(tab, &s);
 
         for (brother = 0; brother <= b; brother++) {
 
-            sprintf(buf, "-------+");
+            sprintf(buf, "--------+");
             s = xbt_strdup(buf);
             xbt_dynar_push(tab, &s);
         }
-        sprintf(buf, "  +-------+\n");
+        sprintf(buf, "  +--------+\n");
         s = xbt_strdup(buf);
         xbt_dynar_push(tab, &s);
     }
