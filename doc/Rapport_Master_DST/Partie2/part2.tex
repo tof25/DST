@@ -241,7 +241,7 @@ Il y a donc deux problèmes à résoudre:\footnote{Le point \ding{192} est résolu p
 \begin{algorithmic}[1]
 \Statex
 \For{$\e tage \gets 1,moi.hauteur-1$}
-  \State $nouv\_noeuds \gets []$
+  \State $nouv\_n\oe uds \gets []$
   \ForAll{$f \in moi.fr\ee res[\e tage]$}
     \If{$(f = contact)$}
        \State $nouv\_noeuds.{\tt ajouter}(moi.nom)$
@@ -652,15 +652,15 @@ J'ai donc choisi d'utiliser la deuxième solution -- le stockage des requêtes -- 
 \Statex
 \State un nouveau n\oe ud $N$ veut rejoindre le DST via son contact $C$
 \Statex
-\State $u\_rep \gets \mathtt{OK}$ \Comment $u\_rep$ est la réponse retournée par la diffusion de \texttt{'u'}
-\State $cpt \gets 0$ \Comment $cpt$ est le compteur de diffusions
+\State $u\_rep \gets \mathtt{OK}$ \Comment {$u\_rep$ est la réponse retournée par la diffusion de \texttt{'u'}}
+\State $cpt \gets 0$ \Comment {$cpt$ est le compteur de diffusions}
 \Statex
 \Repeat
 	\State $N$ demande à $C$ de lui faire de la place
 	\State $C$ diffuse {\tt 'u'} à l'ensemble des n\oe uds à modifier
 	\If {$(u\_rep = \mathtt{NOK})$}
 		\If {$(cpt \ge \mathtt{SEUIL})$}
-			\Statex \Comment En dessous de \texttt{SEUIL} tentatives, on ne repasse pas à \texttt{'a'}
+			\Statex \Comment {En dessous de \texttt{SEUIL} tentatives, on ne repasse pas à \texttt{'a'}}
 			\State $C$ diffuse {\tt 'a'} vers les n\oe uds qu'il a passés à {\tt 'u'} sur ordre de $N$ \label{a3:l9}
 		\EndIf
 		\State $C$ informe $N$ de l'échec de la diffusion
@@ -766,7 +766,7 @@ L'attente d'une réponse se fait de fa\c con synchrone (ligne \ref{a3:l7}). Il n'
 \If {$(${\ti tâche\_reçue} est une requête$)$}
 \State {\tt exécute} {\ti tâche\_reçue}\label{a3:l10}
   \If {$(${\tt sommet}{\ti (pile\_infos\_requêtes)} contient la réponse)}\label{a3:l11}
-  	\Statex\Comment réponse reçue entre temps ?
+  	\Statex\Comment {réponse reçue entre temps ?}
     \State {\ti réponse} $\gets$ {\tt sommet}{\ti (pile\_infos\_requêtes).réponse}
     \State {\tt dépile} {\ti pile\_infos\_requêtes}\label{a3:l13}
     \If {{\ti (moi.actif = }{\tt 'a' \&\&} {\ti pile\_tâches} pas vide)}\label{a3:l14}
@@ -808,9 +808,9 @@ La réponse attendue ayant été re\c cue, on peut exécuter les tâches éventuelleme
 \begin{algorithmic}[1]
 \algrestore{bkbreak}
 \Statex
-    \Else \Comment \emph{tâche\_reçue} est une réponse
+    \Else \Comment {\emph{tâche\_reçue} est une réponse}
       \State $index \gets$ position \emph{requête} dans \emph{pile\_infos\_requêtes}\label{a3:l23}
-      \Statex \Comment \emph{index} = -1 si requête pas trouvée
+      \Statex \Comment {\emph{index} = -1 si requête pas trouvée}
 \algstore{bkbreak}
 \end{algorithmic}
 \end{algorithm}
@@ -833,7 +833,7 @@ Comme indiqué plus haut, on cherche dans la pile une requête adressée à l'émette
 \algrestore{bkbreak}
 \Statex
       \If {$(index = \mathtt{taille}$\emph{(pile\_infos\_requêtes))}}\label{a3:l24}
-        \Statex \Comment c'est la réponse attendue
+        \Statex \Comment {c'est la réponse attendue}
         \State {\tt dépile} \emph{pile\_infos\_requêtes}
 		\Statex
         \If {$(moi.actif\ =\ ${\tt 'a'} $\&\&$ \emph{pile\_tâches} pas vide$)$}\label{a3:l26}
@@ -872,11 +872,11 @@ Si le n\oe ud courant est actif, on peut exécuter l'ensemble des tâches stockées
 \algrestore{bkbreak}
 \Statex
       \Else
-        \Statex \Comment \emph{tâche\_reçue} n'est pas la réponse attendue
+        \Statex \Comment {\emph{tâche\_reçue} n'est pas la réponse attendue}
         \If {$(index > -1)$}\label{a3:l34}
           \State stocke cette réponse à la position \emph{index} dans \emph{pile\_infos\_requêtes}\label{a3:l35}
         \Else
-          \Statex \Comment s'agit-il d'un accusé réception de requêtes asynchrones ?
+          \Statex \Comment {s'agit-il d'un accusé réception de requêtes asynchrones ?}
           \State $idx \gets$ position \emph{requête} dans \emph{tableau\_infos\_requêtes}\label{a3:l37}
           \If {$(idx \neq -1)$}\label{a3:l38}
             \State marque \emph{tableau\_infos\_requêtes}{\tt [}\emph{idx}{\tt ]} comme reçue
@@ -984,7 +984,7 @@ Voici l'algorithme de cette fonction:
   \Statex
   \If {$(moi.dest\_tab$ n'{\tt existe} pas$)$}
     \State {\tt crée} \emph{moi.dest\_tab}
-    \State y {\tt recopie} \emph{dest\_tab}		\Comment ne doit pas contenir \emph{moi}
+    \State y {\tt recopie} \emph{dest\_tab}		\Comment {ne doit pas contenir \emph{moi}}
   \Else
     \State y {\tt ajoute} \emph{dest\_tab}
   \EndIf
@@ -1038,7 +1038,7 @@ Comme déjà mentionné, chaque sommet possède un tableau contenant l'ensemble des 
         \If {$(pos\_rep \leq moi.taille\_tab-1\quad \&\&$\label{a4:l14}
           \Statex \hspace{7.5em}$pos\_rep \ge moi.taille\_tab - cpt)$}
           \Statex
-          \Statex \Comment tâche\_reçue est une des réponses attendues par l'appel courant
+          \Statex \Comment {tâche\_reçue est une des réponses attendues par l'appel courant}
           \Statex
           \If {$(ret \neq \mathtt{NOK})$}\label{a4:l15}
             \State $ret \gets$ \emph{tâche\_reçue.réponse}
@@ -1085,7 +1085,7 @@ Si c'est le cas, on commence par positionner la valeur de retour {\tt ret}\footn
 \begin{algorithmic}[1]
 \algrestore{bkbreak}
 \Statex
-        \Else \Comment \emph{tâche reçue} est une réponse attendue par un appel parent \label{a4:l21}
+        \Else \Comment {\emph{tâche reçue} est une réponse attendue par un appel parent \label{a4:l21}}
           \Statex
           \State marque \emph{moi.dest\_tab}{\tt [}\emph{pos\_rep}{\tt ]} comme reçue
           \State \emph{moi.dest\_tab}{\tt [}\emph{pos\_rep}{\tt ]}\emph{.réponse} $\gets$ \emph{tâche\_reçue.réponse}	 
@@ -1111,7 +1111,7 @@ Si ce n'est pas une des réponses à l'appel courant, c'est une de celles attendue
 \begin{algorithmic}[1]
 \algrestore{bkbreak}
 \Statex
-      \Else \Comment \emph{tâche\_reçue} est-elle attendue par {\tt send\_msg\_sync} ?
+      \Else \Comment {\emph{tâche\_reçue} est-elle attendue par {\tt send\_msg\_sync} ?}
         \Statex
         \State $pos\_pile \gets$ position de \emph{\{tâche\_reçue.émetteur, tâche\_reçue.type\}} dans
         \Statex \hspace{11.4em}\emph{pile\_infos\_requêtes} \label{a4:l26}
@@ -1167,13 +1167,13 @@ Si ce n'est pas une des réponses à l'appel courant, c'est une de celles attendue
 \algrestore{bkbreak}
 \Statex
     \Else \label{a4:l31}
-      \Comment \emph{tâche\_reçue} est une requête
+      \Comment {\emph{tâche\_reçue} est une requête}
       \State {\tt exécute} \emph{tâche\_reçue} \label{a4:l32}
-      \Statex \Comment réponses reçues entre temps ?
+      \Statex \Comment {réponses reçues entre temps ?}
       \For {$idx \gets moi.taille\_tab - 1, moi.taille\_tab - cpt$}
         \If {$(moi.dest\_tab[idx]$ marqué comme reçu$)$}
           \Statex
-          \Statex \Comment regarde si l'une des réponses est {\tt 'NOK'}
+          \Statex \Comment {regarde si l'une des réponses est {\tt 'NOK'}}
           \If {$(moi.dest\_tab[idx].r\e ponse \mathrm{\ \mathtt{existe}\ } \&\&\ ret \neq ${\tt\ 'NOK'}$)$} \label{a4:l35}
             \State $ret \gets moi.dest\_tab[idx].r\e ponse$
           \EndIf \label{a4:l37}
@@ -1234,7 +1234,7 @@ Voici l'algorithme utilisé pour la diffusion:
 \caption{: Diffusion simple}
 \begin{algorithmic}[1]
 \Statex
-\Def {\tt\ diffuser}$(\e tage,\ req)$ \Comment diffuse la requête \emph{req} depuis l'étage \emph{étage}
+\Def {\tt\ diffuser}$(\e tage,\ req)$ \Comment {diffuse la requête \emph{req} depuis l'étage \emph{étage}}t
    \If {$(\e tage = 0)$}
      \State traiter \emph{req} localement
    \Else

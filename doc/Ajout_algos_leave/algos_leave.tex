@@ -1,4 +1,123 @@
-% !TEX root = ../RapportM2.tex
+\documentclass[12pt,twoside,openright]{report}
+
+% packages
+\usepackage{pifont}
+\usepackage[french]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{tikz}
+\usepackage{hyphenat}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage[width=16cm,left=3cm,top=3.5cm]{geometry}
+\geometry{a4paper}
+%\usepackage[french,vlined,tworuled,linesnumbered,algo2e]{algorithm2e}
+\usepackage[Algorithme]{algorithm}
+\usepackage{algpseudocode}
+\usepackage{alltt}
+\usepackage{lastpage}
+\usepackage{multicol}
+\usepackage{color}
+\usepackage{moreverb}
+\usepackage{graphicx}
+\usepackage{paralist}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage{changepage}
+\usepackage{minitoc}
+\usepackage{float}
+\usepackage[toc,page]{appendix}
+\usepackage{hyperref}
+\usepackage{wasysym}
+
+% some definitions
+\def\tb{\textbf}
+\def\ti{\em}
+\def\sc{\textsc}
+\definecolor{dark_green}{rgb}{0,0.6,0}
+
+% to set a blank page before an odd chapter page
+\def\cleardoublepage{%
+  \clearpage
+  \ifodd\value{page}\else
+    \thispagestyle{empty}%
+    \hbox{}\newpage
+  \fi
+}
+
+% Last page must be empty
+\AtEndDocument{\thispagestyle{empty}}
+
+% fancyhdr config
+\setlength{\headheight}{15.2pt}
+\fancyhead{}
+\fancyhead[RE]{\slshape \leftmark}
+\fancyhead[LO]{\slshape \rightmark}
+\fancyfoot{}
+\fancyfoot[LO,RE]{page \thepage\ sur \pageref{LastPage}}
+\fancyfoot[LE,RO]{\small{\it{Christophe Enderlin}}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+\fancypagestyle{plain}{
+	\fancyhf{}
+	\renewcommand{\headrulewidth}{0pt}
+	\renewcommand{\footrulewidth}{0pt}
+}
+
+% to get part title
+\let\Oldpart\part
+\newcommand{\parttitle}{}
+\renewcommand{\part}[1]{\renewcommand{\parttitle}{#1}\Oldpart{#1}}
+
+%customize lists
+\frenchbsetup{ReduceListSpacing=true, CompactItemize=false}
+
+% some commands
+\newcommand{\red}[1]{\color{red}{#1}}
+\newcommand{\green}[1]{\color{dark_green}{#1}}
+\newcommand{\e}{\acute{e}}
+\newcommand{\ee}{\grave{e}}
+\newcommand{\eee}{\hat{e}}
+\renewcommand{\And}{\textbf{ and }}
+
+% algorithms customization
+\renewcommand{\algorithmiccomment}[1]{{\color{dark_green}\hfill\(\triangleright\) {\small \textsf{#1}}}}
+\algnewcommand\algorithmicto{\textbf{to}}
+\algrenewtext{For}[3]{$\algorithmicfor\ #1 \gets #2\ \algorithmicto\ #3\ \algorithmicdo$}
+\algblock[Name]{Def}{Fin}
+
+% for titlepage.
+\newcommand{\HRule}{\rule{\linewidth}{.5mm}}
+
+% blank page
+\newcommand{\blankpage}{\newpage\thispagestyle{empty}\mbox{}}
+
+% to prevent footnotes to be split over several pages
+\interfootnotelinepenalty=10000
+
+% Hyperref.
+\hypersetup{
+	backref=true,
+    pagebackref=true,
+    hyperindex=true,
+    colorlinks=true,
+    breaklinks=true,
+    urlcolor=blue,
+    linkcolor=black,
+    citecolor=black,
+    bookmarks=true,
+    bookmarksopen=true
+}
+
+% Minitoc.
+\renewcommand{\mtctitle}{Sommaire}
+%\setcounter{minitocdepth}{1}
+
+\begin{document}
 
 \chapter{Retrait de sommets d'un DST (suite des travaux)}
 \section{Transfert}
@@ -48,7 +167,7 @@
 	\EndIf
 	\Statex
 	
-	\If{$(pos\_me \geq start$ \And $pos\_me \leq end)$}
+	\If{$(pos\_me \geq start \And pos\_me \leq end)$}
 		\State \Call {shift\_bro}{$stage + 1,\ new\_node,\ right$}
 	\EndIf
 	\Statex
@@ -295,8 +414,9 @@
 		
 		\newpage
 		
+		\addtocounter{algorithm}{-1}
 		\begin{algorithm}
-		%\caption{merge\_request (suite)}
+		\caption{: merge\_request (suite)}
 		\begin{algorithmic}[1]
 		\algrestore{algbrk}
 			
@@ -365,8 +485,9 @@
 		
 	\newpage
 		
+	\addtocounter{algorithm}{-1}
 	\begin{algorithm}
-	%\caption{merge\_request (suite)}
+	\caption{: merge\_request (suite)}
 	\begin{algorithmic}[1]
 	\algrestore{algbrk2}
 		
@@ -393,6 +514,7 @@
 \end{algorithmic}
 \end{algorithm}
 
+\end{document}
 
 
 
