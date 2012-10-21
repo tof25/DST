@@ -356,7 +356,7 @@
 		\EndIf
 		\Statex
 		
-		\State $stage ++$ \Comment{étage suivant}
+		\State $stage \gets stage + 1$ \Comment{étage suivant}
 	\EndWhile
 	
 	\algstore{algbrk2}
@@ -371,7 +371,25 @@
 	\algrestore{algbrk2}
 		
 	\State \Comment{\textsc{traitement de la racine}}
-	\EndProcedure
+	\Statex
+	
+	\State $i \gets 0$
+	\While{$(me.brothers[0][i].id = me.id)$}
+		\State $i \gets i + 1$
+	\EndWhile
+	\Statex
+	
+	\State $size\_last\_stage \gets $ \parbox[t]{\textwidth}{\Call{send\_msg\_sync}{$me.brothers[0][i].id,$
+	
+	$\qquad {\tt get\_size}({\tt height}(me.brothers) - 1)$}}
+	\Statex
+	
+	\If{$(size\_last\_stage = 1)$}	\Comment{détruit la racine}
+		\Statex
+		
+		\State \parbox{\textwidth}{\Call{broadcast}{$me,\ {\tt height}(me.brothers) - 1,\ {\tt del\_root}{({\tt height}(me.brothers))}$}}
+	\EndIf
+\EndProcedure
 \end{algorithmic}
 \end{algorithm}
 
