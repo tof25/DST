@@ -1,4 +1,4 @@
-\documentclass[12pt,twoside,openright]{report}
+\documentclass[11pt,twoside,openright]{report}
 
 % packages
 \usepackage{pifont}
@@ -88,7 +88,10 @@
 \renewcommand{\algorithmiccomment}[1]{{\color{dark_green}\hfill\(\triangleright\) {\small \textsf{#1}}}}
 \algnewcommand\algorithmicto{\textbf{to}}
 \algrenewtext{For}[3]{$\algorithmicfor\ #1 \gets #2\ \algorithmicto\ #3\ \algorithmicdo$}
-\algblock[Name]{Def}{Fin}
+%\algblock[Name]{Def}{Fin}
+\algblock[Test]{switch}{endswitch}
+\algrenewtext{endswitch}{\textbf{end switch}}
+\algblockdefx[NAME]{case}{endcase}[1]{\textbf{case} (#1) :}{\textbf{break}}
 
 % for titlepage.
 \newcommand{\HRule}{\rule{\linewidth}{.5mm}}
@@ -345,8 +348,9 @@
 \end{algorithm}
 
 
+\newcounter{partie}\stepcounter{partie}
 \begin{algorithm}
-\caption{: Traite les fusions ou transferts rendus nécessaires par un départ}
+\caption{: Traite les fusions ou transferts consécutifs à un départ}
 \begin{algorithmic}[1]
 \Procedure{merge\_request}{ }
 	\Statex
@@ -415,8 +419,9 @@
 		\newpage
 		
 		\addtocounter{algorithm}{-1}
+		\stepcounter{partie}
 		\begin{algorithm}
-		\caption{: merge\_request (suite)}
+		\caption{: \textsc{merge\_request} (partie \thepartie)}
 		\begin{algorithmic}[1]
 		\algrestore{algbrk}
 			
@@ -486,8 +491,9 @@
 	\newpage
 		
 	\addtocounter{algorithm}{-1}
+	\stepcounter{partie}
 	\begin{algorithm}
-	\caption{: merge\_request (suite)}
+	\caption{: \textsc{merge\_request} (partie \thepartie)}
 	\begin{algorithmic}[1]
 	\algrestore{algbrk2}
 		
@@ -510,6 +516,91 @@
 		
 		\State \parbox{\textwidth}{\Call{broadcast}{$me,\ {\tt height}(me.brothers) - 1,\ {\tt del\_root}{({\tt height}(me.brothers))}$}}
 	\EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{: regarde s'il faut faire une fusion ou un transfert. Retourne la position d'un contact pour la fusion ou -1 si tranfert}
+\begin{algorithmic}[1]
+\Procedure{merge\_or\_transfert}{stage}
+	\Statex
+	
+	\State $idx\_bro \gets 0$
+	\State $merge \gets 0$
+	\Statex
+	
+	\While{$(merge = 0 \And idx\_bro < {\tt size}(me.brothers[stage + 1]))$}
+		\Statex
+		
+		\If{$(me.brothers[stage + 1][idx\_bro].id \neq me.id)$}
+			\Statex
+			
+			\State $size \gets $ \parbox[t]{\textwidth}{\Call{send\_msg\_sync}{$me.brothers[stage + 1].[idx\_bro].[id],$
+			
+			$\qquad {\tt get\_size}(stage)$}}
+			\Statex
+			
+			\If{$(size \leq b - {\tt size}(me.brothers[stage]))$}
+				\State $merge \gets 1$
+			\EndIf
+		\EndIf
+		\Statex
+		
+		\State $idx\_bro \gets idx\_bro + 1$
+	\EndWhile
+	\Statex
+	
+	\If{$(merge = 1)$}
+		\State \Return $idx\_bro - 1$
+	\Else
+		\State \Return $-1$
+	\EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{: fusionne des n\oe uds ``orphelins'' (\emph{source}) au groupe courant (\emph{cible})}
+\begin{algorithmic}[1]
+\Procedure{merge}{nodes\_array,\ stage,\ pos\_me,\ pos\_contact,\ right}
+	\Statex
+	
+	\If{$({\tt size}(nodes\_array) = {\tt size}(me.brothers[stage]))$} \Comment{déjà fait}
+		\State \Return
+	\EndIf
+	\Statex
+	
+	\If{$({\tt size}(me.brothers[stage]) < a)$} \Comment{change le sens d'arrivée si 'moi' est dans la source}
+		\State $right \gets \mathrm{mod}((right + 1),\ 2)$
+	\EndIf
+	\Statex
+	
+	\State $loc\_right \gets 0$
+	\Statex
+	
+	\switch $\ (right)$
+		\case{$0$}	\Comment{les nouveaux n\oe uds viennent de la gauche}
+			\If{$({\tt index\_bro}(stage + 1,\ me.id) = 0)$}
+				\State $loc\_right \gets 1$
+			\Else
+				\State $loc\_right \gets 0$
+			\EndIf
+		\endcase
+		\Statex
+		
+		\case{$1$}	\Comment{les nouveaux n\oe uds viennent de la droite}
+		\endcase
+		\Statex
+		
+		\case{$10$}	\Comment{les nouveaux n\oe uds viennent de la gauche}
+		\endcase
+		\Statex
+		
+		\case{$11$}	\Comment{les nouveaux n\oe uds viennent de la droite}
+		\endcase
+	\endswitch
+	
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
