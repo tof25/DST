@@ -123,7 +123,105 @@
 \begin{document}
 
 \chapter{Retrait de sommets d'un DST (suite des travaux)}
-\section{Transfert}
+\section{Présentation de différents cas de figure}
+\subsection{Retraits avec fusion}
+
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[width=14cm]{Ex_Retrait1.pdf}
+\end{center}
+\caption{Exemple de retrait: le sommet 40 quitte un DST [2,4]}
+\label{f:ExRt1}
+\end{figure}
+
+Ici, le départ de 40 laisse un n\oe ud orphelin, le 25, que le groupe à sa droite peut accueillir.
+\newpage
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[width=13.5cm]{Ex_Retrait2.pdf}
+\end{center}
+\caption{Exemple de retrait: le sommet 9 quitte un DST [2,4]}
+\label{f:ExRt2}
+\end{figure}
+
+Cette fois, la fusion de 16 avec le groupe [52 \ldots 14] provoque la fusion de l'étage supérieur (vert).
+
+\section{Retraits avec transfert}
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[width=13cm]{Ex_Retrait3.pdf}
+\end{center}
+\caption{Exemple de retrait: le sommet 32 quitte un DST [2,4]}
+\label{f:ExRt3}
+\end{figure}
+
+Les groupes [16 \ldots 14] et [12 \ldots 27] n'ont pas de place pour accueillir 37. Il va donc y avoir un transfert de [7, 27] vers 37.
+
+\begin{algorithm}
+\caption{: Procédure exécutée par un n\oe ud qui quitte le DST}
+\begin{algorithmic}[1]
+\Statex
+\Procedure{leave}{ }
+	\Statex \Comment{travaille sur des copies des tables de routage}
+
+	\State $cpy\_brothers \gets me.brothers$
+	\State $cpy\_preds \gets me.preds$
+	\Statex
+
+	\For{stage}{0}{{\tt height}(me.brothers) - 1}
+		\Statex \Comment{\textsc {informe mes prédécesseurs de mon départ}}
+	
+		\For{pred}{0}{{\tt size}(cpy\_preds[stage]) - 1}
+			\Statex
+		
+			\If{$(cpy\_preds[stage][pred].id \neq me.id)$}
+				\Statex
+			
+				\If{$(stage = 0)$}
+					\State \Call{send\_msg\_async}{$cpy\_preds[stage][pred].id,\ {\tt del\_bro}(stage,\ me.id)$}
+				\Else
+					\Statex
+					\State {$new\_rep\_id \gets$ un de mes frères de l'étage 0 choisi aléatoirement}
+					\Statex \Comment{en informe le prédécesseur}
+				
+					\If{$(new\_rep\_id \neq me.id)$}
+						\Statex
+						\State \parbox{\textwidth}{\Call{send\_msg\_async}{$cpy\_preds[stage][pred].id,$
+					
+						$\qquad{\tt repl\_bro}(stage,\ new\_rep\_id)$}}
+					\EndIf
+				\EndIf
+			\EndIf
+		\EndFor \Comment{prédécesseur suivant}
+		\Statex
+		\Statex \Comment{\textsc{informe mes frères de mon départ}}
+	
+		\For{brother}{0}{{\tt size}(cpy\_brothers[stage]) - 1}
+			\Statex
+		
+			\If{$(cpy\_brothers[stage][brother].id \neq me.id)$}
+				\Statex
+			
+				\State \parbox{\textwidth}{\Call{send\_msg\_async}{$cpy\_brothers[stage][brother].id,$
+			
+				$\qquad{\tt del\_pred}(stage,\ me.id)$}}
+			\EndIf
+		\EndFor \Comment{frère suivant}
+	\EndFor	\Comment{étage suivant}
+	\Statex
+	\Statex \Comment{\textsc{charge un de mes frères de traiter les fusions ou transferts}}
+
+	\If{$({\tt size}(me.brothers[0]) \leq a)$}
+		\Statex
+		\State {$idx \gets$ index d'un de mes frères de l'étage 0}
+		\State {\Call{send\_msg\_sync}{$me.brothers[0][idx].id,\ {\tt merge\_req}()$}}
+	\EndIf
+	
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
 
 \begin{algorithm}
 \caption{: Transfert de n\oe uds du groupe courant vers un groupe appelant}\label{a:tr}
@@ -282,71 +380,6 @@
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
-
-\begin{algorithm}
-\caption{: Procédure exécutée par un n\oe ud qui quitte le DST}
-\begin{algorithmic}[1]
-\Statex
-\Procedure{leave}{ }
-	\Statex \Comment{travaille sur des copies des tables de routage}
-
-	\State $cpy\_brothers \gets me.brothers$
-	\State $cpy\_preds \gets me.preds$
-	\Statex
-
-	\For{stage}{0}{{\tt height}(me.brothers) - 1}
-		\Statex \Comment{\textsc {informe mes prédécesseurs de mon départ}}
-	
-		\For{pred}{0}{{\tt size}(cpy\_preds[stage]) - 1}
-			\Statex
-		
-			\If{$(cpy\_preds[stage][pred].id \neq me.id)$}
-				\Statex
-			
-				\If{$(stage = 0)$}
-					\State \Call{send\_msg\_async}{$cpy\_preds[stage][pred].id,\ {\tt del\_bro}(stage,\ me.id)$}
-				\Else
-					\Statex
-					\State {$new\_rep\_id \gets$ un de mes frères de l'étage 0 choisi aléatoirement}
-					\Statex \Comment{en informe le prédécesseur}
-				
-					\If{$(new\_rep\_id \neq me.id)$}
-						\Statex
-						\State \parbox{\textwidth}{\Call{send\_msg\_async}{$cpy\_preds[stage][pred].id,$
-					
-						$\qquad{\tt repl\_bro}(stage,\ new\_rep\_id)$}}
-					\EndIf
-				\EndIf
-			\EndIf
-		\EndFor \Comment{prédécesseur suivant}
-		\Statex
-		\Statex \Comment{\textsc{informe mes frères de mon départ}}
-	
-		\For{brother}{0}{{\tt size}(cpy\_brothers[stage]) - 1}
-			\Statex
-		
-			\If{$(cpy\_brothers[stage][brother].id \neq me.id)$}
-				\Statex
-			
-				\State \parbox{\textwidth}{\Call{send\_msg\_async}{$cpy\_brothers[stage][brother].id,$
-			
-				$\qquad{\tt del\_pred}(stage,\ me.id)$}}
-			\EndIf
-		\EndFor \Comment{frère suivant}
-	\EndFor	\Comment{étage suivant}
-	\Statex
-	\Statex \Comment{\textsc{charge un de mes frères de traiter les fusions ou transferts}}
-
-	\If{$({\tt size}(me.brothers[0]) \leq a)$}
-		\Statex
-		\State {$idx \gets$ index d'un de mes frères de l'étage 0}
-		\State {\Call{send\_msg\_sync}{$me.brothers[0][idx].id,\ {\tt merge\_req}()$}}
-	\EndIf
-	
-\EndProcedure
-\end{algorithmic}
-\end{algorithm}
-
 
 \newcounter{partie}\stepcounter{partie}
 \begin{algorithm}
@@ -523,7 +556,7 @@
 \begin{algorithm}
 \caption{: regarde s'il faut faire une fusion ou un transfert. Retourne la position d'un contact pour la fusion ou -1 si tranfert}
 \begin{algorithmic}[1]
-\Procedure{merge\_or\_transfert}{stage}
+\Procedure{merge\_or\_transfert}{$stage$}
 	\Statex
 	
 	\State $idx\_bro \gets 0$
@@ -563,7 +596,7 @@
 \begin{algorithm}
 \caption{: fusionne des n\oe uds ``orphelins'' (\emph{source}) au groupe courant (\emph{cible})}
 \begin{algorithmic}[1]
-\Procedure{merge}{nodes\_array,\ stage,\ pos\_me,\ pos\_contact,\ right}
+\Procedure{merge}{$nodes\_array,\ nodes\_array\_size,\ stage,\ pos\_me,\ pos\_contact,\ right$}
 	\Statex
 	
 	\If{$({\tt size}(nodes\_array) = {\tt size}(me.brothers[stage]))$} \Comment{déjà fait}
@@ -580,8 +613,8 @@
 	\Statex
 	
 	\switch $\ (right)$
-		\case{$0$}	\Comment{les nouveaux n\oe uds viennent de la gauche}
-			\If{$({\tt index\_bro}(stage + 1,\ me.id) = 0)$}
+		\case{$0$}	\Comment{les nouveaux n\oe uds viennent de la gauche - diffusion}
+			\If{$({\tt index}(stage + 1,\ me.id) = 0)$}
 				\State $loc\_right \gets 1$
 			\Else
 				\State $loc\_right \gets 0$
@@ -589,18 +622,80 @@
 		\endcase
 		\Statex
 		
-		\case{$1$}	\Comment{les nouveaux n\oe uds viennent de la droite}
+		\case{$1$}	\Comment{les nouveaux n\oe uds viennent de la droite - diffusion}
+			\If{$({\tt index}(stage + 1,\ me.id) = {\tt size}(me.brothers[stage + 1] - 1))$}
+				\State $loc\_right \gets 0$
+			\Else
+				\State $loc\_right \gets 1$
+			\EndIf
 		\endcase
 		\Statex
 		
-		\case{$10$}	\Comment{les nouveaux n\oe uds viennent de la gauche}
+		\case{$10$}	\Comment{les nouveaux n\oe uds viennent de la gauche - 1ère fusion}
+			\State $loc\_right \gets 0$
 		\endcase
 		\Statex
 		
-		\case{$11$}	\Comment{les nouveaux n\oe uds viennent de la droite}
+		\case{$11$}	\Comment{les nouveaux n\oe uds viennent de la droite - 1ère fusion}
+			\State $loc\_right \gets 1$
 		\endcase
 	\endswitch
+	\Statex
 	
+	\State \Comment{nombre de n\oe uds à incorporer}
+	\If{$(nodes\_array\_size \geq {\tt size}(me.brothers[stage]))$}
+		\State $loc\_nodes\_array\_size \gets nodes\_array\_size - {\tt size}(me.brothers[stage])$
+	\Else		
+		\State $loc\_nodes\_array\_size \gets nodes\_array\_size$
+	\EndIf
+	\Statex
+	
+	\algstore{algbrk3}
+	\end{algorithmic}
+	\end{algorithm}
+		
+	\newpage
+		
+	\addtocounter{algorithm}{-1}
+	\setcounter{partie}{1}
+	\stepcounter{partie}
+	\begin{algorithm}
+	\caption{: \textsc{merge} (partie \thepartie)}
+	\begin{algorithmic}[1]
+	\algrestore{algbrk3}
+	
+	\If{$(loc\_right = 0)$}	\Comment{prend la partie gauche de la liste des n\oe uds fournie}
+		\If{$(loc\_nodes\_array\_size > 0)$}
+			\For{i}{0}{loc\_nodes\_array\_size-1}
+				\State $loc\_nodes\_array[i] \gets nodes\_array[i]$
+			\EndFor
+		\EndIf
+	\Else	\Comment{prend la partie droite de la liste des n\oe uds fournie}
+		\If{$(loc\_nodes\_array\_size > 0)$}
+			\For{i}{(nodes\_array\_size - loc\_nodes\_array\_size)}{\mbox{$(nodes\_array\_size - 1)$}}
+				\State \parbox{\textwidth}{$loc\_nodes\_array[i - (nodes\_array\_size - loc\_nodes\_array\_size)] \gets nodes\_array[i]$}
+			\EndFor
+		\EndIf
+	\EndIf
+	\Statex
+	
+	\If{$(loc\_nodes\_array\_size > 0)$}
+		\If{$(loc\_right = 0)$}	\Comment{insère les nouveaux frères au début (gauche)}
+			\Statex
+			
+			\For{i}{loc\_nodes\_array\_size - 1}{0}				
+				\State \Call{insert\_bro}{$stage,\ loc\_nodes\_array[i]$}
+				\State \Call{send\_msg\_async}{$loc\_nodes\_array[i],\ {\tt add\_pred}(stage,\ me.id)$}
+			\EndFor
+		\Else	\Comment{ajoute les nouveaux frères à la fin (droite)}
+			\Statex
+			
+			\For{i}{0}{loc\_nodes\_array\_size - 1}				
+				\State \Call{add\_brother}{$stage,\ loc\_nodes\_array[i]$}
+				\State \Call{send\_msg\_async}{$loc\_nodes\_array[i],\ {\tt add\_pred}(stage,\ me.id)$}
+			\EndFor
+		\EndIf
+	\EndIf
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
