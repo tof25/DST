@@ -77,6 +77,7 @@
 \frenchbsetup{ReduceListSpacing=true, CompactItemize=false}
 
 % some commands
+\newcommand{\todo}[1]{~\\\noindent{\color{red}\rule[-.1cm]{.5cm}{.5cm}~~{\color{red}{#1}\\}}}
 \newcommand{\red}[1]{\color{red}{#1}}
 \newcommand{\green}[1]{\color{dark_green}{#1}}
 \newcommand{\e}{\acute{e}}
@@ -84,7 +85,7 @@
 \newcommand{\eee}{\hat{e}}
 
 \newcommand{\algsuspend}[1]{\algstore{#1}\end{algorithmic}\end{algorithm}}
-\newcommand{\algresume}[1]{{\vskip .5cm}\addtocounter{algorithm}{-1}\begin{algorithm}\caption{: (suite)}\begin{algorithmic}[1]\algrestore{#1}\Statex}
+\newcommand{\algresume}[2]{{\vskip .5cm}\addtocounter{algorithm}{-1}\begin{algorithm}\caption{: \sc{#2} (suite)}\begin{algorithmic}[1]\algrestore{#1}\Statex}
 
 \renewcommand{\And}{\textbf{ and }}
 
@@ -181,7 +182,7 @@ Lorsqu'un n\oe ud quitte le DST, il doit exécuter la fonction \sc{leave()}\newli
 	
 Cette fonction modifiant les tables de routage et de prédécesseurs, on travaille sur des copies de ces tables.
 	
-	\algresume{leabrk1}
+	\algresume{leabrk1}{leave}
 	\For{stage}{0}{{\tt height}(me.brothers) - 1}
 		\Statex \Comment{\textsc {informe mes prédécesseurs de mon départ}}
 	
@@ -213,7 +214,7 @@ Cette fonction modifiant les tables de routage et de prédécesseurs, on travaille
 
 \newpage
 		
-		\algresume{leabrk2}
+		\algresume{leabrk2}{leave}
 		\Statex \Comment{\textsc{informe mes frères de mon départ}}
 	
 		\For{brother}{0}{{\tt size}(cpy\_brothers[stage]) - 1}
@@ -233,7 +234,7 @@ Cette fonction modifiant les tables de routage et de prédécesseurs, on travaille
 	
 Ensuite, chacun des frères doit également être prévenu: ils ne peuvent plus avoir le n\oe ud courant comme prédécesseur. (fonction \sc{del\_pred()})
 	
-	\algresume{leabrk3}
+	\algresume{leabrk3}{leave}
 	\Statex \Comment{\textsc{charge un de mes frères de traiter les fusions ou transferts}}
 
 	\If{$({\tt size}(me.brothers[0]) \leq a)$}
@@ -273,7 +274,7 @@ Cette fonction parcourt le DST de bas en haut, tant que l'étage courant est trop
 
 C'est la fonction \sc{merge\_or\_transfer()} qui est chargée d'examiner si une fusion est possible. Si c'est le cas, elle retourne la position d'un contact de l'étage supérieur qu'on pourra joindre pour réaliser cette fusion. Sinon, elle retourne -1, auquel cas on réalisera alors un transfert.
 
-		\algresume{merbrk1}
+		\algresume{merbrk1}{merge\_request}
 		\If{$(pos\_contact > -1)$}	\Comment{\textsc{une fusion est possible}}
 			\Statex
 			
@@ -313,11 +314,11 @@ Une fusion est possible. On commence par demander au contact de réaliser une pre
 
 La fonction \sc{merge()} chargée de la fusion proprement dite a besoin de savoir dans quel sens elle doit être réalisée. C'est le rôle de la variable $right$.\footnote{voir les détails de la fonction \sc{merge()} pour les différences entre 1, 11 et 0, 10.}
 			
-			\algresume{merbrk2}
+			\algresume{merbrk2}{merge\_request}
 			\State \Comment{après la fusion, l'étage supérieur contient deux représentants du même groupe}
 			\Statex
 			
-			\State \Call{clean\_upper\_stage}{stage,\ pos\_me,\ pos\_contact} \Comment{exécution locale}
+			\State \Call{clean\_upper\_stage}{$stage,\ pos\_me,\ pos\_contact$} \Comment{exécution locale}
 			\Statex \Comment{diffusion}
 			
 			\State \Call{broadcast}{$me,\ stage + 1,\ {\tt clean\_upper\_stage}{(stage,\ pos\_me,\ pos\_contact)}$}
@@ -326,22 +327,19 @@ La fonction \sc{merge()} chargée de la fusion proprement dite a besoin de savoir
 
 Après la fusion, l'étage supérieur contient deux représentants du même groupe et il faut donc le ``nettoyer''. La fonction \sc{clean\_upper\_stage()} s'en charge. Elle est premièrement exécutée en local pour que sa diffusion se déroule ensuite correctement.
 
-			\algresume{merbrk3}
+			\algresume{merbrk3}{merge\_request}
 		\Else		
 			\State \Comment{\textsc{fusion impossible - il faut faire un transfert}}
-			\Statex
 			
-			\State $pos\_me\_up \gets {\tt index}(stage + 1,\ me.id)$
-			\Statex
+			\State $pos\_me\_up \gets {\tt index}(stage + 1,\ me.id)$ \todo{on peut sortir cette variable puisqu'elle est utilisée dans les deux cas du If}
+			%\Statex
 			
 			\If{$(pos\_me\_up = 0)$}
-				\Statex
 				
 				\State $pos\_contact \gets 1$
 				\State $right \gets 0$
 				\State $cut\_pos \gets b - a - 1$
 			\Else
-				\Statex
 				
 				\State $pos\_contact \gets pos\_me\_up - 1$
 				\State $right \gets 1$
@@ -358,9 +356,9 @@ Après la fusion, l'étage supérieur contient deux représentants du même groupe et
 			
 			\algsuspend{merbrk4}
 			
-La fusion n'étant pas possible, il faut réaliser un transfert. (\ldots à continuer \ldots)
+La fusion n'étant cette fois pas possible, on demande au groupe voisin (contacté via $contact\_id$) d'exécuter la fonction \sc{transfer()}. Celle-ci le coupe (à la position $cut\_pos$) et retourne les membres extraits dans $answer$.\footnote{Voir le descriptif de cette fonction pour plus de détails}
 			
-			\algresume{merbrk4}
+			\algresume{merbrk4}{merge\_request}
 			
 			\State \Comment{\textsc{ajoute les n\oe uds re\c cus}}
 			\Statex
@@ -371,12 +369,17 @@ La fusion n'étant pas possible, il faut réaliser un transfert. (\ldots à continu
 			\State \Call{br\_add\_bro\_array}{$stage,\ answer.rep\_array,\ \mathrm{mod}((right + 1),\ 2$}
 			\Statex
 			
-			\State \Comment{chaque membre de la branche voisine ajoute les n\oe uds courants}
+			\State \Comment{chaque membre du groupe re\c cu ajoute les n\oe uds courants}
 			\State \parbox{\textwidth}{\Call{send\_msg\_sync}{$answer.rep\_array[0].id,$
 			
 			$\qquad{\tt br\_add\_bro\_array}(stage,\ current\_bro,\ right)$}}
-			\Statex
 			
+			\algsuspend{merbrk5}
+			
+Il s'agit maintenant de fusionner le groupe extrait du voisin avec le groupe courant. \todo{Étudier s'il aurait été possible de réutiliser la fonction \sc{merge()} de la partie fusion. voir aussi la réutilisation de \sc{nouveau\_frère\_re\c cu()}}
+La fonction \sc{br\_add\_bro\_array()} diffuse une tâche d'ajout d'un ensemble de membres donné dans le groupe courant.\\Il faut donc réaliser deux diffusions: une sur le groupe courant pour qu'il ajoute les membres extraits et une autre sur le groupe extrait pour qu'il ajoute les membres du groupe courant.
+			
+			\algresume{merbrk5}{merge\_request}
 			\State \Comment{nettoyage de l'étage supérieur}
 			\State \Comment{exécution locale}
 			\State \Call{update\_upper\_stage}{$stage,\ pos\_contact,\ answer.stay\_id$}
@@ -393,19 +396,15 @@ La fusion n'étant pas possible, il faut réaliser un transfert. (\ldots à continu
 		\State $stage \gets stage + 1$ \Comment{étage suivant}
 	\EndWhile
 	
-	\algstore{algbrk2}
-	\end{algorithmic}
-	\end{algorithm}
+	\algsuspend{merbrk6}
+	
+Tout comme dans la partie fusion, l'étage supérieur contient maintenant deux représentants du même groupe et il faut corriger cela. La fonction \sc{update\_upper\_stage()} s'en charge.
+\todo{pourquoi ne pas avoir utilisé \sc{clean\_upper\_stage()} ? expliquer}
+Elle est premièrement exécutée en local pour que sa diffusion se déroule ensuite correctement.
+\todo{on voit qu'au final, on réalise une fusion dans les deux cas (fusion et transfert). Pas d'harmonisation possible ?}
 		
-	\newpage
-		
-	\addtocounter{algorithm}{-1}
-	\stepcounter{partie}
-	\begin{algorithm}
-	\caption{: \textsc{merge\_request} (partie \thepartie)}
-	\begin{algorithmic}[1]
-	\algrestore{algbrk2}
-		
+	\algresume{merbrk6}{merge\_request}
+			
 	\State \Comment{\textsc{traitement de la racine}}
 	\Statex
 	
@@ -429,11 +428,13 @@ La fusion n'étant pas possible, il faut réaliser un transfert. (\ldots à continu
 \end{algorithmic}
 \end{algorithm}
 
+Une fois l'ensemble des étages parcouru, on examine la racine. Si elle ne comporte qu'un enfant, c'est qu'il faut la supprimer. On diffuse pour cela la fonction \sc{del\_root()} sur l'ensemble du DST.
+
 \begin{algorithm}
 \caption{: Transfert de n\oe uds du groupe courant vers un groupe appelant}\label{a:tr}
 \begin{algorithmic}[1]
 \Statex
-\Procedure {transfert}{$st,\ right,\ cut\_pos$}
+\Procedure {transfer}{$st,\ right,\ cut\_pos$}
 	\If{$(right = 1)$}
 		\State $start \gets cut\_pos$
 		\State $end \gets {\tt size}(me.brothers[stage]) - 1$
