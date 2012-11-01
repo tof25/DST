@@ -85,7 +85,7 @@
 \newcommand{\eee}{\hat{e}}
 
 \newcommand{\algsuspend}[1]{\algstore{#1}\end{algorithmic}\end{algorithm}}
-\newcommand{\algresume}[2]{{\vskip .5cm}\addtocounter{algorithm}{-1}\begin{algorithm}\caption{: \sc{#2} (suite)}\begin{algorithmic}[1]\algrestore{#1}\Statex}
+\newcommand{\algresume}[2]{{\vskip .5cm}\addtocounter{algorithm}{-1}\begin{algorithm}[h]\caption{: \sc{#2} (suite)}\begin{algorithmic}[1]\algrestore{#1}\Statex}
 
 \renewcommand{\And}{\textbf{ and }}
 
@@ -493,7 +493,7 @@ $right$ est le sens d'arrivée du groupe à fusionner. Il vaut 1 si le groupe à fu
 \newpage
 
 \begin{algorithm}
-\caption{: fusionne des n\oe uds ``orphelins'' (\emph{source}) au groupe courant (\emph{cible})}	\label{a:mer}
+\caption{: incorpore des n\oe uds ``orphelins'' (\emph{source}) dans le groupe courant (\emph{cible})}	\label{a:mer}
 \begin{algorithmic}[1]
 \Statex
 \Procedure{merge}{$nodes\_array,\ nodes\_array\_size,\ stage,\ pos\_me,\ pos\_contact,\ right$}
@@ -531,7 +531,6 @@ Cette fonction est diffusée des deux côtés de la fusion. C'est à dire qu'elle do
 				\State $loc\_right \gets 0$
 			\EndIf
 		\endcase
-		\Statex
 		
 		\case{$1$}	\Comment{les nouveaux n\oe uds viennent de la droite - diffusion}
 			\If{$({\tt index}(stage + 1,\ me.id) = {\tt size}(me.brothers[stage + 1] - 1))$}
@@ -540,7 +539,10 @@ Cette fonction est diffusée des deux côtés de la fusion. C'est à dire qu'elle do
 				\State $loc\_right \gets 1$
 			\EndIf
 		\endcase																			\label{a:mer2}
-		\Statex
+		
+		\algsuspend{merbrk3}
+\newpage
+		\algresume{merbrk3}{\sc{merge}}
 		
 		\case{$10$}	\Comment{les nouveaux n\oe uds viennent de la gauche - 1ère fusion}	\label{a:mer3}
 			\State $loc\_right \gets 0$
@@ -554,35 +556,21 @@ Cette fonction est diffusée des deux côtés de la fusion. C'est à dire qu'elle do
 	
 	\algsuspend{merbrk3}
 	
-Il s'agit ensuite de déterminer le sens de la fusion $loc\_right$, d'après le sens d'arrivée du groupe à fusionner $right$, sachant que cette fonction peut être appelée simplement ou diffusée (voir algo \ref{a:mr} lignes \ref{a:mr1} et \ref{a:mr2})
+Il s'agit ensuite de déterminer le sens de la fusion $loc\_right$, d'après le sens d'arrivée du groupe à fusionner $right$, sachant que cette fonction peut être appelée simplement ou diffusée (voir algo~\ref{a:mr} lignes \ref{a:mr1} et \ref{a:mr2})
 
 Lors d'une simple exécution (lignes \ref{a:mer3} à \ref{a:mer4}), $loc\_right$ reprend simplement les valeurs de $right$.\\
-Mais dans le cas d'une diffusion (lignes \ref{a:mer1} à \ref{a:mer2}), $loc\_right$ ne reprend les mêmes valeurs que $right$ que si on ne se trouve pas sur la même extrémité de l'étage. Sinon, on change de côté. \todo{(à préciser)}
+Mais dans le cas d'une diffusion (lignes \ref{a:mer1} à \ref{a:mer2}), $loc\_right$ ne reprend les mêmes valeurs que $right$ que si on ne se trouve pas sur la même extrémité de l'étage. Sinon, on change de côté.\\ \todo{à préciser -- je ne me souviens plus pourquoi je n'ai fait \c ca que pour la diffusion}
 	
 	\algresume{merbrk3}{\sc{merge}}
 	
 	\State \Comment{nombre de n\oe uds à incorporer}
-	\If{$(nodes\_array\_size \geq {\tt size}(me.brothers[stage]))$}
+	\If{$(nodes\_array\_size \geq {\tt size}(me.brothers[stage]))$}									\label{a:mer5}
 		\State $loc\_nodes\_array\_size \gets nodes\_array\_size - {\tt size}(me.brothers[stage])$
 	\Else		
 		\State $loc\_nodes\_array\_size \gets nodes\_array\_size$
 	\EndIf
 	\Statex
-	
-	\algstore{algbrk3}
-	\end{algorithmic}
-	\end{algorithm}
 		
-	\newpage
-		
-	\addtocounter{algorithm}{-1}
-	\setcounter{partie}{1}
-	\stepcounter{partie}
-	\begin{algorithm}
-	\caption{: \textsc{merge} (partie \thepartie)}
-	\begin{algorithmic}[1]
-	\algrestore{algbrk3}
-	
 	\If{$(loc\_right = 0)$}	\Comment{prend la partie gauche de la liste des n\oe uds fournie}
 		\If{$(loc\_nodes\_array\_size > 0)$}
 			\For{i}{0}{loc\_nodes\_array\_size-1}
@@ -596,7 +584,13 @@ Mais dans le cas d'une diffusion (lignes \ref{a:mer1} à \ref{a:mer2}), $loc\_rig
 			\EndFor
 		\EndIf
 	\EndIf
-	\Statex
+	
+	\algsuspend{merbrk4}
+	
+On détermine ensuite le nombre de membres à inclure, puis on constitue l'ensemble de ces membres ($loc\_nodes\_array$).\\
+\todo{voir s'il arrive que la condition de la ligne \ref{a:mer5} se vérifie, c'est à dire s'il arrive qu'on ne prenne pas la totalité des membres fournis}
+	
+	\algresume{merbrk4}{\sc{merge}}
 	
 	\If{$(loc\_nodes\_array\_size > 0)$}
 		\If{$(loc\_right = 0)$}	\Comment{insère les nouveaux frères au début (gauche)}
@@ -619,7 +613,19 @@ Mais dans le cas d'une diffusion (lignes \ref{a:mer1} à \ref{a:mer2}), $loc\_rig
 \end{algorithmic}
 \end{algorithm}
 
-\subsection{La fonction}
+Pour finir, on insère les nouveaux membres en début de liste lorsqu'ils arrivent de la gauche, ou on les ajoute en fin de liste lorsqu'ils arrivent de la droite.
+
+\subsection{La fonction \sc{broadcast\_merge()}}
+Cette fonction sert simplement à diffuser une fonction \sc{merge()}.\\
+\todo{algo à écrire}
+
+\subsection{La fonction \sc{clean\_upper\_stage()}}
+À la suite d'une fusion à un étage donné, l'étage supérieur contient deux représentants d'un même groupe. Cette fonction permet de corriger cela.\\
+\todo{algo à écrire}
+
+\subsection{La fonction \sc{transfer()}}
+En diffusant la fonction \sc{cut\_node()} (voir algo \ref{a:cn}), cette fonction coupe l'étage $st$ du groupe courant à la position $cut\_pos$\footnote{$cut\_pos$ fait partie de la partie coupée}. Puis elle retourne la partie droite si $right$ vaut 1, gauche sinon.\\
+\todo{préciser l'utilité de $stay\_id$}
 
 \begin{algorithm}
 \caption{: Transfert de n\oe uds du groupe courant vers un groupe appelant}\label{a:tr}
@@ -647,7 +653,11 @@ Mais dans le cas d'une diffusion (lignes \ref{a:mer1} à \ref{a:mer2}), $loc\_rig
 \end{algorithmic}
 \end{algorithm}
 
-\begin{algorithm}
+\subsection{La fonction \sc{cut\_node()}}
+Pour le n\oe ud courant, cette fonction permet de couper la partie $right$ de l'étage $stage$ à la position $cut\_pos$, incluse dans la partie coupée.\\
+\todo{à poursuivre}
+
+\begin{algorithm}[th]
 \caption{: Scinde un n\oe ud lors d'un transfert}\label{a:cn}
 \begin{algorithmic}[1]
 \Statex
