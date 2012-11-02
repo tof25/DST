@@ -379,7 +379,8 @@ La fusion n'étant cette fois pas possible, on demande au groupe voisin (contacté
 			
 			\algsuspend{merbrk5}
 			
-Il s'agit maintenant de fusionner le groupe extrait du voisin avec le groupe courant. \todo{Étudier s'il aurait été possible de réutiliser la fonction \sc{merge()} de la partie fusion. voir aussi la réutilisation de \sc{nouveau\_frère\_re\c cu()}}
+Il s'agit maintenant de fusionner le groupe extrait du voisin avec le groupe courant.\\\todo{Étudier s'il aurait été possible de réutiliser la fonction \sc{merge()} de la partie fusion. voir aussi la réutilisation de \sc{nouveau\_frère\_re\c cu()}}
+
 La fonction \sc{br\_add\_bro\_array()} diffuse une tâche d'ajout d'un ensemble de membres donné dans le groupe courant.\\Il faut donc réaliser deux diffusions: une sur le groupe courant pour qu'il ajoute les membres extraits et une autre sur le groupe extrait pour qu'il ajoute les membres du groupe courant.
 			
 			\algresume{merbrk5}{merge\_request}
@@ -403,8 +404,9 @@ La fonction \sc{br\_add\_bro\_array()} diffuse une tâche d'ajout d'un ensemble d
 	
 Tout comme dans la partie fusion, l'étage supérieur contient maintenant deux représentants du même groupe et il faut corriger cela. La fonction \sc{update\_upper\_stage()} s'en charge.
 \todo{pourquoi ne pas avoir utilisé \sc{clean\_upper\_stage()} ? expliquer}
+
 Elle est premièrement exécutée en local pour que sa diffusion se déroule ensuite correctement.
-\todo{on voit qu'au final, on réalise une fusion dans les deux cas (fusion et transfert). Pas d'harmonisation possible ?}
+\todo{on voit qu'au final, on réalise une fusion dans les deux cas (fusion et transfert). Harmonisation possible ?}
 
 \newpage
 		
@@ -620,11 +622,50 @@ Cette fonction sert simplement à diffuser une fonction \sc{merge()}.\\
 \todo{algo à écrire}
 
 \subsection{La fonction \sc{clean\_upper\_stage()}}
-À la suite d'une fusion à un étage donné, l'étage supérieur contient deux représentants d'un même groupe. Cette fonction permet de corriger cela.\\
+À la suite d'une fusion à un étage donné, l'étage supérieur contient deux représentants d'un même groupe. Cette fonction permet de corriger cela.
+
+\newpage
+
+\begin{algorithm}
+\caption{: Corrige l'étage supérieur après une fusion}
+\begin{algorithmic}[1]
+\Statex
+\Procedure {clean\_upper\_stage}{$stage,\ pos\_me,\ pos\_contact$}
+	\State $recp\_id \gets me.brothers[stage + 1][pos\_me].id$	\Comment{n\oe ud à détruire}
+	\Statex
+	
+	\If{$(recp\_id = me.id)$}	\Comment{échange $pos\_me$ et $pos\_contact$}
+		\State $buf \gets me.brothers[stage + 1][pos\_me]$
+		\State $me.brothers[stage + 1][pos\_me] \gets me.brothers[stage + 1][pos\_contact]$
+		\State $me.brothers[stage + 1][pos\_contact] \gets buf$
+	\EndIf
+	
+	\algsuspend{cusbrk1}
+	
+$pos\_me$ et $pos\_contact$ sont les positions des représentants des deux groupes qui ont fusionnés. On choisit de supprimer la position $pos\_me$.
+\todo{préciser avec l'appel de la fonction}
+
+S'il se trouve que c'est la position du n\oe ud courant (qu'on ne peut donc pas détruire), alors on échange les n\oe uds se trouvant aux positions $pos\_me$ et $pos\_contact$.
+
+	\algresume{cusbrk1}{clean\_upper\_stage}
+	
+	\If{$(recp\_id > -1)$}
+		\State \Call{del\_bro}{$stage + 1,\ recp\_id$}
+		\State \Call{send\_msg\_async}{$recp\_id,\ {\tt del\_pred}(stage + 1,\ me.id)$}
+	\Else
+		\State	\Comment{la fonction a déjà été exécutée}
+	\EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+On procède ensuite à l'effacement de ce n\oe ud, puis on met à jour les prédécesseurs.
+
+\subsection{La fonction \sc{update\_upper\_stage()}}
 \todo{algo à écrire}
 
 \subsection{La fonction \sc{transfer()}}
-En diffusant la fonction \sc{cut\_node()} (voir algo \ref{a:cn}), cette fonction coupe l'étage $st$ du groupe courant à la position $cut\_pos$\footnote{$cut\_pos$ fait partie de la partie coupée}. Puis elle retourne la partie droite si $right$ vaut 1, gauche sinon.\\
+En diffusant la fonction \sc{cut\_node()} (voir algo \ref{a:cn}), cette fonction coupe l'étage $st$ du groupe courant à la position $cut\_pos$\footnote{$cut\_pos$ fait partie de la partie coupée}. Puis elle retourne la partie droite du n\oe ud courant si $right$ vaut 1, gauche sinon.\\
 \todo{préciser l'utilité de $stay\_id$}
 
 \begin{algorithm}
@@ -634,8 +675,8 @@ En diffusant la fonction \sc{cut\_node()} (voir algo \ref{a:cn}), cette fonction
 \Procedure {transfer}{$st,\ right,\ cut\_pos$}
 	\If{$(right = 1)$}
 		\State $start \gets cut\_pos$
-		\State $end \gets {\tt size}(me.brothers[stage]) - 1$
-		\State $answer.stay\_id \gets me.brothers[stage][cut\_pos - 1].id$
+		\State $end \gets {\tt size}(me.brothers[st]) - 1$
+		\State $answer.stay\_id \gets me.brothers[st][cut\_pos - 1].id$
 	\Else
 		\State $start \gets 0$
 		\State $end \gets cut\_pos$
@@ -653,9 +694,10 @@ En diffusant la fonction \sc{cut\_node()} (voir algo \ref{a:cn}), cette fonction
 \end{algorithmic}
 \end{algorithm}
 
+\newpage
+
 \subsection{La fonction \sc{cut\_node()}}
-Pour le n\oe ud courant, cette fonction permet de couper la partie $right$ de l'étage $stage$ à la position $cut\_pos$, incluse dans la partie coupée.\\
-\todo{à poursuivre}
+Pour le n\oe ud courant, cette fonction permet de couper la partie $right$ de l'étage $stage$ à la position $cut\_pos$, incluse dans la partie coupée.
 
 \begin{algorithm}[th]
 \caption{: Scinde un n\oe ud lors d'un transfert}\label{a:cn}
@@ -665,7 +707,7 @@ Pour le n\oe ud courant, cette fonction permet de couper la partie $right$ de l'
 	\State $pos\_me \gets {\tt index}(me.brothers[stage],\ me.id)$
 	\Statex
 	
-	\If{$(right = 0)$}
+	\If{$(right = 0)$}												\label{a:cn1}
 		\State $start \gets 0$
 		\State $end \gets cut\_pos$
 		\State $new\_node \gets me.brothers[stage][cut\_pos + 1]$
@@ -673,14 +715,23 @@ Pour le n\oe ud courant, cette fonction permet de couper la partie $right$ de l'
 		\State $start \gets cut\_pos$
 		\State $end \gets {\tt size}(me.brothers[stage]) - 1$
 		\State $new\_node \gets me.brothers[stage][0]$
-	\EndIf
+	\EndIf															\label{a:cn2}
 	\Statex
 	
-	\If{$(pos\_me \geq start \And pos\_me \leq end)$}
+	\If{$(pos\_me \geq start \And pos\_me \leq end)$}				\label{a:cn3}
 		\State \Call {shift\_bro}{$stage + 1,\ new\_node,\ right$}
-	\EndIf
-	\Statex
+	\EndIf															\label{a:cn4}
+
+	\algsuspend{cnbrk1}
 	
+Lignes \ref{a:cn1} à \ref{a:cn2}, on commence par déterminer $start$ et $end$ qui délimitent la partie de l'étage $stage$ qui doit être coupée.
+
+Lignes \ref{a:cn3} à \ref{a:cn4}, si le n\oe ud courant est compris dans la partie coupée, alors à l'étage supérieur, il ne peut plus être utilisé comme représentant du groupe restant.\\
+Dans le DST, un n\oe ud devant être utilisé comme représentant de son groupe, \footnote{Ici, son groupe sera le groupe résultant de la fusion de la partie coupée avec le groupe voisin (trop petit), au retour de la fonction \sc{transfer()}.} on ne peut pas simplement le supprimer. Il faut donc le décaler d'un cran -- du côté de la partie coupée et en écrasant son voisin -- et insérer à sa place un représentant du groupe restant: $new\_node$. C'est la fonction \sc{shift\_bro()} qui est chargée de ces opérations.
+
+\newpage
+	
+	\algresume{cnbrk1}{\sc{cut\_node}}	
 	\If{$(right = 0)$}
 		\If{$(pos\_me \leq cut\_pos)$}
 			\State $start \gets cut\_pos + 1$
@@ -700,10 +751,80 @@ Pour le n\oe ud courant, cette fonction permet de couper la partie $right$ de l'
 	\EndIf
 	\Statex
 	
-	\State \Call {del\_member}{$stage,\ start,\ end$}
+	\State \Call {del\_member}{$stage,\ start,\ end$}		\label{a:cn5}
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
+
+Ensuite, on calcule à nouveau les bornes $start$ et $end$ pour réaliser la coupure proprement dite (avec la fonction \sc{del\_member()}). Si le n\oe ud courant fait partie de la partie coupée, alors on coupe l'autre partie.\\
+\todo{du coup, \c ca contredit l'utilité de la partie d'avant. il faut reprendre des exemples pour étudier ce cas de plus près}
+
+\subsection{La fonction \sc{shift\_bro()}}
+
+Comme indiqué dans la fonction \sc{cut\_node()} (voir algo \ref{a:cn}), \sc{shift\_bro()} sert à corriger l'étage $s + 1$ lors d'une coupure à l'étage $s$.\\
+À partir de la position du n\oe ud courant, elle décale l'étage $stage$ d'un cran du côté indiqué par $right$, puis insère $new\_node$ à la place. S'il y a un n\oe ud en trop, il est détruit.
+
+\begin{algorithm}
+\caption{: Décale les membres du groupe pour en accueillir un nouveau à la position de '{\ti moi}'. Le membre en trop est détruit.}
+\begin{algorithmic}[1]
+\Statex
+\Procedure{shift\_bro}{$stage,\ new\_node,\ right$}								\label{a:sb}
+	\Statex		\Comment{s'assure de n'exécuter cette fonction qu'une fois}
+	\State $pos\_new\_node \gets {\tt index}(me.brothers[stage],\ new\_node.id)$
+	\If{$(pos\_new\_node > -1)$}
+		\State \Return
+	\EndIf
+
+	\algsuspend{sbbrk1}
+	
+\sc{shift\_bro()} est appelée par \sc{cut\_node()} qui est diffusée par \sc{transfer()}. On doit donc s'assurer de ne pas exécuter cette fonction deux fois.\\
+Si $new\_node$ figure dans l'étage considéré, c'est que la fonction a déjà été exécutée et on arrête là.
+	
+	\algresume{sbbrk1}{shift\_bro}
+	
+	\State $pos\_me \gets {\tt index}(me.brothers[stage],\ me.id)$
+	\Statex
+	
+	\If{$(right = 1)$}
+		\If{$(pos\_me < b)$}
+			\State $lost\_id \gets me.brothers[stage][pos\_me + 1].id$
+			\State $me.brothers[stage][pos\_me + 1] \gets me.brothers[stage][pos\_me]$
+		\Else
+			\State Affiche un message d'erreur et stoppe la procédure
+		\EndIf
+	\Else
+		\If{$(pos\_me > 0)$}
+			\State $lost\_id \gets me.brothers[stage][pos\_me - 1].id$
+			\State $me.brothers[stage][pos\_me - 1] \gets me.brothers[stage][pos\_me]$
+		\Else
+			\State Affiche un message d'erreur et stoppe la procédure
+		\EndIf
+	\EndIf
+	
+	\algsuspend{sbbrk2}
+	
+Dans cette partie, on réalise le décalage après avoir mémorisé le n\oe ud qui va disparaître, $lost\_id$ qui sera utilisé pour la mise à jour de ses prédécesseurs (ligne \ref{a:sb1}). \todo{}Pour l'instant, on se protège si le n\oe ud courant se trouve aux extrémités, mais il faut se pencher sur ce cas.
+	
+	\algresume{sbbrk2}{shift\_bro}
+	
+	\State $me.brothers[stage][pos\_me] \gets new\_node$
+	\Statex
+	\Statex		\Comment{'{\ti moi}' doit être un prédécesseur de {\ti new\_node}}
+	\State \Call{send\_msg\_async}{$new\_node.id,\ {\tt add\_pred}(stage,\ me.id)$}
+	
+	\Statex		\Comment{'{\ti moi}' ne doit plus être un prédécesseur de {\ti lost\_id}}
+	\State \Call{send\_msg\_async}{$lost\_id,\ {\tt del\_pred}(stage,\ me.id)$}			\label{a:sb1}
+	
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Pour finir, on insère $new\_node$, et on met à jour les prédécesseurs.
+
+\subsection{La fonction \sc{del\_member()}}
+
+Cette fonction utilisée par \sc{cut\_node()} (voir algo \ref{a:cn}, ligne \ref{a:cn5}) permet de supprimer la partie comprise entre $start$ et $end$ de l'étage $stage$.	
+
 
 \begin{algorithm}
 \caption{: Supprime une partie du groupe courant à un étage donné}\label{a:dm}
@@ -714,11 +835,25 @@ Pour le n\oe ud courant, cette fonction permet de couper la partie $right$ de l'
 	\If{$(nb\_del = 0)$}
 		\State \Return
 	\EndIf
+	
+	\algsuspend{dmbrk1}
+	
+On arrête la fonction s'il n'y a rien à effacer.
+	
+	\algresume{dmbrk1}{del\_member}
+	
 	\Statex	\Comment{mémorise les n\oe uds à effacer avant de commencer}
 	
 	\For{i}{0}{nb\_del - 1}
 		\State $id\_del[i] \gets me.brothers[stage][start + i].id$
 	\EndFor
+	
+	\algsuspend{dmbrk2}
+	
+On mémorise les n\oe uds à effacer avant de procéder aux modifications.
+	
+	\algresume{dmbrk2}{del\_member}
+	
 	\Statex		\Comment{boucle d'effacement}
 	
 	\For{i}{0}{nb\_del - 1}
@@ -745,49 +880,7 @@ Pour le n\oe ud courant, cette fonction permet de couper la partie $right$ de l'
 \end{algorithmic}
 \end{algorithm}
 
-\begin{algorithm}
-\caption{: Décale les membres du groupe pour en accueillir un nouveau à la position de '{\ti moi}'. Le membre en trop est détruit.}
-\begin{algorithmic}[1]
-\Statex
-\Procedure{shift\_bro}{$stage,\ new\_node,\ right$}
-	\Statex		\Comment{s'assure de n'exécuter cette fonction qu'une fois (elle est diffusée par {\tt cut\_node})}
-	\State $pos\_new\_node \gets {\tt index}(me.brothers[stage],\ new\_node.id)$
-	\If{$(pos\_new\_node > -1)$}
-		\State \Return
-	\EndIf
-	\Statex
-	
-	\State $pos\_me \gets {\tt index}(me.brothers[stage],\ me.id)$
-	\Statex
-	
-	\If{$(right = 1)$}
-		\If{$(pos\_me < b)$}
-			\State $lost\_id \gets me.brothers[stage][pos\_me + 1].id$
-			\State $me.brothers[stage][pos\_me + 1] \gets me.brothers[stage][pos\_me]$
-		\Else
-			\State Affiche un message d'erreur et stoppe la procédure
-		\EndIf
-	\Else
-		\If{$(pos\_me > 0)$}
-			\State $lost\_id \gets me.brothers[stage][pos\_me - 1].id$
-			\State $me.brothers[stage][pos\_me - 1] \gets me.brothers[stage][pos\_me]$
-		\Else
-			\State Affiche un message d'erreur et stoppe la procédure
-		\EndIf
-	\EndIf
-	\Statex
-	
-	\State $me.brothers[stage][pos\_me] \gets new\_node$
-	\Statex
-	\Statex		\Comment{'{\ti moi}' doit être un prédécesseur de {\ti new\_node}}
-	\State \Call{send\_msg\_async}{$new\_node.id,\ {\tt add\_pred}(stage,\ me.id)$}
-	
-	\Statex		\Comment{'{\ti moi}' ne doit plus être un prédécesseur de {\ti lost\_id}}
-	\State \Call{send\_msg\_async}{$lost\_id,\ {\tt del\_pred}(stage,\ me.id)$}
-	
-\EndProcedure
-\end{algorithmic}
-\end{algorithm}
+Puis on procède aux effacements proprement dits.
 
 \end{document}
 
