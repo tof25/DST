@@ -199,7 +199,7 @@ Cette fonction modifiant les tables de routage et de prédécesseurs, on travaille
 					\Statex
 					\State \parbox{\textwidth}{\Call{send\_msg\_async}{$cpy\_preds[stage][pred].id,$
 			
-					$\qquad{\tt repl\_bro}(stage,\ new\_rep\_id)$}}
+					$\qquad{\tt replace\_bro}(stage,\ new\_rep\_id)$}}
 				\EndIf
 			\EndIf
 		\EndFor \Comment{prédécesseur suivant}
@@ -209,7 +209,7 @@ Cette fonction modifiant les tables de routage et de prédécesseurs, on travaille
 À chaque étage, le n\oe ud courant doit prévenir chacun de ses prédécesseurs de son départ:
 \begin{itemize}
 	\item à l'étage 0, le prédécesseur doit simplement ôter ce n\oe ud de sa table de routage. (fonction \sc{del\_bro()})
-	\item aux autres étages, le prédécesseur doit utiliser un autre représentant que le n\oe ud courant. (fonction \sc{repl\_bro()}) Ce sera un de ses frères de niveau 0 choisi aléatoirement.
+	\item aux autres étages, le prédécesseur doit utiliser un autre représentant que le n\oe ud courant. (fonction \sc{replace\_bro()}) Ce sera un de ses frères de niveau 0 choisi aléatoirement.
 \end{itemize}
 
 \newpage
@@ -617,10 +617,6 @@ On détermine ensuite le nombre de membres à inclure, puis on constitue l'ensembl
 
 Pour finir, on insère les nouveaux membres en début de liste lorsqu'ils arrivent de la gauche, ou on les ajoute en fin de liste lorsqu'ils arrivent de la droite.
 
-\subsection{La fonction \sc{broadcast\_merge()}}
-Cette fonction sert simplement à diffuser une fonction \sc{merge()}.\\
-\todo{algo à écrire}
-
 \subsection{La fonction \sc{clean\_upper\_stage()}}
 À la suite d'une fusion à un étage donné, l'étage supérieur contient deux représentants d'un même groupe. Cette fonction permet de corriger cela.
 
@@ -662,7 +658,22 @@ S'il se trouve que c'est la position du n\oe ud courant (qu'on ne peut donc pas 
 On procède ensuite à l'effacement de ce n\oe ud, puis on met à jour les prédécesseurs.
 
 \subsection{La fonction \sc{update\_upper\_stage()}}
-\todo{algo à écrire}
+
+Après qu'un transfert ait eu lieu, l'étage supérieur peut contenir un n\oe ud qui pointe désormais vers la partie qui a quitté le groupe. Il s'agit donc de le remplacer par l'un des n\oe uds du groupe restant.
+\todo{donner un exemple et mentionner \sc{shift\_bro} dans \sc{cut\_node}}\newpage
+\begin{algorithm}
+\caption{: Corrige l'étage supérieur après un transfert}
+\begin{algorithmic}[1]
+\Statex
+\Procedure {update\_upper\_stage}{$stage,\ pos2repl,\ new\_id$}
+	\If{$(new\_id > -1)$}
+		\If{$(me.brothers[stage + 1][pos2repl] \neq me)$}
+			\State \Call{replace\_bro}{$stage + 1,\ pos2repl,\ new\_id$}
+		\EndIf
+	\EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
 
 \subsection{La fonction \sc{transfer()}}
 En diffusant la fonction \sc{cut\_node()} (voir algo \ref{a:cn}), cette fonction coupe l'étage $st$ du groupe courant à la position $cut\_pos$\footnote{$cut\_pos$ fait partie de la partie coupée}. Puis elle retourne la partie droite du n\oe ud courant si $right$ vaut 1, gauche sinon.\\
@@ -881,6 +892,66 @@ On mémorise les n\oe uds à effacer avant de procéder aux modifications.
 \end{algorithm}
 
 Puis on procède aux effacements proprement dits.
+
+\subsection{La fonction \sc{add\_bro\_array()}}
+
+Cette fonction permet d'ajouter le groupe $bro$ au groupe courant, à l'étage $stage$, du côté indiqué par $right$.
+
+\begin{algorithm}
+\caption{: Ajoute un groupe de n\oe uds donné au groupe courant}		\label{a:aba}
+\begin{algorithmic}[1]
+\Statex
+\Procedure{add\_bro\_array}{$stage,\ bro,\ array\_size,\ right$}
+	\If{$(right = 0)$}
+		\For{i}{array\_size - 1}{0}
+			\State \Call{insert\_bro}{$stage,\ bro[i].id$}	\Comment{insertion des n\oe uds en début de liste}
+			\State \Call{send\_msg\_async}{$bro[i].id,\ {\tt add\_pred}(stage,\ me.id)$}
+		\EndFor
+	\Else
+		\For{i}{0}{array\_size- 1}
+			\State \Call{add\_brother}{$stage,\ bro[i].id$}	\Comment{ajout des n\oe uds en fin de liste}
+			\State \Call{send\_msg\_async}{$bro[i].id,\ {\tt add\_pred}(stage,\ me.id)$}
+		\EndFor
+	\EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{La fonction \sc{replace\_bro()}}
+
+Cette fonction remplace le membre situé à la position $init\_idx$ par $new\_id$, à l'étage $stage$.
+\todo{détails à indiquer}
+
+\begin{algorithm}
+\caption{: Remplace un membre par un autre}		\label{a:rb}
+\begin{algorithmic}[1]
+\Statex
+\Procedure{replace\_bro}{$stage,\ init\_idx,\ new\_id$}	\Comment{$new\_id$ figure déjà à l'étage $stage$}
+	\If{$(me.brothers[stage][init\_idx].id = new\_id\ ||\ {\tt index\_bro}(stage,\ new\_id) > -1)$}
+		\State \Return
+	\EndIf
+	\Statex
+	
+	\If{$(init\_idx < {\tt size}(me.brothers[stage]))$}
+		\State $bro\_id \gets me.brothers[stage][init\_idx].id$
+		\State $me.brothers[stage][init\_idx].id = new\_id$
+	\Else
+		\State \Call{add\_brother}{$stage,\ new\_id$}
+	\EndIf
+	\Statex
+	
+	\If{$(bro\_id \neq me.id \And init\_idx < {\tt size}(me.brothers[stage]))$}
+		\State \Call{send\_msg\_async}{$bro\_id,\ {\tt del\_pred}(stage,\ me.id)$}
+	\EndIf
+	\Statex
+	
+	\If{$(new\_id \neq me.id)$}
+		\State \Call{send\_msg\_async}{$bro\_id,\ {\tt add\_pred}(stage,\ me.id)$}
+	\EndIf
+
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
 
 \end{document}
 
