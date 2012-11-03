@@ -88,6 +88,7 @@
 \newcommand{\algresume}[2]{{\vskip .5cm}\addtocounter{algorithm}{-1}\begin{algorithm}[h]\caption{: \sc{#2} (suite)}\begin{algorithmic}[1]\algrestore{#1}\Statex}
 
 \renewcommand{\And}{\textbf{ and }}
+\newcommand{\Or}{\textbf{ or }}
 
 % algorithms customization
 \renewcommand{\algorithmiccomment}[1]{{\color{dark_green}\hfill\(\triangleright\) {\small \textsf{#1}}}}
@@ -319,7 +320,7 @@ Ligne \ref{a:mr1}: la fonction \sc{merge()} chargée de la fusion proprement dite
 			\State \Comment{après la fusion, l'étage supérieur contient deux représentants du même groupe}
 			\Statex
 			
-			\State \Call{clean\_upper\_stage}{$stage,\ pos\_me,\ pos\_contact$} \Comment{exécution locale}
+			\State \Call{clean\_upper\_stage}{$stage,\ pos\_me,\ pos\_contact$} \Comment{exécution locale}	\label{a:mr3}
 			\Statex \Comment{diffusion}
 			
 			\State \Call{broadcast}{$me,\ stage + 1,\ {\tt clean\_upper\_stage}{(stage,\ pos\_me,\ pos\_contact)}$}
@@ -638,10 +639,9 @@ Pour finir, on insère les nouveaux membres en début de liste lorsqu'ils arrivent
 	
 	\algsuspend{cusbrk1}
 	
-$pos\_me$ et $pos\_contact$ sont les positions des représentants des deux groupes qui ont fusionnés. On choisit de supprimer la position $pos\_me$.
-\todo{préciser avec l'appel de la fonction}
+$pos\_me$ et $pos\_contact$ sont les positions des représentants des deux groupes qui ont fusionnés. On choisit arbitrairement de supprimer la position $pos\_me$.\footnote{Lors de l'appel de la fonction depuis \sc{merge\_request()} (voir algo \ref{a:mr}, ligne \ref{a:mr3}), $pos\_me$ contient un représentant du petit groupe à fusionner et $pos\_contact$, celui du groupe accueillant.}
 
-S'il se trouve que c'est la position du n\oe ud courant (qu'on ne peut donc pas détruire), alors on échange les n\oe uds se trouvant aux positions $pos\_me$ et $pos\_contact$.
+S'il se trouve que c'est la position du n\oe ud courant (qu'on ne peut donc pas détruire), alors on échange les n\oe uds se trouvant aux positions $pos\_me$ et $pos\_contact$. Ce cas de figure peut se produire lors de la diffusion de cette fonction.
 
 	\algresume{cusbrk1}{clean\_upper\_stage}
 	
@@ -926,11 +926,18 @@ Cette fonction remplace le membre situé à la position $init\_idx$ par $new\_id$,
 \caption{: Remplace un membre par un autre}		\label{a:rb}
 \begin{algorithmic}[1]
 \Statex
-\Procedure{replace\_bro}{$stage,\ init\_idx,\ new\_id$}	\Comment{$new\_id$ figure déjà à l'étage $stage$}
-	\If{$(me.brothers[stage][init\_idx].id = new\_id\ ||\ {\tt index\_bro}(stage,\ new\_id) > -1)$}
+\Procedure{replace\_bro}{$stage,\ init\_idx,\ new\_id$}
+	\If{$(me.brothers[stage][init\_idx].id = new\_id\ \Or$ 	\Comment{$new\_id$ figure déjà à l'étage $stage$}
+ \\
+	 $\phantom{proif((}{\tt index\_bro}(stage,\ new\_id) > -1)$}
 		\State \Return
 	\EndIf
-	\Statex
+	
+	\algsuspend{rbbrk1}
+	
+Si $new\_id$ figure déjà à l'étage $stage$, c'est que la fonction a déjà été exécutée et on sort sans rien faire.
+	
+	\algresume{rbbrk1}{replace\_bro}
 	
 	\If{$(init\_idx < {\tt size}(me.brothers[stage]))$}
 		\State $bro\_id \gets me.brothers[stage][init\_idx].id$
@@ -938,20 +945,29 @@ Cette fonction remplace le membre situé à la position $init\_idx$ par $new\_id$,
 	\Else
 		\State \Call{add\_brother}{$stage,\ new\_id$}
 	\EndIf
-	\Statex
+	
+	\algsuspend{rbbrk2}	
+	
+Si $init\_idx$ désigne le prochain emplacement libre de l'étage, alors on ajoute simplement le nouveau membre avec \sc{add\_brother()}.\\
+Sinon, le membre situé en $init\_idx$ est remplacé par $new\_id$. L'ancien membre $bro\_id$ est mémorisé pour pouvoir mettre à jour ses prédécesseurs (lignes \ref{a:rb1} et \ref{a:rb2}).
+	
+	\algresume{rbbrk2}{replace\_bro}
 	
 	\If{$(bro\_id \neq me.id \And init\_idx < {\tt size}(me.brothers[stage]))$}
-		\State \Call{send\_msg\_async}{$bro\_id,\ {\tt del\_pred}(stage,\ me.id)$}
+		\State \Call{send\_msg\_async}{$bro\_id,\ {\tt del\_pred}(stage,\ me.id)$}		\label{a:rb1}
 	\EndIf
 	\Statex
 	
 	\If{$(new\_id \neq me.id)$}
-		\State \Call{send\_msg\_async}{$bro\_id,\ {\tt add\_pred}(stage,\ me.id)$}
+		\State \Call{send\_msg\_async}{$bro\_id,\ {\tt add\_pred}(stage,\ me.id)$}		\label{a:rb2}
 	\EndIf
 
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
+
+Les prédécesseurs sont mis à jour en conséquence.\\
+\todo{se protéger contre le remplacement de me.id}
 
 \end{document}
 
