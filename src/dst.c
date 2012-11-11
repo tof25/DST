@@ -948,7 +948,7 @@ static void task_free(m_task_t *task) {
     CATCH(ex) {
         *task = NULL;
         xbt_ex_free(ex);
-        XBT_WARN("Error in task_free");
+        XBT_DEBUG("Error in task_free");
     }
     XBT_OUT();
 }
@@ -2954,9 +2954,11 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         */
     }
 
-    req_data_t req = MSG_task_get_data(task_sent);
-    data_req_free(me, &req);
-    task_free(&task_sent);
+    /*      NOTE : ces libérations sont faites dans handle_task()
+       req_data_t req = MSG_task_get_data(task_sent);
+       data_req_free(me, &req);
+       task_free(&task_sent);
+    */
 
     xbt_free(cpy_brothers);
     cpy_brothers = NULL;
@@ -3861,7 +3863,7 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
 
         make_broadcast_task(me, broadcast_args, &task_sent);
         handle_task(me, &task_sent);
-        
+
         req_data_t req = MSG_task_get_data(task_sent);
         data_req_free(me, &req);
 
@@ -6812,6 +6814,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 answer = get_rep(me, rcv_args.get_rep.stage, rcv_args.get_rep.new_node_id);
                 res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
+                data_req_free(me, &rcv_req);
+                task_free(task);
+
                 XBT_VERB("Node %d: TASK_GET_REP done", me->self.id);
             }
             break;
@@ -6820,7 +6825,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             if (state.active != 'a' &&
                     !(state.active == 'u' &&
                         state.new_id == rcv_args.cnx_req.new_node.id)) {
-                //state.new_id == rcv_req->sender_id)) 
 
                 // store task (CNX_REQ isn't broadcasted)
                 XBT_VERB("Node %d: '%c'/%d -  store CNX_REQ/%d for later execution",
@@ -6832,15 +6836,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 xbt_dynar_push(me->remain_tasks, task);
                 *task = NULL;
                 val_ret = STORED;
-
-                /*
-                // answer NOK
-                answer.cnx_req.val_ret = UPDATE_NOK;
-                answer.cnx_req.new_contact.id = -1;
-                res = send_ans_sync(me, type, rcv_req->sender_id, answer);
-                 *task = NULL;
-                 val_ret = UPDATE_NOK;
-                 */
 
             } else {
 
@@ -6856,6 +6851,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                 res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
+                data_req_free(me, &rcv_req);
+                task_free(task);
+
                 XBT_VERB("Node %d: TASK_CNX_REQ done", me->self.id);
             }
             break;
@@ -6863,6 +6861,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         case TASK_NEW_BROTHER_RCV:
             new_brother_received(me, rcv_args.new_brother_rcv.new_node);
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_NEW_BROTHER_RCV done", me->self.id);
             break;
@@ -6887,12 +6888,17 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                         rcv_args.split_req.new_node_id);
                 res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
+                data_req_free(me, &rcv_req);
+                task_free(task);
+
                 XBT_VERB("Node %d: TASK_SPLIT_REQ done", me->self.id);
             }
             break;
 
         case TASK_ADD_STAGE:
             add_stage(me);
+
+            task_free(task);        //NOTE : ne pas détruire les data, il n'y en a pas ici
 
             XBT_VERB("Node %d: TASK_ADD_STAGE done", me->self.id);
             break;
@@ -6926,7 +6932,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                     send_completed(me, type, rcv_req->sender_id);
                 }
-                data_ans_free(me, &rcv);
+
+                data_req_free(me, &rcv_req);
+                task_free(task);
 
                 XBT_VERB("Node %d: TASK_CNX_GROUPS done", me->self.id);
             }
@@ -6940,6 +6948,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             } else {
 
                 split(me, rcv_args.split.stage_nbr, rcv_args.split.new_node_id);
+
+                data_req_free(me, &rcv_req);
+                task_free(task);
 
                 XBT_VERB("Node %d: TASK_SPLIT done",
                         me->self.id);
@@ -6968,6 +6979,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             }
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
             XBT_VERB("Node %d: TASK_NB_PRED done", me->self.id);
             break;
 
@@ -6993,7 +7007,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                     send_completed(me, type, rcv_req->sender_id);
                 }
-                data_ans_free(me, &rcv);
+
+                data_req_free(me, &rcv_req);
+                task_free(task);
 
                 XBT_VERB("Node %d: TASK_ADD_PRED done", me->self.id);
             }
@@ -7007,7 +7023,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                 send_completed(me, type, rcv_req->sender_id);
             }
-            data_ans_free(me, &rcv);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_DEL_PRED done", me->self.id);
             break;
@@ -7069,7 +7087,10 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                         (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
                                         rcv_req->sender_id);
 
-                                data_ans_free(me, &rcv);
+                                //data_ans_free(me, &rcv);
+
+                                data_req_free(me, &rcv_req);
+                                task_free(task);
 
                             } else {
 
@@ -7159,8 +7180,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             me->self.id,
                                             (val_ret == UPDATE_NOK ? "UPDATE NOK" : "OK"),
                                             rcv_req->sender_id);
-
-                                    data_ans_free(me, &rcv);
                                 }
                             } else {
 
@@ -7217,9 +7236,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                                 req_data);
                                         MSG_task_set_name(br_task, "async");
                                         val_ret = handle_task(me, &br_task);
-                                        
-                                        data_req_free(me, &req_data);
-                                        task_free(&br_task);
 
                                         /* if br_task has to be delayed, store the whole
                                            broadcasted task */
@@ -7254,7 +7270,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
                                             rcv_req->sender_id);
 
-                                    data_ans_free(me, &rcv);
+                                    //data_ans_free(me, &rcv);
                                 }
                             }
                         }
@@ -7262,12 +7278,18 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
         case TASK_DISPLAY_VAR:
             display_var(me);
-            data_ans_free(me, &rcv);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
             break;
 
         case TASK_GET_SIZE:
             answer.get_size.size = me->bro_index[rcv_args.get_size.stage];
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_GET_SIZE done", me->self.id);
             break;
@@ -7286,7 +7308,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 send_completed(me, type, rcv_req->sender_id);
             }
 
-            data_ans_free(me, &rcv);
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
             XBT_VERB("Node %d: TASK_DEL_BRO done", me->self.id);
             break;
 
@@ -7309,7 +7333,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                 send_completed(me, type, rcv_req->sender_id);
             }
-            data_ans_free(me, &rcv);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_REPL_BRO done", me->self.id);
             break;
@@ -7328,7 +7354,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                 send_completed(me, type, rcv_req->sender_id);
             }
-            data_ans_free(me, &rcv);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_MERGE done", me->self.id);
             break;
@@ -7342,12 +7370,17 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
             XBT_VERB("Node %d: TASK_BROADCAST_MERGE done", me->self.id);
             break;
 
         case TASK_DEL_ROOT:
             del_root(me, rcv_args.del_root.init_height);
-            data_ans_free(me, &rcv);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_DEL_ROOT done", me->self.id);
             break;
@@ -7357,7 +7390,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.clean_stage.stage,
                     rcv_args.clean_stage.pos_me,
                     rcv_args.clean_stage.pos_contact);
-            data_ans_free(me, &rcv);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_CLEAN_STAGE done", me->self.id);
             break;
@@ -7366,6 +7401,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             merge_request(me);
 
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_MERGE_REQ done", me->self.id);
             break;
@@ -7378,8 +7416,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                 send_completed(me, type, rcv_req->sender_id);
             }
-            //data_ans_free(me, &rcv); NOTE : ne pas libérer les data ici
-            // TODO : trouver où il faut les libérer
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_SET_ACTIVE done", me->self.id);
             break;
@@ -7399,8 +7438,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
             }
-            //data_ans_free(me, &rcv);  NOTE : ne pas libérer les data ici
-            // TODO : trouver où il faut les libérer ?
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_SET_UPDATE done - val_ret = '%s'",
                     me->self.id,
@@ -7425,11 +7465,17 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     state.new_id);
             display_states(me, 'V');
 
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
             break;
 
         case TASK_IS_BROTHER:
             answer = is_brother(me, rcv_args.is_brother.id);
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_IS_BROTHER done", me->self.id);
             break;
@@ -7442,6 +7488,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.transfer.sender);
 
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_TRANSFER done", me->self.id);
             break;
@@ -7476,6 +7525,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 send_completed(me, type, rcv_req->sender_id);
             }
 
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
             XBT_VERB("Node %d: TASK_ADD_BRO_ARRAY done", me->self.id);
             break;
 
@@ -7491,6 +7543,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 send_completed(me, type, rcv_req->sender_id);
             }
 
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
             XBT_VERB("Node %d: TASK_SHIFT_BRO done", me->self.id);
             break;
 
@@ -7504,6 +7559,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                 send_completed(me, type, rcv_req->sender_id);
             }
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_ADD_BRO done", me->self.id);
             break;
@@ -7520,6 +7578,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 send_completed(me, type, rcv_req->sender_id);
             }
 
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
             XBT_VERB("Node %d: TASK_CUT_NODE done", me->self.id);
             break;
 
@@ -7532,6 +7593,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
             XBT_VERB("Node %d: TASK_BR_ADD_BRO_ARRAY done", me->self.id);
             break;
 
@@ -7542,6 +7606,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.update_upper_stage.new_id);
 
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_UPDATE_UPPER_STAGE done", me->self.id);
             break;
