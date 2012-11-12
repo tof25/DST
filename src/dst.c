@@ -2812,6 +2812,7 @@ static MSG_error_t send_ans_sync(node_t me,
 
         nb_br_messages[ans_data->br_type]++;
     }
+
     XBT_OUT();
     return res;
 }
@@ -2954,11 +2955,11 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         */
     }
 
-    /*      NOTE : ces libérations sont faites dans handle_task()
+    //      NOTE : ces libérations ne sont pas faites dans handle_task() ??
        req_data_t req = MSG_task_get_data(task_sent);
        data_req_free(me, &req);
        task_free(&task_sent);
-    */
+    //
 
     xbt_free(cpy_brothers);
     cpy_brothers = NULL;
