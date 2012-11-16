@@ -1828,9 +1828,12 @@ static void run_delayed_tasks(node_t me) {
             state.new_id,
             nb_elems);
 
-    m_task_t *task_ptr;
-    req_data_t req_data;
-    int k;
+    m_task_t *task_ptr = NULL;
+    req_data_t req_data = NULL;
+    m_task_t elem;
+    int cpt = 0;
+    int k = 0;
+
     for (k = 0; k < nb_elems; k++) {
 
         task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
@@ -1843,6 +1846,37 @@ static void run_delayed_tasks(node_t me) {
                 req_data->sender_id);
     }
 
+    /* run delayed CNX_GROUPS for new node new_id if current state is 'u'/new_id */
+    if (state.active == 'u' &&
+        xbt_dynar_is_empty(me->remain_tasks) == 0) {
+
+        u_req_args_t req_args;
+
+        for (cpt = 0; cpt < nb_elems; cpt++) {
+
+            task_ptr = xbt_dynar_get_ptr(me->remain_tasks, cpt);
+            req_data = MSG_task_get_data(*task_ptr);
+
+            if (req_data->type == TASK_CNX_GROUPS) {
+
+                req_args = req_data->args;
+                if (req_args.cnx_groups.new_node_id == state.new_id) {
+
+                    XBT_INFO("Node %d: '%c'/%d - run CNX_GROUPS (task[%d])",
+                            me->self.id,
+                            state.active,
+                            state.new_id,
+                            cpt);
+
+                    // run CNX_GROUPS
+                    xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
+                    handle_task(me, &elem);
+                    nb_elems = (int) xbt_dynar_length(me->remain_tasks);
+                }
+            }
+        }
+    }
+
     // run delayed tasks
     if (state.active == 'a' &&
             xbt_dynar_is_empty(me->remain_tasks) == 0) {
@@ -1850,10 +1884,10 @@ static void run_delayed_tasks(node_t me) {
         if (nb_elems > 0) {
 
             int nb_cnx_req = 0;
-            m_task_t *task_ptr = NULL;
-            m_task_t elem;
+            //m_task_t *task_ptr = NULL;
+            //m_task_t elem;
             req_data_t req = NULL;
-            int cpt = 0;
+            //int cpt = 0;
             int mem_nb_elems = 0;
 
             do {
@@ -1898,7 +1932,7 @@ static void run_delayed_tasks(node_t me) {
                     mem_nb_elems = nb_elems;
 
                     handle_task(me, &elem);
-                    task_free(&elem);           //TODO : Faut-il libérer les data ici ?
+                    //task_free(&elem);           //TODO : Faut-il libérer les data ici ?
 
                     //dynar may have been modified by handle_task
                     nb_elems = (int) xbt_dynar_length(me->remain_tasks);
