@@ -3329,7 +3329,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
                         stage, me->brothers[0][f].id);
 
                 // defaults to b in this case   //TODO: vérifier si c'est une bonne idée
-                rcv_ans_data->answer.nb_pred.load = b;
+                rcv_ans_data->answer.nb_pred.load = b;  //TODO : Attention, pointeur pas initialisé
             }
             load_f = rcv_ans_data->answer.nb_pred.load;
             /* load_f will be negative if me->brothers[0][f] is in 'b' state */
@@ -6286,7 +6286,8 @@ static void merge_request(node_t me) {
             me->brothers[0][i].id,
             i);
 
-    answer_data = NULL;
+    data_ans_free(me, &answer_data);
+    //answer_data = NULL;
 
     args.get_size.stage = me->height - 1;
 
@@ -6484,8 +6485,8 @@ static void load_balance(node_t me, int contact_id) {
                         // get_rep success
                         new_nodes[idx] = answer_data->answer.get_rep.new_rep;
 
-                        data_ans_free(me, &answer_data);
                     }
+                    data_ans_free(me, &answer_data);
 
                     /* tells the new rep he's got a new predecessor: me */
                     if (new_nodes[idx].id != me->brothers[i][j].id) {
@@ -6515,11 +6516,12 @@ static void load_balance(node_t me, int contact_id) {
                                 me->self.id,
                                 i,
                                 new_nodes[idx].id);
+
+                        data_ans_free(me, &answer_data);
                     }
 
                     idx++;
 
-                    data_ans_free(me, &answer_data);
                 } else {
 
                     //if me is found, keep it
@@ -7305,7 +7307,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
                                             rcv_req->sender_id);
 
-                                    //data_ans_free(me, &rcv);
+                                    data_req_free(me, &rcv_req);
+                                    task_free(task);
                                 }
                             }
                         }
