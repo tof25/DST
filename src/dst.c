@@ -41,6 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                GET_REP request */
 #define MAX_JOIN 10                         // number of joining attempts
 
+static nb_send_ans = 0;
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     // max number of brothers in a node
@@ -1184,6 +1185,12 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                         -1);
             }
 
+            if ((*elem_ptr)->answer_data != NULL) {
+
+                xbt_free((*elem_ptr)->answer_data);
+                (*elem_ptr)->answer_data = NULL;
+            }
+
             // yes
             ans_cpt--;
 
@@ -1299,9 +1306,17 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                         ans_cpt--;
 
                         // remove this entry from dynar
+                        elem_ptr = xbt_dynar_get_ptr(me->expected_answers, dynar_idx);
+                        if ((*elem_ptr)->answer_data != NULL) {
+
+                            xbt_free((*elem_ptr)->answer_data);
+                            (*elem_ptr)->answer_data = NULL;
+                        }
+
                         xbt_dynar_remove_at(me->expected_answers,
                                 dynar_idx,
                                 NULL);
+
                         dynar_size = (int) xbt_dynar_length(me->expected_answers);
                     } else {
 
@@ -1423,6 +1438,12 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                             nok_id = (ret == UPDATE_NOK ?
                                     (*elem_ptr)->answer_data->answer.handle.val_ret_id :
                                     -1);
+                        }
+
+                        if ((*elem_ptr)->answer_data != NULL) {
+
+                            xbt_free((*elem_ptr)->answer_data);
+                            (*elem_ptr)->answer_data = NULL;
                         }
 
                         // yes
@@ -2326,6 +2347,10 @@ static MSG_error_t send_msg_sync(node_t me,
 
     XBT_IN();
 
+    if (type == TASK_NB_PRED) {
+        nb_send_ans++;
+    }
+
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
     req_data_t cpy_req_data = xbt_new0(s_req_data_t, 1);
     //XBT_DEBUG("Start send_msg_sync - req_data = %p", req_data);
@@ -2485,8 +2510,8 @@ static MSG_error_t send_msg_sync(node_t me,
 
                 // handle this received request
                 handle_task(me, &task_received);
-                ans = NULL;
-                task_free(&task_received);
+                ans = NULL;                         //TODO : probablement inutile
+                task_free(&task_received);          //TODO : probablement inutile (déjà fait dans handle_task)
 
                 /* NOTE: ne pas détruire les data ici.
                    Si la tâche traitée envoie une réponse, c'est le
@@ -2564,6 +2589,13 @@ static MSG_error_t send_msg_sync(node_t me,
 
                     // pop the answer from dynar sync_answers
                     xbt_dynar_pop(me->sync_answers, &ans_elem);
+
+                    //data_ans_free(me, ans_elem->answer_data);
+                    if (ans_elem->answer_data != NULL) {
+
+                        xbt_free(ans_elem->answer_data);
+                        ans_elem->answer_data = NULL;
+                    }
                     xbt_free(ans_elem);
                     task_free(&task_received);      // NOTE: ne pas libérer les data ici
 
@@ -2695,6 +2727,12 @@ static MSG_error_t send_msg_sync(node_t me,
             if ((*elem_ptr)->type == TASK_GET_REP) {
 
                 xbt_dynar_pop(me->sync_answers, &ans_elem);
+
+                if (ans_elem->answer_data != NULL) {
+
+                    xbt_free(ans_elem->answer_data);
+                    ans_elem->answer_data = NULL;
+                }
                 xbt_free(ans_elem);
 
                 XBT_DEBUG("Node %d: TASK_GET_REP has been poped from dynar",
@@ -2788,6 +2826,7 @@ static MSG_error_t send_ans_sync(node_t me,
         u_ans_data_t u_ans_data) {
 
     XBT_IN();
+
     ans_data_t ans_data = xbt_new0(s_ans_data_t, 1);
 
     // init answer data
@@ -6737,7 +6776,7 @@ int node(int argc, char *argv[]) {
 
                     handle_task(&node, &task_received);
 
-                    task_free(&task_received);
+                    //task_free(&task_received);
 
                     /* NOTE: ne pas détruire les data ici.
                      * Si la tâche traitée envoie une réponse, c'est le
@@ -6815,6 +6854,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
         XBT_DEBUG("Node %d: only requests accepted in handle_task !",
                 me->self.id);
+
+        data_ans_free(me, &rcv); 
+        task_free(task);
 
         return val_ret;
     }
@@ -7711,6 +7753,8 @@ int main(int argc, char *argv[]) {
     xbt_os_timer_start(timer);
     MSG_error_t res = MSG_main();
     xbt_os_timer_stop(timer);
+
+    XBT_INFO("nb_calls_send_msg_sync = %d", nb_send_ans);
 
     // print all routing tables
     XBT_INFO("************************************     PRINT ALL     "
