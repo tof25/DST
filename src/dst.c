@@ -3028,11 +3028,11 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         */
     }
 
-    //      NOTE : ces libérations ne sont pas faites dans handle_task() ??
-       req_data_t req = MSG_task_get_data(task_sent);
-       data_req_free(me, &req);
-       task_free(&task_sent);
-    //
+    /* NOTE : ces libérations sont faites dans handle_task()
+    req_data_t req = MSG_task_get_data(task_sent);
+    data_req_free(me, &req);
+    task_free(&task_sent);
+    */
 
     xbt_free(cpy_brothers);
     cpy_brothers = NULL;
@@ -3545,9 +3545,11 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
 
+                /*
                 req_data_t req = MSG_task_get_data(task_sent);
                 data_req_free(me, &req);
                 task_free(&task_sent);
+                */
 
                 if (val_ret != UPDATE_NOK) {
 
@@ -3585,9 +3587,11 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                     xbt_free(args.broadcast.args);
                     args.broadcast.args = NULL;
 
+                    /*
                     req = MSG_task_get_data(task_sent);
                     data_req_free(me, &req);
                     task_free(&task_sent);
+                    */
 
                     state = get_state(me);
                     XBT_INFO("Node %d: '%c'/%d -  **** ROOM MADE FOR NODE %d ****",
@@ -3889,10 +3893,12 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
             make_broadcast_task(me, broadcast_args, &task_sent);
             handle_task(me, &task_sent);
 
+            /*
             req_data_t req = MSG_task_get_data(task_sent);
             data_req_free(me, &req);
 
             task_free(&task_sent);
+            */
         }
 
         XBT_VERB("Node %d: In split_request - stage = %d",
@@ -3938,10 +3944,12 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         make_broadcast_task(me, broadcast_args, &task_sent);
         handle_task(me, &task_sent);
 
+        /*
         req_data_t req = MSG_task_get_data(task_sent);
         data_req_free(me, &req);
 
         task_free(&task_sent);
+        */
 
         xbt_free(broadcast_args.broadcast.args);
         broadcast_args.broadcast.args = NULL;
@@ -7221,6 +7229,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                                 rcv_args.broadcast.args->set_update.new_id);
                                     }
 
+                                    task_free(task);
+
                                     rcv_args.broadcast.first_call = 0;
                                     val_ret = broadcast(me, rcv_args);
                                 } else {
@@ -7274,6 +7284,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                                         set_update(me, rcv_args.broadcast.args->set_update.new_id);
                                     }
+
+                                    task_free(task);
 
                                     // transmit the message to lower stage
                                     rcv_args.broadcast.stage--;
@@ -7329,6 +7341,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             xbt_dynar_push(me->remain_tasks, task);
                                             *task = NULL;
                                         }
+
+                                        task_free(task);
                                     }
 
                                     XBT_VERB("Node %d: End of run broadcasted task - '%s'",
@@ -7348,11 +7362,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             me->self.id,
                                             (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
                                             rcv_req->sender_id);
-
-                                    data_req_free(me, &rcv_req);
-                                    task_free(task);
                                 }
                             }
+                            data_req_free(me, &rcv_req);
                         }
             break;
 
