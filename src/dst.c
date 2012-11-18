@@ -3541,6 +3541,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
 
                 val_ret = handle_task(me, &task_sent);
 
+                XBT_INFO("xbt_free n°1");
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
 
