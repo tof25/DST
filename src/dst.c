@@ -2,7 +2,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2012/10/05
+ *  Written by Christophe Enderlin on 2012/11/18
  *
  */
 
@@ -41,7 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                GET_REP request */
 #define MAX_JOIN 10                         // number of joining attempts
 
-static nb_send_ans = 0;
+static nb_calls = 0;
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     // max number of brothers in a node
@@ -2347,10 +2347,6 @@ static MSG_error_t send_msg_sync(node_t me,
 
     XBT_IN();
 
-    if (type == TASK_NB_PRED) {
-        nb_send_ans++;
-    }
-
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
     req_data_t cpy_req_data = xbt_new0(s_req_data_t, 1);
 
@@ -2394,7 +2390,7 @@ static MSG_error_t send_msg_sync(node_t me,
 
     // push onto sync_answers dynar
     recp_rec_t req_elem = xbt_new0(s_recp_rec_t, 1);
-    recp_rec_t ans_elem = xbt_new0(s_recp_rec_t, 1);
+    recp_rec_t ans_elem = NULL;
     recp_rec_t *elem_ptr = NULL;
 
     req_elem->type = type;
@@ -6744,6 +6740,7 @@ int node(int argc, char *argv[]) {
 
                 task_received = NULL;
                 XBT_VERB("Node %d: Waiting for a task...", node.self.id);
+
                 node.comm_received =
                     MSG_task_irecv(&task_received, node.self.mailbox);
             }
@@ -6987,7 +6984,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         case TASK_ADD_STAGE:
             add_stage(me);
 
-            task_free(task);        //NOTE : ne pas détruire les data, il n'y en a pas ici
+            data_req_free(me, &rcv_req);
+            task_free(task);
 
             XBT_VERB("Node %d: TASK_ADD_STAGE done", me->self.id);
             break;
@@ -7306,6 +7304,10 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                                     // only if me is active
                                     if (state.active != 'n') {
+
+                                        if (rcv_args.broadcast.type == TASK_SPLIT) {
+                                        nb_calls++;
+                                        }
 
                                         req_data_t req_data = xbt_new0(s_req_data_t, 1);
                                         req_data->type = rcv_args.broadcast.type;
@@ -7768,7 +7770,7 @@ int main(int argc, char *argv[]) {
     MSG_error_t res = MSG_main();
     xbt_os_timer_stop(timer);
 
-    XBT_INFO("nb_calls_send_msg_sync = %d", nb_send_ans);
+    XBT_INFO("nb_calls = %d", nb_calls);
 
     // print all routing tables
     XBT_INFO("************************************     PRINT ALL     "
