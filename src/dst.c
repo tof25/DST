@@ -1412,7 +1412,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                 // handle the received task
                 handle_task(me, &task_received);
                 ans = NULL;
-                task_free(&task_received);
 
                 /* NOTE: ne pas détruire les data ici.
                    Si la tâche traitée envoie un message, c'est le
@@ -1953,7 +1952,7 @@ static void run_delayed_tasks(node_t me) {
                     mem_nb_elems = nb_elems;
 
                     handle_task(me, &elem);
-                    //task_free(&elem);           //TODO : Faut-il libérer les data ici ?
+                    req = NULL;
 
                     //dynar may have been modified by handle_task
                     nb_elems = (int) xbt_dynar_length(me->remain_tasks);
@@ -2507,8 +2506,8 @@ static MSG_error_t send_msg_sync(node_t me,
 
                 // handle this received request
                 handle_task(me, &task_received);
-                ans = NULL;                         //TODO : probablement inutile
-                task_free(&task_received);          //TODO : probablement inutile (déjà fait dans handle_task)
+                ans = NULL;
+                req = NULL;
 
                 /* NOTE: ne pas détruire les data ici.
                    Si la tâche traitée envoie une réponse, c'est le
@@ -3535,19 +3534,15 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                 }
                 args.broadcast.first_call = 1;
                 args.broadcast.source_id = me->self.id;
+
                 args.broadcast.args = xbt_new0(u_req_args_t, 1);
                 args.broadcast.args->set_update.new_id = new_node.id;
                 make_broadcast_task(me, args, &task_sent);
+
                 val_ret = handle_task(me, &task_sent);
 
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
-
-                /*
-                req_data_t req = MSG_task_get_data(task_sent);
-                data_req_free(me, &req);
-                task_free(&task_sent);
-                */
 
                 if (val_ret != UPDATE_NOK) {
 
@@ -3577,19 +3572,15 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                     }
                     args.broadcast.first_call = 1;
                     args.broadcast.source_id = me->self.id;
+
                     args.broadcast.args = xbt_new0(u_req_args_t, 1);
                     args.broadcast.args->set_active.new_id = new_node.id;
                     make_broadcast_task(me, args, &task_sent);
+
                     handle_task(me, &task_sent);
 
                     xbt_free(args.broadcast.args);
                     args.broadcast.args = NULL;
-
-                    /*
-                    req = MSG_task_get_data(task_sent);
-                    data_req_free(me, &req);
-                    task_free(&task_sent);
-                    */
 
                     state = get_state(me);
                     XBT_INFO("Node %d: '%c'/%d -  **** ROOM MADE FOR NODE %d ****",
@@ -3764,17 +3755,15 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                 }
                 args.broadcast.first_call = 1;
                 args.broadcast.source_id = me->self.id;
+
                 args.broadcast.args = xbt_new0(u_req_args_t, 1);
                 args.broadcast.args->set_active.new_id = new_node.id;
                 make_broadcast_task(me, args, &task_sent);
+
                 handle_task(me, &task_sent);
 
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
-
-                req_data_t req = MSG_task_get_data(task_sent);
-                data_req_free(me, &req);
-                task_free(&task_sent);
             }
         }
         answer.cnx_req.val_ret = val_ret;
@@ -3890,13 +3879,6 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
 
             make_broadcast_task(me, broadcast_args, &task_sent);
             handle_task(me, &task_sent);
-
-            /*
-            req_data_t req = MSG_task_get_data(task_sent);
-            data_req_free(me, &req);
-
-            task_free(&task_sent);
-            */
         }
 
         XBT_VERB("Node %d: In split_request - stage = %d",
@@ -3935,19 +3917,13 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         broadcast_args.broadcast.stage = stage;
         broadcast_args.broadcast.first_call = 1;
         broadcast_args.broadcast.source_id = me->self.id;
+
         broadcast_args.broadcast.args = xbt_new0(u_req_args_t, 1);
         broadcast_args.broadcast.args->split.stage_nbr = stage;
         broadcast_args.broadcast.args->split.new_node_id = new_node_id;
-
         make_broadcast_task(me, broadcast_args, &task_sent);
+
         handle_task(me, &task_sent);
-
-        /*
-        req_data_t req = MSG_task_get_data(task_sent);
-        data_req_free(me, &req);
-
-        task_free(&task_sent);
-        */
 
         xbt_free(broadcast_args.broadcast.args);
         broadcast_args.broadcast.args = NULL;
@@ -4493,6 +4469,7 @@ static void br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_siz
     handle_task(me, &task_sent);
 
     xbt_free(args.broadcast.args);
+    args.broadcast.args = NULL;
 
     XBT_OUT();
 }
@@ -5390,12 +5367,14 @@ static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, i
     args.broadcast.args->merge.pos_contact = pos_contact;
     args.broadcast.args->merge.right = right;
     make_broadcast_task(me, args, &task_sent);
+
     handle_task(me, &task_sent);
 
-    req_data_t req = MSG_task_get_data(task_sent);
-    data_req_free(me, &req);
+    xbt_free(args.broadcast.args->merge.nodes_array);
+    args.broadcast.args->merge.nodes_array = NULL;
 
-    task_free(&task_sent);
+    xbt_free(args.broadcast.args);
+    args.broadcast.args = NULL;
 
     XBT_OUT();
 }
@@ -5678,12 +5657,8 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
     make_broadcast_task(me, args, &task_sent);
     handle_task(me, &task_sent);
 
-    req_data_t req = MSG_task_get_data(task_sent);
-    data_req_free(me, &req);
-
-    task_free(&task_sent);
-
     xbt_free(args.broadcast.args);
+    args.broadcast.args = NULL;
 
     XBT_OUT();
     return answer;
@@ -6162,13 +6137,9 @@ static void merge_request(node_t me) {
             handle_task(me, &task_sent);
 
             xbt_free(args.broadcast.args);
-
-            req_data_t req = MSG_task_get_data(task_sent);
-            data_req_free(me, &req);
+            args.broadcast.args = NULL;
 
             data_ans_free(me, &answer_data);  // TODO : tester avec et sans
-            task_free(&task_sent);
-
         } else {
 
             //Transfer
@@ -6307,6 +6278,7 @@ static void merge_request(node_t me) {
             handle_task(me, &task_sent);
 
             xbt_free(args.broadcast.args);
+            args.broadcast.args = NULL;
 
             XBT_VERB("Node %d : End of ADD_BRO_ARRAY", me->self.id);
 
@@ -6408,16 +6380,12 @@ static void merge_request(node_t me) {
         args.broadcast.stage = me->height - 1;
         args.broadcast.first_call = 1;
         args.broadcast.source_id = me->self.id;
+
         args.broadcast.args = xbt_new0(u_req_args_t, 1);
         args.broadcast.args->del_root.init_height = me->height;
-
         make_broadcast_task(me, args, &task_sent);
+
         handle_task(me, &task_sent);
-
-        req_data_t req = MSG_task_get_data(task_sent);
-        data_req_free(me, &req);
-
-        task_free(&task_sent);
 
         xbt_free(args.broadcast.args);
     }
@@ -6782,8 +6750,6 @@ int node(int argc, char *argv[]) {
                     node.comm_received = NULL;
 
                     handle_task(&node, &task_received);
-
-                    //task_free(&task_received);
 
                     /* NOTE: ne pas détruire les data ici.
                      * Si la tâche traitée envoie une réponse, c'est le
