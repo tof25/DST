@@ -2353,6 +2353,7 @@ static MSG_error_t send_msg_sync(node_t me,
 
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
     req_data_t cpy_req_data = xbt_new0(s_req_data_t, 1);
+
     //XBT_DEBUG("Start send_msg_sync - req_data = %p", req_data);
     //XBT_DEBUG("Start send_msg_sync - cpy_req_data = %p", cpy_req_data);
 
@@ -3171,6 +3172,7 @@ static int join(node_t me, int contact_id, int try) {
 
         // join failure
         XBT_ERROR("Node %d failed to join the DST", me->self.id);
+        data_ans_free(me, &answer_data);
         return 0;
     }
 
@@ -3368,7 +3370,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
                         stage, me->brothers[0][f].id);
 
                 // defaults to b in this case   //TODO: vérifier si c'est une bonne idée
-                rcv_ans_data->answer.nb_pred.load = b;  //TODO : Attention, pointeur pas initialisé
+                rcv_ans_data->answer.nb_pred.load = b;  //TODO : Attention, pointeur pas initialisé ?
             }
             load_f = rcv_ans_data->answer.nb_pred.load;
             /* load_f will be negative if me->brothers[0][f] is in 'b' state */
@@ -3384,9 +3386,9 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
             load = load_f;
             answer.get_rep.new_rep = me->brothers[0][f];
         }
-    }
 
-    data_ans_free(me, &rcv_ans_data);
+        data_ans_free(me, &rcv_ans_data);
+    }
 
     int idx = state_search(me, 'g', new_node_id);
     if (idx > -1) {
