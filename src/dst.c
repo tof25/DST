@@ -7297,6 +7297,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                                 COMM_SIZE,
                                                 req_data);
                                         MSG_task_set_name(br_task, "async");
+
                                         val_ret = handle_task(me, &br_task);
 
                                         /* if br_task has to be delayed, store the whole
@@ -7310,10 +7311,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                                     state.active);
 
                                             xbt_dynar_push(me->remain_tasks, task);
-                                            *task = NULL;
-                                        }
+                                            *task = NULL;     //TODO : utile ?
+                                        } else {
 
-                                        task_free(task);
+                                            task_free(task);
+                                        }
                                     }
 
                                     XBT_VERB("Node %d: End of run broadcasted task - '%s'",
