@@ -7337,7 +7337,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             rcv_req->sender_id);
                                 }
                             }
-                            data_req_free(me, &rcv_req);
+                            // data_req_free(me, &rcv_req);
+                            // TODO : voir quand libérer cette mémoire (libère trop tôt les données stockées sur le dynar)
                         }
             break;
 
