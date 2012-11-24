@@ -41,7 +41,8 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                GET_REP request */
 #define MAX_JOIN 10                         // number of joining attempts
 
-static nb_calls = 0;
+static nb_calls1 = 0;
+static nb_calls2 = 0;
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     // max number of brothers in a node
@@ -787,15 +788,17 @@ static void set_n_store_infos(node_t me) {
 
     dst_infos_t elem = xbt_new0(s_dst_infos_t, 1);
     *elem = me->dst_infos;
-    if (xbt_dynar_member(infos_dst, elem) == 0) {
+    //if (xbt_dynar_member(infos_dst, elem) == 0) {
 
+    XBT_INFO("number replaces = %d, order = %d", ++nb_calls1, me->dst_infos.order);
         XBT_DEBUG("Replace");
         xbt_dynar_replace(infos_dst, me->dst_infos.order, &elem);
-    } else {
+    /*} else {
 
+    XBT_INFO("number set = %d, order = %d", ++nb_calls2, me->dst_infos.order);
         XBT_DEBUG("Set");
         xbt_dynar_set(infos_dst, me->dst_infos.order, &elem);
-    }
+    } */
 
     XBT_OUT();
 }
@@ -7272,10 +7275,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                     // only if me is active
                                     if (state.active != 'n') {
 
-                                        if (rcv_args.broadcast.type == TASK_SPLIT) {
-                                        nb_calls++;
-                                        }
-
                                         req_data_t req_data = xbt_new0(s_req_data_t, 1);
                                         req_data->type = rcv_args.broadcast.type;
                                         req_data->sender_id = me->self.id;
@@ -7337,8 +7336,13 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             rcv_req->sender_id);
                                 }
                             }
-                            // data_req_free(me, &rcv_req);
-                            // TODO : voir quand libérer cette mémoire (libère trop tôt les données stockées sur le dynar)
+
+                            if (val_ret != STORED) {
+
+                                data_req_free(me, &rcv_req);
+                            }
+                            // TODO : voir si cette libération ne pose pas de
+                            // problème avec les données stockées dans le dynar
                         }
             break;
 
@@ -7740,12 +7744,11 @@ int main(int argc, char *argv[]) {
     MSG_error_t res = MSG_main();
     xbt_os_timer_stop(timer);
 
-    XBT_INFO("nb_calls = %d", nb_calls);
 
     // print all routing tables
     XBT_INFO("************************************     PRINT ALL     "
             "************************************\n");
-    unsigned int cpt, nb_nodes = 0, nb_nodes_tot = 0;
+    unsigned int cpt = 0, nb_nodes = 0, nb_nodes_tot = 0;
 
     // to store non active nodes id
     int size = 100;
@@ -7810,6 +7813,8 @@ int main(int argc, char *argv[]) {
             XBT_VERB("cpt: %d, elem = NULL", cpt);
         }
     }
+    
+    XBT_INFO("Number of elements in infos_dst = %d", cpt);
     XBT_INFO("Messages needed for %d active nodes / %d total nodes ( sent - broadcasted )",
             nb_nodes,
             nb_nodes_tot);
