@@ -41,8 +41,8 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                GET_REP request */
 #define MAX_JOIN 10                         // number of joining attempts
 
-static nb_calls1 = 0;
-static nb_calls2 = 0;
+static int nb_calls1 = 0;
+static int nb_calls2 = 0;
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     // max number of brothers in a node
@@ -790,9 +790,8 @@ static void set_n_store_infos(node_t me) {
     *elem = me->dst_infos;
     //if (xbt_dynar_member(infos_dst, elem) == 0) {
 
-    XBT_INFO("number replaces = %d, order = %d", ++nb_calls1, me->dst_infos.order);
-        XBT_DEBUG("Replace");
-        xbt_dynar_replace(infos_dst, me->dst_infos.order, &elem);
+    xbt_dynar_replace(infos_dst, me->dst_infos.order, &elem);
+
     /*} else {
 
     XBT_INFO("number set = %d, order = %d", ++nb_calls2, me->dst_infos.order);
@@ -3544,7 +3543,8 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
 
                 val_ret = handle_task(me, &task_sent);
 
-                XBT_INFO("xbt_free n°1");
+                XBT_INFO("task_sent = %p - val_ret = %d", task_sent, val_ret);
+
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
 
@@ -6792,7 +6792,6 @@ int node(int argc, char *argv[]) {
         set_n_store_infos(&node);
     }
 
-    XBT_DEBUG("Node %d", node.self.id);
     node_free(&node);
     XBT_OUT();
     return (!join_success);
@@ -7168,7 +7167,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                             /* start call: forward broadcast to the leader ? */
                             if (rcv_args.broadcast.first_call == 1) {
 
-                                XBT_DEBUG("Node %d: broadcast first call - stage = %d -"
+                                XBT_VERB("Node %d: broadcast first call - stage = %d -"
                                         " height = %d - broadcasted task = '%s'",
                                         me->self.id,
                                         rcv_args.broadcast.stage,
@@ -7240,6 +7239,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             (val_ret == UPDATE_NOK ? "UPDATE NOK" : "OK"),
                                             rcv_req->sender_id);
                                 }
+
+                                task_free(task);
+
                             } else {
 
                                 // next broadcast calls
