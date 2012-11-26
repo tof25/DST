@@ -2,7 +2,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2012/11/18
+ *  Written by Christophe Enderlin on 2012/11/26
  *
  */
 
@@ -1163,7 +1163,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
     recp_rec_t *elem_ptr = NULL;
 
     float max_wait = MSG_get_clock() + MAX_WAIT_COMPL;
-    me->comm_received = NULL;
+    //me->comm_received = NULL;
     m_task_t task_received = NULL;
     ans_data_t ans = NULL;
     MSG_error_t res = MSG_OK;
@@ -1296,11 +1296,13 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                             dynar_idx >= dynar_size - ans_cpt) {
 
                         // look if a set_update task has failed
-                        if (ret != UPDATE_NOK) {
+                        if (ans->type == TASK_BROADCAST || ans->type == TASK_SET_UPDATE) {
+                            if (ret != UPDATE_NOK) {
 
-                            ret = ans->answer.handle.val_ret;
-                            nok_id = (ret == UPDATE_NOK ?
-                                    ans->answer.handle.val_ret_id : -1);
+                                ret = ans->answer.handle.val_ret;
+
+                                nok_id = (ret == UPDATE_NOK ?  ans->answer.handle.val_ret_id : -1);
+                            }
                         }
 
                         /* yes, this answer is one of the current expected
@@ -2094,12 +2096,12 @@ static void elem_free(void *elem_ptr) {
         (*ptr)->routing_table = NULL;
 
         /*
-           xbt_free((*ptr)->load);
+           xbt_free((*ptr)->load);      //TODO: voir pourquoi cette libération pose problème
            (*ptr)->load = NULL;
 
            xbt_free((*ptr)->size);
            (*ptr)->size = NULL;
-           */
+        */
 
         xbt_free(*ptr);
         *ptr = NULL;
@@ -3125,7 +3127,7 @@ static void init(node_t me) {
     // set and store DST infos
     set_n_store_infos(me);
 
-    display_preds(me, 'V');
+    display_preds(me, 'D');
     XBT_OUT();
 }
 
@@ -3263,7 +3265,7 @@ static int join(node_t me, int contact_id, int try) {
     // set and store DST infos
     set_n_store_infos(me);
 
-    display_preds(me, 'V');
+    display_preds(me, 'D');
     XBT_INFO("Node %d: My new contact is %d", me->self.id, contact.id);
 
     display_rout_table(me, 'I');
@@ -3291,7 +3293,7 @@ static int join(node_t me, int contact_id, int try) {
     // set and store DST infos
     set_n_store_infos(me);
 
-    display_preds(me, 'V');
+    display_preds(me, 'D');
     XBT_OUT();
     return 1;           // join success
 }
@@ -3542,8 +3544,6 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                 make_broadcast_task(me, args, &task_sent);
 
                 val_ret = handle_task(me, &task_sent);
-
-                XBT_INFO("task_sent = %p - val_ret = %d", task_sent, val_ret);
 
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
@@ -4182,7 +4182,7 @@ static void del_member(node_t me, int stage, int start, int end) {
                     me->self.id,
                     id_del[i]);
 
-            display_preds(me, 'V');
+            display_preds(me, 'D');
             */
 
             // 'me' is no longer a predecessor of id_del[i]
@@ -4609,7 +4609,7 @@ static void connect_splitted_groups(node_t me,
             routing_table(me));
 
     display_rout_table(me, 'V');
-    display_preds(me, 'V');
+    display_preds(me, 'D');
 
     // function already called: do nothing
     if (pos_new < me->bro_index[stage]) return;
@@ -4782,7 +4782,7 @@ static void connect_splitted_groups(node_t me,
             new_node_id);
 
     display_rout_table(me, 'V');
-    display_preds(me, 'V');
+    display_preds(me, 'D');
     XBT_OUT();
 }
 
@@ -4808,7 +4808,7 @@ static void split(node_t me, int stage, int new_node_id) {
 
     XBT_DEBUG("Node %d routing table before split", me->self.id);
     display_rout_table(me, 'V');
-    display_preds(me, 'V');
+    display_preds(me, 'D');
 
     int pos = index_bro(me, stage, me->self.id);
     int stay = (pos + 1) % 2;
@@ -4951,7 +4951,7 @@ static void split(node_t me, int stage, int new_node_id) {
     // set and store DST infos
     set_n_store_infos(me);
 
-    display_preds(me, 'V');
+    display_preds(me, 'D');
 
     // tells every upper stage pred it's got a new member
     int ans_cpt = me->pred_index[stage + 1];
@@ -6711,16 +6711,17 @@ int node(int argc, char *argv[]) {
             if (node.comm_received == NULL) {
 
                 task_received = NULL;
-                XBT_VERB("Node %d: Waiting for a task...", node.self.id);
-
                 node.comm_received =
                     MSG_task_irecv(&task_received, node.self.mailbox);
+
+                XBT_VERB("Node %d: Waiting for a task...", node.self.id);
             }
 
             if (!MSG_comm_test(node.comm_received)) {
 
                 // no task was received: make some periodic calls
                 state = get_state(&node);
+
                 if (MSG_get_clock() >= node.deadline && state.active == 'a') {
 
                     XBT_INFO("Node %d: deadline reached: time to leave !",
@@ -6743,21 +6744,16 @@ int node(int argc, char *argv[]) {
                 }
             } else {
 
-                // a transfer has occurred
-                XBT_VERB("Node %d: Task received ?", node.self.id);
-
+                // some task has been received
                 res = MSG_comm_get_status(node.comm_received);
+                MSG_comm_destroy(node.comm_received);
+                node.comm_received = NULL;
+
+                XBT_VERB("Node %d: Task received", node.self.id);
+
                 if (res == MSG_OK) {
 
-                    // some task has been received
-                    MSG_comm_destroy(node.comm_received);
-                    node.comm_received = NULL;
-
                     handle_task(&node, &task_received);
-
-                    /* NOTE: ne pas détruire les data ici.
-                     * Si la tâche traitée envoie une réponse, c'est le
-                     * destinataire qui doit détruire ces données */
 
                     // run remaining tasks, if any
                     run_delayed_tasks(&node);
@@ -6766,8 +6762,6 @@ int node(int argc, char *argv[]) {
                     // reception failure
                     XBT_WARN("Node %d: Failed to receive a task",
                             node.self.id);
-
-                    node.comm_received = NULL;
                 }
             }
             state = get_state(&node);
@@ -7692,7 +7686,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         // set and store DST infos
         set_n_store_infos(me);
 
-        display_preds(me, 'V');
+        display_preds(me, 'D');
     }
 
     XBT_DEBUG("Node %d end of handle_task(): val_ret = '%s'",
@@ -7736,7 +7730,7 @@ int main(int argc, char *argv[]) {
     const char* deployment_file = argv[2];
     if (argc == 4) max_simulation_time = atoi(argv[3]);
 
-    //MSG_set_channel_number(10);         //TODO: je n'ai pas compris l'utilité de set_channel_number
+    MSG_set_channel_number(0);         //TODO: je n'ai pas compris l'utilité de set_channel_number
     MSG_create_environment(platform_file);
 
     MSG_function_register("node", node);
