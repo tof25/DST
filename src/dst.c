@@ -16,12 +16,13 @@
 /* TODO: il reste des problèmes de gestion mémoire. On les voit apparaître vers
  *       b >= 66 */
 
+#define MSG_USE_DEPRECATED
 #include <stdio.h>                          // printf and friends
 #include "msg/msg.h"                        // to use MSG API of Simgrid
 #include "xbt/log.h"                        // to get nice outputs
 #include "xbt/asserts.h"                    // to use xbt_assert()
 #include "xbt/xbt_os_time.h"                /* to use a timer (located in
-                                               simgrid-3.6.1/src/include/xbt) */
+                                               simgrid-3.8.1/src/include/xbt) */
 #include "xbt/ex.h"                         // to use exceptions
 #include <time.h>
 #include <stdlib.h>                         // to use rand()
@@ -35,7 +36,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                new task */
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
 #define TYPE_NBR 32                         // number of task types
-#define MAX_WAIT_COMPL 550                  /* won't wait longer for broadcast
+#define MAX_WAIT_COMPL 1550                 /* won't wait longer for broadcast
                                                completion */
 #define MAX_WAIT_GET_REP 10                 /* won't wait longer an answer to a
                                                GET_REP request */
@@ -2316,6 +2317,13 @@ static int index_pred(node_t me, int stage, int id) {
 
     XBT_IN();
     int idx = 0;
+
+    xbt_assert(stage < me->height,
+            "Node %d: in index_pred, stage %d is higher than DST height %d",
+            me->self.id,
+            stage,
+            me->height - 1);
+
     while ((idx < me->pred_index[stage]) && (me->preds[stage][idx].id != id)) {
 
         idx++;
@@ -4070,6 +4078,9 @@ static void del_pred(node_t me, int stage, int pred2del) {
 
     XBT_IN();
 
+    display_preds(me, 'V');
+    XBT_VERB("Node %d: stage = %d, pred2del = %d", me->self.id, stage, pred2del);
+
     int idx = index_pred(me, stage, pred2del);
 
     // if pred2del exist
@@ -5143,7 +5154,7 @@ static void merge(node_t me,
     int i = 0;
     int *loc_nodes_array = NULL;
     int loc_nodes_array_size = 0;
-    int loc_right = 0;
+    //int loc_right = 0;
 
     u_req_args_t args;
     MSG_error_t res;
@@ -5153,11 +5164,13 @@ static void merge(node_t me,
     /* if merge() is broadcasted, right equals 0 or 1. If merge() is simply
      * called, it equals 10 or 11. This is to manage side flipping for coming
      * nodes during broadcasts.*/
+    /*
     switch (right) {
 
         case 0:                 // new nodes come from the left
             if (index_bro(me, stage + 1, me->self.id) == 0) {
 
+                xbt_assert(1 == 0, "Node %d: case 0", me->self.id);
                 loc_right = 1;
             } else {
 
@@ -5169,6 +5182,7 @@ static void merge(node_t me,
 
             if (index_bro(me, stage + 1, me->self.id) == me->bro_index[stage + 1] - 1) {
 
+                xbt_assert(1 == 0, "Node %d: case 1", me->self.id);
                 loc_right = 0;
             } else {
 
@@ -5186,6 +5200,7 @@ static void merge(node_t me,
             loc_right = 1;
             break;
     }
+    */
 
     /*
        if (right == !loc_right) {
@@ -5210,17 +5225,17 @@ static void merge(node_t me,
         loc_nodes_array_size = nodes_array_size;
     }
 
-    if (loc_right == 0) {
+    if (right == 0) {
 
         // take the left part of the given array
         XBT_VERB("Node %d: Source node comes from the left"
                 " - pos_me = %d - pos_contact = %d"
-                " - right = %d - loc_right = %d - nodes_array[0] = %d",
+                " - right = %d - right = %d - nodes_array[0] = %d",
                 me->self.id,
                 pos_me,
                 pos_contact,
                 right,
-                loc_right,
+                right,
                 nodes_array[0]);
 
         if (loc_nodes_array_size > 0) {
@@ -5236,12 +5251,12 @@ static void merge(node_t me,
         // take the right part of the given array
         XBT_VERB("Node %d: Source node comes from the right"
                 " - pos_me = %d - pos_contact = %d"
-                " - right = %d - loc_right = %d - nodes_array[max] = %d",
+                " - right = %d - right = %d - nodes_array[max] = %d",
                 me->self.id,
                 pos_me,
                 pos_contact,
                 right,
-                loc_right,
+                right,
                 nodes_array[nodes_array_size - 1]);
 
         if (loc_nodes_array_size > 0) {
@@ -5284,7 +5299,7 @@ static void merge(node_t me,
 
     if (loc_nodes_array_size > 0) {
 
-        if (loc_right == 0) {
+        if (right == 0) {
 
             // insert new brothers at the begining (left)
             for (i = loc_nodes_array_size - 1; i >= 0; i--) {
@@ -6068,7 +6083,8 @@ static void merge_request(node_t me) {
             args.merge.stage = stage;
             args.merge.pos_me = pos_me;
             args.merge.pos_contact = pos_contact;
-            args.merge.right = (pos_me > pos_contact ? 11 : 10);
+            //args.merge.right = (pos_me > pos_contact ? 11 : 10);
+            args.merge.right = (pos_me > pos_contact ? 1 : 0);
 
             XBT_DEBUG("Node %d: Merge Request: send TASK_MERGE to %d - "
                     "pos_contact = %d - pos_me = %d - current stage = %d",
@@ -6721,6 +6737,11 @@ int node(int argc, char *argv[]) {
 
                 // no task was received: make some periodic calls
                 state = get_state(&node);
+
+                if (MSG_get_clock() >= 680) {
+
+                    xbt_log_control_set("msg_dst.thres:verbose");
+                }
 
                 if (MSG_get_clock() >= node.deadline && state.active == 'a') {
 
@@ -7730,7 +7751,7 @@ int main(int argc, char *argv[]) {
     const char* deployment_file = argv[2];
     if (argc == 4) max_simulation_time = atoi(argv[3]);
 
-    MSG_set_channel_number(0);         //TODO: je n'ai pas compris l'utilité de set_channel_number
+    //MSG_set_channel_number(0);         //TODO: je n'ai pas compris l'utilité de set_channel_number
     MSG_create_environment(platform_file);
 
     MSG_function_register("node", node);
@@ -7854,7 +7875,7 @@ int main(int argc, char *argv[]) {
 
     xbt_os_timer_free(timer);
 
-    MSG_clean();
+    //MSG_clean();
     XBT_OUT();
 
     if (res == MSG_OK)

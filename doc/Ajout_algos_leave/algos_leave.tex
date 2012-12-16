@@ -502,14 +502,15 @@ $right$ est le sens d'arrivée du groupe à fusionner. Il vaut 1 si le groupe à fu
 \Procedure{merge}{$nodes\_array,\ nodes\_array\_size,\ stage,\ pos\_me,\ pos\_contact,\ right$}
 	\Statex
 	
-	\If{$({\tt size}(nodes\_array) = {\tt size}(me.brothers[stage]))$} \Comment{déjà fait}
+	\If{$(nodes\_array\_size = {\tt size}(me.brothers[stage]))$} \Comment{déjà fait}
 		\State \Return
 	\EndIf
 	
 	\algsuspend{merbrk1}
 	
 Cette fonction étant diffusée, il est possible qu'un même n\oe ud la re\c coive deux fois. Il faut donc s'assurer qu'on ne l'a pas déjà exécutée.\\
-S'il n'y a pas de place pour accueillir le groupe donné, c'est qu'on a déjà exécuté cette fonction.
+S'il n'y a pas de place pour accueillir le groupe donné, c'est qu'on a déjà exécuté cette fonction.\\
+\todo{expliquer \c ca autrement, ce n'est pas une question de place}
 	
 	\algresume{merbrk1}{\sc{merge}}
 	
@@ -520,51 +521,52 @@ S'il n'y a pas de place pour accueillir le groupe donné, c'est qu'on a déjà exéc
 	\algsuspend{merbrk2}
 	
 Cette fonction est diffusée des deux côtés de la fusion. C'est à dire qu'elle doit être exécutée du côte du groupe à fusionner comme du côté du groupe accueillant. Le sens de la fusion doit donc basculer en conséquence.
+\newpage
 	
 	\algresume{merbrk2}{\sc{merge}}
 	
-	\State $loc\_right \gets 0$
-	\Statex
-	
-	\switch $\ (right)$
-		\case{$0$}	\Comment{les nouveaux n\oe uds viennent de la gauche - diffusion}		\label{a:mer1}
-			\If{$({\tt index}(stage + 1,\ me.id) = 0)$}
-				\State $loc\_right \gets 1$
-			\Else
-				\State $loc\_right \gets 0$
-			\EndIf
-		\endcase
-		
-		\case{$1$}	\Comment{les nouveaux n\oe uds viennent de la droite - diffusion}
-			\If{$({\tt index}(stage + 1,\ me.id) = {\tt size}(me.brothers[stage + 1] - 1))$}
-				\State $loc\_right \gets 0$
-			\Else
-				\State $loc\_right \gets 1$
-			\EndIf
-		\endcase																			\label{a:mer2}
-		
-		\algsuspend{merbrk3}
-\newpage
-		\algresume{merbrk3}{\sc{merge}}
-		
-		\case{$10$}	\Comment{les nouveaux n\oe uds viennent de la gauche - 1ère fusion}	\label{a:mer3}
-			\State $loc\_right \gets 0$
-		\endcase
-		\Statex
-		
-		\case{$11$}	\Comment{les nouveaux n\oe uds viennent de la droite - 1ère fusion}
-			\State $loc\_right \gets 1$
-		\endcase																			\label{a:mer4}
-	\endswitch
-	
-	\algsuspend{merbrk3}
-	
-Il s'agit ensuite de déterminer le sens de la fusion $loc\_right$, d'après le sens d'arrivée du groupe à fusionner $right$, sachant que cette fonction peut être appelée simplement ou diffusée (voir algo~\ref{a:mr} lignes \ref{a:mr1} et \ref{a:mr2})
-
-Lors d'une simple exécution (lignes \ref{a:mer3} à \ref{a:mer4}), $loc\_right$ reprend simplement les valeurs de $right$.\\
-Mais dans le cas d'une diffusion (lignes \ref{a:mer1} à \ref{a:mer2}), $loc\_right$ ne reprend les mêmes valeurs que $right$ que si on ne se trouve pas sur la même extrémité de l'étage. Sinon, on change de côté.\\ \todo{à préciser -- je ne me souviens plus pourquoi je n'ai fait \c ca que pour la diffusion}
-	
-	\algresume{merbrk3}{\sc{merge}}
+%	\State $loc\_right \gets 0$
+%	\Statex
+%	
+%	\switch $\ (right)$
+%		\case{$0$}	\Comment{les nouveaux n\oe uds viennent de la gauche - diffusion}		\label{a:mer1}
+%			\If{$({\tt index}(stage + 1,\ me.id) = 0)$}
+%				\State $loc\_right \gets 1$
+%			\Else
+%				\State $loc\_right \gets 0$
+%			\EndIf
+%		\endcase
+%		
+%		\case{$1$}	\Comment{les nouveaux n\oe uds viennent de la droite - diffusion}
+%			\If{$({\tt index}(stage + 1,\ me.id) = {\tt size}(me.brothers[stage + 1] - 1))$}
+%				\State $loc\_right \gets 0$
+%			\Else
+%				\State $loc\_right \gets 1$
+%			\EndIf
+%		\endcase																			\label{a:mer2}
+%		
+%		\algsuspend{merbrk3}
+%\newpage
+%		\algresume{merbrk3}{\sc{merge}}
+%		
+%		\case{$10$}	\Comment{les nouveaux n\oe uds viennent de la gauche - 1ère fusion}	\label{a:mer3}
+%			\State $loc\_right \gets 0$
+%		\endcase
+%		\Statex
+%		
+%		\case{$11$}	\Comment{les nouveaux n\oe uds viennent de la droite - 1ère fusion}
+%			\State $loc\_right \gets 1$
+%		\endcase																			\label{a:mer4}
+%	\endswitch
+%	
+%	\algsuspend{merbrk3}
+%	
+%Il s'agit ensuite de déterminer le sens de la fusion $loc\_right$, d'après le sens d'arrivée du groupe à fusionner $right$, sachant que cette fonction peut être appelée simplement ou diffusée (voir algo~\ref{a:mr} lignes \ref{a:mr1} et \ref{a:mr2})
+%
+%Lors d'une simple exécution (lignes \ref{a:mer3} à \ref{a:mer4}), $loc\_right$ reprend simplement les valeurs de $right$.\\
+%Mais dans le cas d'une diffusion (lignes \ref{a:mer1} à \ref{a:mer2}), $loc\_right$ ne reprend les mêmes valeurs que $right$ que si on ne se trouve pas sur la même extrémité de l'étage. Sinon, on change de côté.\\ \todo{à préciser -- je ne me souviens plus pourquoi je n'ai fait \c ca que pour la diffusion}
+%	
+%	\algresume{merbrk3}{\sc{merge}}
 	
 	\State \Comment{nombre de n\oe uds à incorporer}
 	\If{$(nodes\_array\_size \geq {\tt size}(me.brothers[stage]))$}									\label{a:mer5}
@@ -583,7 +585,7 @@ Mais dans le cas d'une diffusion (lignes \ref{a:mer1} à \ref{a:mer2}), $loc\_rig
 	\Else	\Comment{prend la partie droite de la liste des n\oe uds fournie}
 		\If{$(loc\_nodes\_array\_size > 0)$}
 			\For{i}{(nodes\_array\_size - loc\_nodes\_array\_size)}{\mbox{$(nodes\_array\_size - 1)$}}
-				\State \parbox{\textwidth}{$loc\_nodes\_array[i - (nodes\_array\_size - loc\_nodes\_array\_size)] \gets nodes\_array[i]$}
+				\State \parbox{350px}{$loc\_nodes\_array[i - (nodes\_array\_size - loc\_nodes\_array\_size)] \gets nodes\_array[i]$}
 			\EndFor
 		\EndIf
 	\EndIf
