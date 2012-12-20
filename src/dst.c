@@ -943,16 +943,23 @@ static void task_free(m_task_t *task) {
 
     XBT_IN();
     xbt_ex_t ex;
-    TRY {
-        XBT_DEBUG("Destroy task");
-        MSG_task_destroy(*task);
-        *task = NULL;
-        XBT_DEBUG("Task destroyed");
-    }
-    CATCH(ex) {
-        *task = NULL;
-        xbt_ex_free(ex);
-        XBT_DEBUG("Error in task_free");
+
+    if (*task == NULL) {
+
+        XBT_VERB("in task_free, task = %p", *task);
+    } else {
+
+        TRY {
+            XBT_DEBUG("Destroy task");
+            MSG_task_destroy(*task);
+            *task = NULL;
+            XBT_DEBUG("Task destroyed");
+        }
+        CATCH(ex) {
+            *task = NULL;
+            xbt_ex_free(ex);
+            XBT_DEBUG("Error in task_free");
+        }
     }
     XBT_OUT();
 }
@@ -7738,7 +7745,7 @@ int main(int argc, char *argv[]) {
     xbt_log_control_set("msg_dst.thres:TRACE");
     MSG_global_init(&argc, argv);
     srand(time(NULL));
-    //infos_dst = xbt_dynar_new_sync(sizeof(dst_infos_t), &xbt_free_ref);
+    //infos_dst = xbt_dynar_new_sync_sync(sizeof(dst_infos_t), &xbt_free_ref);
     infos_dst = xbt_dynar_new_sync(sizeof(dst_infos_t), &elem_free);
 
     // init array of failed nodes
