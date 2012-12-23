@@ -1909,6 +1909,9 @@ static void run_delayed_tasks(node_t me) {
         }
     }
 
+    // state may have been changed by handle_task()
+    state = get_state(me);
+
     // run delayed tasks
     if (state.active == 'a' &&
             xbt_dynar_is_empty(me->remain_tasks) == 0) {
@@ -1933,8 +1936,10 @@ static void run_delayed_tasks(node_t me) {
 
                         nb_cnx_req++;
 
-                        XBT_VERB("Node %d: task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                        XBT_VERB("Node %d: '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                                 me->self.id,
+                                state.active,
+                                state.new_id,
                                 cpt,
                                 MSG_task_get_name(*task_ptr),
                                 debug_msg[req->type],
@@ -1944,8 +1949,10 @@ static void run_delayed_tasks(node_t me) {
                         continue;
                     }
 
-                    XBT_VERB("Node %d: task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                    XBT_VERB("Node %d: '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                             me->self.id,
+                            state.active,
+                            state.new_id,
                             cpt,
                             MSG_task_get_name(*task_ptr),
                             debug_msg[req->type],
@@ -1982,7 +1989,8 @@ static void run_delayed_tasks(node_t me) {
                         }
                     }
                 }
-            } while (nb_cnx_req > 0 && nb_elems > 0);
+                state = get_state(me);
+            } while (nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
         }
 
         state = get_state(me);
@@ -2206,6 +2214,14 @@ static void display_expected_answers(node_t me, char log) {
                 break;
         }
 
+        /*
+        // No recp.id can be lower than 0
+        xbt_assert(elem->recp.id > -1,
+                "Node %d: in display_expected_answers() : elem[%d].recp.id = %d !!",
+                me->self.id,
+                cpt,
+                elem->recp.id);
+        */
     }
 
     XBT_OUT();
@@ -2975,6 +2991,11 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             elem->br_type = args.broadcast.type;
             elem->answer_data = NULL;
 
+            xbt_assert(elem->recp.id > - 1,
+                    "Node %d: #1# recp.id is %d !!",
+                    me->self.id,
+                    elem->recp.id);
+
             xbt_dynar_push(me->expected_answers, &elem);
         }
     }
@@ -3664,6 +3685,11 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                     elem->recp = cpy_brothers[i];
                     elem->answer_data = NULL;
                     xbt_dynar_push(me->expected_answers, &elem);
+
+                    xbt_assert(elem->recp.id > - 1,
+                            "Node %d: #2# recp.id is %d !!",
+                            me->self.id,
+                            elem->recp.id);
 
                     cpt++;
                 } else {
@@ -4719,6 +4745,11 @@ static void connect_splitted_groups(node_t me,
             elem->answer_data = NULL;
             xbt_dynar_push(me->expected_answers, &elem);
 
+            xbt_assert(elem->recp.id > - 1,
+                    "Node %d: #3# recp.id is %d !!",
+                    me->self.id,
+                    elem->recp.id);
+
             cpt++;
         }
 
@@ -4742,6 +4773,11 @@ static void connect_splitted_groups(node_t me,
             get_mailbox(init_rep_id, elem->recp.mailbox);
             elem->answer_data = NULL;
             xbt_dynar_push(me->expected_answers, &elem);
+
+            xbt_assert(elem->recp.id > - 1,
+                    "Node %d: #4# recp.id is %d !!",
+                    me->self.id,
+                    elem->recp.id);
 
             cpt++;
         }
@@ -4777,6 +4813,11 @@ static void connect_splitted_groups(node_t me,
         get_mailbox(new_rep_id, elem->recp.mailbox);
         elem->answer_data = NULL;
         xbt_dynar_push(me->expected_answers, &elem);
+
+        xbt_assert(elem->recp.id > - 1,
+                "Node %d: #5# recp.id is %d !!",
+                me->self.id,
+                elem->recp.id);
 
         cpt++;
     }
@@ -4893,6 +4934,11 @@ static void split(node_t me, int stage, int new_node_id) {
                 elem->answer_data = NULL;
                 xbt_dynar_push(me->expected_answers, &elem);
 
+                xbt_assert(elem->recp.id > - 1,
+                        "Node %d: #6# recp.id is %d !!",
+                        me->self.id,
+                        elem->recp.id);
+
                 cpt++;
             }
         }
@@ -4930,6 +4976,11 @@ static void split(node_t me, int stage, int new_node_id) {
                 elem->recp = me->brothers[stage][i];
                 elem->answer_data = NULL;
                 xbt_dynar_push(me->expected_answers, &elem);
+
+                xbt_assert(elem->recp.id > - 1,
+                        "Node %d: #7# recp.id is %d !!",
+                        me->self.id,
+                        elem->recp.id);
 
                 cpt++;
             }
@@ -5022,6 +5073,12 @@ static void split(node_t me, int stage, int new_node_id) {
             elem->recp = cpy_preds[i];
             elem->answer_data = NULL;
             xbt_dynar_push(me->expected_answers, &elem);
+
+            xbt_assert(elem->recp.id > - 1,
+                    "Node %d: #8# recp.id is %d !!",
+                    me->self.id,
+                    elem->recp.id);
+
         }
     }
 
@@ -5466,6 +5523,11 @@ static void leave(node_t me) {
                     elem->answer_data = NULL;
                     xbt_dynar_push(me->expected_answers, &elem);
 
+                    xbt_assert(elem->recp.id > - 1,
+                            "Node %d: #9# recp.id is %d !!",
+                            me->self.id,
+                            elem->recp.id);
+
                     cpt++;
                 } else {
 
@@ -5510,6 +5572,11 @@ static void leave(node_t me) {
                         elem->answer_data = NULL;
                         xbt_dynar_push(me->expected_answers, &elem);
 
+                        xbt_assert(elem->recp.id > - 1,
+                                "Node %d: #10# recp.id is %d !!",
+                                me->self.id,
+                                elem->recp.id);
+
                         cpt++;
                     }
                 }
@@ -5550,6 +5617,11 @@ static void leave(node_t me) {
                 elem->recp = cpy_brothers[stage][brother];
                 elem->answer_data = NULL;
                 xbt_dynar_push(me->expected_answers, &elem);
+
+                xbt_assert(elem->recp.id > - 1,
+                        "Node %d: #11# recp.id is %d !!",
+                        me->self.id,
+                        elem->recp.id);
 
                 cpt++;
             }
@@ -7160,12 +7232,22 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                 answer.handle.br_type = rcv_args.broadcast.type;
                                 res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
-                                XBT_DEBUG("Node %d: answer '%s' sent to %d",
+                                XBT_VERB("Node %d: answer '%s' sent to %d",
                                         me->self.id,
                                         (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
                                         rcv_req->sender_id);
 
                                 //data_ans_free(me, &rcv);
+
+                                /*
+                                // set_update broadcasting is impossible: restore state
+                                if (val_ret == UPDATE_NOK) {
+
+                                    xbt_dynar_remove_at(me->states,
+                                            (int) xbt_dynar_length(me->states) - 1,
+                                            NULL);
+                                }
+                                */
 
                                 data_req_free(me, &rcv_req);
                                 task_free(task);
