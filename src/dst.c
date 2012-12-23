@@ -35,12 +35,12 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define COMP_SIZE 0                         /* compute duration when creating a
                                                new task */
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
-#define TYPE_NBR 32                         // number of task types
+#define TYPE_NBR 33                         // number of task types
 #define MAX_WAIT_COMPL 1550                 /* won't wait longer for broadcast
                                                completion */
 #define MAX_WAIT_GET_REP 10                 /* won't wait longer an answer to a
                                                GET_REP request */
-#define MAX_JOIN 10                         // number of joining attempts
+#define MAX_JOIN 30                         // number of joining attempts
 
 static int nb_calls1 = 0;
 static int nb_calls2 = 0;
@@ -139,7 +139,8 @@ typedef enum {
     TASK_ADD_BRO,           // add a brother at a given stage
     TASK_CUT_NODE,          // cut node during a transfer
     TASK_BR_ADD_BRO_ARRAY,  // broadcast an add_bro_array task
-    TASK_UPDATE_UPPER_STAGE // update upper stage after a transfer
+    TASK_UPDATE_UPPER_STAGE,// update upper stage after a transfer
+    TASK_GET_NEW_CONTACT    // get a new contact for a new coming node that failed to join
 } e_task_type_t;
 
 /**
@@ -242,7 +243,8 @@ static const char* debug_msg[] = {
     "Add Brother",
     "Cut Node",
     "Brd Add_Bro_Array",
-    "Update Upper Stage"
+    "Update Upper Stage",
+    "Get New Contact"
 };
 
 /**
@@ -533,19 +535,25 @@ typedef struct {
     int stay_id;
 } s_task_ans_transfer_t;
 
+typedef struct {
+
+    int id;
+} s_task_ans_get_new_contact_t;
+
 /**
  * Generic answer values
  */
 typedef union answer {
 
     char                    fill[48];       // to allow direct assignment
-    s_task_ans_get_rep_t    get_rep;
-    s_task_ans_cnx_req_t    cnx_req;
-    s_task_ans_nb_pred_t    nb_pred;
-    s_task_ans_get_size_t   get_size;
-    s_task_ans_handle_t     handle;
-    s_task_ans_is_brother_t is_brother;
-    s_task_ans_transfer_t   transfer;
+    s_task_ans_get_rep_t            get_rep;
+    s_task_ans_cnx_req_t            cnx_req;
+    s_task_ans_nb_pred_t            nb_pred;
+    s_task_ans_get_size_t           get_size;
+    s_task_ans_handle_t             handle;
+    s_task_ans_is_brother_t         is_brother;
+    s_task_ans_transfer_t           transfer;
+    s_task_ans_get_new_contact_t    get_new_contact;
 } u_ans_data_t;
 
 /**
@@ -587,7 +595,7 @@ static void  set_active(node_t me, int new_id);
 static e_val_ret_t set_update(node_t me, int new_id);
 static void  set_state(node_t me, int new_id, char active);
 static int   check(node_t me);
-static void  run_delayed_tasks(node_t me);
+static void  run_delayed_tasks(node_t me, char c);
 static void  node_free(node_t me);
 static void  data_ans_free(node_t me, ans_data_t *answer_data);
 static void  data_req_free(node_t me, req_data_t *req_data);
@@ -673,6 +681,7 @@ static void         clean_upper_stage(node_t me,
         int pos_contact);
 static void         merge_request(node_t me);
 static void         load_balance(node_t me, int contact_id);
+static u_ans_data_t get_new_contact(node_t me);
 
 // process functions
 static int          node(int argc, char *argv[]);
@@ -1670,7 +1679,7 @@ static void set_active(node_t me, int new_id) {
         state = get_state(me);
     }
 
-    XBT_VERB("Node %d: '%c'/%d - end of set_active() ... - new_node = %d",
+    XBT_DEBUG("Node %d: '%c'/%d - end of set_active() ... - new_node = %d",
             me->self.id,
             state.active,
             state.new_id,
@@ -1712,7 +1721,7 @@ static e_val_ret_t set_update(node_t me, int new_id) {
     }
 
     state = get_state(me);
-    XBT_VERB("Node %d: '%c'/%d - end of set_update() ... - new_node = %d",
+    XBT_DEBUG("Node %d: '%c'/%d - end of set_update() ... - new_node = %d",
             me->self.id,
             state.active,
             state.new_id,
@@ -1763,7 +1772,7 @@ static void set_state(node_t me, int new_id, char active) {
     }
 
     state = get_state(me);
-    XBT_VERB("Node %d: '%c'/%d - end of set_state() ... - new_node = %d",
+    XBT_DEBUG("Node %d: '%c'/%d - end of set_state() ... - new_node = %d",
             me->self.id,
             state.active,
             state.new_id,
@@ -1845,7 +1854,7 @@ static int check(node_t me) {
  * \brief Run tasks stored for a delayed execution
  * \param me the current node
  */
-static void run_delayed_tasks(node_t me) {
+static void run_delayed_tasks(node_t me, char c) {
 
     XBT_IN();
 
@@ -1854,8 +1863,9 @@ static void run_delayed_tasks(node_t me) {
     unsigned int nb_elems = xbt_dynar_length(me->remain_tasks);
 
     // display delayed tasks
-    XBT_VERB("Node %d: '%c'/%d -  remain_tasks length = %u",
+    XBT_VERB("Node %d: run %c - '%c'/%d -  remain_tasks length = %u",
             me->self.id,
+            c,
             state.active,
             state.new_id,
             nb_elems);
@@ -1894,8 +1904,9 @@ static void run_delayed_tasks(node_t me) {
                 req_args = req_data->args;
                 if (req_args.cnx_groups.new_node_id == state.new_id) {
 
-                    XBT_INFO("Node %d: '%c'/%d - run CNX_GROUPS (task[%d])",
+                    XBT_INFO("Node %d: run %c - '%c'/%d - run CNX_GROUPS (task[%d])",
                             me->self.id,
+                            c,
                             state.active,
                             state.new_id,
                             cpt);
@@ -1936,8 +1947,9 @@ static void run_delayed_tasks(node_t me) {
 
                         nb_cnx_req++;
 
-                        XBT_VERB("Node %d: '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                        XBT_VERB("Node %d: inside run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                                 me->self.id,
+                                c,
                                 state.active,
                                 state.new_id,
                                 cpt,
@@ -1949,8 +1961,9 @@ static void run_delayed_tasks(node_t me) {
                         continue;
                     }
 
-                    XBT_VERB("Node %d: '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                    XBT_VERB("Node %d: run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                             me->self.id,
+                            c,
                             state.active,
                             state.new_id,
                             cpt,
@@ -1977,9 +1990,10 @@ static void run_delayed_tasks(node_t me) {
                     nb_elems = (int) xbt_dynar_length(me->remain_tasks);
                     if (nb_elems != mem_nb_elems) {
 
-                        XBT_VERB("Node %d in run_delayed_tasks(): old length = %d -"
+                        XBT_VERB("Node %d - run %c - in run_delayed_tasks(): old length = %d -"
                                 " new length = %d",
                                 me->self.id,
+                                c,
                                 mem_nb_elems,
                                 nb_elems);
 
@@ -1994,8 +2008,9 @@ static void run_delayed_tasks(node_t me) {
         }
 
         state = get_state(me);
-        XBT_VERB("Node %d: '%c'/%d - end of delayed tasks execution. dynar_length = %lu",
+        XBT_VERB("Node %d: run %c - '%c'/%d - end of delayed tasks execution. dynar_length = %lu",
                 me->self.id,
+                c,
                 state.active,
                 state.new_id,
                 xbt_dynar_length(me->remain_tasks));
@@ -2003,7 +2018,7 @@ static void run_delayed_tasks(node_t me) {
         // one of the delayed tasks may have stored a task itself
         if (xbt_dynar_length(me->remain_tasks) > 0) {
 
-            run_delayed_tasks(me);
+            run_delayed_tasks(me, 'D');
         }
     }
     XBT_OUT();
@@ -2353,7 +2368,7 @@ static int index_pred(node_t me, int stage, int id) {
     }
     if (idx == me->pred_index[stage]) {
 
-        XBT_VERB("Node %d not found as a predecessor of node %d for stage %d",
+        XBT_DEBUG("Node %d not found as a predecessor of node %d for stage %d",
                 id,
                 me->self.id,
                 stage);
@@ -2582,7 +2597,7 @@ static MSG_error_t send_msg_sync(node_t me,
                             xbt_dynar_length(me->sync_answers));
 
                     // run delayed tasks
-                    run_delayed_tasks(me);
+                    run_delayed_tasks(me, '1');
                     break;
                 } else {
 
@@ -2637,7 +2652,7 @@ static MSG_error_t send_msg_sync(node_t me,
                             xbt_dynar_length(me->sync_answers));
 
                     // run delayed tasks
-                    run_delayed_tasks(me);
+                    run_delayed_tasks(me, '2');
                     break;
                 } else {
 
@@ -4036,7 +4051,7 @@ static void add_pred(node_t me, int stage, int id) {
     XBT_IN();
 
     s_state_t state = get_state(me);
-    XBT_VERB("Node %d: '%c'/%d - add_pred() ...",
+    XBT_DEBUG("Node %d: '%c'/%d - add_pred() ...",
             me->self.id,
             state.active,
             state.new_id);
@@ -6685,6 +6700,32 @@ static void load_balance(node_t me, int contact_id) {
 }
 
 /**
+ * \brief Provide a new contact for a coming node that failed to join
+ * \param me the current node
+ */
+static u_ans_data_t get_new_contact(node_t me) {
+
+    XBT_IN();
+    u_ans_data_t answer;
+
+    int idx, stage;
+
+    if (me->height > 1) {
+
+        stage = 1;
+    } else {
+
+        stage = 0;
+    }
+
+    idx = rand() % (me->bro_index[stage]);
+    answer.get_new_contact.id = me->brothers[stage][idx].id;
+
+    XBT_OUT();
+    return answer;
+}
+
+/**
  * \brief Node function
  * Arguments:
  * - self id
@@ -6720,6 +6761,10 @@ int node(int argc, char *argv[]) {
 
         double sleep_time = atof(argv[3]);
         node.deadline = atof(argv[4]);
+        int contact_id = atoi(argv[2]);
+        u_req_args_t u_req_args;
+        ans_data_t answer_data = NULL;
+        MSG_error_t res;
 
         do {
 
@@ -6731,6 +6776,33 @@ int node(int argc, char *argv[]) {
                 // TODO: faire des essais avec différentes bornes
                 // 16 <= sleep_time < 37
                 sleep_time = (rand() / (double)RAND_MAX) * 16 + 37;
+
+                // get a new contact if too many failures
+                if (tries > 5) {
+
+                    answer_data = NULL;
+                    res = send_msg_sync(&node,
+                            TASK_GET_NEW_CONTACT,
+                            contact_id,
+                            u_req_args,
+                            &answer_data);
+
+                    if (res == MSG_OK) {
+
+                        contact_id = answer_data->answer.get_new_contact.id;
+
+                        XBT_VERB("Node %d: got new contact %d instead of %d",
+                                node.self.id,
+                                contact_id,
+                                atoi(argv[2]));
+
+                    } else {
+
+                        XBT_VERB("Node %d: failed to get a new contact from node %d",
+                                node.self.id,
+                                contact_id);
+                    }
+                }
             }
 
             XBT_INFO("Node %d: Let's sleep during %f",
@@ -6745,7 +6817,8 @@ int node(int argc, char *argv[]) {
             XBT_INFO("Node %d: Let's join the system ! (via contact %d) -"
                     " deadline = %f",
                     node.self.id,
-                    atoi(argv[2]),
+                    //atoi(argv[2]),
+                    contact_id,
                     node.deadline);
 
             // set the dst infos for the current node
@@ -6761,7 +6834,7 @@ int node(int argc, char *argv[]) {
                     node.dst_infos.order,
                     node.dst_infos.nb_messages);
 
-            join_success = join(&node, atoi(argv[2]), tries);
+            join_success = join(&node, contact_id, tries);
 
             if (!join_success) {
 
@@ -6794,7 +6867,7 @@ int node(int argc, char *argv[]) {
                 node.dst_infos.add_stage);
 
         // run remaining tasks, if any
-        run_delayed_tasks(&node);
+        run_delayed_tasks(&node, '3');
 
         // task receive loop
         m_task_t task_received = NULL;
@@ -6857,7 +6930,7 @@ int node(int argc, char *argv[]) {
                     handle_task(&node, &task_received);
 
                     // run remaining tasks, if any
-                    run_delayed_tasks(&node);
+                    run_delayed_tasks(&node, '4');
                 } else {
 
                     // reception failure
@@ -7788,6 +7861,17 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             task_free(task);
 
             XBT_VERB("Node %d: TASK_UPDATE_UPPER_STAGE done", me->self.id);
+            break;
+
+        case TASK_GET_NEW_CONTACT:
+            answer = get_new_contact(me);
+
+            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
+            XBT_VERB("Node %d: TASK_GET_NEW_CONTACT done", me->self.id);
             break;
     }
 
