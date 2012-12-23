@@ -2476,6 +2476,7 @@ static MSG_error_t send_msg_sync(node_t me,
         if (cpy_req_data->type == TASK_GET_REP) {
 
             res = MSG_task_receive_with_timeout(&task_received, cpy_req_data->answer_to, MAX_WAIT_GET_REP);
+            //res = MSG_task_receive(&task_received, cpy_req_data->answer_to);
         } else {
 
             res = MSG_task_receive(&task_received, cpy_req_data->answer_to);
@@ -6975,17 +6976,27 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     !(state.active == 'u' &&
                         state.new_id == rcv_args.cnx_req.new_node.id)) {
 
-                // store task (CNX_REQ isn't broadcasted)
-                XBT_VERB("Node %d: '%c'/%d -  store CNX_REQ/%d for later execution",
-                        me->self.id,
-                        state.active,
-                        state.new_id,
-                        rcv_args.cnx_req.new_node.id);
+                if (state.active == 'b') {
 
-                xbt_dynar_push(me->remain_tasks, task);
-                *task = NULL;
-                val_ret = STORED;
+                    val_ret = UPDATE_NOK;
 
+                    // send an answer back ...
+                    answer.cnx_req.val_ret = val_ret;
+                    res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+                    *task = NULL;
+                } else {
+
+                    // ... or store task (CNX_REQ isn't broadcasted)
+                    XBT_VERB("Node %d: '%c'/%d -  store CNX_REQ/%d for later execution",
+                            me->self.id,
+                            state.active,
+                            state.new_id,
+                            rcv_args.cnx_req.new_node.id);
+
+                    xbt_dynar_push(me->remain_tasks, task);
+                    *task = NULL;
+                    val_ret = STORED;
+                }
             } else {
 
                 // run task now
@@ -7238,16 +7249,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                         rcv_req->sender_id);
 
                                 //data_ans_free(me, &rcv);
-
-                                /*
-                                // set_update broadcasting is impossible: restore state
-                                if (val_ret == UPDATE_NOK) {
-
-                                    xbt_dynar_remove_at(me->states,
-                                            (int) xbt_dynar_length(me->states) - 1,
-                                            NULL);
-                                }
-                                */
 
                                 data_req_free(me, &rcv_req);
                                 task_free(task);
