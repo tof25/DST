@@ -1430,8 +1430,15 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                 /*NOTE: il ne semble pas nécessaire de récupérer la valeur de
                   retour de handle_task() ici */
 
-                // handle the received task
-                handle_task(me, &task_received);
+                if (xbt_dynar_is_empty(me->remain_tasks) == 0) {
+
+                    xbt_dynar_push(me->remain_tasks, &task_received);
+                    task_received = NULL;
+                } else {
+
+                    // handle the received task
+                    handle_task(me, &task_received);
+                }
                 ans = NULL;
 
                 /* NOTE: ne pas détruire les data ici.
@@ -2555,8 +2562,15 @@ static MSG_error_t send_msg_sync(node_t me,
                         debug_msg[req->type],
                         req->sender_id);
 
-                // handle this received request
-                handle_task(me, &task_received);
+                if (xbt_dynar_is_empty(me->remain_tasks) == 0) {
+
+                    xbt_dynar_push(me->remain_tasks, &task_received);
+                    task_received = NULL;
+                } else {
+
+                    // handle this received request
+                    handle_task(me, &task_received);
+                }
                 ans = NULL;
                 req = NULL;
 
@@ -6927,7 +6941,14 @@ int node(int argc, char *argv[]) {
 
                 if (res == MSG_OK) {
 
-                    handle_task(&node, &task_received);
+                    if (xbt_dynar_is_empty(node.remain_tasks) == 0) {
+
+                        xbt_dynar_push(node.remain_tasks, &task_received);
+                        task_received = NULL;
+                    } else {
+
+                        handle_task(&node, &task_received);
+                    }
 
                     // run remaining tasks, if any
                     run_delayed_tasks(&node, '4');
