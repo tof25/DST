@@ -13,7 +13,7 @@ leader, donc) passe à 'a' en dernier.
 Est-ce correct d'accepter une CNX_REQ si une autre est en attente dans les
 delayed_tasks ?
 Je pense que non, parce qu'une CNX_REQ pourrait alors être bloquée trop
-longemtps. (voir node 18)
+longtemps. (voir node 18)
 
 
 Voir pourquoi 1 n'arrive pas à joindre le DST via 47.

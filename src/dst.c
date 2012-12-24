@@ -1430,7 +1430,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                 /*NOTE: il ne semble pas nécessaire de récupérer la valeur de
                   retour de handle_task() ici */
 
-                if (xbt_dynar_is_empty(me->remain_tasks) == 0) {
+                if (xbt_dynar_is_empty(me->remain_tasks) == 0 &&
+                    req->type == TASK_CNX_REQ) {
 
                     xbt_dynar_push(me->remain_tasks, &task_received);
                     task_received = NULL;
@@ -2562,7 +2563,8 @@ static MSG_error_t send_msg_sync(node_t me,
                         debug_msg[req->type],
                         req->sender_id);
 
-                if (xbt_dynar_is_empty(me->remain_tasks) == 0) {
+                if (xbt_dynar_is_empty(me->remain_tasks) == 0 &&
+                    req->type == TASK_CNX_REQ) {
 
                     xbt_dynar_push(me->remain_tasks, &task_received);
                     task_received = NULL;
