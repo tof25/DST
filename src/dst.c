@@ -1669,7 +1669,7 @@ static void set_active(node_t me, int new_id) {
     s_state_t state = get_state(me);
 
     // get current state
-    if ((state.active == 'u' && state.new_id == new_id) ||
+    if ((state.active == 'u' && (state.new_id == new_id || state.new_id == -1)) ||
             (state.active == 'l' && state.new_id == new_id) ||
             (state.active != 'u' && state.active != 'l')) {
 
@@ -1894,7 +1894,7 @@ static void run_delayed_tasks(node_t me, char c) {
 
         u_req_args_t req_args;
 
-        for (cpt = 0; cpt < nb_elems; cpt++) {
+        for (cpt = 0; cpt < nb_elems && state.active == 'u'; cpt++) {
 
             task_ptr = xbt_dynar_get_ptr(me->remain_tasks, cpt);
             req_data = MSG_task_get_data(*task_ptr);
@@ -1915,13 +1915,13 @@ static void run_delayed_tasks(node_t me, char c) {
                     xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
                     handle_task(me, &elem);
                     nb_elems = (int) xbt_dynar_length(me->remain_tasks);
+
+                    // state may have been changed by handle_task()
+                    state = get_state(me);
                 }
             }
         }
     }
-
-    // state may have been changed by handle_task()
-    state = get_state(me);
 
     // run delayed tasks
     if (state.active == 'a' &&
@@ -1937,7 +1937,7 @@ static void run_delayed_tasks(node_t me, char c) {
             int mem_nb_elems = 0;
 
             do {
-                for (cpt = 0; cpt < nb_elems; cpt++) {
+                for (cpt = 0; cpt < nb_elems && state.active == 'a'; cpt++) {
 
                     task_ptr = xbt_dynar_get_ptr(me->remain_tasks, cpt);
                     req = MSG_task_get_data(*task_ptr);
@@ -1985,6 +1985,7 @@ static void run_delayed_tasks(node_t me, char c) {
 
                     handle_task(me, &elem);
                     req = NULL;
+                    state = get_state(me);
 
                     //dynar may have been modified by handle_task
                     nb_elems = (int) xbt_dynar_length(me->remain_tasks);
@@ -2003,7 +2004,6 @@ static void run_delayed_tasks(node_t me, char c) {
                         }
                     }
                 }
-                state = get_state(me);
             } while (nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
         }
 
@@ -7284,8 +7284,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                           rcv_args.broadcast.args->set_update.new_id ==
                           state.new_id) &&
                       !(rcv_args.broadcast.type == TASK_SET_ACTIVE &&
-                          rcv_args.broadcast.args->set_active.new_id ==
-                          state.new_id) &&
+                          (rcv_args.broadcast.args->set_active.new_id ==
+                          state.new_id) ||
+                          (state.new_id == -1)) &&
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT
                      )
@@ -7296,7 +7297,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                             if (rcv_args.broadcast.type == TASK_SET_ACTIVE ||
                                     rcv_args.broadcast.type == TASK_SET_UPDATE) {
 
-                                XBT_DEBUG("Don't accept '%s' here - current new_id = %d"
+                                XBT_VERB("Don't accept '%s' here - current new_id = %d"
                                         " - rcv_new_id = %d",
                                         debug_msg[rcv_args.broadcast.type],
                                         state.new_id,
@@ -7310,16 +7311,19 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                 val_ret = (rcv_args.broadcast.type == TASK_SET_UPDATE ?
                                         UPDATE_NOK : OK);
 
-                                /* send an answer back (stop broadcast) */
-                                answer.handle.val_ret = val_ret;
-                                answer.handle.val_ret_id = me->self.id;
-                                answer.handle.br_type = rcv_args.broadcast.type;
-                                res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+                                if (rcv_req->sender_id != me->self.id) {
 
-                                XBT_VERB("Node %d: answer '%s' sent to %d",
-                                        me->self.id,
-                                        (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
-                                        rcv_req->sender_id);
+                                    /* send an answer back (stop broadcast) */
+                                    answer.handle.val_ret = val_ret;
+                                    answer.handle.val_ret_id = me->self.id;
+                                    answer.handle.br_type = rcv_args.broadcast.type;
+                                    res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+                                    XBT_VERB("Node %d: answer '%s' sent to %d",
+                                            me->self.id,
+                                            (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
+                                            rcv_req->sender_id);
+                                }
 
                                 //data_ans_free(me, &rcv);
 
@@ -7376,6 +7380,15 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                                 rcv_args.broadcast.args->set_update.new_id);
                                     }
 
+                                    /* If a Set Active task is broacasted, it
+                                     * mustn't be interrupted by another
+                                     * broadcast (of Set Update, for instance)
+                                     */
+                                    if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
+
+                                        set_update(me, -1);
+                                    }
+
                                     task_free(task);
 
                                     rcv_args.broadcast.first_call = 0;
@@ -7386,6 +7399,15 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                     XBT_VERB("Node %d: forward broadcast request to leader %d",
                                             me->self.id,
                                             me->brothers[rcv_args.broadcast.stage][0].id);
+
+                                    /* If a Set Active task is broacasted, it
+                                     * mustn't be interrupted by another
+                                     * broadcast (of Set Update, for instance)
+                                     */
+                                    if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
+
+                                        set_update(me, -1);
+                                    }
 
                                     ans_data_t answer_data = NULL;
                                     res = send_msg_sync(me,
@@ -7398,6 +7420,14 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             me->self.id,
                                             debug_msg[TASK_BROADCAST],
                                             me->brothers[rcv_args.broadcast.stage][0].id);
+
+                                    // TODO : peut-être pas utile ?
+                                    if (rcv_args.broadcast.type == TASK_SET_ACTIVE &&
+                                        state.active == 'u' && state.new_id == -1) {
+
+                                        xbt_assert(1 == 0, "SET_ACTIVE %d", rcv_args.broadcast.args->set_active.new_id);
+                                        set_active(me, rcv_args.broadcast.args->set_active.new_id);
+                                    }
 
                                     // get the return value
                                     val_ret = answer_data->answer.handle.val_ret;

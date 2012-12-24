@@ -1,0 +1,16 @@
+Est-il normal qu'à l'état 'l', on réponde UPDATE_OK sans le faire ? (c'est bien
+conçu comme ça)
+
+
+Lors d'une diffusion de Set Active, il faut que l'initiateur de la diffusion (le
+leader, donc) passe à 'a' en dernier.
+
+    Une solution : que ce leader passe à 'u'/-1 au début de la diffusion pour
+    n'accepter aucune autre diffusion de Set Update  --> FAIT
+    Le faire aussi pour celui qui transmet au leader de la diffusion ? --> OUI
+
+
+Est-ce correct d'accepter une CNX_REQ si une autre est en attente dans les
+delayed_tasks ?
+Je pense que non, parce qu'une CNX_REQ pourrait alors être bloquée trop
+longemtps. (voir node 18)
