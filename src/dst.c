@@ -6938,12 +6938,14 @@ int node(int argc, char *argv[]) {
                 res = MSG_comm_get_status(node.comm_received);
                 MSG_comm_destroy(node.comm_received);
                 node.comm_received = NULL;
+                req_data_t req = MSG_task_get_data(task_received);
 
                 XBT_VERB("Node %d: Task received", node.self.id);
 
                 if (res == MSG_OK) {
 
-                    if (xbt_dynar_is_empty(node.remain_tasks) == 0) {
+                    if (xbt_dynar_is_empty(node.remain_tasks) == 0 &&
+                        req->type == TASK_CNX_REQ) {
 
                         xbt_dynar_push(node.remain_tasks, &task_received);
                         task_received = NULL;
