@@ -16,4 +16,11 @@ Je pense que non, parce qu'une CNX_REQ pourrait alors être bloquée trop
 longtemps. (voir node 18)
 
 
-Voir pourquoi 21 n'arrive pas à joindre le DST via 1.
+Voir pourquoi 21 n'arrive pas à joindre le DST via 52.
+
+Si un noeud attend des réponses d'une diffusion d'un Set Active et qu'il lance
+une diffusion d'un Set Update pendant ce temps, ce Set Update a de bonnes
+chances d'échouer si l'update intervient avant l'active.
+
+Il est inutile de descendre une diffusion si une réponse est NOK.
+Il est inutile de lancer une diffusion si le noeud courant est NOK.

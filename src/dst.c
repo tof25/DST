@@ -7309,9 +7309,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                           rcv_args.broadcast.args->set_update.new_id ==
                           state.new_id) &&
                       !(rcv_args.broadcast.type == TASK_SET_ACTIVE &&
-                          (rcv_args.broadcast.args->set_active.new_id ==
+                          ((rcv_args.broadcast.args->set_active.new_id ==
                           state.new_id) ||
-                          (state.new_id == -1)) &&
+                          (state.new_id == -1))) &&
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT
                      )
@@ -7373,6 +7373,14 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                             /* start call: forward broadcast to the leader ? */
                             if (rcv_args.broadcast.first_call == 1) {
+
+                                if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
+
+                                    XBT_VERB("Node %d: Run broadcast of Set Update for new_id = %d - state.new_id = %d",
+                                            me->self.id,
+                                            rcv_args.broadcast.args->set_update.new_id,
+                                            state.new_id);
+                                }
 
                                 XBT_VERB("Node %d: broadcast first call - stage = %d -"
                                         " height = %d - broadcasted task = '%s'",
