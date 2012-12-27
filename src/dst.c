@@ -1767,10 +1767,10 @@ static void set_state(node_t me, int new_id, char active) {
     s_state_t state = get_state(me);
     if (state.active != active || state.new_id != new_id) {
 
-        state_t state = xbt_new0(s_state_t, 1);
-        state->active = active;
-        state->new_id = new_id;
-        xbt_dynar_push(me->states, &state);
+        state_t state_ptr = xbt_new0(s_state_t, 1);
+        state_ptr->active = active;
+        state_ptr->new_id = new_id;
+        xbt_dynar_push(me->states, &state_ptr);
     } else {
 
         XBT_VERB("Node %d: Current state already set. '%c'/%d",
@@ -2279,13 +2279,13 @@ static void display_states(node_t me, char mode) {
 
         if (mode == 'I') {
 
-            XBT_INFO(" {[%d] --> '%c'/%u}",
+            XBT_INFO(" {[%d] --> '%c'/%d}",
                     iter,
                     elem->active,
                     elem->new_id);
         } else {
 
-            XBT_VERB(" {[%d] --> '%c'/%u}",
+            XBT_VERB(" {[%d] --> '%c'/%d}",
                     iter,
                     elem->active,
                     elem->new_id);
@@ -4122,7 +4122,7 @@ static void add_pred(node_t me, int stage, int id) {
 
         s_state_t new_state = get_state(me);
 
-        XBT_VERB("Node %d: in add_pred(), restore from state '%c'/%u to state '%c'/%u",
+        XBT_VERB("Node %d: in add_pred(), restore from state '%c'/%d to state '%c'/%d",
                 me->self.id,
                 state.active,
                 state.new_id,
@@ -7009,8 +7009,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
     e_task_type_t type = rcv_req->type;
 
     s_state_t state = get_state(me);
-    XBT_VERB("Node %d - '%c'/%d: In handle_task - receiving task '%s - %s'"
-            " from node %d",
+    XBT_VERB("Node %d - '%c'/%d: Handling task '%s - %s' received from node %d",
             me->self.id,
             state.active,
             state.new_id,
