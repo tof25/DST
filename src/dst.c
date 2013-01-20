@@ -3894,13 +3894,16 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
     int nb_loop = 0;
 
     //if (1 == 0) {
-    if (me->brothers[stage][0].id != me->self.id) {
+    //if (me->brothers[stage][0].id != me->self.id) {
+    if (me->brothers[0][0].id != me->self.id) {
 
         // me isn't the leader: transfer the split request to the leader
 
+        /* TODO : est-ce qu'il arrive qu'on passe dans cette branche ? C'est
+           déjà le leader de contact qui lance cette fonction ...  */
         XBT_VERB("Node %d: Transfering 'Split Request' to the leader %d",
                 me->self.id,
-                me->brothers[stage][0].id);
+                me->brothers[0][0].id);
 
         u_req_args_t args;
         args.split_req.stage_nbr = stage_nbr;
@@ -3909,14 +3912,15 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
 
         MSG_error_t res = send_msg_sync(me,
                 TASK_SPLIT_REQ,
-                me->brothers[stage][0].id,
+                me->brothers[0][0].id,
+                //me->brothers[stage][0].id,
                 args,
                 &answer_data);
 
         // transfer failure
         xbt_assert(res == MSG_OK, "Node %d: Transfer to leader node %d failed",
                 me->self.id,
-                me->brothers[stage][0].id);
+                me->brothers[0][0].id);
 
         data_ans_free(me, &answer_data);
     } else {
@@ -7363,7 +7367,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                  * - don't forward a CLEAN_UPPER_STAGE task
                                  * - don't forward an UPDATE_UPPER_STAGE task */
                                 if (me->self.id ==
-                                        me->brothers[rcv_args.broadcast.stage][0].id ||
+                                        //me->brothers[rcv_args.broadcast.stage][0].id ||
+                                        me->brothers[0][0].id ||
                                         rcv_args.broadcast.type == TASK_MERGE ||
                                         rcv_args.broadcast.type == TASK_CLEAN_STAGE ||
                                         rcv_args.broadcast.type == TASK_UPDATE_UPPER_STAGE) {
@@ -7398,7 +7403,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                     // forward broadcast request to the leader
                                     XBT_VERB("Node %d: forward broadcast request to leader %d",
                                             me->self.id,
-                                            me->brothers[rcv_args.broadcast.stage][0].id);
+                                            //me->brothers[rcv_args.broadcast.stage][0].id);
+                                            me->brothers[0][0].id);
 
                                     /* If a Set Active task is broacasted, it
                                      * mustn't be interrupted by another
@@ -7412,7 +7418,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                     ans_data_t answer_data = NULL;
                                     res = send_msg_sync(me,
                                             TASK_BROADCAST,
-                                            me->brothers[rcv_args.broadcast.stage][0].id,
+                                            //me->brothers[rcv_args.broadcast.stage][0].id,
+                                            me->brothers[0][0].id,
                                             rcv_args,
                                             &answer_data);
 
