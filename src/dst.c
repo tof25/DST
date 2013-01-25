@@ -315,6 +315,7 @@ typedef struct {
     int stage;
     int first_call;
     int source_id;
+    int lead_br;
     req_args_t args;
 } s_task_broadcast_t;           // broadcast a message of type 'type'
 
@@ -351,6 +352,7 @@ typedef struct {
     int pos_me;
     int pos_contact;
     int right;
+    int lead_br;
 } s_task_broadcast_merge_t;     // broadcast a merge task
 
 typedef struct {
@@ -666,7 +668,8 @@ static void         broadcast_merge(node_t me,
         int stage,
         int pos_me,
         int pos_contact,
-        int right);
+        int right,
+        int lead_br);
 static void         leave(node_t me);
 static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_rep_t sender);
 static void         replace_bro(node_t me,
@@ -1174,9 +1177,17 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
             me->self.id,
             ans_cpt);
 
+    xbt_assert(ans_cpt >= 0,
+            "Node %d: in wait_for_completion() - ans_cpt should be >= 0 : %d",
+            me->self.id,
+            ans_cpt);
+
     // inits
     e_val_ret_t ret = OK;
     int dynar_size = (int) xbt_dynar_length(me->expected_answers);
+
+    XBT_DEBUG("Node %d: dynar_size = %d", me->self.id, dynar_size);
+
     recp_rec_t *elem_ptr = NULL;
 
     float max_wait = MSG_get_clock() + MAX_WAIT_COMPL;
@@ -1230,7 +1241,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                 me->self.id,
                 ans_cpt);
 
-        display_expected_answers(me, 'V');
+        display_expected_answers(me, 'D');
 
         res = MSG_task_receive(&task_received, me->self.mailbox);
 
@@ -1511,7 +1522,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
     XBT_VERB("Node %d: wait completed\n",
             me->self.id);
 
-    display_expected_answers(me, 'V');
+    display_expected_answers(me, 'D');
 
     XBT_DEBUG("Node %d - end of wait_for_completion(): val_ret = '%s' -"
             " nok_id = %d",
@@ -1624,10 +1635,11 @@ static void make_broadcast_task(node_t me, u_req_args_t args, m_task_t *task) {
     (*task) = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, req_data);
     MSG_task_set_name((*task), "async");
 
-    XBT_DEBUG("Node %d in make_broadcast_task(): br_stage = %d - br_type = '%s'",
+    XBT_DEBUG("Node %d in make_broadcast_task(): br_stage = %d - br_type = '%s - lead_br = %d'",
             me->self.id,
             args.broadcast.stage,
-            debug_msg[args.broadcast.type]);
+            debug_msg[args.broadcast.type],
+            args.broadcast.lead_br);
 
     XBT_OUT();
 }
@@ -2991,35 +3003,72 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
     m_task_t task_sent = NULL;
 
-    for (brother = 0; brother < nb_bro; brother++) {
+    if (args.broadcast.stage > 0 ||
+            (args.broadcast.stage == 0 && args.broadcast.lead_br == 0)) {
 
-        XBT_VERB("Node %d: In broadcast: brother = %d, Broadcast stage = %d",
-                me->self.id,
-                cpy_brothers[brother].id,
-                args.broadcast.stage);
+        for (brother = 0; brother < nb_bro; brother++) {
 
-        if (cpy_brothers[brother].id == me->self.id) {
+            XBT_VERB("Node %d: In broadcast: brother = %d, Broadcast stage = %d",
+                    me->self.id,
+                    cpy_brothers[brother].id,
+                    args.broadcast.stage);
 
-            /* local direct call (no expected answer)
-               to be handled at the end of function (see below) */
-            ans_cpt--;
+            if (cpy_brothers[brother].id == me->self.id) {
+
+                /* local direct call (no expected answer)
+                   to be handled at the end of function (see below) */
+                ans_cpt--;
+                make_broadcast_task(me, args, &task_sent);
+
+            } else {
+
+                // remote call
+                MSG_error_t res = send_msg_async(me,
+                        TASK_BROADCAST,
+                        cpy_brothers[brother].id,
+                        args);
+                xbt_assert(res == MSG_OK, "Node %d: Broadcast error",
+                        me->self.id);
+
+                // record recipient in expected answers dynar
+                recp_rec_t elem = xbt_new0(s_recp_rec_t, 1);
+
+                elem->type = TASK_BROADCAST;
+                elem->recp = cpy_brothers[brother];
+                elem->br_type = args.broadcast.type;
+                elem->answer_data = NULL;
+
+                xbt_assert(elem->recp.id > - 1,
+                        "Node %d: #1# recp.id is %d !!",
+                        me->self.id,
+                        elem->recp.id);
+
+                xbt_dynar_push(me->expected_answers, &elem);
+            }
+        }
+    } else {
+        /* stage 0 is reached and a 'leaders-only' broadcast is requested
+         * only the leader has to do the work */
+        if (me->self.id == cpy_brothers[0].id) {
+
+            ans_cpt = 0;
             make_broadcast_task(me, args, &task_sent);
-
         } else {
 
+            ans_cpt = 1;
             // remote call
             MSG_error_t res = send_msg_async(me,
                     TASK_BROADCAST,
-                    cpy_brothers[brother].id,
+                    cpy_brothers[0].id,
                     args);
-            xbt_assert(res == MSG_OK, "Node %d: Broadcast error",
+            xbt_assert(res == MSG_OK, "Node %d: Broadcast error 2",
                     me->self.id);
 
             // record recipient in expected answers dynar
             recp_rec_t elem = xbt_new0(s_recp_rec_t, 1);
 
             elem->type = TASK_BROADCAST;
-            elem->recp = cpy_brothers[brother];
+            elem->recp = cpy_brothers[0];
             elem->br_type = args.broadcast.type;
             elem->answer_data = NULL;
 
@@ -3606,6 +3655,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                 }
                 args.broadcast.first_call = 1;
                 args.broadcast.source_id = me->self.id;
+                args.broadcast.lead_br = 1;                 //TODO !! test passer à 1
 
                 args.broadcast.args = xbt_new0(u_req_args_t, 1);
                 args.broadcast.args->set_update.new_id = new_node.id;
@@ -3644,6 +3694,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                     }
                     args.broadcast.first_call = 1;
                     args.broadcast.source_id = me->self.id;
+                    args.broadcast.lead_br = 1;             //TODO !! test passer à 1
 
                     args.broadcast.args = xbt_new0(u_req_args_t, 1);
                     args.broadcast.args->set_active.new_id = new_node.id;
@@ -3832,6 +3883,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                 }
                 args.broadcast.first_call = 1;
                 args.broadcast.source_id = me->self.id;
+                args.broadcast.lead_br = 1;             //TODO !! test passer à 1
 
                 args.broadcast.args = xbt_new0(u_req_args_t, 1);
                 args.broadcast.args->set_active.new_id = new_node.id;
@@ -3954,6 +4006,7 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
             broadcast_args.broadcast.stage = me->height - 1;
             broadcast_args.broadcast.first_call = 1;
             broadcast_args.broadcast.source_id = me->self.id;
+            broadcast_args.broadcast.lead_br = 0;
 
             // there are no arguments for add_stage
             broadcast_args.broadcast.args = NULL;
@@ -3998,6 +4051,7 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         broadcast_args.broadcast.stage = stage;
         broadcast_args.broadcast.first_call = 1;
         broadcast_args.broadcast.source_id = me->self.id;
+        broadcast_args.broadcast.lead_br = 0;
 
         broadcast_args.broadcast.args = xbt_new0(u_req_args_t, 1);
         broadcast_args.broadcast.args->split.stage_nbr = stage;
@@ -4541,6 +4595,7 @@ static void br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_siz
     args.broadcast.stage = stage;
     args.broadcast.first_call = 1;
     args.broadcast.source_id = me->self.id;
+    args.broadcast.lead_br = 0;
 
     args.broadcast.args = xbt_new0(u_req_args_t, 1);
 
@@ -4696,7 +4751,7 @@ static void connect_splitted_groups(node_t me,
 
     /* current node is being updated (normaly already at 'u' by broadcast from
        connection_request(), but can be stored and delayed) */
-    set_update(me, new_node_id);
+    //set_update(me, new_node_id);   //TODO!! : à vérifier
 
     s_state_t state = get_state(me);
     XBT_VERB("Node %d: '%c'/%d - connect_splitted_groups() ... - new_node = %d",
@@ -4865,7 +4920,7 @@ static void connect_splitted_groups(node_t me,
     }
 
     /*
-       ,    * Don't restore initial state here, it would be too early. It'll be done
+     * Don't restore initial state here, it would be too early. It'll be done
      * in connection_request() by broadcasting SET_ACTIVE.
      */
 
@@ -5456,8 +5511,9 @@ static void merge(node_t me,
  * \param pos_me same as merge() (see this function)
  * \param pos_contact same as merge() (see this function)
  * \param right same as merge() (see this function)
+ * \param lead_br broadcast only to leaders
  */
-static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, int right) {
+static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, int right, int lead_br) {
 
     XBT_IN();
 
@@ -5470,6 +5526,7 @@ static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, i
     args.broadcast.stage = stage;           // same stage as the merging one
     args.broadcast.first_call = 1;
     args.broadcast.source_id = me->self.id;
+    args.broadcast.lead_br = lead_br;       // TODO : peut-être pas utile (toujours à 0 dans cette fonction)
 
     args.broadcast.args = xbt_new0(u_req_args_t, 1);
 
@@ -5780,6 +5837,7 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
     args.broadcast.stage = st;
     args.broadcast.first_call = 1;
     args.broadcast.source_id = me->self.id;
+    args.broadcast.lead_br = 0;
 
     args.broadcast.args = xbt_new0(u_req_args_t, 1);
 
@@ -6228,6 +6286,7 @@ static void merge_request(node_t me) {
             args.broad_merge.pos_me = pos_me;
             args.broad_merge.pos_contact = pos_contact;
             args.broad_merge.right = (pos_me > pos_contact ? 1 : 0);
+            args.broad_merge.lead_br = 0;
 
             res = send_msg_sync(me,
                     TASK_BROADCAST_MERGE,
@@ -6260,6 +6319,7 @@ static void merge_request(node_t me) {
             args.broadcast.stage = stage + 1;
             args.broadcast.first_call = 1;
             args.broadcast.source_id = me->self.id;
+            args.broadcast.lead_br = 0;
 
             args.broadcast.args = xbt_new0(u_req_args_t, 1);
 
@@ -6402,6 +6462,7 @@ static void merge_request(node_t me) {
             args.broadcast.stage = stage + 1;
             args.broadcast.first_call = 1;
             args.broadcast.source_id = me->self.id;
+            args.broadcast.lead_br = 0;
 
             args.broadcast.args = xbt_new0(u_req_args_t, 1);
 
@@ -6515,6 +6576,7 @@ static void merge_request(node_t me) {
         args.broadcast.stage = me->height - 1;
         args.broadcast.first_call = 1;
         args.broadcast.source_id = me->self.id;
+        args.broadcast.lead_br = 0;
 
         args.broadcast.args = xbt_new0(u_req_args_t, 1);
         args.broadcast.args->del_root.init_height = me->height;
@@ -7386,11 +7448,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                 }
 
                                 XBT_VERB("Node %d: broadcast first call - stage = %d -"
-                                        " height = %d - broadcasted task = '%s'",
+                                        " height = %d - broadcasted task = '%s' - lead_br = %d",
                                         me->self.id,
                                         rcv_args.broadcast.stage,
                                         me->height - 1,
-                                        debug_msg[rcv_args.broadcast.type]);
+                                        debug_msg[rcv_args.broadcast.type],
+                                        rcv_args.broadcast.lead_br);
 
                                 /* - don't forward a MERGE task to the leader
                                  *   (the leaving node may have left the leader, so it wouldn't
@@ -7494,21 +7557,55 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                 // next broadcast calls
                                 if (rcv_args.broadcast.stage > 0) {
 
-                                    XBT_VERB("Node %d: Received Broadcast '%s'",
+                                    XBT_VERB("Node %d: Received Broadcast '%s' - lead_br = %d",
                                             me->self.id,
-                                            debug_msg[rcv_args.broadcast.type]);
+                                            debug_msg[rcv_args.broadcast.type],
+                                            rcv_args.broadcast.lead_br);
 
-                                    // self set 'u' right now
-                                    if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
+                                    // self set 'u' right now if leader
+                                    if (rcv_args.broadcast.type == TASK_SET_UPDATE &&
+                                        me->self.id == me->brothers[0][0].id) {
 
                                         set_update(me, rcv_args.broadcast.args->set_update.new_id);
                                     }
 
                                     task_free(task);
 
-                                    // transmit the message to lower stage
+                                    /* Transmit the message to lower stage.
+                                     * If * 'leaders-only' broadcast, transmit to
+                                     * stage 0 only if 'me' is the leader */
                                     rcv_args.broadcast.stage--;
                                     val_ret = broadcast(me, rcv_args);
+
+                                    /*
+                                    if (rcv_args.broadcast.stage > 0) {
+
+                                        val_ret = broadcast(me, rcv_args);
+                                    } else {
+
+                                        if (rcv_args.broadcast.lead_br == 0 ||
+                                                (rcv_args.broadcast.lead_br == 1 &&
+                                                 me->self.id == me->brothers[0][0].id)) {
+
+                                            if (rcv_args.broadcast.lead_br == 1) {
+                                                XBT_VERB("Node %d: Leader broadcast - lead_br = %d - stage = %d",
+                                                        me->self.id,
+                                                        rcv_args.broadcast.lead_br,
+                                                        rcv_args.broadcast.stage);
+                                            }
+
+                                            val_ret = broadcast(me, rcv_args);
+                                        } else {
+
+                                            XBT_VERB("Node %d: Don't broadcast (not leader) - lead_br = %d - stage = %d",
+                                                    me->self.id,
+                                                    rcv_args.broadcast.lead_br,
+                                                    rcv_args.broadcast.stage);
+
+                                            val_ret = OK;
+                                        }
+                                    }
+                                    */
                                 } else {
 
                                     /* stage 0 reached: handle the broadcasted task */
@@ -7685,7 +7782,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.broad_merge.stage,
                     rcv_args.broad_merge.pos_me,
                     rcv_args.broad_merge.pos_contact,
-                    rcv_args.broad_merge.right);
+                    rcv_args.broad_merge.right,
+                    rcv_args.broad_merge.lead_br);
 
             res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
@@ -7761,8 +7859,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             data_req_free(me, &rcv_req);
             task_free(task);
 
-            XBT_VERB("Node %d: TASK_SET_UPDATE done - val_ret = '%s'",
+            state = get_state(me);
+            XBT_VERB("Node %d: '%c'/%u - TASK_SET_UPDATE done - val_ret = '%s'",
                     me->self.id,
+                    state.active,
+                    state.new_id,
                     (val_ret == UPDATE_NOK ?  "UPDATE_NOK" : "UPDATE_OK"));
             break;
 
