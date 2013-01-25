@@ -3061,6 +3061,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                     TASK_BROADCAST,
                     cpy_brothers[0].id,
                     args);
+
             xbt_assert(res == MSG_OK, "Node %d: Broadcast error 2",
                     me->self.id);
 
@@ -3115,14 +3116,6 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                 args.broadcast.stage == 0 &&
                 me->self.id == args.broadcast.source_id)) {
         if (task_sent != NULL && ret != UPDATE_NOK) {
-
-            if (args.broadcast.type == TASK_CLEAN_STAGE) {
-
-                XBT_VERB("Node %d: Forward TASK_CLEAN_STAGE - source_id = %d - stage = %d",
-                        me->self.id,
-                        args.broadcast.source_id,
-                        args.broadcast.stage);
-            }
 
             ret = handle_task(me, &task_sent);
         }
@@ -3694,7 +3687,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                     }
                     args.broadcast.first_call = 1;
                     args.broadcast.source_id = me->self.id;
-                    args.broadcast.lead_br = 1;             //TODO !! test passer à 1
+                    args.broadcast.lead_br = 0;             //TODO !! test passer à 1
 
                     args.broadcast.args = xbt_new0(u_req_args_t, 1);
                     args.broadcast.args->set_active.new_id = new_node.id;
@@ -4201,7 +4194,7 @@ static void del_pred(node_t me, int stage, int pred2del) {
 
     XBT_IN();
 
-    display_preds(me, 'V');
+    display_preds(me, 'D');
     XBT_VERB("Node %d: stage = %d, pred2del = %d", me->self.id, stage, pred2del);
 
     int idx = index_pred(me, stage, pred2del);
@@ -4751,7 +4744,7 @@ static void connect_splitted_groups(node_t me,
 
     /* current node is being updated (normaly already at 'u' by broadcast from
        connection_request(), but can be stored and delayed) */
-    //set_update(me, new_node_id);   //TODO!! : à vérifier
+    set_update(me, new_node_id);   //TODO!! : à vérifier
 
     s_state_t state = get_state(me);
     XBT_VERB("Node %d: '%c'/%d - connect_splitted_groups() ... - new_node = %d",
@@ -4922,7 +4915,15 @@ static void connect_splitted_groups(node_t me,
     /*
      * Don't restore initial state here, it would be too early. It'll be done
      * in connection_request() by broadcasting SET_ACTIVE.
-     */
+     */     //TODO : Si, parce que SET_ACTIVE n'est plus diffusé qu'aux leaders
+    /*
+    int idx = state_search(me, 'u', new_node_id);
+    if (idx > -1) {
+
+        XBT_DEBUG("Node %d: idx = %d", me->self.id, idx);
+        xbt_dynar_remove_at(me->states, idx, NULL);
+    }
+    */
 
     state = get_state(me);
     XBT_VERB("Node %d: '%c'/%d - end of connect_splitted_groups() ... - new_node = %d",
@@ -7075,6 +7076,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
     e_task_type_t type = rcv_req->type;
 
     s_state_t state = get_state(me);
+
     XBT_VERB("Node %d - '%c'/%d: Handling task '%s - %s' received from node %d",
             me->self.id,
             state.active,
@@ -7135,9 +7137,27 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             break;
 
         case TASK_CNX_REQ:
-            if (state.active != 'a' &&
-                    !(state.active == 'u' &&
-                        state.new_id == rcv_args.cnx_req.new_node.id)) {
+            if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node.id) ||
+                (state.active == 'a')) {
+
+                // run task now
+                answer = connection_request(me,
+                        rcv_args.cnx_req.new_node,
+                        rcv_args.cnx_req.try);
+
+                XBT_DEBUG("Node %d: CNX_REQ val_ret = %d - contact = %d",
+                        me->self.id,
+                        answer.cnx_req.val_ret,
+                        answer.cnx_req.new_contact.id);
+
+                res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+                data_req_free(me, &rcv_req);
+                task_free(task);
+
+                XBT_VERB("Node %d: TASK_CNX_REQ done", me->self.id);
+
+            } else {
 
                 if (state.active == 'b') {
 
@@ -7160,24 +7180,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     *task = NULL;
                     val_ret = STORED;
                 }
-            } else {
-
-                // run task now
-                answer = connection_request(me,
-                        rcv_args.cnx_req.new_node,
-                        rcv_args.cnx_req.try);
-
-                XBT_DEBUG("Node %d: CNX_REQ val_ret = %d - contact = %d",
-                        me->self.id,
-                        answer.cnx_req.val_ret,
-                        answer.cnx_req.new_contact.id);
-
-                res = send_ans_sync(me, type, rcv_req->sender_id, answer);
-
-                data_req_free(me, &rcv_req);
-                task_free(task);
-
-                XBT_VERB("Node %d: TASK_CNX_REQ done", me->self.id);
             }
             break;
 
