@@ -7137,6 +7137,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             break;
 
         case TASK_CNX_REQ:
+            //TODO : voir s'il ne faudrait pas aussi tester l'état du leader ici
+
             if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node.id) ||
                 (state.active == 'a')) {
 
