@@ -1430,8 +1430,16 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                 /*NOTE: il ne semble pas nécessaire de récupérer la valeur de
                   retour de handle_task() ici */
 
-                // handle the received task
-                handle_task(me, &task_received);
+                if (xbt_dynar_is_empty(me->remain_tasks) == 0 &&
+                    req->type == TASK_CNX_REQ) {
+
+                    xbt_dynar_push(me->remain_tasks, &task_received);
+                    task_received = NULL;
+                } else {
+
+                    // handle the received task
+                    handle_task(me, &task_received);
+                }
                 ans = NULL;
 
                 /* NOTE: ne pas détruire les data ici.
@@ -1759,10 +1767,10 @@ static void set_state(node_t me, int new_id, char active) {
     s_state_t state = get_state(me);
     if (state.active != active || state.new_id != new_id) {
 
-        state_t state = xbt_new0(s_state_t, 1);
-        state->active = active;
-        state->new_id = new_id;
-        xbt_dynar_push(me->states, &state);
+        state_t state_ptr = xbt_new0(s_state_t, 1);
+        state_ptr->active = active;
+        state_ptr->new_id = new_id;
+        xbt_dynar_push(me->states, &state_ptr);
     } else {
 
         XBT_VERB("Node %d: Current state already set. '%c'/%d",
@@ -2271,13 +2279,13 @@ static void display_states(node_t me, char mode) {
 
         if (mode == 'I') {
 
-            XBT_INFO(" {[%d] --> '%c'/%u}",
+            XBT_INFO(" {[%d] --> '%c'/%d}",
                     iter,
                     elem->active,
                     elem->new_id);
         } else {
 
-            XBT_VERB(" {[%d] --> '%c'/%u}",
+            XBT_VERB(" {[%d] --> '%c'/%d}",
                     iter,
                     elem->active,
                     elem->new_id);
@@ -2555,8 +2563,16 @@ static MSG_error_t send_msg_sync(node_t me,
                         debug_msg[req->type],
                         req->sender_id);
 
-                // handle this received request
-                handle_task(me, &task_received);
+                if (xbt_dynar_is_empty(me->remain_tasks) == 0 &&
+                    req->type == TASK_CNX_REQ) {
+
+                    xbt_dynar_push(me->remain_tasks, &task_received);
+                    task_received = NULL;
+                } else {
+
+                    // handle this received request
+                    handle_task(me, &task_received);
+                }
                 ans = NULL;
                 req = NULL;
 
@@ -4110,7 +4126,7 @@ static void add_pred(node_t me, int stage, int id) {
 
         s_state_t new_state = get_state(me);
 
-        XBT_VERB("Node %d: in add_pred(), restore from state '%c'/%u to state '%c'/%u",
+        XBT_VERB("Node %d: in add_pred(), restore from state '%c'/%d to state '%c'/%d",
                 me->self.id,
                 state.active,
                 state.new_id,
@@ -6926,12 +6942,21 @@ int node(int argc, char *argv[]) {
                 res = MSG_comm_get_status(node.comm_received);
                 MSG_comm_destroy(node.comm_received);
                 node.comm_received = NULL;
+                req_data_t req = MSG_task_get_data(task_received);
 
                 XBT_VERB("Node %d: Task received", node.self.id);
 
                 if (res == MSG_OK) {
 
-                    handle_task(&node, &task_received);
+                    if (xbt_dynar_is_empty(node.remain_tasks) == 0 &&
+                        req->type == TASK_CNX_REQ) {
+
+                        xbt_dynar_push(node.remain_tasks, &task_received);
+                        task_received = NULL;
+                    } else {
+
+                        handle_task(&node, &task_received);
+                    }
 
                     // run remaining tasks, if any
                     run_delayed_tasks(&node, '4');
@@ -6988,8 +7013,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
     e_task_type_t type = rcv_req->type;
 
     s_state_t state = get_state(me);
-    XBT_VERB("Node %d - '%c'/%d: In handle_task - receiving task '%s - %s'"
-            " from node %d",
+    XBT_VERB("Node %d - '%c'/%d: Handling task '%s - %s' received from node %d",
             me->self.id,
             state.active,
             state.new_id,
@@ -7288,9 +7312,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                           rcv_args.broadcast.args->set_update.new_id ==
                           state.new_id) &&
                       !(rcv_args.broadcast.type == TASK_SET_ACTIVE &&
-                          (rcv_args.broadcast.args->set_active.new_id ==
+                          ((rcv_args.broadcast.args->set_active.new_id ==
                           state.new_id) ||
-                          (state.new_id == -1)) &&
+                          (state.new_id == -1))) &&
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT
                      )
@@ -7352,6 +7376,14 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                             /* start call: forward broadcast to the leader ? */
                             if (rcv_args.broadcast.first_call == 1) {
+
+                                if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
+
+                                    XBT_VERB("Node %d: Run broadcast of Set Update for new_id = %d - state.new_id = %d",
+                                            me->self.id,
+                                            rcv_args.broadcast.args->set_update.new_id,
+                                            state.new_id);
+                                }
 
                                 XBT_VERB("Node %d: broadcast first call - stage = %d -"
                                         " height = %d - broadcasted task = '%s'",

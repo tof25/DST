@@ -13,4 +13,110 @@ leader, donc) passe à 'a' en dernier.
 Est-ce correct d'accepter une CNX_REQ si une autre est en attente dans les
 delayed_tasks ?
 Je pense que non, parce qu'une CNX_REQ pourrait alors être bloquée trop
-longemtps. (voir node 18)
+longtemps. (voir node 18)
+
+
+Si un noeud attend des réponses d'une diffusion d'un Set Active et qu'il lance
+une diffusion d'un Set Update pendant ce temps, ce Set Update a de bonnes
+chances d'échouer si l'update intervient avant l'active.
+
+Il est inutile de descendre une diffusion si une réponse est NOK.
+Il est inutile de lancer une diffusion si le noeud courant est NOK.
+
+52 via 1 n'arrive pas à joindre le DST
+
+    -> 1er essai : 1 est en construction
+
+    -> 2e  essai : 1 est en 'u'/12 et termine la diffusion de Set Active
+                   1 exécute CNX_REQ de 32 en attente -> transfert au leader 47
+                   1 reçoit CNX_REQ de 52 pendant l'attente -> stocke
+                   1 a fini de traiter CNX_REQ de 32
+                   1 traite CNX_REQ de 52 stockée -> transfert au leader 47  (A)
+
+                       47 est en 'u'/25, en attente de réponse à des New
+                       Brothers Receive
+
+                       47 reçoit un Set State de 42 (je ne sais pas pourquoi)
+                       (B) pour passer en 'p'/24
+
+                       47 reçoit une des réponses qu'il attend, puis la CNX_REQ
+                       de 1 pour 52 (C) => 'p'/24 fait qu'il la stocke
+
+                       47 reçoit sa deuxième réponse et repasse à 'a'/25
+                       (regarder l'histoire du 'p'/24)
+
+                       47 traite CNX_REQ de 1 pour 52 stockée (D)
+                       Il diffuse Set Update (E) 47 passe à 'u'/52
+                       La diffusion est confiée au leader 42.
+
+                       42 est en 'g'/32 et attend la réponse à un Nb Pred
+                       Il reçoit un Set State de 47 pour passer en 'p'/25.
+
+                       42 reçoit le broadcast Set Update de 47 et lance la
+                       diffusion (F)
+                       42 attend les réponses de 9 et 47
+
+                       42 reçoit et exécute un add_pred et repasse de 'p'/25 à
+                       'g'/32
+
+                       42 reçoit les réponses de 9 et 47 (G)
+
+                       42 continue la diffusion à l'étage inférieur: 51, 12, 24
+
+                            12 fini un Load Balance, passe à 'a'/12 et exécute
+                            CNX_REQ(13) stockée ==> il passe à 'u'/13 (I)
+
+                            12 répond NOK à 42
+
+                       42 reçoit CNX_REQ(13) et la stocke
+
+                       42 reçoit les réponses de 51, 24 et 12 et répond à 47
+
+                       47 reçoit la réponse (H) ==> échec
+                       47 passe à 'u'/-1 et diffuse un Set Active (J)
+
+                       Fin de la diffusion. 47 exécute CNX_REQ(3) reçu de 32 et
+                       stockée entre temps. (K)
+                       47 passe donc en 'u'/3
+
+                       la diffusion de Set Update échoue parce que 42 est en
+                       'u'/13 à ce moment et 47 lance une diffusion de Set
+                       Active
+
+    -> 3e essai         (L)
+                        1 reçoit et transfert au leader 47
+
+                        47 est en 'u'/-1 parce que la diffusion de Set Active
+                        précédente n'est pas terminée et stocke la demande (M)
+                        il y a aussi une demande de 32 en attente
+
+                        La diffusion de Set Active est terminée et 47 lance les
+                        tâches stockées, à commencer par CNX_REQ(18) reçue de 32
+                        (N)
+
+                        47 diffuse donc Set Update (O)
+
+                        Pendant l'attente, 47 'u'/18 reçoit Set State de 9 et
+                        passe à 'p'/16
+
+                        42 n'a pas encore terminée la diffusion du précédent Set
+                        Active. Il en est à attendre les réponses de l'étage 0.
+                        42 est encore à 'u'/-1 et rejette le Set Update de 47
+                        (P)
+
+                        47 fait un Add Pred et repasse à 'u'/18. Il reçoit la
+                        réponse NOK de 42 et relance une diffusion de Set Active
+                        à cause de l'échec. (Q)
+
+                        *** On lance donc une diffusion de Set Active alors que
+                        la précédente n'est pas encore terminée. ***
+
+                        42 reçoit les réponses qu'il attendait de la diffusion
+                        précédente, il repasse à 'a'/46 et exécute les tâches en
+                        attente, c'est à dire CNX_REQ(13)  (R)
+
+                        42 lance une diffusion d'un Set Update qui échoue à
+                        cause de 47 qui est en 'u'/-1 puisqu'il exécute une
+                        diffusion d'un Set Active.
+
+    -> 4e essai
