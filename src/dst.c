@@ -2,7 +2,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2012/11/26
+ *  Written by Christophe Enderlin on 2013/1/25
  *
  */
 
@@ -3876,7 +3876,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                 }
                 args.broadcast.first_call = 1;
                 args.broadcast.source_id = me->self.id;
-                args.broadcast.lead_br = 1;             //TODO !! test passer à 1
+                args.broadcast.lead_br = 0;             //TODO !! test passer à 1
 
                 args.broadcast.args = xbt_new0(u_req_args_t, 1);
                 args.broadcast.args->set_active.new_id = new_node.id;
@@ -7566,11 +7566,19 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             debug_msg[rcv_args.broadcast.type],
                                             rcv_args.broadcast.lead_br);
 
-                                    // self set 'u' right now if leader
-                                    if (rcv_args.broadcast.type == TASK_SET_UPDATE &&
-                                        me->self.id == me->brothers[0][0].id) {
+                                    // self set 'u' right now
+                                    if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
 
                                         set_update(me, rcv_args.broadcast.args->set_update.new_id);
+                                    }
+
+                                    /* If a Set Active task is broacasted, it
+                                     * mustn't be interrupted by another
+                                     * broadcast (of Set Update, for instance)
+                                     */
+                                    if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
+
+                                        set_update(me, -1);
                                     }
 
                                     task_free(task);
