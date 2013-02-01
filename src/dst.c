@@ -40,7 +40,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                completion */
 #define MAX_WAIT_GET_REP 10                 /* won't wait longer an answer to a
                                                GET_REP request */
-#define MAX_JOIN 30                         // number of joining attempts
+#define MAX_JOIN 100                         // number of joining attempts
 
 static int nb_calls1 = 0;
 static int nb_calls2 = 0;
@@ -1241,7 +1241,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                 me->self.id,
                 ans_cpt);
 
-        display_expected_answers(me, 'D');
+        display_expected_answers(me, 'V');
 
         res = MSG_task_receive(&task_received, me->self.mailbox);
 
@@ -1688,22 +1688,41 @@ static void set_active(node_t me, int new_id) {
 
     s_state_t state = get_state(me);
 
+    int idx = -1;
+    unsigned int iter = 0;
+    recp_rec_t elem;
+
+    //TODO : on ne fait un Set_active que s'il n'y en a plus en attente
+    xbt_dynar_foreach(me->expected_answers, iter, elem){
+
+        if (elem->type == TASK_BROADCAST &&
+            elem->br_type == TASK_SET_ACTIVE &&
+            elem->answer_data == NULL) {
+
+            idx = iter;
+        }
+    }
+
     // get current state
-    if ((state.active == 'u' && (state.new_id == new_id || state.new_id == -1)) ||
-            (state.active == 'l' && state.new_id == new_id) ||
-            (state.active != 'u' && state.active != 'l')) {
+    if (idx == -1  &&
+        ((state.active == 'u' && (state.new_id == new_id || state.new_id == -1)) ||
+             (state.active == 'l' && state.new_id == new_id) ||
+             (state.active != 'u' && state.active != 'l'))) {
 
         xbt_dynar_reset(me->states);
         set_state(me, new_id, 'a');
 
         state = get_state(me);
-    }
+    } else {
 
-    XBT_DEBUG("Node %d: '%c'/%d - end of set_active() ... - new_node = %d",
-            me->self.id,
-            state.active,
-            state.new_id,
-            new_id);
+        //TODO : faut-il plutôt stocker cette requête ?
+
+        XBT_VERB("Node %d: '%c'/%d - set_active for %d rejected",
+                me->self.id,
+                state.active,
+                state.new_id,
+                new_id);
+    }
 
     XBT_OUT();
 }
@@ -4948,7 +4967,10 @@ static void split(node_t me, int stage, int new_node_id) {
 
     XBT_IN();
 
+    // splitting node isn't available for requests
+    set_update(me, new_node_id);
     s_state_t state = get_state(me);
+
     XBT_VERB("Node %d: '%c'/%d - split() ... - new_node = %d",
             me->self.id,
             state.active,
@@ -5181,6 +5203,12 @@ static void split(node_t me, int stage, int new_node_id) {
         wait_for_completion(me, ans_cpt);
     }
 
+    // restore state
+    idx = state_search(me, 'u', new_node_id);
+    if (idx > -1) {
+
+        xbt_dynar_remove_at(me->states, idx, NULL);
+    }
     xbt_free(cpy_preds);
     XBT_OUT();
 }
@@ -7360,6 +7388,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
         case TASK_BROADCAST:
             if (
+                    /* TODO : je laisse finalement passer tous les SET_ACTIVE
+                       modifier les commentaires en conséquence
+                       Set_active ne doit fonctionner que si aucun ACK de
+                       SET_ACTIVE n'est attendu. */
+
                     // state 'b': don't accept any broadcast
                     state.active == 'b' ||
 
@@ -7377,10 +7410,15 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                       !(rcv_args.broadcast.type == TASK_SET_UPDATE &&
                           rcv_args.broadcast.args->set_update.new_id ==
                           state.new_id) &&
+                      /*
                       !(rcv_args.broadcast.type == TASK_SET_ACTIVE &&
                           ((rcv_args.broadcast.args->set_active.new_id ==
                           state.new_id) ||
                           (state.new_id == -1))) &&
+                      */
+
+                      rcv_args.broadcast.type != TASK_SET_ACTIVE &&
+
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT
                      )
@@ -7583,41 +7621,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                                     task_free(task);
 
-                                    /* Transmit the message to lower stage.
-                                     * If * 'leaders-only' broadcast, transmit to
-                                     * stage 0 only if 'me' is the leader */
+                                    //TODO: Ne pas continuer si UPDATE_NOK ici
+
+                                    // Transmit the message to lower stage.
                                     rcv_args.broadcast.stage--;
                                     val_ret = broadcast(me, rcv_args);
-
-                                    /*
-                                    if (rcv_args.broadcast.stage > 0) {
-
-                                        val_ret = broadcast(me, rcv_args);
-                                    } else {
-
-                                        if (rcv_args.broadcast.lead_br == 0 ||
-                                                (rcv_args.broadcast.lead_br == 1 &&
-                                                 me->self.id == me->brothers[0][0].id)) {
-
-                                            if (rcv_args.broadcast.lead_br == 1) {
-                                                XBT_VERB("Node %d: Leader broadcast - lead_br = %d - stage = %d",
-                                                        me->self.id,
-                                                        rcv_args.broadcast.lead_br,
-                                                        rcv_args.broadcast.stage);
-                                            }
-
-                                            val_ret = broadcast(me, rcv_args);
-                                        } else {
-
-                                            XBT_VERB("Node %d: Don't broadcast (not leader) - lead_br = %d - stage = %d",
-                                                    me->self.id,
-                                                    rcv_args.broadcast.lead_br,
-                                                    rcv_args.broadcast.stage);
-
-                                            val_ret = OK;
-                                        }
-                                    }
-                                    */
                                 } else {
 
                                     /* stage 0 reached: handle the broadcasted task */
