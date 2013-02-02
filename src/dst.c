@@ -1733,6 +1733,11 @@ static void set_active(node_t me, int new_id) {
  * \param new_id id of the new coming node that triggered this state change
  * \return A value that indicate if set_update succeded
  */
+
+//TODO: lorsque l'état courant est p, il ne faudrait pas refuser le set_update
+//      mais soit le stocker, soit le laisser passer, soit répondre OK si le
+//      set_update se trouve déjà dans la pile d'états.
+
 static e_val_ret_t set_update(node_t me, int new_id) {
 
     XBT_IN();
@@ -4183,6 +4188,8 @@ static void add_pred(node_t me, int stage, int id) {
 
     /* if current state is 'p', then it's an add_pred coming from load_balance() :
        just pops out this state */
+
+    //TODO: afficher les états ici avant le pop
     state = get_state(me);
     if (state.active == 'p' && me->self.id != state.new_id) {
 
