@@ -3900,7 +3900,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                 }
                 args.broadcast.first_call = 1;
                 args.broadcast.source_id = me->self.id;
-                args.broadcast.lead_br = 0;             //TODO !! test passer à 1
+                args.broadcast.lead_br = 1;             //TODO !! test passer à 1
 
                 args.broadcast.args = xbt_new0(u_req_args_t, 1);
                 args.broadcast.args->set_active.new_id = new_node.id;
