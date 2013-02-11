@@ -204,6 +204,7 @@ typedef struct node {
     xbt_dynar_t     remain_tasks;           // delayed tasks
     xbt_dynar_t     sync_answers;           /* answers to sync requests (see
                                                send_sync_msg) */
+    xbt_dynar_t     cnx_req_queue;          // new nodes to be inserted into the DST
 } s_node_t, *node_t;
 
 /**
@@ -604,6 +605,7 @@ static void  data_req_free(node_t me, req_data_t *req_data);
 static void  elem_free(void* elem_ptr);
 static void  display_expected_answers(node_t me, char log);
 static void  display_states(node_t me, char mode);
+static void  display_cnx_queue(node_t me, char mode);
 static int   expected_answers_search(node_t me,
         xbt_dynar_t dynar,
         e_task_type_t type,
@@ -1272,10 +1274,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
                 // answer
-                XBT_VERB("Node %d: Received task (data %p) : '%s - %s %s'"
+                XBT_VERB("Node %d: Received task : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
-                        ans,
                         MSG_task_get_name(task_received),
                         debug_msg[ans->type],
                         debug_msg[ans->br_type],
@@ -1285,10 +1286,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
             } else {
 
                 // request
-                XBT_VERB("Node %d: Received task (data %p) : '%s - %s %s'"
+                XBT_VERB("Node %d: Received task  : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
-                        req,
                         MSG_task_get_name(task_received),
                         debug_msg[req->type],
                         debug_msg[(req->type == TASK_BROADCAST ?
@@ -1760,7 +1760,15 @@ static e_val_ret_t set_update(node_t me, int new_id) {
             val_ret = UPDATE_OK;
         } else {
 
-            val_ret = UPDATE_NOK;
+            // OK if requested 'u' state is already found in the dynar
+            int found = state_search(me, 'u', new_id);
+            if (found == -1) {
+
+                val_ret = UPDATE_NOK;
+            } else {
+
+                val_ret = UPDATE_OK;
+            }
         }
     }
 
@@ -2335,6 +2343,53 @@ static void display_states(node_t me, char mode) {
     } else {
 
         XBT_VERB("");
+    }
+
+    XBT_OUT();
+}
+
+static void  display_cnx_queue(node_t me, char mode) {
+
+    XBT_IN();
+
+    unsigned int iter = 0;
+    node_rep_t elem = NULL;
+
+    if (mode == 'I') {
+
+        XBT_INFO("Node %d: cnx_req_queue", me->self.id);
+    } else {
+
+        if (mode == 'D') {
+
+            XBT_DEBUG("Node %d: cnx_req_queue", me->self.id);
+        } else {
+
+            XBT_VERB("Node %d: cnx_req_queue", me->self.id);
+        }
+    }
+
+    xbt_dynar_foreach(me->cnx_req_queue, iter, elem) {
+
+        if (mode == 'I') {
+
+            XBT_INFO(" {[%d] --> %d}",
+                    iter,
+                    elem->id);
+        } else {
+
+            if (mode == 'D') {
+
+                XBT_DEBUG(" {[%d] --> %d}",
+                        iter,
+                        elem->id);
+            } else {
+
+                XBT_VERB(" {[%d] --> %d}",
+                        iter,
+                        elem->id);
+            }
+        }
     }
 
     XBT_OUT();
@@ -3222,6 +3277,8 @@ static void init(node_t me) {
     me->expected_answers = xbt_dynar_new_sync(sizeof(recp_rec_t), &xbt_free_ref);
     me->remain_tasks = xbt_dynar_new_sync(sizeof(m_task_t), &xbt_free_ref);
     me->sync_answers = xbt_dynar_new_sync(sizeof(recp_rec_t), &xbt_free_ref);
+    me->cnx_req_queue = xbt_dynar_new_sync(sizeof(node_rep_t), &xbt_free_ref);
+
 
     // DST infos initialization
     me->dst_infos.order = 0;
@@ -3653,6 +3710,36 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
             u_req_args_t args;
             m_task_t task_sent = NULL;
 
+            // process requests in order
+            node_rep_t cnx_elem = xbt_new0(s_node_rep_t, 1);
+            cnx_elem->id = new_node.id;
+            get_mailbox(new_node.id, cnx_elem->mailbox);
+
+            display_cnx_queue(me, 'V');
+
+            if (xbt_dynar_is_empty(me->cnx_req_queue)) {
+
+                XBT_VERB("Node %d: cnx_req_queue is empty !!", me->self.id);
+                xbt_dynar_push(me->cnx_req_queue, &cnx_elem);
+                val_ret = OK;
+            } else {
+
+                if (xbt_dynar_member(me->cnx_req_queue, &cnx_elem)) {
+
+                    XBT_VERB("Node %d: new node found !!", me->self.id);
+                    val_ret = OK;
+                } else {
+
+                    xbt_dynar_push(me->cnx_req_queue, &cnx_elem);
+                    val_ret = UPDATE_NOK;
+                }
+            }
+
+            XBT_VERB("Node %d: val_ret = %s - new node id = %d",
+                    me->self.id,
+                    (val_ret == OK ? "OK" : "NOK"),
+                    new_node.id);
+
             if (val_ret != UPDATE_NOK) {        //TODO : inutile ?
 
                 // set all concerned nodes as 'u'
@@ -3697,6 +3784,14 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                     // reset all concerned nodes as 'a'
                     XBT_VERB("Node %d: reset all concerned nodes as 'a'",
                             me->self.id);
+
+                    // remove new node from queue
+                    int idx_new = xbt_dynar_search(me->cnx_req_queue, &cnx_elem);
+                    if (idx_new > -1) {
+
+                        xbt_dynar_remove_at(me->cnx_req_queue, idx_new, NULL);
+                    }
+                    display_cnx_queue(me, 'V');
 
                     args.broadcast.type = TASK_SET_ACTIVE;
 
@@ -3878,7 +3973,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
 
             answer.cnx_req.new_contact.id = -1;
 
-            if (try >= 2) {  // broadcast 'a' after 2 attemps to broadcast 'u'
+            if (try >= 2000) {  // broadcast 'a' after 2 attemps to broadcast 'u'
 
                 u_req_args_t args;
                 m_task_t task_sent = NULL;
@@ -3900,7 +3995,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                 }
                 args.broadcast.first_call = 1;
                 args.broadcast.source_id = me->self.id;
-                args.broadcast.lead_br = 1;             //TODO !! test passer à 1
+                args.broadcast.lead_br = 0;             //TODO !! test passer à 1
 
                 args.broadcast.args = xbt_new0(u_req_args_t, 1);
                 args.broadcast.args->set_active.new_id = new_node.id;
