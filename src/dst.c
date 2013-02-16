@@ -3759,6 +3759,8 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
             cnx_elem->id = new_node.id;
             get_mailbox(new_node.id, cnx_elem->mailbox);
 
+            display_cnx_queue(me, 'V');
+
             if (xbt_dynar_is_empty(me->cnx_req_queue)) {
 
                 XBT_VERB("Node %d: cnx_req_queue is empty !!", me->self.id);
@@ -3771,7 +3773,6 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
 
                 int idx = dst_xbt_dynar_search_or_negative(me->cnx_req_queue, cnx_elem);
                 if (idx > -1) {
-                //if (dst_xbt_dynar_member(me->cnx_req_queue, cnx_elem))
 
                     XBT_VERB("Node %d: new node found !!", me->self.id);
                     display_cnx_queue(me, 'V');
@@ -3838,17 +3839,17 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
 
                     // remove new node from queue
                     int idx_new = dst_xbt_dynar_search_or_negative(me->cnx_req_queue, cnx_elem);
-                    XBT_VERB("Node %d: idx_new = %d for new node = %d",
-                    me->self.id,
-                    idx_new,
-                    cnx_elem->id);
+
+                    XBT_VERB("Node %d: idx_new = %d remove new node = %d",
+                            me->self.id,
+                            idx_new,
+                            cnx_elem->id);
+
                     if (idx_new > -1) {
 
-                        XBT_VERB("Node %d: Coucou avant", me->self.id);
-                        display_cnx_queue(me, 'V');
                         xbt_dynar_remove_at(me->cnx_req_queue, idx_new, NULL);
-                        XBT_VERB("Node %d: Coucou après", me->self.id);
                     }
+
                     XBT_VERB("Node %d: After removal of node %d", me->self.id, new_node.id);
                     display_cnx_queue(me, 'V');
 
