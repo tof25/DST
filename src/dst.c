@@ -2,7 +2,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/1/25
+ *  Written by Christophe Enderlin on 2013/02/16
  *
  */
 
@@ -204,6 +204,7 @@ typedef struct node {
     xbt_dynar_t     remain_tasks;           // delayed tasks
     xbt_dynar_t     sync_answers;           /* answers to sync requests (see
                                                send_sync_msg) */
+    xbt_dynar_t     cnx_req_queue;          // new nodes to be inserted into the DST
 } s_node_t, *node_t;
 
 /**
@@ -604,6 +605,7 @@ static void  data_req_free(node_t me, req_data_t *req_data);
 static void  elem_free(void* elem_ptr);
 static void  display_expected_answers(node_t me, char log);
 static void  display_states(node_t me, char mode);
+static void  display_cnx_queue(node_t me, char mode);
 static int   expected_answers_search(node_t me,
         xbt_dynar_t dynar,
         e_task_type_t type,
@@ -611,6 +613,8 @@ static int   expected_answers_search(node_t me,
         int recp_id);
 static int   state_search(node_t me, char active, int new_id);
 static u_ans_data_t is_brother(node_t me, int id);
+static int dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem);
+static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem);
 
 
 // communication functions
@@ -1166,6 +1170,48 @@ static u_ans_data_t is_brother(node_t me, int id) {
 }
 
 /**
+ * \brief Search a given object in a dynar
+ * \param dynar the dynar to search into
+ * \param elem the object to search for
+ * \return The index where the object is found. -1 otherwise.
+ */
+static int dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem) {
+
+    XBT_IN();
+
+    unsigned int iter = 0;
+    int idx = -1;
+    void *item = NULL;
+
+    xbt_dynar_foreach(dynar, iter, item) {
+
+        if (!memcmp(item, elem, sizeof(*elem)) && idx == -1) {
+
+            idx = iter;
+        }
+    }
+    return idx;
+
+    XBT_OUT();
+}
+
+/**
+ * \brief Check if an object is found in a dynar.
+ * \param dynar the dynar to look in
+ * \param elem a pointer to the object to search for
+ * \return A boolean value (1 for yes)
+ */
+static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem) {
+
+    XBT_IN();
+
+    int idx = dst_xbt_dynar_search_or_negative(dynar, elem);
+    return (idx > -1 ? 1 : 0);
+
+    XBT_OUT();
+}
+
+/**
  * \brief Wait for the completion of a bunch of async sent tasks
  * \param me the current node
  * \param ans_cpt the number of expected anwswers
@@ -1272,10 +1318,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
                 // answer
-                XBT_VERB("Node %d: Received task (data %p) : '%s - %s %s'"
+                XBT_VERB("Node %d: Received task : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
-                        ans,
                         MSG_task_get_name(task_received),
                         debug_msg[ans->type],
                         debug_msg[ans->br_type],
@@ -1285,10 +1330,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
             } else {
 
                 // request
-                XBT_VERB("Node %d: Received task (data %p) : '%s - %s %s'"
+                XBT_VERB("Node %d: Received task  : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
-                        req,
                         MSG_task_get_name(task_received),
                         debug_msg[req->type],
                         debug_msg[(req->type == TASK_BROADCAST ?
@@ -1760,7 +1804,15 @@ static e_val_ret_t set_update(node_t me, int new_id) {
             val_ret = UPDATE_OK;
         } else {
 
-            val_ret = UPDATE_NOK;
+            // OK if requested 'u' state is already found in the dynar
+            int found = state_search(me, 'u', new_id);
+            if (found == -1) {
+
+                val_ret = UPDATE_NOK;
+            } else {
+
+                val_ret = UPDATE_OK;
+            }
         }
     }
 
@@ -2335,6 +2387,53 @@ static void display_states(node_t me, char mode) {
     } else {
 
         XBT_VERB("");
+    }
+
+    XBT_OUT();
+}
+
+static void  display_cnx_queue(node_t me, char mode) {
+
+    XBT_IN();
+
+    unsigned int iter = 0;
+    node_rep_t elem = NULL;
+
+    if (mode == 'I') {
+
+        XBT_INFO("Node %d: cnx_req_queue", me->self.id);
+    } else {
+
+        if (mode == 'D') {
+
+            XBT_DEBUG("Node %d: cnx_req_queue", me->self.id);
+        } else {
+
+            XBT_VERB("Node %d: cnx_req_queue", me->self.id);
+        }
+    }
+
+    xbt_dynar_foreach(me->cnx_req_queue, iter, elem) {
+
+        if (mode == 'I') {
+
+            XBT_INFO(" {[%d] --> %d}",
+                    iter,
+                    elem->id);
+        } else {
+
+            if (mode == 'D') {
+
+                XBT_DEBUG(" {[%d] --> %d}",
+                        iter,
+                        elem->id);
+            } else {
+
+                XBT_VERB(" {[%d] --> %d}",
+                        iter,
+                        elem->id);
+            }
+        }
     }
 
     XBT_OUT();
@@ -3222,6 +3321,8 @@ static void init(node_t me) {
     me->expected_answers = xbt_dynar_new_sync(sizeof(recp_rec_t), &xbt_free_ref);
     me->remain_tasks = xbt_dynar_new_sync(sizeof(m_task_t), &xbt_free_ref);
     me->sync_answers = xbt_dynar_new_sync(sizeof(recp_rec_t), &xbt_free_ref);
+    me->cnx_req_queue = xbt_dynar_new_sync(sizeof(node_rep_t), &xbt_free_ref);
+
 
     // DST infos initialization
     me->dst_infos.order = 0;
@@ -3653,6 +3754,43 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
             u_req_args_t args;
             m_task_t task_sent = NULL;
 
+            // process requests in order
+            node_rep_t cnx_elem = xbt_new0(s_node_rep_t, 1);
+            cnx_elem->id = new_node.id;
+            get_mailbox(new_node.id, cnx_elem->mailbox);
+
+            if (xbt_dynar_is_empty(me->cnx_req_queue)) {
+
+                XBT_VERB("Node %d: cnx_req_queue is empty !!", me->self.id);
+                xbt_dynar_push(me->cnx_req_queue, &cnx_elem);
+                val_ret = OK;
+
+                XBT_VERB("Node %d: After push of node %d", me->self.id, new_node.id);
+                display_cnx_queue(me, 'V');
+            } else {
+
+                int idx = dst_xbt_dynar_search_or_negative(me->cnx_req_queue, cnx_elem);
+                if (idx > -1) {
+                //if (dst_xbt_dynar_member(me->cnx_req_queue, cnx_elem))
+
+                    XBT_VERB("Node %d: new node found !!", me->self.id);
+                    display_cnx_queue(me, 'V');
+                    val_ret = (idx == 0 ? OK : UPDATE_NOK);
+                } else {
+
+                    xbt_dynar_push(me->cnx_req_queue, &cnx_elem);
+                    XBT_VERB("Node %d: After push NOK of node %d", me->self.id, new_node.id);
+                    display_cnx_queue(me, 'V');
+
+                    val_ret = UPDATE_NOK;
+                }
+            }
+
+            XBT_VERB("Node %d: val_ret = %s - new node id = %d",
+                    me->self.id,
+                    (val_ret == OK ? "OK" : "NOK"),
+                    new_node.id);
+
             if (val_ret != UPDATE_NOK) {        //TODO : inutile ?
 
                 // set all concerned nodes as 'u'
@@ -3697,6 +3835,22 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                     // reset all concerned nodes as 'a'
                     XBT_VERB("Node %d: reset all concerned nodes as 'a'",
                             me->self.id);
+
+                    // remove new node from queue
+                    int idx_new = dst_xbt_dynar_search_or_negative(me->cnx_req_queue, cnx_elem);
+                    XBT_VERB("Node %d: idx_new = %d for new node = %d",
+                    me->self.id,
+                    idx_new,
+                    cnx_elem->id);
+                    if (idx_new > -1) {
+
+                        XBT_VERB("Node %d: Coucou avant", me->self.id);
+                        display_cnx_queue(me, 'V');
+                        xbt_dynar_remove_at(me->cnx_req_queue, idx_new, NULL);
+                        XBT_VERB("Node %d: Coucou après", me->self.id);
+                    }
+                    XBT_VERB("Node %d: After removal of node %d", me->self.id, new_node.id);
+                    display_cnx_queue(me, 'V');
 
                     args.broadcast.type = TASK_SET_ACTIVE;
 
@@ -3878,7 +4032,7 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
 
             answer.cnx_req.new_contact.id = -1;
 
-            if (try >= 2) {  // broadcast 'a' after 2 attemps to broadcast 'u'
+            if (try >= 2000) {  // broadcast 'a' after 2 attemps to broadcast 'u'
 
                 u_req_args_t args;
                 m_task_t task_sent = NULL;
@@ -5210,12 +5364,14 @@ static void split(node_t me, int stage, int new_node_id) {
         wait_for_completion(me, ans_cpt);
     }
 
-    // restore state
+    // restore state    //TODO: non !! Trop tôt. Laisser faire la diffusion de set active
+    /*
     idx = state_search(me, 'u', new_node_id);
     if (idx > -1) {
 
         xbt_dynar_remove_at(me->states, idx, NULL);
     }
+    */
     xbt_free(cpy_preds);
     XBT_OUT();
 }
@@ -6896,7 +7052,7 @@ int node(int argc, char *argv[]) {
                 sleep_time = (rand() / (double)RAND_MAX) * 16 + 37;
 
                 // get a new contact if too many failures
-                if (tries > 5) {
+                if (tries > 200) {
 
                     answer_data = NULL;
                     res = send_msg_sync(&node,
