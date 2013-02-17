@@ -2068,7 +2068,9 @@ static void run_delayed_tasks(node_t me, char c) {
                             req->sender_id,
                             nb_cnx_req);
 
-                    xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
+                    //xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
+                    xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
+
                     req = MSG_task_get_data(elem);
 
                     if (req->type == TASK_CNX_REQ) {
@@ -7424,6 +7426,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             break;
 
         case TASK_CNX_GROUPS:
+
             if (state.active == 'b' ||
                     state.active == 'l' ||
                     state.active == 'p') {
