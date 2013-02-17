@@ -38,7 +38,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define TYPE_NBR 33                         // number of task types
 #define MAX_WAIT_COMPL 1550                 /* won't wait longer for broadcast
                                                completion */
-#define MAX_WAIT_GET_REP 10                 /* won't wait longer an answer to a
+#define MAX_WAIT_GET_REP 20                 /* won't wait longer an answer to a
                                                GET_REP request */
 #define MAX_JOIN 100                         // number of joining attempts
 
@@ -2645,10 +2645,11 @@ static MSG_error_t send_msg_sync(node_t me,
         if (res != MSG_OK) {
 
             // reception failure
-            XBT_ERROR("Node %d: Failed to receive the answer to my '%s'"
-                    " request : %d",
+            XBT_ERROR("Node %d: Failed to receive the answer to my '%s' request from %s"
+                    " result : %d",
                     cpy_req_data->sender_id,
                     debug_msg[cpy_req_data->type],
+                    req_data->sent_to,
                     res);
 
             task_free(&task_received);
