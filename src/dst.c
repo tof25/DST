@@ -1231,53 +1231,79 @@ static e_val_ret_t flag_request(node_t me, s_node_rep_t new_node) {
     XBT_VERB("Node %d: in flag_request - new_node.id = %d",
             me->self.id,
             new_node.id);
+    display_cnx_queue(me, 'v');
 
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
 
-    // me is already flagged => refuse CNX_REQ
-    if (state.active == 'u') return UPDATE_NOK;
+    if (state.active == 'a') {
+
+        xbt_assert(xbt_dynar_is_empty(me->cnx_req_queue),
+                "Node %d: '%c'/%d - cnx_req_queue should be empty !!",
+                me->self.id,
+                state.active,
+                state.new_id);
+    }
 
     node_rep_t cnx_elem = xbt_new0(s_node_rep_t, 1);
     cnx_elem->id = new_node.id;
     get_mailbox(new_node.id, cnx_elem->mailbox);
 
-    display_cnx_queue(me, 'V');
-
-    if (xbt_dynar_is_empty(me->cnx_req_queue)) {
-
-        XBT_VERB("Node %d: cnx_req_queue is empty", me->self.id);
+    int idx = dst_xbt_dynar_search_or_negative(me->cnx_req_queue, cnx_elem);
+    if (idx == -1) {
 
         xbt_dynar_push(me->cnx_req_queue, &cnx_elem);
-        val_ret = OK;
 
-        XBT_VERB("Node %d: After push of node %d", me->self.id, new_node.id);
+        XBT_VERB("Node %d: '%c'/%d - new node pushed",
+                me->self.id,
+                state.active,
+                state.new_id);
+
         display_cnx_queue(me, 'V');
-    } else {
+    }
 
-        int idx = dst_xbt_dynar_search_or_negative(me->cnx_req_queue, cnx_elem);
-        if (idx > -1) {
+    if (state.active == 'a') {
 
-            XBT_VERB("Node %d: new node found !!", me->self.id);
-            display_cnx_queue(me, 'V');
-            val_ret = (idx == 0 ? OK : UPDATE_NOK);
+        XBT_VERB("Node %d: '%c'/%d - Flag request OK for new node %d",
+                me->self.id,
+                state.active,
+                state.new_id,
+                new_node.id);
+
+        return OK;
+    }
+
+    if (state.active == 'u') {
+        if (state.new_id == new_node.id) {
+
+            XBT_VERB("Node %d: '%c'/%d - Flag request OK for new node %d",
+                    me->self.id,
+                    state.active,
+                    state.new_id,
+                    new_node.id);
+
+            return OK;
         } else {
 
-            xbt_dynar_push(me->cnx_req_queue, &cnx_elem);
-            XBT_VERB("Node %d: After push NOK of node %d", me->self.id, new_node.id);
-            display_cnx_queue(me, 'V');
+            XBT_VERB("Node %d: '%c'/%d - Flag request NOK for new node %d",
+                    me->self.id,
+                    state.active,
+                    state.new_id,
+                    new_node.id);
 
-            val_ret = UPDATE_NOK;
+            return UPDATE_NOK;
         }
     }
 
-    XBT_VERB("Node %d: val_ret = %s - new node id = %d",
+    XBT_VERB("Node %d: '%c'/%d - Flag request NOK for new node %d",
             me->self.id,
-            (val_ret == OK ? "OK" : "NOK"),
+            state.active,
+            state.new_id,
             new_node.id);
 
     XBT_OUT();
-    return val_ret;
+
+    return UPDATE_NOK;
 }
 
 /**
