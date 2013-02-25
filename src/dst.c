@@ -1236,15 +1236,6 @@ static e_val_ret_t flag_request(node_t me, s_node_rep_t new_node) {
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
 
-    if (state.active == 'a') {
-
-        xbt_assert(xbt_dynar_is_empty(me->cnx_req_queue),
-                "Node %d: '%c'/%d - cnx_req_queue should be empty !!",
-                me->self.id,
-                state.active,
-                state.new_id);
-    }
-
     node_rep_t cnx_elem = xbt_new0(s_node_rep_t, 1);
     cnx_elem->id = new_node.id;
     get_mailbox(new_node.id, cnx_elem->mailbox);
@@ -1253,6 +1244,7 @@ static e_val_ret_t flag_request(node_t me, s_node_rep_t new_node) {
     if (idx == -1) {
 
         xbt_dynar_push(me->cnx_req_queue, &cnx_elem);
+        idx = xbt_dynar_length(me->cnx_req_queue) - 1;
 
         XBT_VERB("Node %d: '%c'/%d - new node pushed",
                 me->self.id,
@@ -1264,13 +1256,14 @@ static e_val_ret_t flag_request(node_t me, s_node_rep_t new_node) {
 
     if (state.active == 'a') {
 
-        XBT_VERB("Node %d: '%c'/%d - Flag request OK for new node %d",
+        XBT_VERB("Node %d: '%c'/%d - Flag request %s for new node %d",
                 me->self.id,
                 state.active,
                 state.new_id,
+                (idx == 0 ? "OK" : "NOK"),
                 new_node.id);
 
-        return OK;
+        return (idx == 0 ? OK : UPDATE_NOK);
     }
 
     if (state.active == 'u') {
@@ -1902,12 +1895,33 @@ static e_val_ret_t set_update(node_t me, int new_id) {
     XBT_IN();
 
     s_state_t state = get_state(me);
-
     e_val_ret_t val_ret;
+    char test = 1;
 
-    if ((state.active == 'a') ||
-            (state.active == 'g') ||
-            (state.active == 'u' && state.new_id == new_id)) {
+    display_cnx_queue(me, 'V');
+
+    // test = 1 is this set_update is the one that's expected or if queue is empty
+    if (!xbt_dynar_is_empty(me->cnx_req_queue)){
+
+        node_rep_t cnx_elem = xbt_new0(s_node_rep_t, 1);
+        xbt_dynar_get_cpy(me->cnx_req_queue, 0, &cnx_elem);
+        test = (cnx_elem->id == new_id ? 1 : 0);
+
+        XBT_VERB("Node %d: '%c'/%d - cnx_req_queue[0] = {%d, '%s'} - new_id = %d - test = %d",
+                me->self.id,
+                state.active,
+                state.new_id,
+                cnx_elem->id,
+                cnx_elem->mailbox,
+                new_id,
+                test);
+
+        //xbt_free(cnx_elem);
+    }
+
+    if ((state.active == 'a' && test) ||
+        (state.active == 'g') ||
+        (state.active == 'u' && state.new_id == new_id && test)) {
 
         // push new state 'u'
         set_state(me, new_id, 'u');
@@ -3774,8 +3788,8 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
 
     XBT_IN();
 
-    // node being updated
-    set_update(me, new_node.id);
+    // current node is being updated
+    e_val_ret_t val_ret = set_update(me, new_node.id);
 
     s_state_t state = get_state(me);
     XBT_VERB("Node %d: '%c'/%d - connection_request() ... - new_node = %d",
@@ -3784,7 +3798,6 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
             state.new_id,
             new_node.id);
 
-    e_val_ret_t val_ret = OK;
     u_ans_data_t answer;
 
     display_rout_table(me, 'V');
@@ -8336,6 +8349,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             break;
 
         case TASK_FLAG_REQ:
+            xbt_assert(rcv_args.flag_request.new_node.id < 1000000000 && rcv_args.flag_request.new_node.id > -1000000000);
             val_ret = flag_request(me, rcv_args.flag_request.new_node);
 
             // send the answer back
