@@ -35,7 +35,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define COMP_SIZE 0                         /* compute duration when creating a
                                                new task */
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
-#define TYPE_NBR 34                         // number of task types
+#define TYPE_NBR 35                         // number of task types
 #define MAX_WAIT_COMPL 1550                 /* won't wait longer for broadcast
                                                completion */
 #define MAX_WAIT_GET_REP 20                 /* won't wait longer an answer to a
@@ -141,7 +141,8 @@ typedef enum {
     TASK_BR_ADD_BRO_ARRAY,  // broadcast an add_bro_array task
     TASK_UPDATE_UPPER_STAGE,// update upper stage after a transfer
     TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join
-    TASK_FLAG_REQ           // ask leaders if a set update broadcast is possible
+    TASK_FLAG_REQ,          // ask leaders if a set update broadcast is possible
+    TASK_GET_CNX_REQ_QUEUE  // copy given cnx_req_queue into current node's one
 } e_task_type_t;
 
 /**
@@ -247,7 +248,8 @@ static const char* debug_msg[] = {
     "Brd Add_Bro_Array",
     "Update Upper Stage",
     "Get New Contact",
-    "Flag Request"
+    "Flag Request",
+    "Get Cnx_req_queue"
 };
 
 /**
@@ -442,6 +444,10 @@ typedef struct {
     s_node_rep_t new_node;
 } s_task_flag_request_t;        // check if a set update broadcast task is possible
 
+typedef struct {
+    xbt_dynar_t cnx_req_dyn;
+} s_task_get_dynar_t;           // copy given cnx_req_queue dynar into current node's one
+
 /**
  * Generic request args
  */
@@ -477,6 +483,7 @@ union req_args {
     s_task_br_add_bro_array_t   br_add_bro_array;
     s_task_update_upper_stage_t update_upper_stage;
     s_task_flag_request_t       flag_request;
+    s_task_get_dynar_t          get_dynar;
 };
 
 /**
@@ -624,6 +631,8 @@ static int dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem)
 static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem);
 static e_val_ret_t flag_request(node_t me, s_node_rep_t new_node);
 static int new_node_on_top(node_t me, int new_node_id);
+static void get_dynar(node_t me, xbt_dynar_t dynar_src);
+static void dynar_cpy(node_t me, xbt_dynar_t d1, xbt_dynar_t d2);
 
 
 // communication functions
@@ -647,7 +656,7 @@ static void send_completed(node_t me, e_task_type_t type, int recipient_id);
 static void         init(node_t me);
 static int          join(node_t me, int contact_id, int try);
 static u_ans_data_t get_rep(node_t me, int stage, int new_node_id);
-static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try);
+static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, int try);
 static void         new_brother_received(node_t me, s_node_rep_t new_node);
 static void         split_request(node_t me, int stage_nbr, int new_node_id);
 static void         add_stage(node_t me);
@@ -1301,12 +1310,86 @@ static int new_node_on_top(node_t me, int new_node_id) {
 
     node_rep_t *elem_ptr = xbt_dynar_get_ptr(me->cnx_req_queue, 0);
 
-    XBT_VERB("Node %d: in new_node_on_top - %s",
+    XBT_VERB("Node %d: in new_node_on_top - new node %d on top ? %s",
             me->self.id,
+            new_node_id,
             ((*elem_ptr)->id == new_node_id ? "yes" : "no"));
 
     XBT_OUT();
     return((*elem_ptr)->id == new_node_id);
+}
+
+/**
+ * \brief Copy given cnx_req_queue to current node's one (destroys it first if it exists)
+ * \param me the current node to copy to
+ * \param dynar_src the dynar to be copied into me (is freed at the end)
+ */
+static void get_dynar(node_t me, xbt_dynar_t dynar_src) {
+
+    XBT_IN();
+
+    xbt_assert(dynar_src != NULL,
+            "Node %d: in get_dynar() - dynar_src isn't initialized",
+            me->self.id);
+
+    XBT_VERB("Node %d: start of get_dynar", me->self.id);
+    display_cnx_queue(me, 'V');
+
+    if (!xbt_dynar_is_empty(me->cnx_req_queue)) {
+
+        // destroys target dynar if not empty
+        xbt_dynar_reset(me->cnx_req_queue);
+    }
+
+    xbt_dynar_merge(&(me->cnx_req_queue), &dynar_src);
+    XBT_VERB("Node %d: end of get_dynar", me->self.id);
+    display_cnx_queue(me, 'V');
+
+    XBT_OUT();
+}
+
+/**
+ * \brief Copy dynar d1 to d2 (d2 has to be ready before calling this function)
+ * \param me the current node
+ * \param d1 the source dynar to be copied
+ * \param d1 the target dynar to be copied to
+ */
+static void dynar_cpy(node_t me, xbt_dynar_t d1, xbt_dynar_t d2) {
+
+    XBT_IN();
+
+    xbt_assert(d1 != NULL, "Node %d: in dynar_cpy - d1 isn't initialized", me->self.id);
+    xbt_assert(d2 != NULL, "Node %d: in dynar_cpy - d2 isn't initialized", me->self.id);
+
+    unsigned int length = xbt_dynar_length(d1);
+    unsigned int idx = 0;
+    node_rep_t cnx_elem = NULL;
+    node_rep_t *elem_ptr = NULL;
+
+    for (idx = 0; idx < length; idx++) {
+
+        elem_ptr = xbt_dynar_get_ptr(d1, idx);
+
+        // TODO : on peut utiliser memcpy ?
+        cnx_elem = xbt_new0(s_node_rep_t, 1);
+        cnx_elem->id = (*elem_ptr)->id;
+        get_mailbox(cnx_elem->id, cnx_elem->mailbox);
+
+        xbt_dynar_push(d2, &cnx_elem);
+    }
+
+    XBT_VERB("Node %d: end of dynar_cpy", me->self.id);
+    idx = 0;
+    cnx_elem = NULL;
+
+    xbt_dynar_foreach(d1, idx, cnx_elem) {
+
+        XBT_VERB(" {[%d] --> %d}",
+                idx,
+                cnx_elem->id);
+    }
+
+    XBT_OUT();
 }
 
 /**
@@ -1920,11 +2003,12 @@ static e_val_ret_t set_update(node_t me, int new_id) {
         test = 0;
     }
 
-    XBT_VERB("Node %d: '%c'/%d - in set_update() : test = %d",
+    XBT_VERB("Node %d: '%c'/%d - in set_update() : test = %d - new_id = %d",
             me->self.id,
             state.active,
             state.new_id,
-            test);
+            test,
+            new_id);
 
     if (test || (state.active == 'g')) {
 
@@ -1933,20 +2017,26 @@ static e_val_ret_t set_update(node_t me, int new_id) {
         val_ret = UPDATE_OK;
     } else {
 
-        if (state.active == 'l') {
+        if (state.active != 'a') {
 
-            val_ret = UPDATE_OK;
-        } else {
-
-            // OK if requested 'u' state is already found in the dynar
-            int found = state_search(me, 'u', new_id);
-            if (found == -1) {
-
-                val_ret = UPDATE_NOK;
-            } else {
+            if (state.active == 'l') {
 
                 val_ret = UPDATE_OK;
+            } else {
+
+                // OK if requested 'u' state is already found in the dynar
+                int found = state_search(me, 'u', new_id);
+                if (found == -1) {
+
+                    val_ret = UPDATE_NOK;
+                } else {
+
+                    val_ret = UPDATE_OK;
+                }
             }
+        } else {
+
+            val_ret = UPDATE_NOK;
         }
     }
 
@@ -3780,7 +3870,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
  * \param try number of joining attempts
  * \return Answer data containing the contact's routing table
  */
-static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try) {
+static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, int try) {
 
     XBT_IN();
 
@@ -3975,7 +4065,9 @@ static u_ans_data_t connection_request(node_t me, s_node_rep_t new_node, int try
                         split_request(me, k, new_node.id);
                     }
 
-                    XBT_VERB("Node %d: Back to connection request.", me->self.id);
+                    XBT_VERB("Node %d: Back to connection request for new node %d",
+                            me->self.id,
+                            new_node.id);
 
                     // TODO : TROP TOT ? - Non si 'me' reste bien à 'u'
 
@@ -5280,10 +5372,27 @@ static void split(node_t me, int stage, int new_node_id) {
     display_rout_table(me, 'V');
     display_preds(me, 'D');
 
+    /* copy current cnx_req_queue into first brother's (it will become a leader after
+       split) */
+    xbt_dynar_t cnx_queue_cpy = xbt_dynar_new(sizeof(node_rep_t), &xbt_free_ref);
+    dynar_cpy(me, me->cnx_req_queue, cnx_queue_cpy);
+
+    u_req_args_t args;
+    args.get_dynar.cnx_req_dyn = cnx_queue_cpy;
+
+    MSG_error_t res = send_msg_async(me,
+            TASK_GET_CNX_REQ_QUEUE,
+            me->brothers[0][1].id,
+            args);
+
+    xbt_assert(res == MSG_OK,
+            "Node %d: Send TASK_GET_CNX_REQ_QUEUE error",
+            me->self.id);
+
+    // finds a representative of the other node (after splitting)
     int pos = index_bro(me, stage, me->self.id);
     int stay = (pos + 1) % 2;
 
-    // finds a representative of the other node (after splitting)
     int other_node_id = 0;
     if (stay == 0) {
 
@@ -5304,8 +5413,7 @@ static void split(node_t me, int stage, int new_node_id) {
     int i = 0;
     int idx = 0;
     int init_rep_id, new_rep_id = 0;
-    u_req_args_t args;
-    MSG_error_t res = MSG_OK;
+    res = MSG_OK;
 
     // prepare the dynar of all async messages recipients
     int cpt = 0;
@@ -7609,8 +7717,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 data_req_free(me, &rcv_req);
                 task_free(task);
 
-                XBT_VERB("Node %d: TASK_SPLIT done",
-                        me->self.id);
+                XBT_VERB("Node %d: TASK_SPLIT done for new node %d",
+                        me->self.id,
+                        rcv_args.split.new_node_id);
             }
             break;
 
@@ -7830,7 +7939,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                      */
                                     if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
 
-                                        set_update(me, -1);
+                                        //set_update(me, -1);
+                                        set_update(me,
+                                                rcv_args.broadcast.args->set_active.new_id);
                                     }
 
                                     task_free(task);
@@ -7851,7 +7962,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                      */
                                     if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
 
-                                        set_update(me, -1);
+                                        //set_update(me, -1);
+                                        set_update(me,
+                                                rcv_args.broadcast.args->set_active.new_id);
                                     }
 
                                     ans_data_t answer_data = NULL;
@@ -7918,7 +8031,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                      */
                                     if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
 
-                                        set_update(me, -1);
+                                        //set_update(me, -1);
+                                        set_update(me,
+                                                rcv_args.broadcast.args->set_active.new_id);
                                     }
 
                                     task_free(task);
@@ -8391,6 +8506,15 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     state.active,
                     state.new_id,
                     (val_ret == UPDATE_NOK ? "NOK" : "OK"));
+            break;
+
+        case TASK_GET_CNX_REQ_QUEUE:
+            get_dynar(me, rcv_args.get_dynar.cnx_req_dyn);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
+            XBT_VERB("Node %d: TASK_GET_CNX_REQ_QUEUE done", me->self.id);
             break;
     }
 
