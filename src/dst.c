@@ -1240,8 +1240,9 @@ static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem) {
 static e_val_ret_t cs_req(node_t me, unsigned int T, int sender_id, int new_node_id) {
     XBT_IN();
 
-    XBT_VERB("Node %d: in cs_req() for new node %d from %d",
+    XBT_VERB("Node %d: in cs_req(%u) for new node %d from %d",
             me->self.id,
+            T,
             new_node_id,
             sender_id);
 
@@ -1250,27 +1251,28 @@ static e_val_ret_t cs_req(node_t me, unsigned int T, int sender_id, int new_node
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
 
-    // if local execution, don't do anything (already done before broadcast)
+    // if local execution, don't update local clock (already done before broadcast)
     if (sender_id != me->self.id) {
 
         me->T = (T > me->Tcs ? T : me->Tcs) + 1;
-        if ((state.active == 'u' && state.new_id != new_node_id) ||
+    }
+
+    if ((state.active == 'u' && state.new_id != new_node_id) ||
             (me->cs_req == 1 &&
              ((me->Tcs < T) || (me->Tcs == T && sender_id > me->self.id)))) {
 
-            // answer NOK
-            val_ret = UPDATE_NOK;
+        // answer NOK
+        val_ret = UPDATE_NOK;
 
-        } else {
+    } else {
 
-            // answer OK
-            if (me->cs_req == 0) {
+        // answer OK
+        if (me->cs_req == 0) {
 
-                me->cs_req = 1;
-                me->Tcs = T;
-            }
-            val_ret = OK;
+            me->cs_req = 1;
+            me->Tcs = T;
         }
+        val_ret = OK;
     }
 
     display_sc(me, 'V');
@@ -1651,7 +1653,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
 
     display_expected_answers(me, 'D');
 
-    XBT_DEBUG("Node %d - end of wait_for_completion(): val_ret = '%s' -"
+    XBT_VERB("Node %d - end of wait_for_completion(): val_ret = '%s' -"
             " nok_id = %d",
             me->self.id,
             (ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
@@ -3195,6 +3197,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             args.broadcast.source_id);
 
     e_val_ret_t ret = OK;
+    e_val_ret_t local_ret = OK;
 
     /*
        XBT_VERB("Node %d: In broadcast - Broadcast stage = %d, bro_idx = %d",
@@ -3333,9 +3336,15 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                 args.broadcast.stage == 0 &&
                 me->self.id == args.broadcast.source_id)) {
         //if (task_sent != NULL && ret != UPDATE_NOK) {
+
+        // return NOK if any of both answers is NOK
         if (task_sent != NULL) {
 
-            ret = handle_task(me, &task_sent);
+            local_ret = handle_task(me, &task_sent);
+            if (local_ret == UPDATE_NOK || ret == UPDATE_NOK) {
+
+                ret = UPDATE_NOK;
+            }
         }
     } else {
 
@@ -3824,7 +3833,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
         display_sc(me, 'V');
 
         // if current node isn't available, reject request
-        if (state.active == 'u' || me->cs_req == 1) {
+        if ((state.active == 'u') && (state.new_id != new_node.id)) {
 
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
                     me->self.id,
@@ -7947,6 +7956,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                     task_free(task);
 
                                     //TODO: Ne pas continuer si UPDATE_NOK ici
+                                    //sauf pour CS_REQ
 
                                     // Transmit the message to lower stage.
                                     rcv_args.broadcast.stage--;
