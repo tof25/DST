@@ -3833,7 +3833,8 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
         display_sc(me, 'V');
 
         // if current node isn't available, reject request
-        if ((state.active == 'u') && (state.new_id != new_node.id)) {
+        if ((state.active == 'u' && state.new_id != new_node.id) ||
+            (state.active == 'a' && me->cs_req == 1)) {
 
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
                     me->self.id,
