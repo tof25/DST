@@ -523,6 +523,8 @@ typedef struct req_data {
 
 } s_req_data_t, *req_data_t;
 
+/*****************************************************************************/
+
 /**
  * Return values
  */
@@ -593,7 +595,7 @@ typedef struct {
  */
 typedef union answer {
 
-    char                    fill[48];       // to allow direct assignment
+    char                            fill[48];       // to allow direct assignment
     s_task_ans_get_rep_t            get_rep;
     s_task_ans_cnx_req_t            cnx_req;
     s_task_ans_nb_pred_t            nb_pred;
@@ -609,13 +611,13 @@ typedef union answer {
  */
 struct ans_data {
 
-    e_task_type_t type;                     // answer type (must match request type)
-    int sender_id;                          // sender id
-    char sent_to[MAILBOX_NAME_SIZE];        // recipient mailbox
-    int recipient_id;                       // recipient id
-    u_ans_data_t answer;                    // returned data
-    e_task_type_t br_type;                  /* type of broadcasted task
-                                               (must match request one) */
+    int           new_node_id;                 // concerned new coming node's id
+    e_task_type_t br_type;                     // broadcasted task type (must match request one)
+    e_task_type_t type;                        // answer type (must match request type)
+    int           sender_id;                   // sender id
+    char          sent_to[MAILBOX_NAME_SIZE];  // recipient mailbox
+    int           recipient_id;                // recipient id
+    u_ans_data_t  answer;                      // returned data
 };
 
 
@@ -652,10 +654,11 @@ static void  display_expected_answers(node_t me, char log);
 static void  display_states(node_t me, char mode);
 static void  display_sc(node_t me, char mode);
 static int   expected_answers_search(node_t me,
-        xbt_dynar_t dynar,
-        e_task_type_t type,
-        e_task_type_t br_type,
-        int recp_id);
+                                     xbt_dynar_t dynar,
+                                     e_task_type_t type,
+                                     e_task_type_t br_type,
+                                     int recp_id,
+                                     int new_node_id);
 static int   state_search(node_t me, char active, int new_id);
 static u_ans_data_t is_brother(node_t me, int id, int new_node_id);
 static int dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem);
@@ -1095,20 +1098,22 @@ return idx;
 */
 
 /**
- * \brief Returns the position of '{type, br_type, id}' in given dynar
+ * \brief Returns the position of '{type, br_type, id, new_node_id}' in given dynar
  *        (either sync or async expected answers)
  * \param me the current node
  * \param dynar the dynar to search into
  * \param type the task type to search
- * \param br_type the braodcasted task type to search
+ * \param br_type the broadcasted task type to search
  * \param recp_id the recipient id to search
+ * \param new_node_id the new node id attached to the answer
  * \return the position of found entry (-1 if not found)
  */
 static int expected_answers_search(node_t me,
         xbt_dynar_t dynar,
         e_task_type_t type,
         e_task_type_t br_type,
-        int recp_id) {
+        int recp_id,
+        int new_node_id) {
 
     XBT_IN();
 
@@ -1131,6 +1136,7 @@ static int expected_answers_search(node_t me,
         if (elem->type == type &&
                 elem->br_type == br_type &&
                 elem->recp.id == recp_id &&
+                elem->new_node_id == new_node_id &&
                 elem->answer_data == NULL) {
 
             // record found
@@ -1330,7 +1336,7 @@ static void cs_rel(node_t me, int new_node_id) {
  * \brief Wait for the completion of a bunch of async sent tasks
  * \param me the current node
  * \param ans_cpt the number of expected anwswers
- * \return A value to indicate if tasks succeed or not
+ * \return A value indicating if tasks succeeded or not
  */
 static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
 
@@ -1360,8 +1366,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
     s_state_t state;
 
     // async answers already received ? (from other calls of this function)
-    for (idx = dynar_size - 1;
-            idx >= dynar_size - ans_cpt; idx--) {
+    for (idx = dynar_size - 1; idx >= dynar_size - ans_cpt; idx--) {
 
         elem_ptr = xbt_dynar_get_ptr(me->expected_answers, idx);
         if ((*elem_ptr)->recp.id == -1) {
@@ -1414,8 +1419,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                 state.new_id,
                 ans_cpt);
 
-        //display_expected_answers(me, 'V');
-
         if (res != MSG_OK) {
 
             // reception failure
@@ -1467,7 +1470,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                         me->expected_answers,
                         ans->type,
                         ans->br_type,
-                        ans->sender_id);
+                        ans->sender_id,
+                        ans->new_node_id);
 
                 XBT_VERB("Node %d in wait_for_completion(): record%sfound"
                         " in async answers dynar: idx = %d",
@@ -1554,7 +1558,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                             me->sync_answers,
                             ans->type,
                             ans->br_type,
-                            ans->sender_id);
+                            ans->sender_id,
+                            ans->new_node_id);
 
                     XBT_VERB("Node %d in wait_for_completion(): record%sfound"
                             " in sync answers dynar: idx = %d",
@@ -2896,7 +2901,8 @@ static MSG_error_t send_msg_sync(node_t me,
                         me->sync_answers,
                         ans->type,
                         ans->br_type,
-                        ans->sender_id);
+                        ans->sender_id,
+                        ans->new_node_id);
 
                 XBT_DEBUG("Node %d in send_msg_sync(): record found in dynar ?"
                         " %s: idx = %d",
@@ -2976,7 +2982,9 @@ static MSG_error_t send_msg_sync(node_t me,
                                 me->expected_answers,
                                 ans->type,
                                 ans->br_type,
-                                ans->sender_id);
+                                ans->sender_id,
+                                ans->new_node_id);
+
                         if (dynar_idx != -1) {
 
                             /* this task is one of the expected acknowledgments:
@@ -3159,8 +3167,7 @@ static MSG_error_t send_ans_sync(node_t me,
 
     // init answer data
     ans_data->type = type;
-    ans_data->br_type = (type == TASK_BROADCAST ?
-            u_ans_data.handle.br_type : TASK_NULL);
+    ans_data->br_type = (type == TASK_BROADCAST ? u_ans_data.handle.br_type : TASK_NULL);
     ans_data->sender_id = me->self.id;
     ans_data->recipient_id = recipient_id;
     ans_data->answer = u_ans_data;
@@ -3458,9 +3465,7 @@ static void init(node_t me) {
     me->states = xbt_dynar_new(sizeof(state_t), &xbt_free_ref);
     set_state(me, me->self.id, 'b');    // building in progress
 
-    //me->recp_array = NULL;
-    //me->recp_size = 0;
-    me->expected_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+    me->expected_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);    //TODO : changer ce nom en async_answers
     me->remain_tasks = xbt_dynar_new(sizeof(m_task_t), &xbt_free_ref);
     me->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
     me->T = 0;
@@ -7505,8 +7510,8 @@ int node(int argc, char *argv[]) {
 /**
  * \brief This function is called by the current node when it receives a task
  * \param me the current node
- * \param task pointer to the task to handle
- * \return A value to indicate if things went right or not
+ * \param task pointer to the task to be handled
+ * \return A value indicating if things went right or not
  */
 static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
@@ -7536,7 +7541,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         XBT_DEBUG("Node %d: only requests accepted in handle_task !",
                 me->self.id);
 
-        data_ans_free(me, &rcv); 
+        data_ans_free(me, &rcv);
         task_free(task);
 
         return val_ret;
@@ -7633,7 +7638,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
         case TASK_NEW_BROTHER_RCV:
             new_brother_received(me, rcv_args.new_brother_rcv.new_node);
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+            res = send_ans_sync(me, type, rcv_req->sender_id, answer);          //TODO : answer n'est pas initialisé
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -7659,7 +7664,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 split_request(me,
                         rcv_args.split_req.stage_nbr,
                         rcv_args.split_req.new_node_id);
-                res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+                res = send_ans_sync(me, type, rcv_req->sender_id, answer);      //TODO : answer n'est pas initialisé
 
                 data_req_free(me, &rcv_req);
                 task_free(task);
@@ -7819,13 +7824,14 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                     /* state 'u': only accept broadcasts of:
                        - SET_UPDATE
-                       - SET_ACTIVE
-                       (if they are triggered by the same new node as
-                       current one)
+                       (if it's been triggered by the same new node as current one)
 
+                       - SET_ACTIVE
                        - ADD_STAGE
                        - SPLIT
-                       */
+                       - CS_REQ
+                       - CS_REL
+                    */
                     (state.active == 'u' &&
                      (
                       !(rcv_args.broadcast.type == TASK_SET_UPDATE &&
@@ -7839,7 +7845,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                       */
 
                       rcv_args.broadcast.type != TASK_SET_ACTIVE &&
-
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT &&
                       rcv_args.broadcast.type != TASK_CS_REQ &&
@@ -7952,12 +7957,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                      */
                                     if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
 
-                                        //set_update(me, -1);
                                         set_update(me,
                                                 rcv_args.broadcast.args->set_active.new_id);
                                     }
 
-                                    task_free(task);
+                                    task_free(task);                            //TODO : vérifier cette libération
 
                                     rcv_args.broadcast.first_call = 0;
                                     val_ret = broadcast(me, rcv_args);
@@ -7975,7 +7979,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                      */
                                     if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
 
-                                        //set_update(me, -1);
                                         set_update(me,
                                                 rcv_args.broadcast.args->set_active.new_id);
                                     }
@@ -8045,15 +8048,13 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                      */
                                     if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
 
-                                        //set_update(me, -1);
                                         set_update(me,
                                                 rcv_args.broadcast.args->set_active.new_id);
                                     }
 
                                     task_free(task);
 
-                                    //TODO: Ne pas continuer si UPDATE_NOK ici
-                                    //sauf pour CS_REQ
+                                    //TODO: Ne pas continuer si UPDATE_NOK ici sauf pour CS_REQ ?
 
                                     // Transmit the message to lower stage.
                                     rcv_args.broadcast.stage--;
@@ -8239,7 +8240,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.broad_merge.right,
                     rcv_args.broad_merge.lead_br);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+            res = send_ans_sync(me, type, rcv_req->sender_id, answer);          //TODO : answer pas initialisé
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8271,7 +8272,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         case TASK_MERGE_REQ:
             merge_request(me);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+            res = send_ans_sync(me, type, rcv_req->sender_id, answer);          //TODO : answer pas initialisé
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8532,7 +8533,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         case TASK_CS_REL:
             cs_rel(me, rcv_args.cs_rel.new_node_id);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+            res = send_ans_sync(me, type, rcv_req->sender_id, answer);          //TODO : answer par initialisé
 
             data_req_free(me, &rcv_req);
             task_free(task);
