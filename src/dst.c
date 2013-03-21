@@ -266,13 +266,13 @@ typedef struct {
 
 typedef struct {
 
-    s_node_rep_t new_node;
+    int new_node_id;
     int          try;
 } s_task_cnx_req_t;             // get the DST ready to receive a new node
 
 typedef struct {
 
-    s_node_rep_t new_node;
+    int new_node_id;
 } s_task_new_brother_rcv_t;     // insert a new node in a node's first stage
 
 typedef struct {
@@ -379,6 +379,7 @@ typedef struct {
 } s_task_del_root_t;            // delete the root stage
 
 typedef struct {
+
     int new_node_id;
 } s_task_merge_req_t;
 
@@ -392,10 +393,12 @@ typedef struct {
                                    occured in lower ones */
 
 typedef struct {
+
     int new_id;
 } s_task_set_active_t;          // set node state as 'a' (active)
 
 typedef struct {
+
     int new_id;
 } s_task_set_update_t;          // set node state as 'u' (update)
 
@@ -405,11 +408,13 @@ typedef struct {
 } s_task_set_state_t;           // set node state as given state
 
 typedef struct {
+
     int new_node_id;
     int id;
 } s_task_is_brother_t;          // check if id is a brother of mine
 
 typedef struct {
+
     int new_node_id;
     int st;
     int right;
@@ -418,12 +423,14 @@ typedef struct {
 } s_task_transfer_t;            // transfer some nodes to another group
 
 typedef struct {
+
     int  stage;
     int  start;
     int  end;
 } s_task_del_member_t;          // delete a part of current group during a transfer
 
 typedef struct {
+
     int        new_node_id;
     int        stage;
     node_rep_t bro;
@@ -432,6 +439,7 @@ typedef struct {
 } s_task_add_bro_array_t;       // add an array of brothers
 
 typedef struct {
+
     int new_node_id;
     int stage;
     s_node_rep_t new_node;
@@ -439,12 +447,14 @@ typedef struct {
 } s_task_shift_bro_t;           // shift brothers to let a new one come in
 
 typedef struct {
+
     int new_node_id;
     int stage;
     int new_id;
 } s_task_add_bro_t;             // add a brother at a given stage
 
 typedef struct {
+
     int new_node_id;
     int stage;
     int right;
@@ -452,6 +462,7 @@ typedef struct {
 } s_task_cut_node_t;            // Cut node during a transfer
 
 typedef struct {
+
     int        new_node_id;
     int        stage;
     node_rep_t bro;
@@ -460,6 +471,7 @@ typedef struct {
 } s_task_br_add_bro_array_t;    // broadcast an add_bro_array task
 
 typedef struct {
+
     int new_node_id;
     int stage;
     int pos2repl;
@@ -467,16 +479,19 @@ typedef struct {
 } s_task_update_upper_stage_t;  // update upper stage after a transfer
 
 typedef struct {
+
     int new_node_id;
 } s_task_get_new_contact_t;    // get new contact (in case of too much failures)
 
 typedef struct {
+
     int          new_node_id;
     unsigned int T;
     int          sender_id;
 } s_task_cs_req_t;             // ask permission to get into Critical Section
 
 typedef struct {
+
     int new_node_id;
 } s_task_cs_rel_t;             // Critical Section is released
 
@@ -691,8 +706,8 @@ static void send_completed(node_t me, e_task_type_t type, int recipient_id, int 
 static void         init(node_t me);
 static int          join(node_t me, int contact_id, int try);
 static u_ans_data_t get_rep(node_t me, int stage, int new_node_id);
-static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, int try);
-static void         new_brother_received(node_t me, s_node_rep_t new_node);
+static u_ans_data_t connection_request(node_t me, int new_node_id, int try);
+static void         new_brother_received(node_t me, int new_node_id);
 static void         split_request(node_t me, int stage_nbr, int new_node_id);
 static void         add_stage(node_t me);
 static void         add_pred(node_t me, int stage, int id);
@@ -2435,33 +2450,36 @@ static void display_expected_answers(node_t me, char log) {
         switch(log) {
 
             case 'D':
-                XBT_DEBUG("elem[%d] = {%s | %s - %d-'%s' - %p}",
+                XBT_DEBUG("elem[%d] = {%s | %s - %d-'%s' - %p - new_node %d}",
                         cpt,
                         debug_msg[elem->type],
                         debug_msg[elem->br_type],
                         elem->recp.id,
                         elem->recp.mailbox,
-                        elem->answer_data);
+                        elem->answer_data,
+                        elem->new_node_id);
                 break;
 
             case 'V':
-                XBT_VERB("elem[%d] = {%s | %s - %d-'%s' - %p}",
+                XBT_VERB("elem[%d] = {%s | %s - %d-'%s' - %p - new_node %d}",
                         cpt,
                         debug_msg[elem->type],
                         debug_msg[elem->br_type],
                         elem->recp.id,
                         elem->recp.mailbox,
-                        elem->answer_data);
+                        elem->answer_data,
+                        elem->new_node_id);
                 break;
 
             case 'I':
-                XBT_INFO("elem[%d] = {%s | %s - %d-'%s' - %p}",
+                XBT_INFO("elem[%d] = {%s | %s - %d-'%s' - %p - new_node %d}",
                         cpt,
                         debug_msg[elem->type],
                         debug_msg[elem->br_type],
                         elem->recp.id,
                         elem->recp.mailbox,
-                        elem->answer_data);
+                        elem->answer_data,
+                        elem->new_node_id);
                 break;
         }
 
@@ -2728,6 +2746,11 @@ static MSG_error_t send_msg_sync(node_t me,
     req_elem->br_type =
         (type == TASK_BROADCAST ? args.broadcast.type : TASK_NULL);
     req_elem->answer_data = NULL;
+
+    // every request data's first field is new_node_id - so get_rep is OK
+    // TODO : si c'est pas bon, il faut modifier send_msg_sync pour ajouter new_node_id à ses arguments
+    req_elem->new_node_id = req_data->args.get_rep.new_node_id;
+
     xbt_dynar_push(me->sync_answers, &req_elem);
 
     XBT_DEBUG("Node %d: {type = '%s - %s' - recipient = %d - answer_data = %p}"
@@ -3537,7 +3560,7 @@ static int join(node_t me, int contact_id, int try) {
 
     // prepare data to exchange
     u_req_args_t u_req_args;
-    u_req_args.cnx_req.new_node = me->self;
+    u_req_args.cnx_req.new_node_id = me->self.id;
     u_req_args.cnx_req.try = try;
 
     //ans_data_t answer_data = xbt_new0(s_ans_data_t, 1);
@@ -3802,11 +3825,11 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
  * \brief This function makes room for a new node joining the DST if necessary
  *        and insert it.
  * \param me the current node
- * \param new_node the joining node
+ * \param new_node_id the involved new coming node
  * \param try number of joining attempts
  * \return Answer data containing the contact's routing table
  */
-static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, int try) {
+static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
 
     XBT_IN();
 
@@ -3815,7 +3838,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
             me->self.id,
             state.active,
             state.new_id,
-            new_node.id);
+            new_node_id);
 
     u_ans_data_t answer;
     e_val_ret_t val_ret = UPDATE_NOK;
@@ -3830,7 +3853,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
 
         // me isn't the leader: transfer the request to the leader
 
-        set_update(me, new_node.id);
+        set_update(me, new_node_id);
 
         state = get_state(me);
         XBT_INFO("Node %d: '%c'/%d -Transfering 'Connection request' to the leader %d",
@@ -3840,7 +3863,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                 me->brothers[0][0].id);
 
         u_req_args_t args;
-        args.cnx_req.new_node = new_node;
+        args.cnx_req.new_node_id = new_node_id;
         args.cnx_req.try = try;
 
         ans_data_t answer_data = NULL;
@@ -3864,7 +3887,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
         data_ans_free(me, &answer_data);
 
         // can be active now
-        set_active(me, new_node.id);
+        set_active(me, new_node_id);
 
     } else {
 
@@ -3882,7 +3905,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
         display_sc(me, 'V');
 
         // if current node isn't available, reject request
-        if ((state.active == 'u' && state.new_id != new_node.id) ||
+        if ((state.active == 'u' && state.new_id != new_node_id) ||
             (state.active != 'u' && state.active != 'a')) {
 
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
@@ -3901,7 +3924,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
             val_ret = OK;
 
             // node is being updated
-            //set_update(me, new_node.id);
+            //set_update(me, new_node_id);
             state = get_state(me);
 
             int n = 0;
@@ -3922,7 +3945,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                         me->self.id,
                         state.active,
                         state.new_id,
-                        new_node.id);
+                        new_node_id);
 
                 // to set DST infos
                 if (n == me->height) {
@@ -3957,11 +3980,11 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                 }
                 args.broadcast.first_call = 1;
                 args.broadcast.source_id = me->self.id;
-                args.broadcast.new_node_id = new_node.id;
+                args.broadcast.new_node_id = new_node_id;
                 args.broadcast.lead_br = 1;     // broadcast only to leaders
 
                 args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                args.broadcast.args->cs_req.new_node_id = new_node.id;
+                args.broadcast.args->cs_req.new_node_id = new_node_id;
                 args.broadcast.args->cs_req.sender_id = me->self.id;
                 args.broadcast.args->cs_req.T = me->Tcs;
                 make_broadcast_task(me, args, &task_sent);
@@ -3991,11 +4014,11 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                     }
                     args.broadcast.first_call = 1;
                     args.broadcast.source_id = me->self.id;
-                    args.broadcast.new_node_id = new_node.id;
+                    args.broadcast.new_node_id = new_node_id;
                     args.broadcast.lead_br = 1;     // broadcast only to leaders
 
                     args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                    args.broadcast.args->set_update.new_id = new_node.id;
+                    args.broadcast.args->set_update.new_id = new_node_id;
                     make_broadcast_task(me, args, &task_sent);
 
                     val_ret = handle_task(me, &task_sent);
@@ -4008,18 +4031,18 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                     xbt_assert(val_ret != UPDATE_NOK,
                             "Node %d: Set UPDATE error while making room for node %d",
                             me->self.id,
-                            new_node.id);
+                            new_node_id);
 
                     // splits stages
                     int k;
                     for (k = n; k > 0; k--) {
 
-                        split_request(me, k, new_node.id);
+                        split_request(me, k, new_node_id);
                     }
 
                     XBT_VERB("Node %d: Back to connection request for new node %d",
                             me->self.id,
-                            new_node.id);
+                            new_node_id);
 
                     // TODO : TROP TOT ? - Non si 'me' reste bien à 'u'
 
@@ -4040,11 +4063,11 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                     }
                     args.broadcast.first_call = 1;
                     args.broadcast.source_id = me->self.id;
-                    args.broadcast.new_node_id = new_node.id;
+                    args.broadcast.new_node_id = new_node_id;
                     args.broadcast.lead_br = 0;             //TODO !! test passer à 1
 
                     args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                    args.broadcast.args->set_active.new_id = new_node.id;
+                    args.broadcast.args->set_active.new_id = new_node_id;
                     make_broadcast_task(me, args, &task_sent);
 
                     handle_task(me, &task_sent);
@@ -4069,11 +4092,11 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                     }
                     args.broadcast.first_call = 1;
                     args.broadcast.source_id = me->self.id;
-                    args.broadcast.new_node_id = new_node.id;
+                    args.broadcast.new_node_id = new_node_id;
                     args.broadcast.lead_br = 1;
 
                     args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                    args.broadcast.args->cs_rel.new_node_id = new_node.id;
+                    args.broadcast.args->cs_rel.new_node_id = new_node_id;
                     make_broadcast_task(me, args, &task_sent);
 
                     handle_task(me, &task_sent);
@@ -4086,7 +4109,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                             me->self.id,
                             state.active,
                             state.new_id,
-                            new_node.id);
+                            new_node_id);
                 }
             }
         }
@@ -4094,14 +4117,14 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
         // continue only if set_update succeeded
         if (val_ret != UPDATE_NOK) {
 
-            set_update(me, new_node.id);    // stay at 'u' until the end
+            set_update(me, new_node_id);    // stay at 'u' until the end
 
             state = get_state(me);
             XBT_INFO("Node %d: '%c'/%d - **** INSERTING NODE %d ... ****",
                     me->self.id,
                     state.active,
                     state.new_id,
-                    new_node.id);
+                    new_node_id);
 
             /* tells every first stage concerned node to let the new node in */
 
@@ -4125,7 +4148,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
 
                     /* sends a 'New Brother Receive' task to every brother other
                        than 'me' */
-                    args.new_brother_rcv.new_node = new_node;
+                    args.new_brother_rcv.new_node_id = new_node_id;
 
                     res = send_msg_async(me,
                             TASK_NEW_BROTHER_RCV,
@@ -4143,7 +4166,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                     elem->type = TASK_NEW_BROTHER_RCV;
                     elem->br_type = TASK_NULL;
                     elem->recp = cpy_brothers[i];
-                    elem->new_node_id = new_node.id;
+                    elem->new_node_id = new_node_id;
                     elem->answer_data = NULL;
                     xbt_dynar_push(me->expected_answers, &elem);
 
@@ -4156,7 +4179,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                 } else {
 
                     // local call for 'me'
-                    new_brother_received(me, new_node);
+                    new_brother_received(me, new_node_id);
                 }
             }
 
@@ -4176,20 +4199,20 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
             answer.cnx_req.contact_state = state;
 
             // now, me can be active
-            set_active(me, new_node.id);
+            set_active(me, new_node_id);
 
             state = get_state(me);
             XBT_INFO("Node %d: '%c'/%d - **** NODE %d INSERTED ****",
                     me->self.id,
                     state.active,
                     state.new_id,
-                    new_node.id);
+                    new_node_id);
 
             /* set every member to 'p' to show that their preds table is about
                to change (when adding the new coming node in it) */
 
             u_req_args_t u_req_args;
-            u_req_args.set_state.new_id = new_node.id;
+            u_req_args.set_state.new_id = new_node_id;
             u_req_args.set_state.state = 'p';
 
             for (i = 1; i < me->height; i++) {    // not needed for stage 0
@@ -4215,7 +4238,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
             // cs_req returned NOK
 
             /*
-               int idx = state_search(me, 'u', new_node.id);
+               int idx = state_search(me, 'u', new_node_id);
                if (idx > -1) {
 
                XBT_DEBUG("Node %d: idx = %d", me->self.id, idx);
@@ -4228,7 +4251,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
                     me->self.id,
                     state.active,
                     state.new_id,
-                    new_node.id,
+                    new_node_id,
                     try);
 
             /*
@@ -4267,7 +4290,7 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
             args.broadcast.lead_br = 0;             //TODO !! test passer à 1
 
             args.broadcast.args = xbt_new0(u_req_args_t, 1);
-            args.broadcast.args->set_active.new_id = new_node.id;
+            args.broadcast.args->set_active.new_id = new_node_id;
             make_broadcast_task(me, args, &task_sent);
 
             handle_task(me, &task_sent);
@@ -4301,12 +4324,12 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
  * \param me the current node
  * \param new_node the new coming node
  */
-static void new_brother_received(node_t me, s_node_rep_t new_node) {
+static void new_brother_received(node_t me, int new_node_id) {
 
     XBT_IN();
 
-    add_brother(me, 0, new_node.id);
-    add_pred(me, 0, new_node.id);
+    add_brother(me, 0, new_node_id);
+    add_pred(me, 0, new_node_id);
 
     XBT_OUT();
 }
@@ -7611,12 +7634,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         case TASK_CNX_REQ:
             //TODO : voir s'il ne faudrait pas aussi tester l'état du leader ici
 
-            if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node.id) ||
+            if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) ||
                 (state.active == 'a')) {
 
                 // run task now
                 answer = connection_request(me,
-                        rcv_args.cnx_req.new_node,
+                        rcv_args.cnx_req.new_node_id,
                         rcv_args.cnx_req.try);
 
                 XBT_DEBUG("Node %d: CNX_REQ val_ret = %d - contact = %d",
@@ -7625,7 +7648,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                         answer.cnx_req.new_contact.id);
 
                 res = send_ans_sync(me,
-                        rcv_args.cnx_req.new_node.id,
+                        rcv_args.cnx_req.new_node_id,
                         type,
                         rcv_req->sender_id,
                         answer);
@@ -7645,7 +7668,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     // send an answer back ...
                     answer.cnx_req.val_ret = val_ret;
                     res = send_ans_sync(me,
-                            rcv_args.cnx_req.new_node.id,
+                            rcv_args.cnx_req.new_node_id,
                             type,
                             rcv_req->sender_id,
                             answer);
@@ -7657,7 +7680,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                             me->self.id,
                             state.active,
                             state.new_id,
-                            rcv_args.cnx_req.new_node.id);
+                            rcv_args.cnx_req.new_node_id);
 
                     xbt_dynar_push(me->remain_tasks, task);
                     *task = NULL;
@@ -7667,9 +7690,9 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             break;
 
         case TASK_NEW_BROTHER_RCV:
-            new_brother_received(me, rcv_args.new_brother_rcv.new_node);
+            new_brother_received(me, rcv_args.new_brother_rcv.new_node_id);
             res = send_ans_sync(me,
-                    rcv_args.new_brother_rcv.new_node.id,
+                    rcv_args.new_brother_rcv.new_node_id,
                     type,
                     rcv_req->sender_id,
                     answer);          //TODO : answer n'est pas initialisé
