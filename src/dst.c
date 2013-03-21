@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/02/16
+ *  Written by Christophe Enderlin on 2013/03/21
  *
  */
 
@@ -256,11 +256,12 @@ static const char* debug_msg[] = {
 
 /**
  * Requests args
+ * IMPORTANT NOTE : new_node_id must be the first field of all structures
  */
 typedef struct {
 
-    int stage;
     int new_node_id;
+    int stage;
 } s_task_get_rep_t;             // get a node representative
 
 typedef struct {
@@ -276,93 +277,94 @@ typedef struct {
 
 typedef struct {
 
-    int stage_nbr;
     int new_node_id;
+    int stage_nbr;
 } s_task_split_req_t;           // request a node to split
 
 typedef struct {
 
-    int stage,
+    int new_node_id,
+        stage,
         pos_init,
         pos_new,
         init_rep_id,
-        new_rep_id,
-        new_node_id;
+        new_rep_id;
 } s_task_cnx_groups_t;          // make a node connect to his newly splitted sons
 
 typedef struct {
 
-    int stage_nbr; 
     int new_node_id;
+    int stage_nbr;
 } s_task_split_t;               // execute the splitting
 
 typedef struct {
 
-    int stage;
     int new_node_id;
+    int stage;
 } s_task_nb_pred_t;             /* get the number of predecessors of a node,
                                    given its stage */
 
 typedef struct {
 
+    int new_node_id;
     int stage;
     int new_pred_id;
-    int new_node_id;
 } s_task_add_pred_t;            // add a predessessor
 
 typedef struct {
 
+    int new_node_id;
     int stage;
     int pred2del_id;
-    int new_node_id;
 } s_task_del_pred_t;            // delete a predecessor
 
 typedef union req_args u_req_args_t, *req_args_t;
 
 typedef struct {
 
+    int new_node_id;
     e_task_type_t type;
     int stage;
     int first_call;
     int source_id;
-    int new_node_id;
     int lead_br;
     req_args_t args;
 } s_task_broadcast_t;           // broadcast a message of type 'type'
 
 typedef struct {
 
-    int stage;
     int new_node_id;
+    int stage;
 } s_task_get_size_t;            // get the number of brothers on 'stage'
 
 typedef struct {
 
+    int new_node_id;
     int stage;
     int bro2del;
-    int new_node_id;
 } s_task_del_bro_t;             // delete a brother for a given stage
 
 typedef struct {
 
+    int new_node_id;
     int stage;
     int new_id;
-    int new_node_id;
 } s_task_repl_bro_t;            // replace brother by a new one
 
 typedef struct {
 
+    int new_node_id;
     int *nodes_array;
     int nodes_array_size;
     int stage;
     int pos_me;
     int pos_contact;
     int right;
-    int new_node_id;
 } s_task_merge_t;               // execute a merging of groups
 
 typedef struct {
 
+    int new_node_id;
     int stage;
     int pos_me;
     int pos_contact;
@@ -372,11 +374,17 @@ typedef struct {
 
 typedef struct {
 
+    int new_node_id;
     int init_height;
 } s_task_del_root_t;            // delete the root stage
 
 typedef struct {
+    int new_node_id;
+} s_task_merge_req_t;
 
+typedef struct {
+
+    int new_node_id;
     int stage;
     int pos_me;
     int pos_contact;
@@ -397,16 +405,16 @@ typedef struct {
 } s_task_set_state_t;           // set node state as given state
 
 typedef struct {
-    int id;
     int new_node_id;
+    int id;
 } s_task_is_brother_t;          // check if id is a brother of mine
 
 typedef struct {
+    int new_node_id;
     int st;
     int right;
     int cut_pos;
     s_node_rep_t sender;
-    int new_node_id;
 } s_task_transfer_t;            // transfer some nodes to another group
 
 typedef struct {
@@ -416,34 +424,35 @@ typedef struct {
 } s_task_del_member_t;          // delete a part of current group during a transfer
 
 typedef struct {
+    int        new_node_id;
     int        stage;
     node_rep_t bro;
     int        array_size;
     int        right;
-    int        new_node_id;
 } s_task_add_bro_array_t;       // add an array of brothers
 
 typedef struct {
+    int new_node_id;
     int stage;
     s_node_rep_t new_node;
     int right;
-    int new_node_id;
 } s_task_shift_bro_t;           // shift brothers to let a new one come in
 
 typedef struct {
+    int new_node_id;
     int stage;
     int new_id;
-    int new_node_id;
 } s_task_add_bro_t;             // add a brother at a given stage
 
 typedef struct {
+    int new_node_id;
     int stage;
     int right;
     int cut_pos;
-    int new_node_id;
 } s_task_cut_node_t;            // Cut node during a transfer
 
 typedef struct {
+    int        new_node_id;
     int        stage;
     node_rep_t bro;
     int        array_size;
@@ -451,6 +460,7 @@ typedef struct {
 } s_task_br_add_bro_array_t;    // broadcast an add_bro_array task
 
 typedef struct {
+    int new_node_id;
     int stage;
     int pos2repl;
     int new_id;
@@ -461,8 +471,8 @@ typedef struct {
 } s_task_get_new_contact_t;    // get new contact (in case of too much failures)
 
 typedef struct {
-    unsigned int T;
     int          new_node_id;
+    unsigned int T;
     int          sender_id;
 } s_task_cs_req_t;             // ask permission to get into Critical Section
 
@@ -491,6 +501,7 @@ union req_args {
     s_task_merge_t              merge;
     s_task_broadcast_merge_t    broad_merge;
     s_task_del_root_t           del_root;
+    s_task_merge_req_t          merge_req;
     s_task_clean_stage_t        clean_stage;
     s_task_set_active_t         set_active;
     s_task_set_update_t         set_update;
@@ -531,7 +542,6 @@ typedef struct req_data {
 typedef struct {
 
     s_node_rep_t new_rep;
-    int new_node_id;
 } s_task_ans_get_rep_t;
 
 typedef struct {
@@ -547,19 +557,16 @@ typedef struct {
     // for DST infos
     int add_stage;
     int nbr_split_stages;
-    int new_node_id;
 } s_task_ans_cnx_req_t;
 
 typedef struct {
 
     int load;
-    int new_node_id;
 } s_task_ans_nb_pred_t;
 
 typedef struct {
 
     int size;
-    int new_node_id;
 } s_task_ans_get_size_t;
 
 typedef struct {
@@ -567,13 +574,11 @@ typedef struct {
     e_val_ret_t   val_ret;
     e_task_type_t br_type;
     int           val_ret_id;
-    int           new_node_id;
 } s_task_ans_handle_t;
 
 typedef struct {
 
     int rep;
-    int new_node_id;
 } s_task_ans_is_brother_t;
 
 typedef struct {
@@ -581,13 +586,11 @@ typedef struct {
     node_rep_t rep_array;
     int rep_array_size;
     int stay_id;
-    int new_node_id;
 } s_task_ans_transfer_t;
 
 typedef struct {
 
     int id;
-    int new_node_id;
 } s_task_ans_get_new_contact_t;
 
 /**
@@ -677,9 +680,10 @@ static MSG_error_t send_msg_async(node_t me,
         int recipient_id,
         u_req_args_t args);
 static MSG_error_t send_ans_sync(node_t me,
-        e_task_type_t type,
-        int recipient_id,
-        u_ans_data_t u_ans_data);
+                                 int new_node_id,
+                                 e_task_type_t type,
+                                 int recipient_id,
+                                u_ans_data_t u_ans_data);
 static e_val_ret_t broadcast(node_t me, u_req_args_t args);
 static void send_completed(node_t me, e_task_type_t type, int recipient_id, int new_node_id);
 
@@ -694,12 +698,12 @@ static void         add_stage(node_t me);
 static void         add_pred(node_t me, int stage, int id);
 static void         del_pred(node_t me, int stage, int pred2del);
 static void         del_member(node_t me, int stage, int start, int end);
-static void         cut_node(node_t me, int stage, int right, int cut_pos);
+static void         cut_node(node_t me, int stage, int right, int cut_pos, int new_node_id);
 static void         add_brother(node_t me, int stage, int id);
 static void         insert_bro(node_t me, int stage, int id);
-static void         add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right);
-static void         br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right);
-static void         update_upper_stage(node_t me, int stage, int pos2repl, int new_id);
+static void         add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right, int new_node_id);
+static void         br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right, int new_node_id);
+static void         update_upper_stage(node_t me, int stage, int pos2repl, int new_id, int new_node_id);
 static void         del_bro(node_t me, int stage, int bro2del);
 static void         connect_splitted_groups(node_t me,
         int stage,
@@ -716,26 +720,30 @@ static void         merge(node_t me,
         int stage,
         int pos_me,
         int pos_contact,
-        int right);
+        int right,
+        int new_node_id);
 static void         broadcast_merge(node_t me,
         int stage,
         int pos_me,
         int pos_contact,
         int right,
-        int lead_br);
+        int lead_br,
+        int new_node_id);
 static void         leave(node_t me);
-static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_rep_t sender);
+static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_rep_t sender, int new_node_id);
 static void         replace_bro(node_t me,
         int stage,
         int init_idx,
-        int new_id);
-static void         shift_bro(node_t me, int stage, s_node_rep_t new_node, int right);
+        int new_id,
+        int new_node_id);
+static void         shift_bro(node_t me, int stage, s_node_rep_t new_node, int right, int new_node_id);
 static void         del_root(node_t me, int init_height);
 static void         clean_upper_stage(node_t me,
         int stage,
         int pos_me,
-        int pos_contact);
-static void         merge_request(node_t me);
+        int pos_contact,
+        int new_node_id);
+static void         merge_request(node_t me, int new_node_id);
 static void         load_balance(node_t me, int contact_id);
 static u_ans_data_t get_new_contact(node_t me, int new_node_id);
 
@@ -1208,7 +1216,6 @@ static u_ans_data_t is_brother(node_t me, int id, int new_node_id) {
 
     u_ans_data_t answer;
     answer.is_brother.rep = -1;
-    answer.is_brother.new_node_id = new_node_id;
     int i;
 
     for (i = 0; i < me->bro_index[0]; i++) {
@@ -1536,8 +1543,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
                                 ans->answer.handle.val_ret;
                             (*elem_ptr)->answer_data->answer.handle.val_ret_id =
                                 ans->answer.handle.val_ret_id;
-                            (*elem_ptr)->answer_data->answer.handle.new_node_id =
-                                ans->answer.handle.new_node_id;
                         }
                     }
 
@@ -3006,8 +3011,6 @@ static MSG_error_t send_msg_sync(node_t me,
                                     ans->answer.handle.val_ret;
                                 (*elem_ptr)->answer_data->answer.handle.val_ret_id =
                                     ans->answer.handle.val_ret_id;
-                                (*elem_ptr)->answer_data->answer.handle.new_node_id =
-                                    ans->answer.handle.new_node_id;
                             }
 
                             XBT_VERB("Node %d: async answer '%s - %s' received from %d"
@@ -3152,11 +3155,13 @@ static MSG_error_t send_msg_async(node_t me,
 /**
  * \brief Sends an answer back to a requesting node
  * \param me the current node
+ * \param new_node_id new involved coming node
  * \param type type of sent task (must match the type of request that is answered)
- * \param recipient_id id of the recipient
+ * \param recipient_id answer's recipient id
  * \param answer_data data answered back
  */
 static MSG_error_t send_ans_sync(node_t me,
+        int new_node_id,
         e_task_type_t type,
         int recipient_id,
         u_ans_data_t u_ans_data) {
@@ -3166,6 +3171,7 @@ static MSG_error_t send_ans_sync(node_t me,
     ans_data_t ans_data = xbt_new0(s_ans_data_t, 1);
 
     // init answer data
+    ans_data->new_node_id = new_node_id;
     ans_data->type = type;
     ans_data->br_type = (type == TASK_BROADCAST ? u_ans_data.handle.br_type : TASK_NULL);
     ans_data->sender_id = me->self.id;
@@ -3426,7 +3432,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
  * \param type the type of message to send back
  *             (must match the one that's acknowledged)
  * \param recipient_id the recipient of this message
- * \param new_node_id new concerned coming node
+ * \param new_node_id new involved coming node
  */
 static void send_completed(node_t me, e_task_type_t type, int recipient_id, int new_node_id) {
 
@@ -3434,9 +3440,8 @@ static void send_completed(node_t me, e_task_type_t type, int recipient_id, int 
 
     u_ans_data_t answer;
     answer.handle.val_ret = OK;
-    answer.handle.new_node_id = new_node_id;
 
-    send_ans_sync(me, type, recipient_id, answer);
+    send_ans_sync(me, new_node_id, type, recipient_id, answer);
 
     XBT_VERB("Node %d: '%s Completed' message sent to %d",
             me->self.id,
@@ -3789,8 +3794,6 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
             "Node %d: (in get_rep) dynar states is empty !",
             me->self.id);
 
-    answer.get_rep.new_node_id = new_node_id;
-
     XBT_OUT();
     return answer;
 }
@@ -3822,8 +3825,6 @@ static u_ans_data_t connection_request(node_t me, const s_node_rep_t new_node, i
     // to set DST infos
     answer.cnx_req.add_stage = 0;
     node_rep_t cpy_brothers = NULL;
-
-    answer.cnx_req.new_node_id = new_node.id;
 
     if (me->self.id != me->brothers[0][0].id) {
 
@@ -4728,8 +4729,9 @@ static void del_member(node_t me, int stage, int start, int end) {
  * \param stage stage where cutting takes place
  * \param right leaving side (1 if right part leaves)
  * \param cut_pos cut position (cut_pos included in the leaving part)
+ * \param new_node_id the involved leaving node
  */
-static void cut_node(node_t me, int stage, int right, int cut_pos) {
+static void cut_node(node_t me, int stage, int right, int cut_pos, int new_node_id) {
 
     XBT_IN();
 
@@ -4783,7 +4785,8 @@ static void cut_node(node_t me, int stage, int right, int cut_pos) {
         shift_bro(me,
                 stage + 1,
                 new_node,
-                right);
+                right,
+                new_node_id);
     }
 
     /*** split nodes at given stage with del_member() ***/
@@ -4898,8 +4901,9 @@ static void insert_bro(node_t me, int stage, int id) {
  * \param bro array of coming brothers
  * \param array_size number of coming brothers
  * \param right side where to add the given array
+ * \param new_node_id the new involved coming node
  */
-static void add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right) {
+static void add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right, int new_node_id) {
     XBT_IN();
 
     int i;
@@ -4914,7 +4918,7 @@ static void add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, 
 
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
-    args.add_pred.new_node_id = me->self.id;        //TODO : solution temporaire à reprendre
+    args.add_pred.new_node_id = new_node_id;
 
     if (right == 0) {
 
@@ -4969,8 +4973,9 @@ static void add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, 
  * \param bro array of coming brothers
  * \param array_size number of coming brothers
  * \param right coming side
+ * \param new_node_id the new involved coming node
  */
-static void br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right) {
+static void br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right, int new_node_id) {
 
     XBT_IN();
 
@@ -4982,7 +4987,7 @@ static void br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_siz
     args.broadcast.stage = stage;
     args.broadcast.first_call = 1;
     args.broadcast.source_id = me->self.id;
-    args.broadcast.new_node_id = me->self.id;           //TODO : solution temporaire à reprendre
+    args.broadcast.new_node_id = new_node_id;
     args.broadcast.lead_br = 0;
 
     args.broadcast.args = xbt_new0(u_req_args_t, 1);
@@ -4991,7 +4996,7 @@ static void br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_siz
     args.broadcast.args->add_bro_array.bro = bro;
     args.broadcast.args->add_bro_array.array_size = array_size;
     args.broadcast.args->add_bro_array.right = right;
-    args.broadcast.args->add_bro_array.new_node_id = me->self.id;   //TODO : solution temporaire à reprendre
+    args.broadcast.args->add_bro_array.new_node_id = new_node_id;
 
     make_broadcast_task(me, args, &task_sent);
     handle_task(me, &task_sent);
@@ -5010,8 +5015,9 @@ static void br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_siz
  * \param stage the stage where the transfer took place
  * \param pos2repl position of the rep to be replaced
  * \param new_id the rep pointing to the staying part
+ * \param new_node_id the involved leaving node
  */
-static void update_upper_stage(node_t me, int stage, int pos2repl, int new_id) {
+static void update_upper_stage(node_t me, int stage, int pos2repl, int new_id, int new_node_id) {
 
     XBT_IN();
 
@@ -5033,7 +5039,8 @@ static void update_upper_stage(node_t me, int stage, int pos2repl, int new_id) {
             replace_bro(me,
                     stage + 1,
                     pos2repl,
-                    new_id);
+                    new_id,
+                    new_node_id);
 
             XBT_VERB("Node %d: node %d replaced by node %d in stage %d",
                     me->self.id,
@@ -5630,7 +5637,6 @@ static int merge_or_transfer(node_t me, int stage) {
 
     u_req_args_t args;
     args.get_size.stage = stage;
-    args.get_size.new_node_id = me->self.id;        //TODO : Solution temporaire à reprendre
 
     ans_data_t answer_data = NULL;
     u_ans_data_t answer;
@@ -5698,6 +5704,7 @@ static int merge_or_transfer(node_t me, int stage) {
  * \param pos_contact upper stage position of target node in source node's table
  * \param right equals 1 (or 11) if 'source' comes from the right of 'target' --
  *              0 (or 10) otherwise.
+ * \param new_node_id the new involved coming node
  */
 static void merge(node_t me,
         int *nodes_array,
@@ -5705,7 +5712,8 @@ static void merge(node_t me,
         int stage,
         int pos_me,
         int pos_contact,
-        int right) {
+        int right,
+        int new_node_id) {
 
     XBT_IN();
 
@@ -5737,7 +5745,7 @@ static void merge(node_t me,
     MSG_error_t res;
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
-    args.add_pred.new_node_id = me->self.id;        // TODO : solution temporaire à reprendre
+    args.add_pred.new_node_id = new_node_id;
 
     /* if merge() is broadcasted, right equals 0 or 1. If merge() is simply
      * called, it equals 10 or 11. This is to manage side flipping for coming
@@ -5935,8 +5943,9 @@ static void merge(node_t me,
  * \param pos_contact same as merge() (see this function)
  * \param right same as merge() (see this function)
  * \param lead_br broadcast only to leaders
+ * \param new_node_id new involved coming node
  */
-static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, int right, int lead_br) {
+static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, int right, int lead_br, int new_node_id) {
 
     XBT_IN();
 
@@ -5949,7 +5958,7 @@ static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, i
     args.broadcast.stage = stage;           // same stage as the merging one
     args.broadcast.first_call = 1;
     args.broadcast.source_id = me->self.id;
-    args.broadcast.new_node_id = me->self.id;       //TODO : solution temporaire à reprendre
+    args.broadcast.new_node_id = new_node_id;
     args.broadcast.lead_br = lead_br;       // TODO : peut-être pas utile (toujours à 0 dans cette fonction)
 
     args.broadcast.args = xbt_new0(u_req_args_t, 1);
@@ -5966,6 +5975,7 @@ static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, i
     args.broadcast.args->merge.pos_me = pos_me;
     args.broadcast.args->merge.pos_contact = pos_contact;
     args.broadcast.args->merge.right = right;
+    args.broadcast.args->merge.new_node_id = new_node_id;
     make_broadcast_task(me, args, &task_sent);
 
     handle_task(me, &task_sent);
@@ -6067,7 +6077,7 @@ static void leave(node_t me) {
 
                         args.repl_bro.stage = stage;
                         args.repl_bro.new_id = new_rep_id;
-                        args.repl_bro.new_node_id = me->self.id;    //TODO : solution temporaire à reprendre
+                        args.repl_bro.new_node_id = me->self.id;
 
                         XBT_DEBUG("stage = %d - new_rep_id = %d",
                                 args.repl_bro.stage,
@@ -6174,6 +6184,7 @@ static void leave(node_t me) {
                 idx,
                 me->bro_index[0]);
 
+        args.merge_req.new_node_id = me->self.id;
         ans_data_t answer_data = NULL;
 
         //TODO: Faut-il effacer args ici ?
@@ -6213,9 +6224,10 @@ static void leave(node_t me) {
  * \param right leaving side (1 if right part leaves)
  * \param cut_pos cut position (cut_pos included in the leaving part)
  * \param sender the caller of this function
+ * \param new_node_id the involved leaving node
  * \return the array of extracted nodes (the leaving part)
  */
-static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_rep_t sender) {
+static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_rep_t sender, int new_node_id) {
     //TODO ôter l'argument sender qui ne sert plus à rien
 
     XBT_IN();
@@ -6260,8 +6272,6 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
         answer.transfer.rep_array[i - start] = me->brothers[st][i];
     }
 
-    answer.transfer.new_node_id = me->self.id;          //TODO : solution temporaire à reprendre
-
     // broadcast a CUT_NODE task to split all involved nodes
     XBT_VERB("Node %d: Broadcast a CUT_NODE task", me->self.id);
 
@@ -6269,7 +6279,7 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
     args.broadcast.stage = st;
     args.broadcast.first_call = 1;
     args.broadcast.source_id = me->self.id;
-    args.broadcast.new_node_id = me->self.id;           //TODO : solution temporaire à reprendre
+    args.broadcast.new_node_id = new_node_id;
     args.broadcast.lead_br = 0;
 
     args.broadcast.args = xbt_new0(u_req_args_t, 1);
@@ -6277,7 +6287,7 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
     args.broadcast.args->cut_node.stage = st;
     args.broadcast.args->cut_node.right = right;
     args.broadcast.args->cut_node.cut_pos = cut_pos;
-    args.broadcast.args->cut_node.new_node_id = me->self.id;    //TODO : solution temporaire à reprendre
+    args.broadcast.args->cut_node.new_node_id = new_node_id;
 
     m_task_t task_sent = NULL;
     make_broadcast_task(me, args, &task_sent);
@@ -6298,8 +6308,9 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
  * \param init_idx the brother index to be replaced
  *                 (if greater than current size then just add the new brother)
  * \param new_id the new brother id to set
+ * \param new_node_id the involved leaving node
  */
-static void replace_bro(node_t me, int stage, int init_idx, int new_id) {
+static void replace_bro(node_t me, int stage, int init_idx, int new_id, int new_node_id) {
 
     XBT_IN();
 
@@ -6334,7 +6345,7 @@ static void replace_bro(node_t me, int stage, int init_idx, int new_id) {
 
         args.del_pred.stage = stage;
         args.del_pred.pred2del_id = me->self.id;
-        args.del_pred.new_node_id = me->self.id;    //TODO : solution temporaire à reprendre
+        args.del_pred.new_node_id = new_node_id;
 
         res = send_msg_async(me,
                 TASK_DEL_PRED,
@@ -6352,7 +6363,7 @@ static void replace_bro(node_t me, int stage, int init_idx, int new_id) {
 
         args.add_pred.stage = stage;
         args.add_pred.new_pred_id = me->self.id;
-        args.add_pred.new_node_id = me->self.id;        //TODO : solution temporaire à reprendre
+        args.add_pred.new_node_id = new_node_id;
 
         res = send_msg_async(me,
                 TASK_ADD_PRED,
@@ -6377,8 +6388,9 @@ static void replace_bro(node_t me, int stage, int init_idx, int new_id) {
  * \param stage stage where shifting takes place
  * \param new_node the new coming node
  * \param right shift way (if 1, shift to the right)
+ * \param new_node_id the involved leaving node
  */
-static void shift_bro(node_t me, int stage, s_node_rep_t new_node, int right) {
+static void shift_bro(node_t me, int stage, s_node_rep_t new_node, int right, int new_node_id) {
 
     XBT_IN();
 
@@ -6494,7 +6506,7 @@ static void shift_bro(node_t me, int stage, s_node_rep_t new_node, int right) {
     // 'me' is no longer a predecessor of lost_id
     args.del_pred.stage = stage;
     args.del_pred.pred2del_id = me->self.id;
-    args.del_pred.new_node_id = me->self.id;        //TODO : solution temporaire à reprendre
+    args.del_pred.new_node_id = new_node_id;
 
     res = send_msg_async(me,
             TASK_DEL_PRED,
@@ -6558,8 +6570,9 @@ static void del_root(node_t me, int init_height) {
  * \param stage the current stage
  * \param pos_me upper stage position of source node in its table
  * \param pos_contact upper stage position of target node in source node's table
+ * \param new_node_id the involved leaving node
  */
-static void clean_upper_stage(node_t me, int stage, int pos_me, int pos_contact) {
+static void clean_upper_stage(node_t me, int stage, int pos_me, int pos_contact, int new_node_id) {
 
     XBT_IN();
 
@@ -6624,7 +6637,7 @@ static void clean_upper_stage(node_t me, int stage, int pos_me, int pos_contact)
         // delete predecessor
         args.del_pred.stage = stage + 1;
         args.del_pred.pred2del_id = me->self.id;
-        args.del_pred.new_node_id = me->self.id;        //TODO : solution temporaire à reprendre
+        args.del_pred.new_node_id = new_node_id;
 
         res = send_msg_async(me,
                 TASK_DEL_PRED,
@@ -6650,8 +6663,9 @@ static void clean_upper_stage(node_t me, int stage, int pos_me, int pos_contact)
  * \brief Manage merges when a node leaves the DST
  *        (has to be run by one of leaving node's brothers)
  * \param me the current node
+ * \param new_node_id new involved leaving node
  */
-static void merge_request(node_t me) {
+static void merge_request(node_t me, int new_node_id) {
 
     XBT_IN();
 
@@ -6697,7 +6711,7 @@ static void merge_request(node_t me) {
             args.merge.pos_contact = pos_contact;
             //args.merge.right = (pos_me > pos_contact ? 11 : 10);
             args.merge.right = (pos_me > pos_contact ? 1 : 0);
-            args.merge.new_node_id = me->self.id;       //TODO : solution temporaire à reprendre
+            args.merge.new_node_id = new_node_id;
 
             XBT_DEBUG("Node %d: Merge Request: send TASK_MERGE to %d - "
                     "pos_contact = %d - pos_me = %d - current stage = %d",
@@ -6727,6 +6741,7 @@ static void merge_request(node_t me) {
             args.broad_merge.pos_contact = pos_contact;
             args.broad_merge.right = (pos_me > pos_contact ? 1 : 0);
             args.broad_merge.lead_br = 0;
+            args.broad_merge.new_node_id = new_node_id;
 
             res = send_msg_sync(me,
                     TASK_BROADCAST_MERGE,
@@ -6745,7 +6760,7 @@ static void merge_request(node_t me) {
              * them has to be deleted */
 
             // local call
-            clean_upper_stage(me, stage, pos_me, pos_contact);
+            clean_upper_stage(me, stage, pos_me, pos_contact, new_node_id);
 
             xbt_assert(stage < me->height,
                     "Node %d: clean stage error - stage = %d - height = %d",
@@ -6759,7 +6774,7 @@ static void merge_request(node_t me) {
             args.broadcast.stage = stage + 1;
             args.broadcast.first_call = 1;
             args.broadcast.source_id = me->self.id;
-            args.broadcast.new_node_id = me->self.id;       //TODO : Solution temporaire à reprendre
+            args.broadcast.new_node_id = new_node_id;
             args.broadcast.lead_br = 0;
 
             args.broadcast.args = xbt_new0(u_req_args_t, 1);
@@ -6767,6 +6782,7 @@ static void merge_request(node_t me) {
             args.broadcast.args->clean_stage.stage = stage;
             args.broadcast.args->clean_stage.pos_me = pos_me;
             args.broadcast.args->clean_stage.pos_contact = pos_contact;
+            args.broadcast.args->clean_stage.new_node_id = new_node_id;
 
             m_task_t task_sent = NULL;
             make_broadcast_task(me, args, &task_sent);
@@ -6809,7 +6825,7 @@ static void merge_request(node_t me) {
             args.transfer.right = right;
             args.transfer.cut_pos = cut_pos;
             args.transfer.sender = me->self;
-            args.transfer.new_node_id = me->self.id;        //TODO : solution temporaire à reprendre
+            args.transfer.new_node_id = new_node_id;
 
             answer_data = NULL;
             res = send_msg_sync(me,
@@ -6849,7 +6865,8 @@ static void merge_request(node_t me) {
                     stage,
                     answer_data->answer.transfer.rep_array,
                     answer_data->answer.transfer.rep_array_size,
-                    (right + 1) % 2);
+                    (right + 1) % 2,
+                    new_node_id);
 
             // every member of neighbour branch append current nodes
             XBT_VERB("Node %d : Ask %d to broadcast an ADD_BRO_ARRAY task",
@@ -6860,6 +6877,7 @@ static void merge_request(node_t me) {
             args.br_add_bro_array.bro = current_bro;
             args.br_add_bro_array.array_size = current_size;
             args.br_add_bro_array.right = right;
+            args.br_add_bro_array.new_node_id = new_node_id;
 
             res = send_msg_sync(me,
                     TASK_BR_ADD_BRO_ARRAY,
@@ -6886,7 +6904,7 @@ static void merge_request(node_t me) {
                     me->bro_index[stage] - answer_data->answer.transfer.rep_array_size);
             */
 
-            update_upper_stage(me, stage, pos_contact, answer_data->answer.transfer.stay_id);
+            update_upper_stage(me, stage, pos_contact, answer_data->answer.transfer.stay_id, new_node_id);
 
             // update upper stage for all concerned members
             m_task_t task_sent = NULL;
@@ -6904,7 +6922,7 @@ static void merge_request(node_t me) {
             args.broadcast.stage = stage + 1;
             args.broadcast.first_call = 1;
             args.broadcast.source_id = me->self.id;
-            args.broadcast.new_node_id = me->self.id;   //TODO : Solution temporaire à reprendre
+            args.broadcast.new_node_id = new_node_id;
             args.broadcast.lead_br = 0;
 
             args.broadcast.args = xbt_new0(u_req_args_t, 1);
@@ -6912,6 +6930,7 @@ static void merge_request(node_t me) {
             args.broadcast.args->update_upper_stage.stage = stage;
             args.broadcast.args->update_upper_stage.pos2repl = pos_contact;
             args.broadcast.args->update_upper_stage.new_id = answer_data->answer.transfer.stay_id;
+            args.broadcast.args->update_upper_stage.new_node_id = new_node_id;
 
             make_broadcast_task(me, args, &task_sent);
             handle_task(me, &task_sent);
@@ -6946,7 +6965,6 @@ static void merge_request(node_t me) {
     //answer_data = NULL;
 
     args.get_size.stage = me->height - 1;
-    args.get_size.new_node_id = me->self.id;        //TODO : Solution temporaire à reprendre
 
     display_rout_table(me, 'V');
 
@@ -7020,11 +7038,12 @@ static void merge_request(node_t me) {
         args.broadcast.stage = me->height - 1;
         args.broadcast.first_call = 1;
         args.broadcast.source_id = me->self.id;
-        args.broadcast.new_node_id = me->self.id;           //TODO : Solution temporaire à reprendre
+        args.broadcast.new_node_id = new_node_id;
         args.broadcast.lead_br = 0;
 
         args.broadcast.args = xbt_new0(u_req_args_t, 1);
         args.broadcast.args->del_root.init_height = me->height;
+        args.broadcast.args->del_root.new_node_id = new_node_id;
         make_broadcast_task(me, args, &task_sent);
 
         handle_task(me, &task_sent);
@@ -7251,7 +7270,6 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
 
     idx = rand() % (me->bro_index[stage]);
     answer.get_new_contact.id = me->brothers[stage][idx].id;
-    answer.get_new_contact.new_node_id = new_node_id;
 
     XBT_OUT();
     return answer;
@@ -7577,7 +7595,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                 // run task now
                 answer = get_rep(me, rcv_args.get_rep.stage, rcv_args.get_rep.new_node_id);
-                res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+                res = send_ans_sync(me,
+                        rcv_args.get_rep.new_node_id,
+                        type,
+                        rcv_req->sender_id,
+                        answer);
 
                 data_req_free(me, &rcv_req);
                 task_free(task);
@@ -7602,7 +7624,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                         answer.cnx_req.val_ret,
                         answer.cnx_req.new_contact.id);
 
-                res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+                res = send_ans_sync(me,
+                        rcv_args.cnx_req.new_node.id,
+                        type,
+                        rcv_req->sender_id,
+                        answer);
 
                 data_req_free(me, &rcv_req);
                 task_free(task);
@@ -7618,7 +7644,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                     // send an answer back ...
                     answer.cnx_req.val_ret = val_ret;
-                    res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+                    res = send_ans_sync(me,
+                            rcv_args.cnx_req.new_node.id,
+                            type,
+                            rcv_req->sender_id,
+                            answer);
                     *task = NULL;
                 } else {
 
@@ -7638,7 +7668,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
         case TASK_NEW_BROTHER_RCV:
             new_brother_received(me, rcv_args.new_brother_rcv.new_node);
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);          //TODO : answer n'est pas initialisé
+            res = send_ans_sync(me,
+                    rcv_args.new_brother_rcv.new_node.id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);          //TODO : answer n'est pas initialisé
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -7664,7 +7698,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 split_request(me,
                         rcv_args.split_req.stage_nbr,
                         rcv_args.split_req.new_node_id);
-                res = send_ans_sync(me, type, rcv_req->sender_id, answer);      //TODO : answer n'est pas initialisé
+
+                res = send_ans_sync(me,
+                        rcv_args.split_req.new_node_id,
+                        type,
+                        rcv_req->sender_id,
+                        answer);      //TODO : answer n'est pas initialisé
 
                 data_req_free(me, &rcv_req);
                 task_free(task);
@@ -7757,9 +7796,13 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                         me->self.id);
 
                 answer.nb_pred.load = me->pred_index[rcv_args.nb_pred.stage];
-                answer.nb_pred.new_node_id = rcv_args.nb_pred.new_node_id;
             }
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            res = send_ans_sync(me,
+                    rcv_args.nb_pred.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -7877,8 +7920,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                     answer.handle.val_ret = val_ret;
                                     answer.handle.val_ret_id = me->self.id;
                                     answer.handle.br_type = rcv_args.broadcast.type;
-                                    answer.handle.new_node_id = rcv_args.broadcast.new_node_id;
-                                    res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+                                    res = send_ans_sync(me,
+                                            rcv_args.broadcast.new_node_id,
+                                            type,
+                                            rcv_req->sender_id,
+                                            answer);
 
                                     XBT_VERB("Node %d: answer '%s' sent to %d",
                                             me->self.id,
@@ -8015,8 +8062,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                     answer.handle.val_ret = val_ret;
                                     answer.handle.val_ret_id = me->self.id;
                                     answer.handle.br_type = rcv_args.broadcast.type;
-                                    answer.handle.new_node_id = rcv_args.broadcast.new_node_id;
-                                    res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+                                    res = send_ans_sync(me,
+                                            rcv_args.broadcast.new_node_id,
+                                            type,
+                                            rcv_req->sender_id,
+                                            answer);
 
                                     XBT_DEBUG("Node %d: answer '%s' sent to %d",
                                             me->self.id,
@@ -8127,8 +8178,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                     answer.handle.val_ret = val_ret;
                                     answer.handle.val_ret_id = me->self.id;
                                     answer.handle.br_type = rcv_args.broadcast.type;
-                                    answer.handle.new_node_id = rcv_args.broadcast.new_node_id;
-                                    res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+                                    res = send_ans_sync(me,
+                                            rcv_args.broadcast.new_node_id,
+                                            type,
+                                            rcv_req->sender_id,
+                                            answer);
 
                                     XBT_DEBUG("Node %d: answer '%s' sent to %d",
                                             me->self.id,
@@ -8156,8 +8211,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
         case TASK_GET_SIZE:
             answer.get_size.size = me->bro_index[rcv_args.get_size.stage];
-            answer.get_size.new_node_id = rcv_args.get_size.new_node_id;
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            res = send_ans_sync(me,
+                    rcv_args.get_size.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8197,7 +8256,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             replace_bro(me,
                     rcv_args.repl_bro.stage,
                     init_idx,
-                    rcv_args.repl_bro.new_id);
+                    rcv_args.repl_bro.new_id,
+                    rcv_args.repl_bro.new_node_id);
 
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
@@ -8218,7 +8278,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.merge.stage,
                     rcv_args.merge.pos_me,
                     rcv_args.merge.pos_contact,
-                    rcv_args.merge.right);
+                    rcv_args.merge.right,
+                    rcv_args.merge.new_node_id);
 
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
@@ -8238,9 +8299,14 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.broad_merge.pos_me,
                     rcv_args.broad_merge.pos_contact,
                     rcv_args.broad_merge.right,
-                    rcv_args.broad_merge.lead_br);
+                    rcv_args.broad_merge.lead_br,
+                    rcv_args.broad_merge.new_node_id);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);          //TODO : answer pas initialisé
+            res = send_ans_sync(me,
+                    rcv_args.broad_merge.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);          //TODO : answer pas initialisé
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8261,7 +8327,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             clean_upper_stage(me,
                     rcv_args.clean_stage.stage,
                     rcv_args.clean_stage.pos_me,
-                    rcv_args.clean_stage.pos_contact);
+                    rcv_args.clean_stage.pos_contact,
+                    rcv_args.clean_stage.new_node_id);
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8270,9 +8337,13 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             break;
 
         case TASK_MERGE_REQ:
-            merge_request(me);
+            merge_request(me, rcv_args.merge_req.new_node_id);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);          //TODO : answer pas initialisé
+            res = send_ans_sync(me,
+                    rcv_args.merge_req.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);          //TODO : answer pas initialisé
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8307,9 +8378,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                 answer.handle.val_ret = val_ret;
                 answer.handle.val_ret_id = me->self.id;
-                answer.handle.new_node_id = rcv_args.set_update.new_id;
-                res = send_ans_sync(me, type, rcv_req->sender_id, answer);
 
+                res = send_ans_sync(me,
+                        rcv_args.set_update.new_id,
+                        type,
+                        rcv_req->sender_id,
+                        answer);
             }
 
             data_req_free(me, &rcv_req);
@@ -8348,7 +8422,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
         case TASK_IS_BROTHER:
             answer = is_brother(me, rcv_args.is_brother.id, rcv_args.is_brother.new_node_id);
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+            res = send_ans_sync(me,
+                    rcv_args.is_brother.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8361,9 +8440,14 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.transfer.st,
                     rcv_args.transfer.right,
                     rcv_args.transfer.cut_pos,
-                    rcv_args.transfer.sender);
+                    rcv_args.transfer.sender,
+                    rcv_args.transfer.new_node_id);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+            res = send_ans_sync(me,
+                    rcv_args.transfer.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8393,7 +8477,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.add_bro_array.stage,
                     rcv_args.add_bro_array.bro,
                     rcv_args.add_bro_array.array_size,
-                    rcv_args.add_bro_array.right);
+                    rcv_args.add_bro_array.right,
+                    rcv_args.add_bro_array.new_node_id);
 
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
@@ -8411,7 +8496,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             shift_bro(me,
             rcv_args.shift_bro.stage,
             rcv_args.shift_bro.new_node,
-            rcv_args.shift_bro.right);
+            rcv_args.shift_bro.right,
+            rcv_args.shift_bro.new_node_id);
 
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
@@ -8446,7 +8532,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             cut_node(me,
                     rcv_args.cut_node.stage,
                     rcv_args.cut_node.right,
-                    rcv_args.cut_node.cut_pos);
+                    rcv_args.cut_node.cut_pos,
+                    rcv_args.cut_node.new_node_id);
 
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
@@ -8465,9 +8552,14 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     rcv_args.br_add_bro_array.stage,
                     rcv_args.br_add_bro_array.bro,
                     rcv_args.br_add_bro_array.array_size,
-                    rcv_args.br_add_bro_array.right);
+                    rcv_args.br_add_bro_array.right,
+                    rcv_args.br_add_bro_array.new_node_id);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+            res = send_ans_sync(me,
+                    rcv_args.br_add_bro_array.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8479,9 +8571,14 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             update_upper_stage(me,
                     rcv_args.update_upper_stage.stage,
                     rcv_args.update_upper_stage.pos2repl,
-                    rcv_args.update_upper_stage.new_id);
+                    rcv_args.update_upper_stage.new_id,
+                    rcv_args.update_upper_stage.new_node_id);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+            res = send_ans_sync(me,
+                    rcv_args.update_upper_stage.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8492,7 +8589,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         case TASK_GET_NEW_CONTACT:
             answer = get_new_contact(me, rcv_args.get_new_contact.new_node_id);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+            res = send_ans_sync(me,
+                    rcv_args.get_new_contact.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8516,8 +8617,12 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
                 answer.handle.val_ret = val_ret;
                 answer.handle.val_ret_id = me->self.id;
-                answer.handle.new_node_id = rcv_args.cs_req.new_node_id;
-                res = send_ans_sync(me, type, rcv_req->sender_id, answer);
+
+                res = send_ans_sync(me,
+                        rcv_args.cs_req.new_node_id,
+                        type,
+                        rcv_req->sender_id,
+                        answer);
             }
 
             data_req_free(me, &rcv_req);
@@ -8533,7 +8638,11 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         case TASK_CS_REL:
             cs_rel(me, rcv_args.cs_rel.new_node_id);
 
-            res = send_ans_sync(me, type, rcv_req->sender_id, answer);          //TODO : answer par initialisé
+            res = send_ans_sync(me,
+                    rcv_args.cs_rel.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    answer);          //TODO : answer par initialisé
 
             data_req_free(me, &rcv_req);
             task_free(task);
