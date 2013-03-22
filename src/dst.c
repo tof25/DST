@@ -209,6 +209,7 @@ typedef struct node {
     unsigned int    T;                      // local logical clock
     char            cs_req;                 // Critical Section requested
     unsigned int    Tcs;                    // last time a sc_req has been granted
+    int             cs_new_id;              // new_node_id that caused cs_req to be TRUE
 } s_node_t, *node_t;
 
 /**
@@ -649,7 +650,7 @@ static void  get_mailbox(int node_id, char* mailbox);
 static void  task_free(m_task_t* task);
 static int   index_bro(node_t me, int stage, int id);
 static int   index_pred(node_t me, int stage, int id);
-static e_val_ret_t wait_for_completion(node_t me, int ans_cpt);
+static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id);
 static int   tot_msg_number(void);
 static void  make_copy_brothers(node_t me,
         s_node_rep_t ***cpy_brothers,
@@ -685,20 +686,23 @@ static e_val_ret_t cs_req(node_t me, unsigned int T, int sender_id, int new_node
 static void cs_rel(node_t me, int new_node_id);
 
 // communication functions
-static MSG_error_t send_msg_sync(node_t me,
-        e_task_type_t type,
-        int recipient_id,
-        u_req_args_t args,
-        ans_data_t *answer_data);
-static MSG_error_t send_msg_async(node_t me,
-        e_task_type_t type,
-        int recipient_id,
-        u_req_args_t args);
+static MSG_error_t send_msg_sync(node_t        me,
+                                 e_task_type_t type,
+                                 int           recipient_id,
+                                 u_req_args_t  args,
+                                 ans_data_t   *answer_data);
+
+static MSG_error_t send_msg_async(node_t        me,
+                                  e_task_type_t type,
+                                  int           recipient_id,
+                                  u_req_args_t  args);
+
 static MSG_error_t send_ans_sync(node_t me,
                                  int new_node_id,
                                  e_task_type_t type,
                                  int recipient_id,
-                                u_ans_data_t u_ans_data);
+                                 u_ans_data_t u_ans_data);
+
 static e_val_ret_t broadcast(node_t me, u_req_args_t args);
 static void send_completed(node_t me, e_task_type_t type, int recipient_id, int new_node_id);
 
@@ -1147,14 +1151,15 @@ static int expected_answers_search(node_t me,
     xbt_dynar_foreach(dynar, iter, elem) {
 
         XBT_DEBUG("Node %d dynar traversal: iter = %d - idx = %d --> {type:"
-                " '%s | %s' - recipient: %d - data: %p}",
+                " '%s | %s' - recipient: %d - data: %p - new_node: %d}",
                 me->self.id,
                 iter,
                 pos,
                 debug_msg[elem->type],
                 debug_msg[elem->br_type],
                 elem->recp.id,
-                elem->answer_data);
+                elem->answer_data,
+                elem->new_node_id);
 
         if (elem->type == type &&
                 elem->br_type == br_type &&
@@ -1312,12 +1317,13 @@ static e_val_ret_t cs_req(node_t me, unsigned int T, int sender_id, int new_node
     // if local execution, don't update local clock (already done before broadcast)
     if (sender_id != me->self.id) {
 
-        me->T = (T > me->Tcs ? T : me->Tcs) + 1;
+        me->T = (T >= me->Tcs ? T : me->Tcs) + 1;
     }
 
     if ((state.active == 'u' && state.new_id != new_node_id) ||
             (me->cs_req == 1 &&
-             ((me->Tcs < T) || (me->Tcs == T && sender_id > me->self.id)))) {
+             (me->Tcs <= T && new_node_id != me->cs_new_id))) {
+             //((me->Tcs < T) || (me->Tcs == T && sender_id > me->self.id))))
 
         // answer NOK
         val_ret = UPDATE_NOK;
@@ -1329,6 +1335,7 @@ static e_val_ret_t cs_req(node_t me, unsigned int T, int sender_id, int new_node
 
             me->cs_req = 1;
             me->Tcs = me->T;
+            me->cs_new_id = new_node_id;
         }
         val_ret = OK;
     }
@@ -1358,9 +1365,10 @@ static void cs_rel(node_t me, int new_node_id) {
  * \brief Wait for the completion of a bunch of async sent tasks
  * \param me the current node
  * \param ans_cpt the number of expected anwswers
+ * \param new_node_id the involved new coming node
  * \return A value indicating if tasks succeeded or not
  */
-static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
+static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) {
 
     XBT_IN("\tNode %d: waiting for %d answers",
             me->self.id,
@@ -1394,13 +1402,17 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt) {
         if ((*elem_ptr)->recp.id == -1) {
 
             // check if an UPDATE_NOK has been received
-            if ((*elem_ptr)->answer_data != NULL &&
-                    ret != UPDATE_NOK) {
+            if ((*elem_ptr)->answer_data != NULL && ret != UPDATE_NOK) {
 
-                ret = (*elem_ptr)->answer_data->answer.handle.val_ret;
-                nok_id = (ret == UPDATE_NOK ?
-                        (*elem_ptr)->answer_data->answer.handle.val_ret_id :
-                        -1);
+                /* only records answers for the same "instance" of
+                   wait_for_completion */
+                if ((*elem_ptr)->new_node_id == new_node_id) {
+
+                    ret = (*elem_ptr)->answer_data->answer.handle.val_ret;
+                    nok_id = (ret == UPDATE_NOK ?
+                            (*elem_ptr)->answer_data->answer.handle.val_ret_id :
+                            -1);
+                }
             }
 
             if ((*elem_ptr)->answer_data != NULL) {
@@ -2561,33 +2573,36 @@ static void  display_sc(node_t me, char mode) {
     s_state_t state = get_state(me);
     switch (mode) {
         case 'V':
-            XBT_VERB("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d",
+            XBT_VERB("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d cs_new_id = %d",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->T,
                     me->Tcs,
-                    me->cs_req);
+                    me->cs_req,
+                    me->cs_new_id);
             break;
 
         case 'I':
-            XBT_INFO("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d",
+            XBT_INFO("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d cs_new_id = %d",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->T,
                     me->Tcs,
-                    me->cs_req);
+                    me->cs_req,
+                    me->cs_new_id);
             break;
 
         case 'D':
-            XBT_DEBUG("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d",
+            XBT_DEBUG("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d cs_new_id = %d",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->T,
                     me->Tcs,
-                    me->cs_req);
+                    me->cs_req,
+                    me->cs_new_id);
             break;
     }
 
@@ -3181,7 +3196,7 @@ static MSG_error_t send_msg_async(node_t me,
  * \param new_node_id new involved coming node
  * \param type type of sent task (must match the type of request that is answered)
  * \param recipient_id answer's recipient id
- * \param answer_data data answered back
+ * \param u_answer_data data answered back
  */
 static MSG_error_t send_ans_sync(node_t me,
         int new_node_id,
@@ -3208,8 +3223,9 @@ static MSG_error_t send_ans_sync(node_t me,
     m_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, ans_data);
     MSG_task_set_name(task_sent, "ans");
 
-    XBT_VERB("Node %d: Answering '%s - %s' to %d - '%s'",
+    XBT_VERB("Node %d: {%d} Answering '%s - %s' to %d - '%s'",
             ans_data->sender_id,
+            new_node_id,
             debug_msg[ans_data->type],
             debug_msg[ans_data->br_type],
             ans_data->recipient_id,
@@ -3381,7 +3397,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                 me->self.id);
         //display_expected_answers(me, 'V');
 
-        ret = wait_for_completion(me, ans_cpt);
+        ret = wait_for_completion(me, ans_cpt, args.broadcast.new_node_id);
         //xbt_free(recp_array);
 
         //xbt_free(elem);
@@ -3499,6 +3515,7 @@ static void init(node_t me) {
     me->T = 0;
     me->Tcs = 0;
     me->cs_req = 0;
+    me->cs_new_id = -1;
 
     // DST infos initialization
     me->dst_infos.order = 0;
@@ -3905,7 +3922,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
         display_sc(me, 'V');
 
         // if current node isn't available, reject request
-        if ((state.active == 'u' && state.new_id != new_node_id) ||
+        if ((me->cs_req == 1) ||
+            (state.active == 'u' && state.new_id != new_node_id) ||
             (state.active != 'u' && state.active != 'a')) {
 
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
@@ -3953,9 +3971,9 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 }
 
                 // set local clock
-                me->T++;
                 me->cs_req = 1;
-                me->Tcs = me->T;
+                me->Tcs = me->T + 1;
+                me->cs_new_id = new_node_id;
 
                 XBT_VERB("Node %d: in connection_request()", me->self.id);
                 display_sc(me, 'V');
@@ -4110,6 +4128,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                             state.active,
                             state.new_id,
                             new_node_id);
+                } else {
+
+                    // CS_REQ broadcast failed
+                    me->cs_req = 0;
                 }
             }
         }
@@ -4186,7 +4208,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             // synchro (5)
             if (cpt > 0) {
 
-                wait_for_completion(me, cpt);
+                wait_for_completion(me, cpt, new_node_id);
             }
             //xbt_free(recp_array);
 
@@ -5339,7 +5361,7 @@ static void connect_splitted_groups(node_t me,
     //synchro (4)
     if (cpt > 0) {
 
-        wait_for_completion(me, cpt);
+        wait_for_completion(me, cpt, new_node_id);
     }
 
     /*
@@ -5542,7 +5564,7 @@ static void split(node_t me, int stage, int new_node_id) {
     // synchro (2)
     if (cpt > 0) {
 
-        wait_for_completion(me, cpt);
+        wait_for_completion(me, cpt, new_node_id);
     }
 
     xbt_assert(idx <= b, "DST out of bounds. idx = %d", idx);
@@ -5620,7 +5642,7 @@ static void split(node_t me, int stage, int new_node_id) {
     if (ans_cpt > 0) {
 
         //wait_for_completion(me, ans_cpt, recp_array, cpy_pred_index);
-        wait_for_completion(me, ans_cpt);
+        wait_for_completion(me, ans_cpt, new_node_id);
     }
 
     // restore state    //TODO: non !! Trop tôt. Laisser faire la diffusion de set active
@@ -6140,7 +6162,7 @@ static void leave(node_t me) {
         // synchro
         if (cpt > 0) {
 
-            wait_for_completion(me, cpt);
+            wait_for_completion(me, cpt, me->self.id);
         }
 
         cpt = 0;
@@ -6186,7 +6208,7 @@ static void leave(node_t me) {
         // synchro
         if (cpt > 0) {
 
-            wait_for_completion(me, cpt);
+            wait_for_completion(me, cpt, me->self.id);
         }
         cpt = 0;
     }
@@ -7558,15 +7580,26 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
 
     XBT_IN();
 
-    xbt_assert(task != NULL, "Node %d: task must not be NULL !",
-            me->self.id);
+    xbt_assert(task != NULL, "Node %d: task must not be NULL !", me->self.id);
 
     e_val_ret_t val_ret = OK;
-    req_data_t rcv_req = (req_data_t) MSG_task_get_data(*task);
-    ans_data_t rcv = (ans_data_t) MSG_task_get_data(*task);
-    e_task_type_t type = rcv_req->type;
+
+    // don't handle answers
+    if (strcmp(MSG_task_get_name(*task), "ans") == 0) {
+
+        XBT_DEBUG("Node %d: only requests accepted in handle_task !",
+                me->self.id);
+
+        ans_data_t rcv = (ans_data_t) MSG_task_get_data(*task);
+        data_ans_free(me, &rcv);
+        task_free(task);
+
+        return val_ret;
+    }
 
     s_state_t state = get_state(me);
+    req_data_t rcv_req = (req_data_t) MSG_task_get_data(*task);
+    e_task_type_t type = rcv_req->type;
 
     XBT_VERB("Node %d - '%c'/%d: Handling task '%s - %s' received from node %d",
             me->self.id,
@@ -7575,18 +7608,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             MSG_task_get_name(*task),
             debug_msg[type],
             rcv_req->sender_id);
-
-    // don't handle answers
-    if (strcmp(MSG_task_get_name(*task), "ans") == 0) {
-
-        XBT_DEBUG("Node %d: only requests accepted in handle_task !",
-                me->self.id);
-
-        data_ans_free(me, &rcv);
-        task_free(task);
-
-        return val_ret;
-    }
 
     u_req_args_t rcv_args;
     if (rcv_req != NULL) {
@@ -8661,11 +8682,14 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         case TASK_CS_REL:
             cs_rel(me, rcv_args.cs_rel.new_node_id);
 
-            res = send_ans_sync(me,
-                    rcv_args.cs_rel.new_node_id,
-                    type,
-                    rcv_req->sender_id,
-                    answer);          //TODO : answer par initialisé
+            if (rcv_req->sender_id != me->self.id) {
+
+                res = send_ans_sync(me,
+                        rcv_args.cs_rel.new_node_id,
+                        type,
+                        rcv_req->sender_id,
+                        answer);          //TODO : answer par initialisé
+            }
 
             data_req_free(me, &rcv_req);
             task_free(task);
