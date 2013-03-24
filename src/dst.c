@@ -3853,7 +3853,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
 
     u_ans_data_t answer;
     e_val_ret_t val_ret = UPDATE_NOK;
-    int n = 0;
 
     display_rout_table(me, 'V');
 
@@ -3904,6 +3903,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
     } else {
 
         // me is the leader
+        int n = 0;
+
         state = get_state(me);
         XBT_INFO("Node %d: '%c'/%d - I am the leader",
                 me->self.id,
@@ -3948,6 +3949,12 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             u_req_args_t args;
             m_task_t task_sent = NULL;
 
+            // compute the number of stages that have to be splitted
+            while ((n < me->height) && (me->bro_index[n] == b)) {
+
+                n++;
+            }
+
             // broadcast a cs_req to all concerned leaders
             XBT_VERB("Node %d: broadcast a cs_req to all concerned leaders",
                     me->self.id);
@@ -3979,19 +3986,12 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             xbt_free(args.broadcast.args);
             args.broadcast.args = NULL;
 
-            // continue only if cs_req returned OK
-            // Critical Section access granted 
+            // continue only if cs_req returned OK -- Critical Section access granted
             if (val_ret != UPDATE_NOK) {
 
                 // node is being updated
                 //set_update(me, new_node_id);
                 //state = get_state(me);
-
-                while ((n < me->height) && (me->bro_index[n] == b)) {
-
-                    // n is the number of stages that have to be splitted
-                    n++;
-                }
 
                 // to set DST infos
                 answer.cnx_req.nbr_split_stages = n;
@@ -4129,6 +4129,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
 
                 // cs_req returned NOK
 
+                me->cs_req = 0;
+
                 state = get_state(me);
                 XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
                         me->self.id,
@@ -4258,10 +4260,9 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     }
                 }
             }
-
+            me->cs_req = 0;
         }
     }
-    me->cs_req = 0;
     answer.cnx_req.val_ret = val_ret;
 
     state = get_state(me);
