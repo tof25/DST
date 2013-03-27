@@ -1357,9 +1357,16 @@ static e_val_ret_t cs_req(node_t me, unsigned int T, int sender_id, int new_node
         }
     } else {
 
-        me->cs_req = 1;
-        me->cs_new_id = new_node_id;
-        me->cs_req_time = MSG_get_clock();
+        if (state.active == 'a') {
+
+            me->cs_req = 1;
+            me->cs_new_id = new_node_id;
+            me->cs_req_time = MSG_get_clock();
+            val_ret = OK;
+        } else {
+
+            val_ret = UPDATE_NOK;
+        }
     }
 
     display_sc(me, 'V');
