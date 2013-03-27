@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/03/21
+ *  Written by Christophe Enderlin on 2013/03/27
  *
  */
 
@@ -40,6 +40,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_WAIT_GET_REP 20                 /* won't wait longer an answer to a
                                                GET_REP request */
 #define MAX_JOIN 50                         // number of joining attempts
+#define MAX_CS_REQ 100                      // max time between cs_req and set_update
 
 static int nb_calls1 = 0;
 static int nb_calls2 = 0;
@@ -209,6 +210,7 @@ typedef struct node {
     unsigned int    T;                      // local logical clock
     char            cs_req;                 // Critical Section requested
     unsigned int    Tcs;                    // last time a sc_req has been granted
+    float           cs_req_time;            // time when cs_req was set
     int             cs_new_id;              // new_node_id that caused cs_req to be TRUE
 } s_node_t, *node_t;
 
@@ -1315,23 +1317,49 @@ static e_val_ret_t cs_req(node_t me, unsigned int T, int sender_id, int new_node
     s_state_t state = get_state(me);
 
     // if local execution, don't update local clock (already done before broadcast)
+    /*
     if (sender_id != me->self.id) {
 
         me->T = (T >= me->Tcs ? T : me->Tcs) + 1;
     }
+    */
 
+    /* to avoid dealocks : if CS has been requested and not answered for long
+       ago, cancel this request */
+    if (me->cs_req == 1 && state.active == 'a' &&
+        MSG_get_clock() - me->cs_req_time > MAX_CS_REQ) {
+
+        me->cs_req = 0;
+
+        XBT_VERB("Node %d: '%c'/%d cs_req set at clock %f--> reset",
+                me->self.id,
+                state.active,
+                state.new_id,
+                me->cs_req_time);
+    }
+
+    /*
     if ((state.active == 'u' && state.new_id != new_node_id) ||
         (me->cs_req == 1 &&
-         ((me->Tcs < T) || (me->Tcs == T && new_node_id != me->cs_new_id)))) {
-         //((me->Tcs < T) || (me->Tcs == T && sender_id > me->self.id))))
+         ((me->Tcs < T) || (me->Tcs == T && new_node_id != me->cs_new_id)))) 
+    */
 
-        // answer NOK
-        val_ret = UPDATE_NOK;
+    if (me->cs_req == 1) {
+        if (me->cs_new_id != new_node_id) {
 
+            // answer NOK
+            val_ret = UPDATE_NOK;
+
+        } else {
+
+            // answer OK
+            val_ret = OK;
+        }
     } else {
 
-        // answer OK
-        val_ret = OK;
+        me->cs_req = 1;
+        me->cs_new_id = new_node_id;
+        me->cs_req_time = MSG_get_clock();
     }
 
     display_sc(me, 'V');
@@ -1347,8 +1375,19 @@ static e_val_ret_t cs_req(node_t me, unsigned int T, int sender_id, int new_node
 static void cs_rel(node_t me, int new_node_id) {
     XBT_IN();
 
-    me->T++;
-    me->cs_req = 0;
+    //me->T++;
+    if (me->cs_new_id == new_node_id) {
+
+        me->cs_req = 0;
+        me->cs_req_time = MSG_get_clock();
+        me->cs_new_id = new_node_id;
+    }
+
+    s_state_t state = get_state(me);
+    XBT_VERB("Node %d: '%c'/%d end of cs_rel()",
+            me->self.id,
+            state.active,
+            state.new_id);
 
     display_sc(me, 'V');
 
@@ -1938,8 +1977,12 @@ static e_val_ret_t set_update(node_t me, int new_id) {
     e_val_ret_t val_ret;
     char test = 0;
 
+    XBT_VERB("Node %d: in set_update()", me->self.id);
+    display_sc(me, 'V');
+
     // test = 1 is this set_update is the one that's expected
-    if ((state.active = 'a') || (state.active = 'u' && state.new_id == new_id)) {
+    if (((me->cs_req == 1 && me->cs_new_id == new_id) || (me->cs_req == 0)) &&
+        ((state.active == 'a') || (state.active == 'u' && state.new_id == new_id))) {
 
         test = 1;
     } else {
@@ -2567,36 +2610,39 @@ static void  display_sc(node_t me, char mode) {
     s_state_t state = get_state(me);
     switch (mode) {
         case 'V':
-            XBT_VERB("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d cs_new_id = %d",
+            XBT_VERB("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d cs_new_id = %d cs_req_time = %f",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->T,
                     me->Tcs,
                     me->cs_req,
-                    me->cs_new_id);
+                    me->cs_new_id,
+                    me->cs_req_time);
             break;
 
         case 'I':
-            XBT_INFO("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d cs_new_id = %d",
+            XBT_INFO("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d cs_new_id = %d cs_req_time = %f",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->T,
                     me->Tcs,
                     me->cs_req,
-                    me->cs_new_id);
+                    me->cs_new_id,
+                    me->cs_req_time);
             break;
 
         case 'D':
-            XBT_DEBUG("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d cs_new_id = %d",
+            XBT_DEBUG("Node %d: '%c'/%d - T = %u -- Tcs = %u -- cs_req = %d cs_new_id = %d cs_req_time = %f",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->T,
                     me->Tcs,
                     me->cs_req,
-                    me->cs_new_id);
+                    me->cs_new_id,
+                    me->cs_req_time);
             break;
     }
 
@@ -3509,6 +3555,7 @@ static void init(node_t me) {
     me->T = 0;
     me->Tcs = 0;
     me->cs_req = 0;
+    me->cs_req_time = 0;
     me->cs_new_id = -1;
 
     // DST infos initialization
@@ -3852,7 +3899,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             new_node_id);
 
     u_ans_data_t answer;
-    e_val_ret_t val_ret = UPDATE_NOK;
+    e_val_ret_t val_ret = OK;
 
     display_rout_table(me, 'V');
 
@@ -3918,7 +3965,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
         display_sc(me, 'V');
 
         // if current node isn't available, reject request
-        if ((me->cs_req == 1) ||
+        if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
                 (state.active == 'u' && state.new_id != new_node_id) ||
                 (state.active != 'u' && state.active != 'a')) {
 
@@ -3937,17 +3984,24 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
 
             /*** Ask for permission to get into the Critical Section ***/
 
-            // set local clock
-            me->cs_req = 1;
-            me->Tcs = me->T + 1;
-            me->cs_new_id = new_node_id;
+            // set cs_req
+            if (me->cs_req == 0) {
 
-            XBT_VERB("Node %d: in connection_request() - after clock adjustment",
+                me->cs_req = 1;
+                me->cs_new_id = new_node_id;
+                me->cs_req_time = MSG_get_clock();
+            }
+
+            XBT_VERB("Node %d: in connection_request() - after cs_req",
                     me->self.id);
             display_sc(me, 'V');
 
             u_req_args_t args;
             m_task_t task_sent = NULL;
+
+            // node is being updated
+            //set_update(me, new_node_id);
+            //state = get_state(me);
 
             // compute the number of stages that have to be splitted
             while ((n < me->height) && (me->bro_index[n] == b)) {
@@ -3955,61 +4009,58 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 n++;
             }
 
-            // broadcast a cs_req to all concerned leaders
-            XBT_VERB("Node %d: broadcast a cs_req to all concerned leaders",
-                    me->self.id);
+            // splits will be required
+            if (n > 0) {
 
-            args.broadcast.type = TASK_CS_REQ;
-
-            /* broadcast starts one level higher than highest splitted stage
-               because of connect_splitted_groups */
-            if (n == me->height) {
-
-                args.broadcast.stage = n - 1;
-            } else {
-
-                args.broadcast.stage = n;
-            }
-            args.broadcast.first_call = 1;
-            args.broadcast.source_id = me->self.id;
-            args.broadcast.new_node_id = new_node_id;
-            args.broadcast.lead_br = 1;     // broadcast only to leaders
-
-            args.broadcast.args = xbt_new0(u_req_args_t, 1);
-            args.broadcast.args->cs_req.new_node_id = new_node_id;
-            args.broadcast.args->cs_req.sender_id = me->self.id;
-            args.broadcast.args->cs_req.T = me->Tcs;
-            make_broadcast_task(me, args, &task_sent);
-
-            val_ret = handle_task(me, &task_sent);
-
-            xbt_free(args.broadcast.args);
-            args.broadcast.args = NULL;
-
-            // continue only if cs_req returned OK -- Critical Section access granted
-            if (val_ret != UPDATE_NOK) {
-
-                // node is being updated
-                //set_update(me, new_node_id);
-                //state = get_state(me);
-
-                // to set DST infos
+                // set DST infos
                 answer.cnx_req.nbr_split_stages = n;
 
-                if (n > 0) {
+                // making room is necessary
+                state = get_state(me);
+                XBT_INFO("Node %d: '%c'/%d - **** MAKING ROOM FOR NODE %d ... ****",
+                        me->self.id,
+                        state.active,
+                        state.new_id,
+                        new_node_id);
 
-                    // making room is necessary
-                    state = get_state(me);
-                    XBT_INFO("Node %d: '%c'/%d - **** MAKING ROOM FOR NODE %d ... ****",
-                            me->self.id,
-                            state.active,
-                            state.new_id,
-                            new_node_id);
+                // set DST infos
+                if (n == me->height) {
+                    answer.cnx_req.add_stage = 1;
+                }
 
-                    // to set DST infos
-                    if (n == me->height) {
-                        answer.cnx_req.add_stage = 1;
-                    }
+                // broadcast a cs_req to all concerned leaders
+                XBT_VERB("Node %d: broadcast a cs_req to all concerned leaders",
+                        me->self.id);
+
+                args.broadcast.type = TASK_CS_REQ;
+
+                /* broadcast starts one level higher than highest splitted stage
+                   because of connect_splitted_groups */
+                if (n == me->height) {
+
+                    args.broadcast.stage = n - 1;
+                } else {
+
+                    args.broadcast.stage = n;
+                }
+                args.broadcast.first_call = 1;
+                args.broadcast.source_id = me->self.id;
+                args.broadcast.new_node_id = new_node_id;
+                args.broadcast.lead_br = 1;     // broadcast only to leaders
+
+                args.broadcast.args = xbt_new0(u_req_args_t, 1);
+                args.broadcast.args->cs_req.new_node_id = new_node_id;
+                args.broadcast.args->cs_req.sender_id = me->self.id;
+                args.broadcast.args->cs_req.T = me->Tcs;
+                make_broadcast_task(me, args, &task_sent);
+
+                val_ret = handle_task(me, &task_sent);
+
+                xbt_free(args.broadcast.args);
+                args.broadcast.args = NULL;
+
+                // continue if cs_req succeeded
+                if (val_ret != UPDATE_NOK) {
 
                     // set all concerned nodes as 'u'
                     XBT_VERB("Node %d: set all concerned nodes as 'u'",
@@ -4124,25 +4175,24 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                             state.active,
                             state.new_id,
                             new_node_id);
+                } else {
+
+                    // cs_req returned NOK
+
+                    //me->cs_req = 0;
+
+                    state = get_state(me);
+                    XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
+                            me->self.id,
+                            state.active,
+                            state.new_id,
+                            new_node_id,
+                            try);
+
+                    answer.cnx_req.new_contact.id = -1;
                 }
-            } else {
-
-                // cs_req returned NOK
-
-                me->cs_req = 0;
-
-                state = get_state(me);
-                XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
-                        me->self.id,
-                        state.active,
-                        state.new_id,
-                        new_node_id,
-                        try);
-
-                answer.cnx_req.new_contact.id = -1;
             }
         }
-
         // continue only if set_update succeeded
         if (val_ret != UPDATE_NOK) {
 
@@ -4261,6 +4311,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 }
             }
             me->cs_req = 0;
+            me->cs_req_time = MSG_get_clock();
         }
     }
     answer.cnx_req.val_ret = val_ret;
@@ -7618,6 +7669,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                 task_free(task);
 
                 XBT_VERB("Node %d: TASK_CNX_REQ done", me->self.id);
+                display_sc(me, 'V');
 
             } else {
 
