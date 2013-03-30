@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/03/27
+ *  Written by Christophe Enderlin on 2013/03/30
  *
  */
 
@@ -1326,7 +1326,7 @@ static e_val_ret_t cs_req(node_t me, unsigned int T, int sender_id, int new_node
 
     /* to avoid dealocks : if CS has been requested and not answered for long
        ago, cancel this request */
-    if (me->cs_req == 1 && state.active == 'a' &&
+    if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
         MSG_get_clock() - me->cs_req_time > MAX_CS_REQ) {
 
         me->cs_req = 0;
@@ -3982,6 +3982,16 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     state.new_id);
 
             val_ret = UPDATE_NOK;
+        }
+
+        //val_ret = cs_req(me, 0, me->self.id, new_node_id);
+
+        if (val_ret == UPDATE_NOK) {
+
+            XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
+                    me->self.id,
+                    state.active,
+                    state.new_id);
         } else {
 
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - available",
@@ -7940,8 +7950,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                         ) {
 
                             /* for refused broadcasted tasks, either send an answer back ... */
-                            if (rcv_args.broadcast.type == TASK_SET_ACTIVE ||
-                                    rcv_args.broadcast.type == TASK_SET_UPDATE) {
+                            if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {  /* ||
+                                    rcv_args.broadcast.type == TASK_SET_UPDATE) */
 
                                 XBT_VERB("Don't accept '%s' here - current new_id = %d"
                                         " - rcv_new_id = %d",
