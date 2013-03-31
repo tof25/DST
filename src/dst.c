@@ -2022,7 +2022,7 @@ static e_val_ret_t set_update(node_t me, int new_id) {
                 int found = state_search(me, 'u', new_id);
                 if (found == -1) {
 
-                    val_ret = UPDATE_NOK;
+                    val_ret = STORED;
                 } else {
 
                     val_ret = UPDATE_OK;
@@ -2030,7 +2030,7 @@ static e_val_ret_t set_update(node_t me, int new_id) {
             }
         } else {
 
-            val_ret = UPDATE_NOK;
+            val_ret = STORED;
         }
     }
 
@@ -2039,7 +2039,7 @@ static e_val_ret_t set_update(node_t me, int new_id) {
             me->self.id,
             state.active,
             state.new_id,
-            (val_ret == UPDATE_NOK ?  "NOK" : "OK"));
+            (val_ret == UPDATE_OK ?  "OK" : "NOK"));
 
     XBT_OUT();
     return val_ret;
@@ -3959,7 +3959,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
         // me is the leader
         int n = 0;
 
-        state = get_state(me);
+        state = get_state(me);          //TODO : get_state() inutile ?
         XBT_INFO("Node %d: '%c'/%d - I am the leader",
                 me->self.id,
                 state.active,
@@ -3970,6 +3970,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 try);
 
         display_sc(me, 'V');
+
+        //val_ret = cs_req(me, 0, me->self.id, new_node_id);
 
         // if current node isn't available, reject request
         if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
@@ -3982,17 +3984,9 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     state.new_id);
 
             val_ret = UPDATE_NOK;
-        }
-
-        //val_ret = cs_req(me, 0, me->self.id, new_node_id);
-
-        if (val_ret == UPDATE_NOK) {
-
-            XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
-                    me->self.id,
-                    state.active,
-                    state.new_id);
         } else {
+
+            val_ret = OK;
 
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - available",
                     me->self.id,
@@ -7950,8 +7944,8 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                         ) {
 
                             /* for refused broadcasted tasks, either send an answer back ... */
-                            if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {  /* ||
-                                    rcv_args.broadcast.type == TASK_SET_UPDATE) */
+                            if (rcv_args.broadcast.type == TASK_SET_ACTIVE ||
+                                rcv_args.broadcast.type == TASK_SET_UPDATE) {
 
                                 XBT_VERB("Don't accept '%s' here - current new_id = %d"
                                         " - rcv_new_id = %d",
