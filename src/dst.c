@@ -39,7 +39,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                completion */
 #define MAX_WAIT_GET_REP 20                 /* won't wait longer an answer to a
                                                GET_REP request */
-#define MAX_JOIN 50                         // number of joining attempts
+#define MAX_JOIN 60                         // number of joining attempts
 #define MAX_CS_REQ 100                      // max time between cs_req and set_update
 
 static int nb_calls1 = 0;
@@ -3996,12 +3996,9 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             /*** Ask for permission to get into the Critical Section ***/
 
             // set cs_req
-            if (me->cs_req == 0) {
-
-                me->cs_req = 1;
-                me->cs_new_id = new_node_id;
-                me->cs_req_time = MSG_get_clock();
-            }
+            me->cs_req = 1;
+            me->cs_new_id = new_node_id;
+            me->cs_req_time = MSG_get_clock();
 
             XBT_VERB("Node %d: in connection_request() - after cs_req",
                     me->self.id);
@@ -4151,7 +4148,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     xbt_free(args.broadcast.args);
                     args.broadcast.args = NULL;
 
-                    // release Critical Section            //TODO : peut-être pas utile
+                    // release Critical Section            //TODO : peut-être pas utile (le faire pendant SET_ACTIVE ?)
                     XBT_VERB("Node %d: release critical section",
                             me->self.id);
 
@@ -4190,7 +4187,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
 
                     // cs_req returned NOK
 
-                    //me->cs_req = 0;
+                    me->cs_req = 0;
 
                     state = get_state(me);
                     XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
@@ -4204,7 +4201,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 }
             }
         }
-        // continue only if set_update succeeded
+
+        // continue only if request is not rejected
         if (val_ret != UPDATE_NOK) {
 
             set_update(me, new_node_id);    // stay at 'u' until the end
