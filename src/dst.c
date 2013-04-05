@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/03/30
+ *  Written by Christophe Enderlin on 2013/04/05
  *
  */
 
@@ -35,11 +35,12 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                new task */
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
 #define TYPE_NBR 35                         // number of task types
-#define MAX_WAIT_COMPL 1550                 /* won't wait longer for broadcast
+#define MAX_WAIT_COMPL 3000                 /* won't wait longer for broadcast
                                                completion */
-#define MAX_WAIT_GET_REP 20                 /* won't wait longer an answer to a
+#define MAX_WAIT_GET_REP 2000               /* won't wait longer an answer to a
                                                GET_REP request */
-#define MAX_JOIN 60                         // number of joining attempts
+#define MAX_JOIN 200                        // number of joining attempts
+#define TRY_STEP 10                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 100                      // max time between cs_req and set_update
 
 static int nb_calls1 = 0;
@@ -142,7 +143,7 @@ typedef enum {
     TASK_UPDATE_UPPER_STAGE,// update upper stage after a transfer
     TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join
     TASK_CS_REQ,            // ask for permission to get into Critical Section
-    TASK_CS_REL             // Critical Section is released                     // TODO : cette tâche est faite en même temps que set_active
+    TASK_END_GET_REP        // remove 'g' state after load balance
 } e_task_type_t;
 
 /**
@@ -202,7 +203,7 @@ typedef struct node {
     //recp_rec_t      recp_array;
     //int             recp_size;
 
-    xbt_dynar_t     expected_answers;       /* recipients whose answers are
+    xbt_dynar_t     async_answers;       /* recipients whose answers are
                                                expected (see wait_for_completion)*/
     xbt_dynar_t     remain_tasks;           // delayed tasks
     xbt_dynar_t     sync_answers;           /* answers to sync requests (see
@@ -257,7 +258,7 @@ static const char* debug_msg[] = {
 
 /**
  * Requests args
- * IMPORTANT NOTE : new_node_id must be the first field of all structures
+ * IMPORTANT NOTE : new_node_id must be the first field of every structures
  */
 typedef struct {
 
@@ -493,7 +494,7 @@ typedef struct {
 typedef struct {
 
     int new_node_id;
-} s_task_cs_rel_t;             // Critical Section is released
+} s_task_end_get_rep_t;        // remove 'g' state after load balance
 
 /**
  * Generic request args
@@ -532,7 +533,7 @@ union req_args {
     s_task_update_upper_stage_t update_upper_stage;
     s_task_get_new_contact_t    get_new_contact;
     s_task_cs_req_t             cs_req;
-    s_task_cs_rel_t             cs_rel;
+    s_task_end_get_rep_t        end_get_rep;
 };
 
 /**
@@ -668,7 +669,7 @@ static void  node_free(node_t me);
 static void  data_ans_free(node_t me, ans_data_t *answer_data);
 static void  data_req_free(node_t me, req_data_t *req_data);
 static void  elem_free(void* elem_ptr);
-static void  display_expected_answers(node_t me, char log);
+static void  display_async_answers(node_t me, char log);
 static void  display_states(node_t me, char mode);
 static void  display_sc(node_t me, char mode);
 static int   expected_answers_search(node_t me,
@@ -1073,7 +1074,7 @@ static int index_bro(node_t me, int stage, int id) {
     }
     if (idx == me->bro_index[stage]) {
 
-        XBT_VERB("Node %d not found as a brother of node %d for stage %d",
+        XBT_DEBUG("Node %d not found as a brother of node %d for stage %d",
                 id,
                 me->self.id,
                 stage);
@@ -1401,7 +1402,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
     // inits
     e_val_ret_t ret = OK;
-    int dynar_size = (int) xbt_dynar_length(me->expected_answers);
+    int dynar_size = (int) xbt_dynar_length(me->async_answers);
 
     XBT_DEBUG("Node %d: dynar_size = %d", me->self.id, dynar_size);
 
@@ -1418,7 +1419,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     // async answers already received ? (from other calls of this function)
     for (idx = dynar_size - 1; idx >= dynar_size - ans_cpt; idx--) {
 
-        elem_ptr = xbt_dynar_get_ptr(me->expected_answers, idx);
+        elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
         if ((*elem_ptr)->recp.id == -1) {
 
             // check if an UPDATE_NOK has been received
@@ -1445,8 +1446,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             ans_cpt--;
 
             // delete this entry from expected answers
-            xbt_dynar_remove_at(me->expected_answers, idx, NULL);
-            dynar_size = (int) xbt_dynar_length(me->expected_answers);
+            xbt_dynar_remove_at(me->async_answers, idx, NULL);
+            dynar_size = (int) xbt_dynar_length(me->async_answers);
         }
     }
 
@@ -1461,7 +1462,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 me->self.id,
                 ans_cpt);
 
-        display_expected_answers(me, 'V');
+        display_async_answers(me, 'V');
 
         res = MSG_task_receive(&task_received, me->self.mailbox);
 
@@ -1521,7 +1522,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 // is it an async expected answer ?
                 int dynar_idx = -1;
                 dynar_idx = expected_answers_search(me,
-                        me->expected_answers,
+                        me->async_answers,
                         ans->type,
                         ans->br_type,
                         ans->sender_id,
@@ -1555,23 +1556,23 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         ans_cpt--;
 
                         // remove this entry from dynar
-                        elem_ptr = xbt_dynar_get_ptr(me->expected_answers, dynar_idx);
+                        elem_ptr = xbt_dynar_get_ptr(me->async_answers, dynar_idx);
                         if ((*elem_ptr)->answer_data != NULL) {
 
                             xbt_free((*elem_ptr)->answer_data);
                             (*elem_ptr)->answer_data = NULL;
                         }
 
-                        xbt_dynar_remove_at(me->expected_answers,
+                        xbt_dynar_remove_at(me->async_answers,
                                 dynar_idx,
                                 NULL);
 
-                        dynar_size = (int) xbt_dynar_length(me->expected_answers);
+                        dynar_size = (int) xbt_dynar_length(me->async_answers);
                     } else {
 
                         /* this answer is expected by one of parent calls:
                            just mark the entry as received ... */
-                        elem_ptr = xbt_dynar_get_ptr(me->expected_answers,
+                        elem_ptr = xbt_dynar_get_ptr(me->async_answers,
                                 dynar_idx);
                         (*elem_ptr)->recp.id = -1;
 
@@ -1680,11 +1681,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         me->self.id);
 
                 // async answers received meanwhile ?
-                dynar_size = (int) xbt_dynar_length(me->expected_answers);
+                dynar_size = (int) xbt_dynar_length(me->async_answers);
                 for (idx = dynar_size - 1;
                         idx >= dynar_size - ans_cpt; idx--) {
 
-                    elem_ptr = xbt_dynar_get_ptr(me->expected_answers, idx);
+                    elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
                     if ((*elem_ptr)->recp.id == -1) {
 
                         // check if an UPDATE_NOK has been received
@@ -1707,10 +1708,10 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         ans_cpt--;
 
                         // delete this entry from expected answers
-                        xbt_dynar_remove_at(me->expected_answers,
+                        xbt_dynar_remove_at(me->async_answers,
                                 idx,
                                 NULL);
-                        dynar_size = (int) xbt_dynar_length(me->expected_answers);
+                        dynar_size = (int) xbt_dynar_length(me->async_answers);
                     }
                 }
 
@@ -1731,7 +1732,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     // Error if max_wait reached
     if (ans_cpt > 0) {
 
-        display_expected_answers(me, 'V');
+        display_async_answers(me, 'V');
     }
     xbt_assert(ans_cpt == 0, "Node %d: Wait error - cpt = %d",
             me->self.id,
@@ -1740,7 +1741,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     XBT_VERB("Node %d: wait completed\n",
             me->self.id);
 
-    display_expected_answers(me, 'D');
+    display_async_answers(me, 'D');
 
     XBT_VERB("Node %d: end of wait_for_completion(): val_ret = '%s' -"
             " nok_id = %d",
@@ -1910,8 +1911,8 @@ static void set_active(node_t me, int new_id) {
     unsigned int iter = 0;
     recp_rec_t elem;
 
-    //TODO : on ne fait un Set_active que s'il n'y en a plus en attente
-    xbt_dynar_foreach(me->expected_answers, iter, elem){
+    // don't set active if another one has not been answered yet
+    xbt_dynar_foreach(me->async_answers, iter, elem){
 
         if (elem->type == TASK_BROADCAST &&
             elem->br_type == TASK_SET_ACTIVE &&
@@ -1936,8 +1937,6 @@ static void set_active(node_t me, int new_id) {
         state = get_state(me);
     } else {
 
-        //TODO : faut-il plutôt stocker cette requête ?
-
         XBT_VERB("Node %d: '%c'/%d - set_active for %d rejected",
                 me->self.id,
                 state.active,
@@ -1952,12 +1951,8 @@ static void set_active(node_t me, int new_id) {
  * \brief Set current node state as 'update'
  * \param me the current node
  * \param new_id id of the new coming node that triggered this state change
- * \return A value that indicate if set_update succeded
+ * \return A value indicating if set_update succeded or has to be stored
  */
-
-//TODO: lorsque l'état courant est p, il ne faudrait pas refuser le set_update
-//      mais soit le stocker, soit le laisser passer, soit répondre OK si le
-//      set_update se trouve déjà dans la pile d'états.
 
 static e_val_ret_t set_update(node_t me, int new_id) {
 
@@ -2322,7 +2317,7 @@ static void node_free(node_t me) {
 
     XBT_IN();
 
-    xbt_dynar_free(&(me->expected_answers));
+    xbt_dynar_free(&(me->async_answers));
     xbt_dynar_free(&(me->remain_tasks));
     xbt_dynar_free(&(me->sync_answers));
     xbt_dynar_free(&(me->states));
@@ -2456,7 +2451,7 @@ static void elem_free(void *elem_ptr) {
    }
    */
 
-static void display_expected_answers(node_t me, char log) {
+static void display_async_answers(node_t me, char log) {
 
     XBT_IN();
 
@@ -2468,23 +2463,23 @@ static void display_expected_answers(node_t me, char log) {
         case 'D':
             XBT_DEBUG("Node %d: dynar of %lu expected answers",
                     me->self.id,
-                    xbt_dynar_length(me->expected_answers));
+                    xbt_dynar_length(me->async_answers));
             break;
 
         case 'V':
             XBT_VERB("Node %d: dynar of %lu expected answers",
                     me->self.id,
-                    xbt_dynar_length(me->expected_answers));
+                    xbt_dynar_length(me->async_answers));
             break;
 
         case 'I':
             XBT_INFO("Node %d: dynar of %lu expected answers",
                     me->self.id,
-                    xbt_dynar_length(me->expected_answers));
+                    xbt_dynar_length(me->async_answers));
             break;
     }
 
-    xbt_dynar_foreach(me->expected_answers, cpt, elem) {
+    xbt_dynar_foreach(me->async_answers, cpt, elem) {
 
         switch(log) {
 
@@ -2521,15 +2516,6 @@ static void display_expected_answers(node_t me, char log) {
                         elem->new_node_id);
                 break;
         }
-
-        /*
-        // No recp.id can be lower than 0
-        xbt_assert(elem->recp.id > -1,
-                "Node %d: in display_expected_answers() : elem[%d].recp.id = %d !!",
-                me->self.id,
-                cpt,
-                elem->recp.id);
-        */
     }
 
     XBT_OUT();
@@ -2767,12 +2753,13 @@ static MSG_error_t send_msg_sync(node_t me,
 
     MSG_task_dsend(task_sent, req_data->sent_to, NULL);
 
-    XBT_VERB("Node %d: '%s - %s' Request to node %d sent",
+    XBT_VERB("Node %d: '%s - %s' Request to node %d sent for new_node %d",
             req_data->sender_id,
             debug_msg[req_data->type],
             (req_data->type == TASK_BROADCAST ?
              debug_msg[req_data->args.broadcast.type] : ""),
-            req_data->recipient_id);
+            req_data->recipient_id,
+            req_data->args.get_rep.new_node_id);
 
     // push onto sync_answers dynar
     recp_rec_t req_elem = xbt_new0(s_recp_rec_t, 1);
@@ -2782,8 +2769,7 @@ static MSG_error_t send_msg_sync(node_t me,
     req_elem->type = type;
     req_elem->recp.id = recipient_id;
     get_mailbox(recipient_id, req_elem->recp.mailbox);
-    req_elem->br_type =
-        (type == TASK_BROADCAST ? args.broadcast.type : TASK_NULL);
+    req_elem->br_type = (type == TASK_BROADCAST ? args.broadcast.type : TASK_NULL);
     req_elem->answer_data = NULL;
 
     // every request data's first field is new_node_id - so get_rep is OK
@@ -3046,7 +3032,7 @@ static MSG_error_t send_msg_sync(node_t me,
 
                         // is it an async expected answer ?
                         dynar_idx = expected_answers_search(me,
-                                me->expected_answers,
+                                me->async_answers,
                                 ans->type,
                                 ans->br_type,
                                 ans->sender_id,
@@ -3056,7 +3042,7 @@ static MSG_error_t send_msg_sync(node_t me,
 
                             /* this task is one of the expected acknowledgments:
                                mark it as received ... */
-                            elem_ptr = xbt_dynar_get_ptr(me->expected_answers,
+                            elem_ptr = xbt_dynar_get_ptr(me->async_answers,
                                     dynar_idx);
                             (*elem_ptr)->recp.id = -1;
 
@@ -3081,7 +3067,7 @@ static MSG_error_t send_msg_sync(node_t me,
                                     debug_msg[ans->type],
                                     debug_msg[ans->br_type],
                                     ans->sender_id,
-                                    xbt_dynar_length(me->expected_answers),
+                                    xbt_dynar_length(me->async_answers),
                                     dynar_idx);
 
                         }
@@ -3374,7 +3360,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                         me->self.id,
                         elem->recp.id);
 
-                xbt_dynar_push(me->expected_answers, &elem);
+                xbt_dynar_push(me->async_answers, &elem);
             }
         }
     } else {
@@ -3410,7 +3396,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                     me->self.id,
                     elem->recp.id);
 
-            xbt_dynar_push(me->expected_answers, &elem);
+            xbt_dynar_push(me->async_answers, &elem);
         }
     }
 
@@ -3419,7 +3405,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
         XBT_DEBUG("Node %d in broadcast(): before wait_for_completion",
                 me->self.id);
-        //display_expected_answers(me, 'V');
+        //display_async_answers(me, 'V');
 
         ret = wait_for_completion(me, ans_cpt, args.broadcast.new_node_id);
         //xbt_free(recp_array);
@@ -3533,7 +3519,7 @@ static void init(node_t me) {
     me->states = xbt_dynar_new(sizeof(state_t), &xbt_free_ref);
     set_state(me, me->self.id, 'b');    // building in progress
 
-    me->expected_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);    //TODO : changer ce nom en async_answers
+    me->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
     me->remain_tasks = xbt_dynar_new(sizeof(m_task_t), &xbt_free_ref);
     me->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
     me->cs_req = 0;
@@ -3781,10 +3767,11 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
         set_state(me, new_node_id, 'g');
     }
 
-    XBT_VERB("Node %d: '%c'/%d - get_rep() ... - new_node = ?",
+    XBT_VERB("Node %d: '%c'/%d - get_rep() ... - new_node = %d",
             me->self.id,
             state.active,
-            state.new_id);
+            state.new_id,
+            new_node_id);
 
     display_states(me, 'V');
 
@@ -3841,22 +3828,6 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
         data_ans_free(me, &rcv_ans_data);
     }
 
-    int idx = state_search(me, 'g', new_node_id);
-    if (idx > -1) {
-
-        XBT_DEBUG("Node %d: idx = %d", me->self.id, idx);
-        xbt_dynar_remove_at(me->states, idx, NULL);
-    }
-
-    XBT_VERB("Node %d: (end get_rep) states length = %lu",
-            me->self.id,
-            xbt_dynar_length(me->states));
-    display_states(me, 'V');
-
-    xbt_assert(xbt_dynar_length(me->states) > 0,
-            "Node %d: (in get_rep) dynar states is empty !",
-            me->self.id);
-
     XBT_OUT();
     return answer;
 }
@@ -3881,6 +3852,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             new_node_id);
 
     u_ans_data_t answer;
+
+    // value included in the final answer
     e_val_ret_t val_ret = OK;
 
     display_rout_table(me, 'V');
@@ -3946,8 +3919,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
 
         display_sc(me, 'V');
 
-        //val_ret = cs_req(me, 0, me->self.id, new_node_id);
-
         // if current node isn't available, reject request
         if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
                 (state.active == 'u' && state.new_id != new_node_id) ||
@@ -3975,30 +3946,25 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             me->cs_new_id = new_node_id;
             me->cs_req_time = MSG_get_clock();
 
-            XBT_VERB("Node %d: in connection_request() - after cs_req",
-                    me->self.id);
-            display_sc(me, 'V');
+            XBT_DEBUG("Node %d: in connection_request() - after cs_req",
+                      me->self.id);
+            display_sc(me, 'D');
 
             u_req_args_t args;
             m_task_t task_sent = NULL;
 
-            // node is being updated
-            //set_update(me, new_node_id);
-            //state = get_state(me);
-
-            // compute the number of stages that have to be splitted
+            // how many stages have to be splitted ?
             while ((n < me->height) && (me->bro_index[n] == b)) {
 
                 n++;
             }
 
+            // set DST infos
+            answer.cnx_req.nbr_split_stages = n;
+
             // splits will be required
             if (n > 0) {
 
-                // set DST infos
-                answer.cnx_req.nbr_split_stages = n;
-
-                // making room is necessary
                 state = get_state(me);
                 XBT_INFO("Node %d: '%c'/%d - **** MAKING ROOM FOR NODE %d ... ****",
                         me->self.id,
@@ -4041,10 +4007,9 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
 
-                // continue if cs_req succeeded
                 if (val_ret != UPDATE_NOK) {
 
-                    // set all concerned nodes as 'u'
+                    // set all concerned nodes as 'u' if cs_req succeeded
                     XBT_VERB("Node %d: set all concerned nodes as 'u'",
                             me->self.id);
 
@@ -4091,8 +4056,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                             me->self.id,
                             new_node_id);
 
-                    // TODO : TROP TOT ? - Non si 'me' reste bien à 'u'
-
                     // reset all concerned nodes as 'a'
                     XBT_VERB("Node %d: reset all concerned nodes as 'a'",
                             me->self.id);
@@ -4122,38 +4085,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     xbt_free(args.broadcast.args);
                     args.broadcast.args = NULL;
 
-                    // release Critical Section            //TODO : fait dans set_active - supprimer les messages si on ne l'envoie pas autrement
-                    /* XBT_VERB("Node %d: release critical section",
-                            me->self.id);
-
-                    args.broadcast.type = TASK_CS_REL;
-                    */
-
-                    /* broadcast starts one level higher than highest splitted stage
-                       because of connect_splitted_groups */
-                    /*
-                    if (n == me->height) {
-
-                        args.broadcast.stage = n - 1;
-                    } else {
-
-                        args.broadcast.stage = n;
-                    }
-                    args.broadcast.first_call = 1;
-                    args.broadcast.source_id = me->self.id;
-                    args.broadcast.new_node_id = new_node_id;
-                    args.broadcast.lead_br = 1;
-
-                    args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                    args.broadcast.args->cs_rel.new_node_id = new_node_id;
-                    make_broadcast_task(me, args, &task_sent);
-
-                    handle_task(me, &task_sent);
-
-                    xbt_free(args.broadcast.args);
-                    args.broadcast.args = NULL;
-                    */
-
                     state = get_state(me);
                     XBT_INFO("Node %d: '%c'/%d -  **** ROOM MADE FOR NODE %d ****",
                             me->self.id,
@@ -4179,7 +4110,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             }
         }
 
-        // continue only if request is not rejected
+        // insert new node if request has not been rejected
         if (val_ret != UPDATE_NOK) {
 
             set_update(me, new_node_id);    // stay at 'u' until the end
@@ -4233,7 +4164,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     elem->recp = cpy_brothers[i];
                     elem->new_node_id = new_node_id;
                     elem->answer_data = NULL;
-                    xbt_dynar_push(me->expected_answers, &elem);
+                    xbt_dynar_push(me->async_answers, &elem);
 
                     xbt_assert(elem->recp.id > - 1,
                             "Node %d: #2# recp.id is %d !!",
@@ -4299,8 +4230,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             me->cs_req = 0;
             me->cs_req_time = MSG_get_clock();
         }
+        answer.cnx_req.val_ret = val_ret;
     }
-    answer.cnx_req.val_ret = val_ret;
 
     state = get_state(me);
     XBT_INFO("Node %d: '%c'/%d -  end of connection_request() - val_ret = '%s'",
@@ -4771,8 +4702,8 @@ static void cut_node(node_t me, int stage, int right, int cut_pos, int new_node_
         case 0:
             start = 0;
             end = cut_pos;
-            // TODO : voir s'il ne faut pas plutôt transmettre le new_node depuis le
-            // noeud appelant (47 dans l'exemple)
+            /* TODO : voir s'il ne faut pas plutôt transmettre le new_node depuis le
+               noeud appelant (47 dans l'exemple) */
             new_node = me->brothers[stage][cut_pos + 1];
             break;
 
@@ -5254,7 +5185,7 @@ static void connect_splitted_groups(node_t me,
             elem->new_node_id = new_node_id;
             get_mailbox(rep_id, elem->recp.mailbox);
             elem->answer_data = NULL;
-            xbt_dynar_push(me->expected_answers, &elem);
+            xbt_dynar_push(me->async_answers, &elem);
 
             xbt_assert(elem->recp.id > - 1,
                     "Node %d: #3# recp.id is %d !!",
@@ -5284,7 +5215,7 @@ static void connect_splitted_groups(node_t me,
             elem->new_node_id = new_node_id;
             get_mailbox(init_rep_id, elem->recp.mailbox);
             elem->answer_data = NULL;
-            xbt_dynar_push(me->expected_answers, &elem);
+            xbt_dynar_push(me->async_answers, &elem);
 
             xbt_assert(elem->recp.id > - 1,
                     "Node %d: #4# recp.id is %d !!",
@@ -5325,7 +5256,7 @@ static void connect_splitted_groups(node_t me,
         elem->new_node_id = new_node_id;
         get_mailbox(new_rep_id, elem->recp.mailbox);
         elem->answer_data = NULL;
-        xbt_dynar_push(me->expected_answers, &elem);
+        xbt_dynar_push(me->async_answers, &elem);
 
         xbt_assert(elem->recp.id > - 1,
                 "Node %d: #5# recp.id is %d !!",
@@ -5462,7 +5393,7 @@ static void split(node_t me, int stage, int new_node_id) {
                 elem->recp = me->brothers[stage][i];
                 elem->new_node_id = new_node_id;
                 elem->answer_data = NULL;
-                xbt_dynar_push(me->expected_answers, &elem);
+                xbt_dynar_push(me->async_answers, &elem);
 
                 xbt_assert(elem->recp.id > - 1,
                         "Node %d: #6# recp.id is %d !!",
@@ -5507,7 +5438,7 @@ static void split(node_t me, int stage, int new_node_id) {
                 elem->recp = me->brothers[stage][i];
                 elem->new_node_id = new_node_id;
                 elem->answer_data = NULL;
-                xbt_dynar_push(me->expected_answers, &elem);
+                xbt_dynar_push(me->async_answers, &elem);
 
                 xbt_assert(elem->recp.id > - 1,
                         "Node %d: #7# recp.id is %d !!",
@@ -5552,7 +5483,7 @@ static void split(node_t me, int stage, int new_node_id) {
     // set and store DST infos
     set_n_store_infos(me);
 
-    display_preds(me, 'D');
+    display_preds(me, 'V');
 
     // tells every upper stage pred it's got a new member
     int ans_cpt = me->pred_index[stage + 1];
@@ -5605,7 +5536,7 @@ static void split(node_t me, int stage, int new_node_id) {
             elem->recp = cpy_preds[i];
             elem->new_node_id = new_node_id;
             elem->answer_data = NULL;
-            xbt_dynar_push(me->expected_answers, &elem);
+            xbt_dynar_push(me->async_answers, &elem);
 
             xbt_assert(elem->recp.id > - 1,
                     "Node %d: #8# recp.id is %d !!",
@@ -6072,7 +6003,7 @@ static void leave(node_t me) {
                     elem->recp = cpy_preds[stage][pred];
                     elem->new_node_id = me->self.id;
                     elem->answer_data = NULL;
-                    xbt_dynar_push(me->expected_answers, &elem);
+                    xbt_dynar_push(me->async_answers, &elem);
 
                     xbt_assert(elem->recp.id > - 1,
                             "Node %d: #9# recp.id is %d !!",
@@ -6083,6 +6014,7 @@ static void leave(node_t me) {
                 } else {
 
                     // randomly choose a new rep to replace 'me'
+                    srand(time(NULL));
                     do {
                         idx = rand() % (cpy_bro_index[0]);
                         new_rep_id = cpy_brothers[0][idx].id;
@@ -6123,7 +6055,7 @@ static void leave(node_t me) {
                         elem->recp = cpy_preds[stage][pred];
                         elem->new_node_id = me->self.id;
                         elem->answer_data = NULL;
-                        xbt_dynar_push(me->expected_answers, &elem);
+                        xbt_dynar_push(me->async_answers, &elem);
 
                         xbt_assert(elem->recp.id > - 1,
                                 "Node %d: #10# recp.id is %d !!",
@@ -6171,7 +6103,7 @@ static void leave(node_t me) {
                 elem->recp = cpy_brothers[stage][brother];
                 elem->new_node_id = me->self.id;
                 elem->answer_data = NULL;
-                xbt_dynar_push(me->expected_answers, &elem);
+                xbt_dynar_push(me->async_answers, &elem);
 
                 xbt_assert(elem->recp.id > - 1,
                         "Node %d: #11# recp.id is %d !!",
@@ -7088,8 +7020,13 @@ static void load_balance(node_t me, int contact_id) {
     XBT_IN();
 
     int idx = 0;
-    int i, j, brother;
+    int i, j, k, brother;
     node_rep_t new_nodes = NULL;
+    int *get_rep_nodes = NULL;
+
+    // to memorize nodes that will be asked to provide a new rep
+    get_rep_nodes = xbt_new0(int, (me->height - 1) * b);
+    k = 0;
 
     // load_balance state
     state_t *state_ptr = NULL;
@@ -7165,6 +7102,10 @@ static void load_balance(node_t me, int contact_id) {
                             me->brothers[i][j].id,
                             u_req_args,
                             &answer_data);
+
+                    // memorize recipient
+                    get_rep_nodes[k] = me->brothers[i][j].id;
+                    k++;
 
                     /* answer_data may be NULL if GET_REP didn't get any answer
                        before a certain time */
@@ -7258,6 +7199,25 @@ static void load_balance(node_t me, int contact_id) {
         new_nodes = NULL;
     }                   // next stage
 
+    // remove 'g' state of asked nodes
+    for (i = 0; i < k; i++) {
+
+        u_req_args.end_get_rep.new_node_id = me->self.id;
+
+        res = send_msg_async(me,
+                TASK_END_GET_REP,
+                get_rep_nodes[i],
+                u_req_args);
+
+        // end_get_rep failure
+        xbt_assert(res == MSG_OK,
+                "Node %d: failed to send TASK_END_GET_REP to node %d",
+                me->self.id,
+                get_rep_nodes[i]);
+    }
+
+    xbt_free(get_rep_nodes);
+
     // change node state
     state = get_state(me);
     set_active(me, state.new_id);
@@ -7271,26 +7231,43 @@ static void load_balance(node_t me, int contact_id) {
 }
 
 /**
- * \brief Provide a new contact for a coming node that failed to join
+ * \brief Provide a new contact for a coming node that failed to join too much
  * \param me the current node
  * \param new_node_id the new coming node
  */
 static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
 
     XBT_IN();
+
     u_ans_data_t answer;
+    int idx = 0;
 
-    int idx, stage;
+    s_state_t state = get_state(me);
+    int stage = me->height - 1;
+    int pos_me = index_bro(me, stage, me->self.id);
 
-    if (me->height > 1) {
+    xbt_assert(pos_me > -1 || state.active != 'a',
+            "Node %d: is not found at stage %d !!",
+            me->self.id,
+            stage);
 
-        stage = 1;
+    if (me->bro_index[stage] > 1) {
+
+        srand(time(NULL));
+        do {
+            idx = rand() % (me->bro_index[stage]);
+        } while (idx == pos_me);
+
+        XBT_VERB("Node %d: new contact will be node %d",
+                me->self.id,
+                me->brothers[stage][idx].id);
+
     } else {
 
-        stage = 0;
+        idx = pos_me;
+        XBT_VERB("Node %d: can't provide a new contact", me->self.id);
     }
 
-    idx = rand() % (me->bro_index[stage]);
     answer.get_new_contact.id = me->brothers[stage][idx].id;
 
     XBT_OUT();
@@ -7325,8 +7302,8 @@ int node(int argc, char *argv[]) {
 
     int join_success = 1;       // success by default
     int tries = 0;
+    int tries_mem = TRY_STEP;
 
-    srand(time(NULL));
     init(&node);
 
     if (argc == 5) {            // all nodes but first one need to join
@@ -7349,11 +7326,13 @@ int node(int argc, char *argv[]) {
                 // TODO: faire des essais avec différentes bornes
                 int max = 309;
                 int min = 53;
+                srand(time(NULL));
                 sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
 
-                // get a new contact if too many failures       //TODO : à re-tester
-                if (tries > 200) {
+                // get a new contact if too many failures
+                if (tries > tries_mem) {
 
+                    tries_mem += TRY_STEP;
                     answer_data = NULL;
                     res = send_msg_sync(&node,
                             TASK_GET_NEW_CONTACT,
@@ -7465,28 +7444,27 @@ int node(int argc, char *argv[]) {
                 // no task was received: make some periodic calls
                 state = get_state(&node);
 
+                /*
                 if (MSG_get_clock() >= 680) {
 
                     xbt_log_control_set("msg_dst.thres:verbose");
                 }
+                */
 
-                if (MSG_get_clock() >= node.deadline && state.active == 'a') {
+                if (MSG_get_clock() >= node.deadline && state.active == 'a' && 1 == 0) {    //TODO : ne pas oublier
 
                     XBT_INFO("Node %d: deadline reached: time to leave !",
                             node.self.id);
                     state_t *state_ptr = NULL;
-                    state_ptr = xbt_dynar_get_ptr(node.states,
-                            xbt_dynar_length(node.states) - 1);
+                    state_ptr = xbt_dynar_get_ptr(node.states, xbt_dynar_length(node.states) - 1);
                     (*state_ptr)->active = 'n';      // non active state
                     leave(&node);
                     set_n_store_infos(&node);
                     XBT_INFO("Node %d left ...", node.self.id);
                 } else {
 
-                    /*
-                       XBT_DEBUG("Node %d: nothing to do: sleep for a while",
-                       node.self.id);
-                       */
+                    XBT_DEBUG("Node %d: nothing to do: sleep for a while",
+                            node.self.id);
 
                     MSG_process_sleep(0.2);     //TODO: pb synchros si plus long
                 }
@@ -7594,7 +7572,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
     }
     u_ans_data_t answer;
     MSG_error_t res = MSG_OK;
-    int init_idx;
+    int init_idx, idx;
 
     switch (type) {
 
@@ -7631,8 +7609,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
             break;
 
         case TASK_CNX_REQ:
-            //TODO : voir s'il ne faudrait pas aussi tester l'état du leader ici
-
             if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) ||
                 (state.active == 'a')) {
 
@@ -7913,8 +7889,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                       rcv_args.broadcast.type != TASK_SET_ACTIVE &&
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT &&
-                      rcv_args.broadcast.type != TASK_CS_REQ &&
-                      rcv_args.broadcast.type != TASK_CS_REL
+                      rcv_args.broadcast.type != TASK_CS_REQ
                      )
                     )
                         ) {
@@ -8014,21 +7989,25 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             me->self.id,
                                             debug_msg[rcv_args.broadcast.type]);
 
-                                    // self set 'u' right now
-                                    if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
+                                    /* cases where current broadcast musn't be
+                                       interrupted by another one */
+                                    switch(rcv_args.broadcast.type) {
 
-                                        set_update(me,
-                                                rcv_args.broadcast.args->set_update.new_id);
-                                    }
+                                        case TASK_SET_UPDATE:
+                                            set_update(me,
+                                                    rcv_args.broadcast.args->set_update.new_id);
+                                            break;
 
-                                    /* If a Set Active task is broacasted, it
-                                     * mustn't be interrupted by another
-                                     * broadcast (of Set Update, for instance)
-                                     */
-                                    if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
+                                        case TASK_SET_ACTIVE:
+                                            set_update(me,
+                                                    rcv_args.broadcast.args->set_active.new_id);
+                                            break;
 
-                                        set_update(me,
-                                                rcv_args.broadcast.args->set_active.new_id);
+                                        case TASK_CS_REQ:
+                                            cs_req(me,
+                                                   rcv_args.broadcast.args->cs_req.sender_id,
+                                                   rcv_args.broadcast.args->cs_req.new_node_id);
+                                            break;
                                     }
 
                                     task_free(task);                            //TODO : vérifier cette libération
@@ -8056,7 +8035,6 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                     ans_data_t answer_data = NULL;
                                     res = send_msg_sync(me,
                                             TASK_BROADCAST,
-                                            //me->brothers[rcv_args.broadcast.stage][0].id,
                                             me->brothers[0][0].id,
                                             rcv_args,
                                             &answer_data);
@@ -8110,20 +8088,25 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                             debug_msg[rcv_args.broadcast.type],
                                             rcv_args.broadcast.lead_br);
 
-                                    // self set 'u' right now
-                                    if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
+                                    /* cases where current broadcast musn't be
+                                       interrupted by another one */
+                                    switch(rcv_args.broadcast.type) {
 
-                                        set_update(me, rcv_args.broadcast.args->set_update.new_id);
-                                    }
+                                        case TASK_SET_UPDATE:
+                                            set_update(me,
+                                                    rcv_args.broadcast.args->set_update.new_id);
+                                            break;
 
-                                    /* If a Set Active task is broacasted, it
-                                     * mustn't be interrupted by another
-                                     * broadcast (of Set Update, for instance)
-                                     */
-                                    if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
+                                        case TASK_SET_ACTIVE:
+                                            set_update(me,
+                                                    rcv_args.broadcast.args->set_active.new_id);
+                                            break;
 
-                                        set_update(me,
-                                                rcv_args.broadcast.args->set_active.new_id);
+                                        case TASK_CS_REQ:
+                                            cs_req(me,
+                                                   rcv_args.broadcast.args->cs_req.sender_id,
+                                                   rcv_args.broadcast.args->cs_req.new_node_id);
+                                            break;
                                     }
 
                                     task_free(task);
@@ -8657,22 +8640,38 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                     (val_ret == UPDATE_NOK ? "NOK" : "OK"));
             break;
 
-        case TASK_CS_REL:
-            cs_rel(me, rcv_args.cs_rel.new_node_id);
+        case TASK_END_GET_REP:
+            idx = state_search(me, 'g', rcv_args.end_get_rep.new_node_id);
+            if (idx > -1) {
 
+                XBT_DEBUG("Node %d: idx = %d", me->self.id, idx);
+                xbt_dynar_remove_at(me->states, idx, NULL);
+            }
+
+            XBT_VERB("Node %d: in END_GET_REP for new_id %d",
+                    me->self.id,
+                    rcv_args.end_get_rep.new_node_id);
+            display_states(me, 'V');
+
+            xbt_assert(xbt_dynar_length(me->states) > 0,
+                    "Node %d: (in get_rep) dynar states is empty !",
+                    me->self.id);
+
+            /*
             if (rcv_req->sender_id != me->self.id) {
 
                 res = send_ans_sync(me,
-                        rcv_args.cs_rel.new_node_id,
+                        rcv_args.end_get_rep.new_node_id,
                         type,
                         rcv_req->sender_id,
-                        answer);          //TODO : answer par initialisé
+                        answer);
             }
+            */
 
             data_req_free(me, &rcv_req);
             task_free(task);
 
-            XBT_VERB("Node %d: TASK_CS_REL done", me->self.id);
+            XBT_VERB("Node %d: TASK_END_GET_REP done", me->self.id);
             break;
     }
 
@@ -8712,7 +8711,6 @@ int main(int argc, char *argv[]) {
 
     xbt_log_control_set("msg_dst.thres:TRACE");
     MSG_global_init(&argc, argv);
-    srand(time(NULL));
     //infos_dst = xbt_dynar_new_sync(sizeof(dst_infos_t), &xbt_free_ref);
     infos_dst = xbt_dynar_new(sizeof(dst_infos_t), &elem_free);
 
