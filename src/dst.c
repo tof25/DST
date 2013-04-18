@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/04/05
+ *  Written by Christophe Enderlin on 2013/04/18
  *
  */
 
@@ -15,7 +15,7 @@
 /* TODO: il reste des problèmes de gestion mémoire. On les voit apparaître vers
  *       b >= 66 */
 
-#define MSG_USE_DEPRECATED
+//#define MSG_USE_DEPRECATED
 #include <stdio.h>                          // printf and friends
 #include "msg/msg.h"                        // to use MSG API of Simgrid
 #include "xbt/log.h"                        // to get nice outputs
@@ -28,9 +28,12 @@
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
+/*
+   ========================  GLOBAL VALUES  ==================================
+*/
+
 #define COMM_SIZE 10                        /* message size when creating a
                                                new task */
-//TODO: (comment la calcule-t-on ?)
 #define COMP_SIZE 0                         /* compute duration when creating a
                                                new task */
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
@@ -41,37 +44,33 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
                                                GET_REP request */
 #define MAX_JOIN 200                        // number of joining attempts
 #define TRY_STEP 10                         // number of tries before requesting a new contact
-#define MAX_CS_REQ 100                      // max time between cs_req and set_update
+#define MAX_CS_REQ 100                      // max time between cs_req and matching set_update
 
-static int nb_calls1 = 0;
-static int nb_calls2 = 0;
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
-static const int b = 4;                     // max number of brothers in a node
+static const int b = 4;                     /* max number of brothers in a node
+                                               (must be twice a) */
 //static int timeout = 100;                   // timeout for communications
-static double max_simulation_time = 10500;  // max simulation time
-static xbt_dynar_t infos_dst;               /* to store all the routing tables
+static double max_simulation_time = 10500;  // max default simulation time
+static xbt_dynar_t infos_dst;               /* to store all routing tables
                                                and other global DST infos */
-static int nb_messages[TYPE_NBR] = {0};     /* total number of messages used by
-                                               each task type */
+static int nb_messages[TYPE_NBR] = {0};     /* total number of messages exchanged
+                                               for each task type */
 static int nb_br_messages[TYPE_NBR] = {0};  /* total number of broadcasted
-                                               messages used by each task type */
+                                               messages exchanged for each task type */
 static int order = 0;                       // order number of nodes arrival
 
-typedef struct f_node {                     /* struct for a node that failed to
-                                               join */
+typedef struct f_node {                     // a node that failed to join
     int   id;
     float f_time;
 } s_f_node_t;
 
-static int nb_abort = 0;                    /* number of join abortions */
+static int nb_abort = 0;                    // number of join abortions
 static s_f_node_t *failed_nodes = NULL;     /* array of nodes id that couldn't
                                                join the DST */
 
-
-
 /**
- * Infos about the DST to be printed at the end
+ * Infos about the DST for statistics purposes
  */
 typedef struct s_dst_info {
     int   order;                            // arrival order
@@ -105,7 +104,7 @@ typedef struct node_rep {
  */
 typedef enum {
 
-    TASK_NULL,              // no task
+    TASK_NULL,              // no task (for logging purposes)
     TASK_GET_REP,           // get a node representative
     TASK_CNX_REQ,           // get the DST ready to receive a new node
     TASK_NEW_BROTHER_RCV,   // insert a new node in a node's first stage
@@ -196,18 +195,12 @@ typedef struct node {
     msg_comm_t      comm_received;          // current communication
     double          deadline;               // time to leave the DST
     xbt_dynar_t     states;                 // node states
-    //struct state    state;                  // current node state
-    //struct state    old_state;              // former node state
 
     s_dst_infos_t   dst_infos;              // infos about the DST
-    //recp_rec_t      recp_array;
-    //int             recp_size;
 
-    xbt_dynar_t     async_answers;       /* recipients whose answers are
-                                               expected (see wait_for_completion)*/
+    xbt_dynar_t     async_answers;          // expected async answers
     xbt_dynar_t     remain_tasks;           // delayed tasks
-    xbt_dynar_t     sync_answers;           /* answers to sync requests (see
-                                               send_sync_msg) */
+    xbt_dynar_t     sync_answers;           // expected sync answers
     char            cs_req;                 // Critical Section requested
     float           cs_req_time;            // time when cs_req was set
     int             cs_new_id;              // new_node_id that caused cs_req to be TRUE
@@ -641,70 +634,70 @@ struct ans_data {
 
 
 // utility functions
-static void  display_var(node_t me);
-static char* routing_table(node_t me);
-static void  set_n_store_infos(node_t me);
-static void  display_preds(node_t me, char log);
-static void  display_rout_table(node_t me, char log);
-static void  get_mailbox(int node_id, char* mailbox);
-static void  task_free(m_task_t* task);
-static int   index_bro(node_t me, int stage, int id);
-static int   index_pred(node_t me, int stage, int id);
-static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id);
-static int   tot_msg_number(void);
-static void  make_copy_brothers(node_t me,
-        s_node_rep_t ***cpy_brothers,
-        int **cpy_bro_index);
-static void  make_copy_preds(node_t me,
-        s_node_rep_t ***cpy_preds,
-        int **cpy_pred_index);
-static void  make_broadcast_task(node_t me, u_req_args_t args, m_task_t *task);
-static s_state_t get_state(node_t me);
-static void  set_active(node_t me, int new_id);
-static e_val_ret_t set_update(node_t me, int new_id);
-static void  set_state(node_t me, int new_id, char active);
-static int   check(node_t me);
-static void  run_delayed_tasks(node_t me, char c);
-static void  node_free(node_t me);
-static void  data_ans_free(node_t me, ans_data_t *answer_data);
-static void  data_req_free(node_t me, req_data_t *req_data);
-static void  elem_free(void* elem_ptr);
-static void  display_async_answers(node_t me, char log);
-static void  display_states(node_t me, char mode);
-static void  display_sc(node_t me, char mode);
-static int   expected_answers_search(node_t me,
-                                     xbt_dynar_t dynar,
-                                     e_task_type_t type,
-                                     e_task_type_t br_type,
-                                     int recp_id,
-                                     int new_node_id);
-static int   state_search(node_t me, char active, int new_id);
+static void         display_var(node_t me);
+static char*        routing_table(node_t me);
+static void         set_n_store_infos(node_t me);
+static void         display_preds(node_t me, char log);
+static void         display_rout_table(node_t me, char log);
+static void         get_mailbox(int node_id, char* mailbox);
+static void         task_free(msg_task_t* task);
+static int          index_bro(node_t me, int stage, int id);
+static int          index_pred(node_t me, int stage, int id);
+static e_val_ret_t  wait_for_completion(node_t me, int ans_cpt, int new_node_id);
+static int          tot_msg_number(void);
+static void         make_copy_brothers(node_t me,
+                                       s_node_rep_t ***cpy_brothers,
+                                       int **cpy_bro_index);
+static void         make_copy_preds(node_t me,
+                                    s_node_rep_t ***cpy_preds,
+                                    int **cpy_pred_index);
+static void         make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task);
+static s_state_t    get_state(node_t me);
+static void         set_active(node_t me, int new_id);
+static e_val_ret_t  set_update(node_t me, int new_id);
+static void         set_state(node_t me, int new_id, char active);
+static int          check(node_t me);
+static void         run_delayed_tasks(node_t me, char c);
+static void         node_free(node_t me);
+static void         data_ans_free(node_t me, ans_data_t *answer_data);
+static void         data_req_free(node_t me, req_data_t *req_data);
+static void         elem_free(void* elem_ptr);
+static void         display_async_answers(node_t me, char log);
+static void         display_states(node_t me, char mode);
+static void         display_sc(node_t me, char mode);
+static int          expected_answers_search(node_t me,
+                                            xbt_dynar_t dynar,
+                                            e_task_type_t type,
+                                            e_task_type_t br_type,
+                                            int recp_id,
+                                            int new_node_id);
+static int          state_search(node_t me, char active, int new_id);
 static u_ans_data_t is_brother(node_t me, int id, int new_node_id);
-static int dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem);
-static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem);
-static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id);
-static void cs_rel(node_t me, int new_node_id);
+//static int          dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem);
+//static char         dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem);
+static e_val_ret_t  cs_req(node_t me, int sender_id, int new_node_id);
+static void         cs_rel(node_t me, int new_node_id);
 
 // communication functions
-static MSG_error_t send_msg_sync(node_t        me,
+static msg_error_t send_msg_sync(node_t        me,
                                  e_task_type_t type,
                                  int           recipient_id,
                                  u_req_args_t  args,
                                  ans_data_t   *answer_data);
 
-static MSG_error_t send_msg_async(node_t        me,
+static msg_error_t send_msg_async(node_t        me,
                                   e_task_type_t type,
                                   int           recipient_id,
                                   u_req_args_t  args);
 
-static MSG_error_t send_ans_sync(node_t me,
+static msg_error_t send_ans_sync(node_t me,
                                  int new_node_id,
                                  e_task_type_t type,
                                  int recipient_id,
                                  u_ans_data_t u_ans_data);
 
 static e_val_ret_t broadcast(node_t me, u_req_args_t args);
-static void send_completed(node_t me, e_task_type_t type, int recipient_id, int new_node_id);
+static void        send_completed(node_t me, e_task_type_t type, int recipient_id, int new_node_id);
 
 // core functions
 static void         init(node_t me);
@@ -720,55 +713,74 @@ static void         del_member(node_t me, int stage, int start, int end);
 static void         cut_node(node_t me, int stage, int right, int cut_pos, int new_node_id);
 static void         add_brother(node_t me, int stage, int id);
 static void         insert_bro(node_t me, int stage, int id);
-static void         add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right, int new_node_id);
-static void         br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, int right, int new_node_id);
+static void         add_bro_array(node_t me,
+                                  int stage,
+                                  node_rep_t bro,
+                                  int array_size,
+                                  int right,
+                                  int new_node_id);
+static void         br_add_bro_array(node_t me,
+                                     int stage,
+                                     node_rep_t bro,
+                                     int array_size,
+                                     int right,
+                                     int new_node_id);
 static void         update_upper_stage(node_t me, int stage, int pos2repl, int new_id, int new_node_id);
 static void         del_bro(node_t me, int stage, int bro2del);
 static void         connect_splitted_groups(node_t me,
-        int stage,
-        int pos_init,
-        int pos_new,
-        int init_rep_id,
-        int new_rep_id,
-        int new_node_id);
+                                            int stage,
+                                            int pos_init,
+                                            int pos_new,
+                                            int init_rep_id,
+                                            int new_rep_id,
+                                            int new_node_id);
 static void         split(node_t me, int stage, int new_node_id);
 static int          merge_or_transfer(node_t me, int stage);
 static void         merge(node_t me,
-        int *nodes_array,
-        int nodes_array_size,
-        int stage,
-        int pos_me,
-        int pos_contact,
-        int right,
-        int new_node_id);
+                          int *nodes_array,
+                          int nodes_array_size,
+                          int stage,
+                          int pos_me,
+                          int pos_contact,
+                          int right,
+                          int new_node_id);
 static void         broadcast_merge(node_t me,
-        int stage,
-        int pos_me,
-        int pos_contact,
-        int right,
-        int lead_br,
-        int new_node_id);
+                                    int stage,
+                                    int pos_me,
+                                    int pos_contact,
+                                    int right,
+                                    int lead_br,
+                                    int new_node_id);
 static void         leave(node_t me);
-static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_rep_t sender, int new_node_id);
+static u_ans_data_t transfer(node_t me,
+                             int st,
+                             int right,
+                             int cut_pos,
+                             s_node_rep_t sender,
+                             int new_node_id);
 static void         replace_bro(node_t me,
-        int stage,
-        int init_idx,
-        int new_id,
-        int new_node_id);
-static void         shift_bro(node_t me, int stage, s_node_rep_t new_node, int right, int new_node_id);
+                                int stage,
+                                int init_idx,
+                                int new_id,
+                                int new_node_id);
+static void         shift_bro(node_t me,
+                              int stage,
+                              s_node_rep_t new_node,
+                              int right,
+                              int new_node_id);
 static void         del_root(node_t me, int init_height);
 static void         clean_upper_stage(node_t me,
-        int stage,
-        int pos_me,
-        int pos_contact,
-        int new_node_id);
+                                      int stage,
+                                      int pos_me,
+                                      int pos_contact,
+                                      int new_node_id);
 static void         merge_request(node_t me, int new_node_id);
 static void         load_balance(node_t me, int contact_id);
 static u_ans_data_t get_new_contact(node_t me, int new_node_id);
 
 // process functions
-static int          node(int argc, char *argv[]);
-static e_val_ret_t handle_task(node_t me, m_task_t* task);
+static int         node(int argc, char *argv[]);
+static e_val_ret_t handle_task(node_t me, msg_task_t* task);
 
 /**
  * \brief Ask a remote node to display some variable (for debug)
@@ -851,6 +863,7 @@ static char* routing_table(node_t me) {
     xbt_dynar_push(tab, &s);
 
     s = xbt_str_join(tab, "");
+
     xbt_dynar_free(&tab);
 
     XBT_OUT();
@@ -979,7 +992,7 @@ static void display_preds(node_t me, char log) {
         case 'D': XBT_DEBUG("%s", s);
                   break;
     }
-    xbt_free(s);
+    //xbt_free(s);
     xbt_dynar_free(&tab);
 
     XBT_OUT();
@@ -1031,7 +1044,7 @@ static void get_mailbox(int node_id, char* mailbox) {
  *        before calling this function.
  * \param task pointer to the MSG task to destroy
  */
-static void task_free(m_task_t *task) {
+static void task_free(msg_task_t *task) {
 
     XBT_IN();
     xbt_ex_t ex;
@@ -1251,11 +1264,13 @@ static u_ans_data_t is_brother(node_t me, int id, int new_node_id) {
 }
 
 /**
+ ***  FONTION EXPERIMENTALE NON UTILISEE  ***
  * \brief Search a given object in a dynar
  * \param dynar the dynar to search into
  * \param elem the object to search for
  * \return The index where the object is found. -1 otherwise.
  */
+/*
 static int dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem) {
 
     XBT_IN();
@@ -1266,6 +1281,7 @@ static int dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem)
 
     xbt_dynar_foreach(dynar, iter, item) {
 
+        // TODO : sizeof(*elem) pas correct puisque void*
         if (!memcmp(item, elem, sizeof(*elem)) && idx == -1) {
 
             idx = iter;
@@ -1275,13 +1291,16 @@ static int dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem)
 
     XBT_OUT();
 }
+*/
 
 /**
+ ***  FONCTION EXPERIMENTALE NON UTILISEE  ***
  * \brief Check if an object is found in a dynar.
  * \param dynar the dynar to look in
  * \param elem a pointer to the object to search for
  * \return A boolean value (1 for yes)
  */
+/*
 static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem) {
 
     XBT_IN();
@@ -1291,6 +1310,7 @@ static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem) {
 
     XBT_OUT();
 }
+*/
 
 /**
  * \brief Some node asks for permission to get into Critical Section
@@ -1410,9 +1430,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
     float max_wait = MSG_get_clock() + MAX_WAIT_COMPL;
     //me->comm_received = NULL;
-    m_task_t task_received = NULL;
+    msg_task_t task_received = NULL;
     ans_data_t ans = NULL;
-    MSG_error_t res = MSG_OK;
+    msg_error_t res = MSG_OK;
     int k, idx, nok_id;
     s_state_t state;
 
@@ -1483,8 +1503,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             task_free(&task_received);
         } else {
 
-            // reception success
-            // extract data from task
+            // reception success, extract data from task
             ans = MSG_task_get_data(task_received);
             req_data_t req = (req_data_t)ans;
 
@@ -1515,12 +1534,12 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         req->sent_to);
             }
 
+            int dynar_idx = -1;
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
                 /* the received task is an answer */
 
                 // is it an async expected answer ?
-                int dynar_idx = -1;
                 dynar_idx = expected_answers_search(me,
                         me->async_answers,
                         ans->type,
@@ -1606,7 +1625,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                     /* this answer might be a sync expected one */
 
                     // look for corresponding record in dynar
-                    int dynar_idx = -1;
                     dynar_idx = expected_answers_search(me,
                             me->sync_answers,
                             ans->type,
@@ -1835,7 +1853,7 @@ static void make_copy_preds(node_t me,
  * \param args arguments needed by the request to be broadcasted
  * \param task the created task
  */
-static void make_broadcast_task(node_t me, u_req_args_t args, m_task_t *task) {
+static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) {
 
     XBT_IN();
 
@@ -2145,9 +2163,9 @@ static void run_delayed_tasks(node_t me, char c) {
             state.new_id,
             nb_elems);
 
-    m_task_t *task_ptr = NULL;
+    msg_task_t *task_ptr = NULL;
     req_data_t req_data = NULL;
-    m_task_t elem;
+    msg_task_t elem;
     int cpt = 0;
     int k = 0;
 
@@ -2205,8 +2223,8 @@ static void run_delayed_tasks(node_t me, char c) {
         if (nb_elems > 0) {
 
             int nb_cnx_req = 0;
-            //m_task_t *task_ptr = NULL;
-            //m_task_t elem;
+            //msg_task_t *task_ptr = NULL;
+            //msg_task_t elem;
             req_data_t req = NULL;
             //int cpt = 0;
             int mem_nb_elems = 0;
@@ -2703,7 +2721,7 @@ static int index_pred(node_t me, int stage, int id) {
  * \param answer_data data returned by the requested node
  * \return Communication error code
  */
-static MSG_error_t send_msg_sync(node_t me,
+static msg_error_t send_msg_sync(node_t me,
         e_task_type_t type,
         int recipient_id,
         u_req_args_t args,
@@ -2731,7 +2749,7 @@ static MSG_error_t send_msg_sync(node_t me,
     *cpy_req_data = *req_data;
 
     // create and send task with data
-    m_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, req_data);
+    msg_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, req_data);
     MSG_task_set_name(task_sent, "sync");
 
     XBT_VERB("Node %d: Sending sync '%s' to %d",
@@ -2787,9 +2805,9 @@ static MSG_error_t send_msg_sync(node_t me,
     }
 
     // reception loop to get the answer back
-    m_task_t task_received = NULL;
+    msg_task_t task_received = NULL;
     ans_data_t ans = NULL;
-    MSG_error_t res = MSG_OK;
+    msg_error_t res = MSG_OK;
     int dynar_idx;
     int idx;
     //double timeout = MSG_get_clock();
@@ -3148,7 +3166,7 @@ static MSG_error_t send_msg_sync(node_t me,
  * \param args args needed by this type of task
  * \return Communication error code
  */
-static MSG_error_t send_msg_async(node_t me,
+static msg_error_t send_msg_async(node_t me,
         e_task_type_t type,
         int recipient_id,
         u_req_args_t args) {
@@ -3168,7 +3186,7 @@ static MSG_error_t send_msg_async(node_t me,
     get_mailbox(req_data->sender_id, req_data->answer_to);
 
     // create and send task with data
-    m_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, req_data);
+    msg_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, req_data);
     MSG_task_set_name(task_sent, "async");
 
     XBT_VERB("Node %d: Sending async '%s' to %d-%s",
@@ -3200,7 +3218,7 @@ static MSG_error_t send_msg_async(node_t me,
  * \param recipient_id answer's recipient id
  * \param u_answer_data data answered back
  */
-static MSG_error_t send_ans_sync(node_t me,
+static msg_error_t send_ans_sync(node_t me,
         int new_node_id,
         e_task_type_t type,
         int recipient_id,
@@ -3222,7 +3240,7 @@ static MSG_error_t send_ans_sync(node_t me,
     get_mailbox(ans_data->recipient_id, ans_data->sent_to);
 
     // create and send task with answer data
-    m_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, ans_data);
+    msg_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, ans_data);
     MSG_task_set_name(task_sent, "ans");
 
     XBT_VERB("Node %d: {%d} Answering '%s - %s' to %d - '%s'",
@@ -3233,7 +3251,7 @@ static MSG_error_t send_ans_sync(node_t me,
             ans_data->recipient_id,
             ans_data->sent_to);
 
-    //MSG_error_t res = MSG_task_send(task_sent, ans_data->sent_to);
+    //msg_error_t res = MSG_task_send(task_sent, ans_data->sent_to);
     //MSG_task_isend(task_sent, ans_data->sent_to);
     // best effort send
     MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
@@ -3256,7 +3274,7 @@ static MSG_error_t send_ans_sync(node_t me,
     }
     */
 
-    MSG_error_t res = MSG_OK;
+    msg_error_t res = MSG_OK;
     xbt_assert(res == MSG_OK, "Node %d: Failed to answer to '%s' from %d",
             me->self.id,
             debug_msg[type],
@@ -3320,7 +3338,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
     // number of expected answers
     int ans_cpt = nb_bro;
 
-    m_task_t task_sent = NULL;
+    msg_task_t task_sent = NULL;
 
     if (args.broadcast.stage > 0 ||
             (args.broadcast.stage == 0 && args.broadcast.lead_br == 0)) {
@@ -3342,7 +3360,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             } else {
 
                 // remote call
-                MSG_error_t res = send_msg_async(me,
+                msg_error_t res = send_msg_async(me,
                         TASK_BROADCAST,
                         cpy_brothers[brother].id,
                         args);
@@ -3377,7 +3395,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
             ans_cpt = 1;
             // remote call
-            MSG_error_t res = send_msg_async(me,
+            msg_error_t res = send_msg_async(me,
                     TASK_BROADCAST,
                     cpy_brothers[0].id,
                     args);
@@ -3485,7 +3503,7 @@ static void init(node_t me) {
     set_state(me, me->self.id, 'b');    // building in progress
 
     me->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-    me->remain_tasks = xbt_dynar_new(sizeof(m_task_t), &xbt_free_ref);
+    me->remain_tasks = xbt_dynar_new(sizeof(msg_task_t), &xbt_free_ref);
     me->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
     me->cs_req = 0;
     me->cs_req_time = 0;
@@ -3558,7 +3576,7 @@ static int join(node_t me, int contact_id, int try) {
     ans_data_t answer_data = NULL;
 
     // send connection request
-    MSG_error_t res = send_msg_sync(me,
+    msg_error_t res = send_msg_sync(me,
             TASK_CNX_REQ,
             contact_id,
             u_req_args,
@@ -3756,7 +3774,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
 
             load_f = me->pred_index[stage];
         } else {
-            MSG_error_t res = send_msg_sync(me,
+            msg_error_t res = send_msg_sync(me,
                     TASK_NB_PRED,
                     me->brothers[0][f].id,
                     u_req_args,
@@ -3845,7 +3863,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
         args.cnx_req.try = try;
 
         ans_data_t answer_data = NULL;
-        MSG_error_t res;
+        msg_error_t res;
 
         res = send_msg_sync(me,
                 TASK_CNX_REQ,
@@ -3916,7 +3934,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             display_sc(me, 'D');
 
             u_req_args_t args;
-            m_task_t task_sent = NULL;
+            msg_task_t task_sent = NULL;
 
             // how many stages have to be splitted ?
             while ((n < me->height) && (me->bro_index[n] == b)) {
@@ -4101,7 +4119,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             int cpt = 0;
             recp_rec_t elem = NULL;
             u_req_args_t args;
-            MSG_error_t res = MSG_OK;
+            msg_error_t res = MSG_OK;
 
             for (i = 0; i < cpy_bro_index; i++) {
 
@@ -4155,7 +4173,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             answer.cnx_req.brothers = me->brothers;
             answer.cnx_req.bro_index = me->bro_index;
             answer.cnx_req.height = me->height;
-            s_state_t state = get_state(me);
+            state = get_state(me);
             answer.cnx_req.contact_state = state;
 
             // now, me can be active
@@ -4278,7 +4296,7 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         args.split_req.new_node_id = new_node_id;
         answer_data = NULL;
 
-        MSG_error_t res = send_msg_sync(me,
+        msg_error_t res = send_msg_sync(me,
                 TASK_SPLIT_REQ,
                 me->brothers[0][0].id,
                 //me->brothers[stage][0].id,
@@ -4296,7 +4314,7 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         // me is the leader
         XBT_VERB("Node %d: I am the leader", me->self.id);
 
-        m_task_t task_sent = NULL;
+        msg_task_t task_sent = NULL;
         if (stage_nbr == me->height) {
 
             // add a stage to every node since the root has to be splitted
@@ -4567,7 +4585,7 @@ static void del_member(node_t me, int stage, int start, int end) {
         id_del[i] = me->brothers[stage][start + i].id;
     }
 
-    MSG_error_t res;
+    msg_error_t res;
     u_req_args_t args;
     args.del_pred.stage = stage;
     args.del_pred.pred2del_id = me->self.id;
@@ -4825,7 +4843,7 @@ static void add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, 
     XBT_IN();
 
     int i;
-    MSG_error_t res;
+    msg_error_t res;
     u_req_args_t args;
 
     XBT_VERB("Node %d: in add_bro_array() - stage = %d - size = %d - right = %d",
@@ -4897,9 +4915,9 @@ static void br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_siz
 
     XBT_IN();
 
-    MSG_error_t res;
+    msg_error_t res;
     u_req_args_t args;
-    m_task_t task_sent = NULL;
+    msg_task_t task_sent = NULL;
 
     args.broadcast.type = TASK_ADD_BRO_ARRAY;
     args.broadcast.stage = stage;
@@ -5098,7 +5116,7 @@ static void connect_splitted_groups(node_t me,
     int cpt = 0;
     recp_rec_t elem = NULL;
 
-    MSG_error_t res;
+    msg_error_t res;
     u_req_args_t args;
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
@@ -5317,7 +5335,7 @@ static void split(node_t me, int stage, int new_node_id) {
     int i = 0;
     int idx = 0;
     int init_rep_id, new_rep_id = 0;
-    MSG_error_t res = MSG_OK;
+    msg_error_t res = MSG_OK;
     u_req_args_t args;
 
     // prepare the dynar of all async messages recipients
@@ -5551,7 +5569,7 @@ static int merge_or_transfer(node_t me, int stage) {
 
     int idx_bro = 0;
     int merge = 0;
-    MSG_error_t res;
+    msg_error_t res;
 
     u_req_args_t args;
     args.get_size.stage = stage;
@@ -5660,7 +5678,7 @@ static void merge(node_t me,
     //int loc_right = 0;
 
     u_req_args_t args;
-    MSG_error_t res;
+    msg_error_t res;
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
     args.add_pred.new_node_id = new_node_id;
@@ -5869,7 +5887,7 @@ static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, i
 
     int i;
     u_req_args_t args;
-    m_task_t task_sent = NULL;
+    msg_task_t task_sent = NULL;
 
     // broadcast a 'merge' task
     args.broadcast.type = TASK_MERGE;
@@ -5915,7 +5933,7 @@ static void leave(node_t me) {
     XBT_IN();
 
     int stage, brother, pred, idx;
-    MSG_error_t res;
+    msg_error_t res;
     u_req_args_t args;
     int new_rep_id = 0;
     int cpt = 0;
@@ -6091,7 +6109,7 @@ static void leave(node_t me) {
     // manage merges if necessary
     if (me->bro_index[0] <= a) {
 
-        int idx = 0;
+        idx = 0;
         while (me->brothers[0][idx].id == me->self.id && idx < me->bro_index[0]) {
 
             idx++;
@@ -6153,7 +6171,7 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
 
     int i, k, start, end, rep_idx;
     int cpt = 0;
-    MSG_error_t res;
+    msg_error_t res;
     u_ans_data_t answer;
     u_req_args_t args;
     s_node_rep_t new_node;
@@ -6208,7 +6226,7 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
     args.broadcast.args->cut_node.cut_pos = cut_pos;
     args.broadcast.args->cut_node.new_node_id = new_node_id;
 
-    m_task_t task_sent = NULL;
+    msg_task_t task_sent = NULL;
     make_broadcast_task(me, args, &task_sent);
     handle_task(me, &task_sent);
 
@@ -6257,7 +6275,7 @@ static void replace_bro(node_t me, int stage, int init_idx, int new_id, int new_
     }
 
     u_req_args_t args;
-    MSG_error_t res;
+    msg_error_t res;
 
     // delete predecessor
     if ((bro_id != me->self.id) && (init_idx < me->bro_index[stage])){
@@ -6314,7 +6332,7 @@ static void shift_bro(node_t me, int stage, s_node_rep_t new_node, int right, in
     XBT_IN();
 
     u_req_args_t args;
-    MSG_error_t res;
+    msg_error_t res;
     int pos_me, i, lost_id;
 
     // only run once (this function is broadcasted with cut_node)
@@ -6496,7 +6514,7 @@ static void clean_upper_stage(node_t me, int stage, int pos_me, int pos_contact,
     XBT_IN();
 
     u_req_args_t args;
-    MSG_error_t res;
+    msg_error_t res;
 
     // computes recp_id : the node to be deleted
     int recp_id = -1;
@@ -6593,7 +6611,7 @@ static void merge_request(node_t me, int new_node_id) {
     int pos_me, pos_contact;
     int stage = 0;
     int i = 0;
-    MSG_error_t res;
+    msg_error_t res;
     u_req_args_t args;
     node_rep_t current_bro = NULL;
     int current_size = 0;
@@ -6703,7 +6721,7 @@ static void merge_request(node_t me, int new_node_id) {
             args.broadcast.args->clean_stage.pos_contact = pos_contact;
             args.broadcast.args->clean_stage.new_node_id = new_node_id;
 
-            m_task_t task_sent = NULL;
+            msg_task_t task_sent = NULL;
             make_broadcast_task(me, args, &task_sent);
             handle_task(me, &task_sent);
 
@@ -6826,7 +6844,7 @@ static void merge_request(node_t me, int new_node_id) {
             update_upper_stage(me, stage, pos_contact, answer_data->answer.transfer.stay_id, new_node_id);
 
             // update upper stage for all concerned members
-            m_task_t task_sent = NULL;
+            msg_task_t task_sent = NULL;
 
             XBT_VERB("Node %d: Broadcast UPDATE_UPPER_STAGE ",
                     me->self.id);
@@ -6937,7 +6955,7 @@ static void merge_request(node_t me, int new_node_id) {
         args.broadcast.args->clean_stage.pos_me = pos_me;
         args.broadcast.args->clean_stage.pos_contact = pos_contact;
 
-        m_task_t task_sent = NULL;
+        msg_task_t task_sent = NULL;
         make_broadcast_task(me, args, &task_sent);
         handle_task(me, &task_sent);
         task_free(&task_sent);
@@ -6951,7 +6969,7 @@ static void merge_request(node_t me, int new_node_id) {
     // delete root stage
     if (size_last_stage == 1) {
 
-        m_task_t task_sent = NULL;
+        msg_task_t task_sent = NULL;
 
         args.broadcast.type = TASK_DEL_ROOT;
         args.broadcast.stage = me->height - 1;
@@ -7009,7 +7027,7 @@ static void load_balance(node_t me, int contact_id) {
             state.new_id);
 
     u_req_args_t u_req_args;
-    MSG_error_t res;
+    msg_error_t res;
 
     /* starts by adding me as a pred for the whole table
        (so that each member's preds will be up to date as soon as possible) */
@@ -7279,7 +7297,7 @@ int node(int argc, char *argv[]) {
         u_req_args_t u_req_args;
         u_req_args.get_new_contact.new_node_id = node.self.id;
         ans_data_t answer_data = NULL;
-        MSG_error_t res;
+        msg_error_t res;
 
         do {
 
@@ -7388,8 +7406,8 @@ int node(int argc, char *argv[]) {
         run_delayed_tasks(&node, '3');
 
         // task receive loop
-        m_task_t task_received = NULL;
-        MSG_error_t res = MSG_TRANSFER_FAILURE;
+        msg_task_t task_received = NULL;
+        msg_error_t res = MSG_TRANSFER_FAILURE;
         s_state_t state = get_state(&node);
 
         while (MSG_get_clock() < max_simulation_time && state.active != 'n') {
@@ -7497,7 +7515,7 @@ int node(int argc, char *argv[]) {
  * \param task pointer to the task to be handled
  * \return A value indicating if things went right or not
  */
-static e_val_ret_t handle_task(node_t me, m_task_t* task) {
+static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
     XBT_IN();
 
@@ -7536,7 +7554,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
         rcv_args = rcv_req->args;
     }
     u_ans_data_t answer;
-    MSG_error_t res = MSG_OK;
+    msg_error_t res = MSG_OK;
     int init_idx, idx;
 
     switch (type) {
@@ -8059,7 +8077,7 @@ static e_val_ret_t handle_task(node_t me, m_task_t* task) {
                                                me->self.id); */
                                         }
 
-                                        m_task_t br_task = MSG_task_create(NULL,
+                                        msg_task_t br_task = MSG_task_create(NULL,
                                                 COMP_SIZE,
                                                 COMM_SIZE,
                                                 req_data);
@@ -8622,7 +8640,7 @@ int main(int argc, char *argv[]) {
     }
 
     xbt_log_control_set("msg_dst.thres:TRACE");
-    MSG_global_init(&argc, argv);
+    MSG_init(&argc, argv);
     //infos_dst = xbt_dynar_new_sync(sizeof(dst_infos_t), &xbt_free_ref);
     infos_dst = xbt_dynar_new(sizeof(dst_infos_t), &elem_free);
 
@@ -8643,7 +8661,7 @@ int main(int argc, char *argv[]) {
     MSG_launch_application(deployment_file);
 
     xbt_os_timer_start(timer);
-    MSG_error_t res = MSG_main();
+    msg_error_t res = MSG_main();
     xbt_os_timer_stop(timer);
 
 
