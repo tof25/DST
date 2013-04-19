@@ -21,7 +21,7 @@
 #include "xbt/log.h"                        // to get nice outputs
 #include "xbt/asserts.h"                    // to use xbt_assert()
 #include "xbt/xbt_os_time.h"                /* to use a timer (located in
-                                               simgrid-3.8.1/src/include/xbt) */
+                                               Simgrid-3.9/src/include/xbt) */
 #include "xbt/ex.h"                         // to use exceptions
 #include <time.h>
 #include <stdlib.h>                         // to use rand()
@@ -32,16 +32,12 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
    ========================  GLOBAL VALUES  ==================================
 */
 
-#define COMM_SIZE 10                        /* message size when creating a
-                                               new task */
-#define COMP_SIZE 0                         /* compute duration when creating a
-                                               new task */
+#define COMM_SIZE 10                        // message size when creating a new task
+#define COMP_SIZE 0                         // compute duration when creating a new task
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
 #define TYPE_NBR 35                         // number of task types
-#define MAX_WAIT_COMPL 3000                 /* won't wait longer for broadcast
-                                               completion */
-#define MAX_WAIT_GET_REP 2000               /* won't wait longer an answer to a
-                                               GET_REP request */
+#define MAX_WAIT_COMPL 3000                 // won't wait longer for broadcast completion
+#define MAX_WAIT_GET_REP 2000               // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 200                        // number of joining attempts
 #define TRY_STEP 10                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 100                      // max time between cs_req and matching set_update
@@ -52,32 +48,29 @@ static const int b = 4;                     /* max number of brothers in a node
                                                (must be twice a) */
 //static int timeout = 100;                   // timeout for communications
 static double max_simulation_time = 10500;  // max default simulation time
-static xbt_dynar_t infos_dst;               /* to store all routing tables
-                                               and other global DST infos */
+static xbt_dynar_t infos_dst;               // to store all global DST infos
 static int nb_messages[TYPE_NBR] = {0};     /* total number of messages exchanged
                                                for each task type */
 static int nb_br_messages[TYPE_NBR] = {0};  /* total number of broadcasted
                                                messages exchanged for each task type */
 static int order = 0;                       // order number of nodes arrival
 
-typedef struct f_node {                     // a node that failed to join
+typedef struct f_node {                     // node that failed to join
     int   id;
     float f_time;
 } s_f_node_t;
 
 static int nb_abort = 0;                    // number of join abortions
-static s_f_node_t *failed_nodes = NULL;     /* array of nodes id that couldn't
-                                               join the DST */
+static s_f_node_t *failed_nodes = NULL;     // array of nodes that couldn't join the DST
 
 /**
- * Infos about the DST for statistics purposes
+ * Infos about the DST (for reporting purposes)
  */
 typedef struct s_dst_info {
     int   order;                            // arrival order
     int   node_id;                          // node id
     char  active;                           // node state
-    char *routing_table;                    /* string representation of a
-                                               routing table */
+    char *routing_table;                    // string representation of a routing table
     int   nb_messages;                      /* number of messages needed for the
                                                node to join */
     int   add_stage;                        /* boolean: was it necessary to add
@@ -86,7 +79,7 @@ typedef struct s_dst_info {
                                                room for this node */
     int  *load;                             /* load table (number of predecessors
                                                per stage) */
-    int  *size;                             /* number of brothers for each stage */
+    int  *size;                             // number of brothers for each stage
 } s_dst_infos_t, *dst_infos_t;
 
 /**
@@ -112,24 +105,21 @@ typedef enum {
     TASK_ADD_STAGE,         // add a new stage
     TASK_CNX_GROUPS,        // make a node connect to his newly splitted sons
     TASK_SPLIT,             // execute the splitting
-    TASK_NB_PRED,           /* get the number of predecessors of a node,
-                               for a given stage */
+    TASK_NB_PRED,           // get the number of predecessors of a node, for a given stage
     TASK_ADD_PRED,          // add a predecessor
     TASK_DEL_PRED,          // delete a predecessor
     TASK_BROADCAST,         // broadcast a message
-    TASK_DISPLAY_VAR,       /* display a variable of a remote node
-                               (for debugging purposes) */
+    TASK_DISPLAY_VAR,       // display a variable of a remote node (for debugging purposes)
     TASK_GET_SIZE,          // return the number of brothers on a given stage
     TASK_DEL_BRO,           // delete a brother in a given stage
     TASK_REPL_BRO,          // replace a brother by a new one
     TASK_MERGE,             // merge groups when a node leaves
     TASK_BROADCAST_MERGE,   // broadcast a merge task
     TASK_DEL_ROOT,          // delete the root when a merge occurs
-    TASK_CLEAN_STAGE,       /* clean useless nodes in a stage when a merge
-                               occured in lower ones */
+    TASK_CLEAN_STAGE,       // clean useless nodes in a stage when a merge occured in lower ones
     TASK_MERGE_REQ,         // request merges tasks
-    TASK_SET_ACTIVE,        // set active state
-    TASK_SET_UPDATE,        // set update state
+    TASK_SET_ACTIVE,        // set 'active' state
+    TASK_SET_UPDATE,        // set 'update' state
     TASK_SET_STATE,         // set any state
     TASK_IS_BROTHER,        // test if a given id is a brother of mine
     TASK_TRANSFER,          // transfer some nodes to another group
@@ -140,8 +130,8 @@ typedef enum {
     TASK_CUT_NODE,          // cut node during a transfer
     TASK_BR_ADD_BRO_ARRAY,  // broadcast an add_bro_array task
     TASK_UPDATE_UPPER_STAGE,// update upper stage after a transfer
-    TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join
-    TASK_CS_REQ,            // ask for permission to get into Critical Section
+    TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join too much
+    TASK_CS_REQ,            // ask for permission to get into Critical Section (splitted area)
     TASK_END_GET_REP        // remove 'g' state after load balance
 } e_task_type_t;
 
@@ -992,7 +982,7 @@ static void display_preds(node_t me, char log) {
         case 'D': XBT_DEBUG("%s", s);
                   break;
     }
-    //xbt_free(s);
+    xbt_free(s);
     xbt_dynar_free(&tab);
 
     XBT_OUT();
@@ -3150,6 +3140,14 @@ static msg_error_t send_msg_sync(node_t me,
                 me->self.id,
                 *answer_data);
     }
+
+    // TODO : regarder pourquoi il ne faut pas faire ces libérations
+    /*
+    xbt_free(task_sent);
+
+    xbt_free(req_data);
+    req_data = NULL;
+    */
 
     xbt_free(cpy_req_data);
     cpy_req_data = NULL;
@@ -8606,6 +8604,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
     }
 
     if (type != TASK_BROADCAST) {
+
         display_rout_table(me, 'V');
 
         // set and store DST infos
@@ -8617,6 +8616,14 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
     XBT_DEBUG("Node %d end of handle_task(): val_ret = '%s'",
             me->self.id,
             (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"));
+
+    if (val_ret == OK) {
+
+        xbt_assert(*task == NULL,
+                "Node %d: task should be NULL at the end of handle_task !! type = %s",
+                me->self.id,
+                debug_msg[type]);
+    }
 
     XBT_OUT();
     return val_ret;
@@ -8636,6 +8643,12 @@ int main(int argc, char *argv[]) {
                 argv[0]);
         printf("       simulation_time defaults to %d ",
                 (int) max_simulation_time);
+        exit(1);
+    }
+
+    if (b != 2 * a) {
+
+        printf("Bounds error : b should be twice a : a = %d, b = %d", a, b);
         exit(1);
     }
 
