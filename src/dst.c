@@ -1414,19 +1414,19 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     e_val_ret_t ret = OK;
     int dynar_size = (int) xbt_dynar_length(me->async_answers);
 
-    XBT_DEBUG("Node %d: dynar_size = %d", me->self.id, dynar_size);
+    XBT_DEBUG("Node %d: in wait_for_completion - async_answers dynar size = %d",
+            me->self.id,
+            dynar_size);
 
     recp_rec_t *elem_ptr = NULL;
-
     float max_wait = MSG_get_clock() + MAX_WAIT_COMPL;
-    //me->comm_received = NULL;
     msg_task_t task_received = NULL;
     ans_data_t ans = NULL;
     msg_error_t res = MSG_OK;
     int k, idx, nok_id;
     s_state_t state;
 
-    // async answers already received ? (from other calls of this function)
+    // async answers already received ? (from other recursive calls of this function)
     for (idx = dynar_size - 1; idx >= dynar_size - ans_cpt; idx--) {
 
         elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
@@ -1441,8 +1441,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                     ret = (*elem_ptr)->answer_data->answer.handle.val_ret;
                     nok_id = (ret == UPDATE_NOK ?
-                            (*elem_ptr)->answer_data->answer.handle.val_ret_id :
-                            -1);
+                              (*elem_ptr)->answer_data->answer.handle.val_ret_id : -1);
                 }
             }
 
@@ -1462,7 +1461,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     }
 
     xbt_assert(ans_cpt >= 0,
-            "Node %d: ack reception error",
+            "Node %d: in wait_for_completion - ack reception error",
             me->self.id);
 
     // waiting loop
@@ -1857,8 +1856,8 @@ static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) 
 
     req_data->args = args;
 
-    (*task) = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, req_data);
-    MSG_task_set_name((*task), "async");
+    (*task) = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
+    //MSG_task_set_name((*task), "async");
 
     XBT_DEBUG("Node %d in make_broadcast_task(): br_stage = %d - br_type = '%s - lead_br = %d'",
             me->self.id,
@@ -2739,8 +2738,8 @@ static msg_error_t send_msg_sync(node_t me,
     *cpy_req_data = *req_data;
 
     // create and send task with data
-    msg_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, req_data);
-    MSG_task_set_name(task_sent, "sync");
+    msg_task_t task_sent = MSG_task_create("sync", COMP_SIZE, COMM_SIZE, req_data);
+    //MSG_task_set_name(task_sent, "sync");
 
     XBT_VERB("Node %d: Sending sync '%s' to %d",
             req_data->sender_id,
@@ -3157,9 +3156,9 @@ static msg_error_t send_msg_sync(node_t me,
 }
 
 /**
- * \brief Sends a request task to another node
+ * \brief Asynchronously sends a request task to another node
  * \param me the current node
- * \param type type of sent task
+ * \param type request type
  * \param recipient_id id of the recipient
  * \param args args needed by this type of task
  * \return Communication error code
@@ -3184,8 +3183,8 @@ static msg_error_t send_msg_async(node_t me,
     get_mailbox(req_data->sender_id, req_data->answer_to);
 
     // create and send task with data
-    msg_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, req_data);
-    MSG_task_set_name(task_sent, "async");
+    msg_task_t task_sent = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
+    //MSG_task_set_name(task_sent, "async");
 
     XBT_VERB("Node %d: Sending async '%s' to %d-%s",
             req_data->sender_id,
@@ -3193,7 +3192,6 @@ static msg_error_t send_msg_async(node_t me,
             req_data->recipient_id,
             req_data->sent_to);
 
-    //MSG_task_isend(task_sent, req_data->sent_to);
     // best effort send
     MSG_task_dsend(task_sent, req_data->sent_to, NULL);
 
@@ -3238,8 +3236,8 @@ static msg_error_t send_ans_sync(node_t me,
     get_mailbox(ans_data->recipient_id, ans_data->sent_to);
 
     // create and send task with answer data
-    msg_task_t task_sent = MSG_task_create(NULL, COMP_SIZE, COMM_SIZE, ans_data);
-    MSG_task_set_name(task_sent, "ans");
+    msg_task_t task_sent = MSG_task_create("ans", COMP_SIZE, COMM_SIZE, ans_data);
+    //MSG_task_set_name(task_sent, "ans");
 
     XBT_VERB("Node %d: {%d} Answering '%s - %s' to %d - '%s'",
             ans_data->sender_id,
@@ -8075,11 +8073,11 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                                me->self.id); */
                                         }
 
-                                        msg_task_t br_task = MSG_task_create(NULL,
+                                        msg_task_t br_task = MSG_task_create("async",
                                                 COMP_SIZE,
                                                 COMM_SIZE,
                                                 req_data);
-                                        MSG_task_set_name(br_task, "async");
+                                        //MSG_task_set_name(br_task, "async");
 
                                         val_ret = handle_task(me, &br_task);
 
