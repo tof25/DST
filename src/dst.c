@@ -1689,7 +1689,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                    Si la tâche traitée envoie un message, c'est le
                    destinataire qui doit détruire ces données */
 
-                XBT_DEBUG("Node %d: back to wait_for_completion()."
+                XBT_VERB("Node %d: back to wait_for_completion()."
                         " Answers received meanwhile ?",
                         me->self.id);
 
@@ -2830,14 +2830,14 @@ static msg_error_t send_msg_sync(node_t me,
             task_free(&task_received);
         } else {
 
-            // reception success
-            // extract data from task
+            // reception success, extract data from task
             ans = MSG_task_get_data(task_received);
             req_data_t req = (req_data_t)ans;
 
             // get answer data
             *answer_data = ans;
 
+            // log
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
                 // answer
