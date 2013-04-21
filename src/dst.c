@@ -1464,6 +1464,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             "Node %d: in wait_for_completion - ack reception error",
             me->self.id);
 
+    int dynar_idx = -1;
     // waiting loop
     while (MSG_get_clock() <= max_wait && ans_cpt > 0) {
 
@@ -1496,10 +1497,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             ans = MSG_task_get_data(task_received);
             req_data_t req = (req_data_t)ans;
 
+            // log
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
                 // answer
-                XBT_VERB("Node %d: Received task : '%s - %s %s'"
+                XBT_VERB("Node %d: Received message : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
                         MSG_task_get_name(task_received),
@@ -1511,7 +1513,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             } else {
 
                 // request
-                XBT_VERB("Node %d: Received task  : '%s - %s %s'"
+                XBT_VERB("Node %d: Received message  : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
                         MSG_task_get_name(task_received),
@@ -1523,12 +1525,15 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         req->sent_to);
             }
 
-            int dynar_idx = -1;
+            // process received message
+            dynar_idx = -1;
+
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
-                /* the received task is an answer */
+                /* the received message is an answer
+                 * ***********************************/
 
-                // is it an async expected answer ?
+                /* is it one of the async expected answers ? */
                 dynar_idx = expected_answers_search(me,
                         me->async_answers,
                         ans->type,
@@ -1536,7 +1541,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         ans->sender_id,
                         ans->new_node_id);
 
-                XBT_VERB("Node %d in wait_for_completion(): record%sfound"
+                XBT_VERB("Node %d in wait_for_completion(): matching record%sfound"
                         " in async answers dynar: idx = %d",
                         me->self.id,
                         (dynar_idx == -1 ? " not " : " "),
@@ -1544,7 +1549,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                 if (dynar_idx != -1) {
 
-                    // yes. Is it one of the current expected ones ?
+                    /* Yes. Is it one of the current expected ones ? */
 
                     if (dynar_idx <= dynar_size - 1 &&
                             dynar_idx >= dynar_size - ans_cpt) {
@@ -1554,13 +1559,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                             if (ret != UPDATE_NOK) {
 
                                 ret = ans->answer.handle.val_ret;
-
                                 nok_id = (ret == UPDATE_NOK ?  ans->answer.handle.val_ret_id : -1);
                             }
                         }
 
-                        /* yes, this answer is one of the current expected
-                           acknowledgments */
+                        // yes, this answer is one of the current expected acknowledgments
                         ans_cpt--;
 
                         // remove this entry from dynar
@@ -1578,7 +1581,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         dynar_size = (int) xbt_dynar_length(me->async_answers);
                     } else {
 
-                        /* this answer is expected by one of parent calls:
+                        /* No, this answer is then expected by one of parent calls:
                            just mark the entry as received ... */
                         elem_ptr = xbt_dynar_get_ptr(me->async_answers,
                                 dynar_idx);
@@ -1611,9 +1614,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                             ans_cpt);
                 } else {
 
-                    /* this answer might be a sync expected one */
+                    /* No, this answer is not an async expected one.
+                     * Is it a sync expected one ? */
 
-                    // look for corresponding record in dynar
                     dynar_idx = expected_answers_search(me,
                             me->sync_answers,
                             ans->type,
@@ -1621,7 +1624,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                             ans->sender_id,
                             ans->new_node_id);
 
-                    XBT_VERB("Node %d in wait_for_completion(): record%sfound"
+                    XBT_VERB("Node %d in wait_for_completion(): matching record%sfound"
                             " in sync answers dynar: idx = %d",
                             me->self.id,
                             (dynar_idx == -1 ? " not " : " "),
@@ -1629,7 +1632,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                     if (dynar_idx > -1) {
 
-                        // matching entry found
+                        /* Yes, matching entry found */
                         elem_ptr =
                             xbt_dynar_get_ptr(me->sync_answers, dynar_idx);
 
@@ -1650,7 +1653,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                                 xbt_dynar_length(me->sync_answers));
                     } else {
 
-                        XBT_DEBUG("Node %d: not found in dynar. Ignore it",
+                        /* No, this answer wasn't expected. Ignore it. */
+                        XBT_DEBUG("Node %d: not found in dynars. Ignore it",
                                 me->self.id);
                     }
                 }
@@ -1660,9 +1664,10 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 task_free(&task_received);
             } else {
 
-                /* the received task is a request */
-                XBT_VERB("Node %d: this is not an answer",
-                        me->self.id);
+                /* the received message is a request
+                 * *********************************/
+
+                XBT_VERB("Node %d: this is not an answer", me->self.id);
 
                 /*NOTE: il ne semble pas nécessaire de récupérer la valeur de
                   retour de handle_task() ici */
@@ -1674,10 +1679,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                     task_received = NULL;
                 } else {
 
-                    // handle the received task
+                    // handle the received request
                     handle_task(me, &task_received);
                 }
                 ans = NULL;
+                req = NULL;
 
                 /* NOTE: ne pas détruire les data ici.
                    Si la tâche traitée envoie un message, c'est le
@@ -1687,13 +1693,16 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         " Answers received meanwhile ?",
                         me->self.id);
 
-                // async answers received meanwhile ?
+                // async expected answers received meanwhile ?
                 dynar_size = (int) xbt_dynar_length(me->async_answers);
                 for (idx = dynar_size - 1;
                         idx >= dynar_size - ans_cpt; idx--) {
 
                     elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
                     if ((*elem_ptr)->recp.id == -1) {
+
+                        // yes
+                        ans_cpt--;
 
                         // check if an UPDATE_NOK has been received
                         if ((*elem_ptr)->answer_data != NULL &&
@@ -1705,14 +1714,12 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                                     -1);
                         }
 
+                        // free data
                         if ((*elem_ptr)->answer_data != NULL) {
 
                             xbt_free((*elem_ptr)->answer_data);
                             (*elem_ptr)->answer_data = NULL;
                         }
-
-                        // yes
-                        ans_cpt--;
 
                         // delete this entry from expected answers
                         xbt_dynar_remove_at(me->async_answers,
@@ -1739,21 +1746,19 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     // Error if max_wait reached
     if (ans_cpt > 0) {
 
-        display_async_answers(me, 'V');
+        display_async_answers(me, 'I');
     }
     xbt_assert(ans_cpt == 0, "Node %d: Wait error - cpt = %d",
             me->self.id,
             ans_cpt);
 
-    XBT_VERB("Node %d: wait completed\n",
-            me->self.id);
+    XBT_VERB("Node %d: wait completed\n", me->self.id);
 
     display_async_answers(me, 'D');
 
-    XBT_VERB("Node %d: end of wait_for_completion(): val_ret = '%s' -"
-            " nok_id = %d",
+    XBT_VERB("Node %d: end of wait_for_completion(): val_ret = '%s' - nok_id = %d",
             me->self.id,
-            (ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
+            (ret == UPDATE_NOK ? "NOK" : "OK"),
             (ret == UPDATE_NOK ? nok_id : -1));
 
     XBT_OUT();
@@ -2741,22 +2746,14 @@ static msg_error_t send_msg_sync(node_t me,
     msg_task_t task_sent = MSG_task_create("sync", COMP_SIZE, COMM_SIZE, req_data);
     //MSG_task_set_name(task_sent, "sync");
 
-    XBT_VERB("Node %d: Sending sync '%s' to %d",
-            req_data->sender_id,
-            debug_msg[req_data->type],
-            req_data->recipient_id);
-
     // async best effort send
-    //MSG_task_isend(task_sent, req_data->sent_to);
-    XBT_DEBUG("Before dsend: sent_to = %s", req_data->sent_to);
-
     MSG_task_dsend(task_sent, req_data->sent_to, NULL);
 
-    XBT_VERB("Node %d: '%s - %s' Request to node %d sent for new_node %d",
+    XBT_VERB("Node %d: Send sync request '%s %s' to %d for new node %d",
             req_data->sender_id,
             debug_msg[req_data->type],
-            (req_data->type == TASK_BROADCAST ?
-             debug_msg[req_data->args.broadcast.type] : ""),
+            debug_msg[(req_data->type == TASK_BROADCAST ?
+                req_data->args.broadcast.type : TASK_NULL)],
             req_data->recipient_id,
             req_data->args.get_rep.new_node_id);
 
@@ -2799,10 +2796,8 @@ static msg_error_t send_msg_sync(node_t me,
     msg_error_t res = MSG_OK;
     int dynar_idx;
     int idx;
-    //double timeout = MSG_get_clock();
     s_state_t state;
 
-    //while (MSG_get_clock() - timeout < MAX_WAIT_GET_REP ||
     while (res != MSG_TIMEOUT ||
             cpy_req_data->type != TASK_GET_REP) {
 
@@ -3186,11 +3181,12 @@ static msg_error_t send_msg_async(node_t me,
     msg_task_t task_sent = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
     //MSG_task_set_name(task_sent, "async");
 
-    XBT_VERB("Node %d: Sending async '%s' to %d-%s",
+    XBT_VERB("Node %d: Sending async '%s %s' to %d",
             req_data->sender_id,
             debug_msg[req_data->type],
-            req_data->recipient_id,
-            req_data->sent_to);
+            debug_msg[(req_data->type == TASK_BROADCAST ?
+                            req_data->args.broadcast.type : TASK_NULL)],
+            req_data->recipient_id);
 
     // best effort send
     MSG_task_dsend(task_sent, req_data->sent_to, NULL);
