@@ -1667,7 +1667,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 /* the received message is a request
                  * *********************************/
 
-                XBT_VERB("Node %d: this is not an answer", me->self.id);
+                XBT_VERB("Node %d: This is not an answer", me->self.id);
 
                 /*NOTE: il ne semble pas nécessaire de récupérer la valeur de
                   retour de handle_task() ici */
@@ -2798,8 +2798,7 @@ static msg_error_t send_msg_sync(node_t me,
     int idx;
     s_state_t state;
 
-    while (res != MSG_TIMEOUT ||
-            cpy_req_data->type != TASK_GET_REP) {
+    while (res != MSG_TIMEOUT || cpy_req_data->type != TASK_GET_REP) {
 
         dynar_idx = -1;
 
@@ -2813,7 +2812,6 @@ static msg_error_t send_msg_sync(node_t me,
         if (cpy_req_data->type == TASK_GET_REP) {
 
             res = MSG_task_receive_with_timeout(&task_received, cpy_req_data->answer_to, MAX_WAIT_GET_REP);
-            //res = MSG_task_receive(&task_received, cpy_req_data->answer_to);
         } else {
 
             res = MSG_task_receive(&task_received, cpy_req_data->answer_to);
@@ -2842,10 +2840,10 @@ static msg_error_t send_msg_sync(node_t me,
 
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
-                XBT_VERB("Node %d: Received task (data %p) : '%s - %s %s'"
+                // answer
+                XBT_VERB("Node %d: Received message : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
-                        ans,
                         MSG_task_get_name(task_received),
                         debug_msg[ans->type],
                         debug_msg[ans->br_type],
@@ -2854,10 +2852,10 @@ static msg_error_t send_msg_sync(node_t me,
                         ans->sent_to);
             } else {
 
-                XBT_VERB("Node %d: Received task (data %p) : '%s - %s %s'"
+                // request
+                XBT_VERB("Node %d: Received message : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
-                        req,
                         MSG_task_get_name(task_received),
                         debug_msg[req->type],
                         debug_msg[(req->type == TASK_BROADCAST ?
@@ -2869,7 +2867,9 @@ static msg_error_t send_msg_sync(node_t me,
 
             if (strcmp(MSG_task_get_name(task_received), "ans") != 0) {
 
-                /* the received task is a request */
+                /* the received message is a request
+                 * *********************************/
+
                 XBT_VERB("Node %d: This is not the expected answer"
                         " {'%s' from %d}, it's a '%s' request from %d",
                         me->self.id,
