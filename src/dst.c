@@ -2906,7 +2906,7 @@ static msg_error_t send_msg_sync(node_t me,
                         me->sync_answers,
                         xbt_dynar_length(me->sync_answers) - 1);
 
-                XBT_DEBUG("Node %d top dynar: {type: '%s - %s' - recipient: %d"
+                XBT_DEBUG("Node %d: top dynar : {type: '%s - %s' - recipient: %d"
                         " - data: %p}",
                         me->self.id,
                         debug_msg[(*elem_ptr)->type],
@@ -2939,11 +2939,10 @@ static msg_error_t send_msg_sync(node_t me,
                 }
             } else {
 
-                // the received task is an answer
-                XBT_DEBUG("Node %d: the received task is an answer",
-                        me->self.id);
+                /* the received task is an answer
+                 * ******************************/
 
-                // look for corresponding record in dynar
+                // look for matching record in dynar
                 dynar_idx = expected_answers_search(me,
                         me->sync_answers,
                         ans->type,
@@ -2951,10 +2950,10 @@ static msg_error_t send_msg_sync(node_t me,
                         ans->sender_id,
                         ans->new_node_id);
 
-                XBT_DEBUG("Node %d in send_msg_sync(): record found in dynar ?"
-                        " %s: idx = %d",
+                XBT_DEBUG("Node %d in send_msg_sync(): matching record%sfound"
+                        " in sync answers dynar: idx = %d",
                         me->self.id,
-                        (dynar_idx == -1 ? "No" : "Yes"),
+                        (dynar_idx == -1 ? " not " : " "),
                         dynar_idx);
 
                 if (dynar_idx == (int)xbt_dynar_length(me->sync_answers) - 1) {
@@ -2969,7 +2968,7 @@ static msg_error_t send_msg_sync(node_t me,
                     // pop the answer from dynar sync_answers
                     xbt_dynar_pop(me->sync_answers, &ans_elem);
 
-                    //data_ans_free(me, ans_elem->answer_data);
+                    // free memory
                     if (ans_elem->answer_data != NULL) {
 
                         xbt_free(ans_elem->answer_data);
@@ -2992,13 +2991,16 @@ static msg_error_t send_msg_sync(node_t me,
                        Record its data in dynar sync_answers ? */
                     if (dynar_idx > -1) {
 
-                        XBT_VERB("Node %d: This is not the expected answer -"
-                                " req_type = %s, ans_type = %s - sent to %d,"
-                                " answer from %d",
+                        XBT_VERB("Node %d: This sync answer isn't the expected one ->"
+                                " req_type = %s-%s - sent to %d | ans_type = %s-%s"
+                                " - received from %d",
                                 me->self.id,
                                 debug_msg[cpy_req_data->type],
-                                debug_msg[ans->type],
+                                debug_msg[(cpy_req_data->type == TASK_BROADCAST ?
+                                    cpy_req_data->args.broadcast.type : TASK_NULL)],
                                 cpy_req_data->recipient_id,
+                                debug_msg[ans->type],
+                                debug_msg[ans->br_type],
                                 ans->sender_id);
 
                         elem_ptr = xbt_dynar_get_ptr(me->sync_answers, dynar_idx);
@@ -3013,8 +3015,7 @@ static msg_error_t send_msg_sync(node_t me,
                         (*elem_ptr)->answer_data = xbt_new0(s_ans_data_t, 1);
                         *((*elem_ptr)->answer_data) = *ans;
 
-                        XBT_DEBUG("Node %d: other sync answer received. recorded"
-                                " in %d - length = %lu",
+                        XBT_DEBUG("Node %d: answer recorded at %d - length = %lu",
                                 me->self.id,
                                 dynar_idx,
                                 xbt_dynar_length(me->sync_answers));
@@ -3024,7 +3025,7 @@ static msg_error_t send_msg_sync(node_t me,
                         task_free(&task_received);
                     } else {
 
-                        // is it an async expected answer ?
+                        // No. Is it an async expected answer, then ?
                         dynar_idx = expected_answers_search(me,
                                 me->async_answers,
                                 ans->type,
@@ -3034,7 +3035,7 @@ static msg_error_t send_msg_sync(node_t me,
 
                         if (dynar_idx != -1) {
 
-                            /* this task is one of the expected acknowledgments:
+                            /* this answer is one of the expected acknowledgments:
                                mark it as received ... */
                             elem_ptr = xbt_dynar_get_ptr(me->async_answers,
                                     dynar_idx);
