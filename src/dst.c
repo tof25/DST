@@ -3028,8 +3028,10 @@ static msg_error_t send_msg_sync(node_t me,
                         rec_sync_answer(me, dynar_idx, ans);
 
                         // get ready for a new loop
+                        /*
                         data_ans_free(me, &ans);
                         task_free(&task_received);
+                        */
                     } else {
 
                         // No. Is it an async expected answer, then ?
@@ -3055,11 +3057,12 @@ static msg_error_t send_msg_sync(node_t me,
                                     dynar_idx);
 
                         }
-                        // get prepared for a new loop
-                        data_ans_free(me, &ans);
-                        task_free(&task_received);
-
                     } // task_received is not a sync expected answer
+
+                    // get prepared for a new loop
+                    data_ans_free(me, &ans);
+                    task_free(&task_received);
+
                 }     // task_received is not the expected answer
             }         // task_received is an answer
         }             // reception success
