@@ -667,6 +667,7 @@ static u_ans_data_t is_brother(node_t me, int id, int new_node_id);
 //static char         dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem);
 static e_val_ret_t  cs_req(node_t me, int sender_id, int new_node_id);
 static void         cs_rel(node_t me, int new_node_id);
+static void         rec_async_answer(node_t me, int idx, ans_data_t ans);
 
 // communication functions
 static msg_error_t send_msg_sync(node_t        me,
@@ -1393,6 +1394,38 @@ static void cs_rel(node_t me, int new_node_id) {
 }
 
 /**
+ * \brief Mark an async answer as received in async_answers dynar
+ * \param me the current node
+ * \param idx the position of the record in the dynar
+ * \param ans answer to be written
+ */
+static void rec_async_answer(node_t me, int idx, ans_data_t ans) {
+    XBT_IN();
+
+    recp_rec_t *elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
+
+    // mark answer as received
+    (*elem_ptr)->recp.id = -1;
+
+    xbt_assert((*elem_ptr)->answer_data == NULL,
+            "Node %d: rec answer_data %d not NULL !",
+            me->self.id,
+            idx);
+
+    // record the answer
+    if ((*elem_ptr)->answer_data == NULL) {
+
+        (*elem_ptr)->answer_data = xbt_new0(s_ans_data_t, 1);
+        (*elem_ptr)->answer_data->answer.handle.val_ret =
+            ans->answer.handle.val_ret;
+        (*elem_ptr)->answer_data->answer.handle.val_ret_id =
+            ans->answer.handle.val_ret_id;
+    }
+
+    XBT_OUT();
+}
+
+/**
  * \brief Wait for the completion of a bunch of async sent tasks
  * \param me the current node
  * \param ans_cpt the number of expected anwswers
@@ -1582,27 +1615,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                     } else {
 
                         /* No, this answer is then expected by one of parent calls:
-                           just mark the entry as received ... */
-                        elem_ptr = xbt_dynar_get_ptr(me->async_answers,
-                                dynar_idx);
-                        (*elem_ptr)->recp.id = -1;
-
-                        xbt_assert((*elem_ptr)->answer_data == NULL,
-                                "Node %d: in wait_for_completion(): async "
-                                "answer_data %d not NULL !",
-                                me->self.id,
-                                dynar_idx);
-
-                        // ... and record the answer
-                        if ((*elem_ptr)->answer_data == NULL) {
-
-                            (*elem_ptr)->answer_data =
-                                xbt_new0(s_ans_data_t, 1);
-                            (*elem_ptr)->answer_data->answer.handle.val_ret =
-                                ans->answer.handle.val_ret;
-                            (*elem_ptr)->answer_data->answer.handle.val_ret_id =
-                                ans->answer.handle.val_ret_id;
-                        }
+                           just record it in the dynar */
+                        rec_async_answer(me, dynar_idx, ans);
                     }
 
                     XBT_VERB("Node %d: answer '%s - %s' received from %d -"
@@ -3036,33 +3050,15 @@ static msg_error_t send_msg_sync(node_t me,
                         if (dynar_idx != -1) {
 
                             /* this answer is one of the expected acknowledgments:
-                               mark it as received ... */
-                            elem_ptr = xbt_dynar_get_ptr(me->async_answers,
-                                    dynar_idx);
-                            (*elem_ptr)->recp.id = -1;
-
-                            xbt_assert((*elem_ptr)->answer_data == NULL,
-                                    "Node %d: rec answer_data not NULL !",
-                                    me->self.id);
-
-                            // ... and record the answer
-                            if ((*elem_ptr)->answer_data == NULL) {
-
-                                (*elem_ptr)->answer_data =
-                                    xbt_new0(s_ans_data_t, 1);
-                                (*elem_ptr)->answer_data->answer.handle.val_ret =
-                                    ans->answer.handle.val_ret;
-                                (*elem_ptr)->answer_data->answer.handle.val_ret_id =
-                                    ans->answer.handle.val_ret_id;
-                            }
+                               record it in the dynar */
+                            rec_async_answer(me, dynar_idx, ans);
 
                             XBT_VERB("Node %d: async answer '%s - %s' received from %d"
-                                    " - dynar_size = %lu - idx = %d",
+                                    " - idx = %d",
                                     me->self.id,
                                     debug_msg[ans->type],
                                     debug_msg[ans->br_type],
                                     ans->sender_id,
-                                    xbt_dynar_length(me->async_answers),
                                     dynar_idx);
 
                         }
