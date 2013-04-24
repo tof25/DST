@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/04/18
+ *  Written by Christophe Enderlin on 2013/04/24
  *
  */
 
@@ -2766,12 +2766,11 @@ static msg_error_t send_msg_sync(node_t me,
 
     // create and send task with data
     msg_task_t task_sent = MSG_task_create("sync", COMP_SIZE, COMM_SIZE, req_data);
-    //MSG_task_set_name(task_sent, "sync");
 
     // async best effort send
     MSG_task_dsend(task_sent, req_data->sent_to, NULL);
 
-    XBT_VERB("Node %d: Send sync request '%s %s' to %d for new node %d",
+    XBT_VERB("Node %d: Sent sync request '%s %s' to %d for new node %d",
             req_data->sender_id,
             debug_msg[req_data->type],
             debug_msg[(req_data->type == TASK_BROADCAST ?
@@ -3013,7 +3012,10 @@ static msg_error_t send_msg_sync(node_t me,
                        Record its data into dynar sync_answers ? */
                     if (dynar_idx > -1) {
 
-                        XBT_VERB("Node %d: This sync answer isn't the expected one ->"
+                        rec_sync_answer(me, dynar_idx, ans);
+
+                        XBT_VERB("Node %d: This not expected sync answer"
+                                " has been recorded in sync_answers dynar ->"
                                 " req_type = %s-%s - sent to %d | ans_type = %s-%s"
                                 " - received from %d",
                                 me->self.id,
@@ -3024,9 +3026,6 @@ static msg_error_t send_msg_sync(node_t me,
                                 debug_msg[ans->type],
                                 debug_msg[ans->br_type],
                                 ans->sender_id);
-
-                        rec_sync_answer(me, dynar_idx, ans);
-
                         // get ready for a new loop
                         /*
                         data_ans_free(me, &ans);
@@ -3049,7 +3048,7 @@ static msg_error_t send_msg_sync(node_t me,
                             rec_async_answer(me, dynar_idx, ans);
 
                             XBT_VERB("Node %d: async answer '%s - %s' received from %d"
-                                    " - idx = %d",
+                                    " recorded in async_answers dynar : idx = %d",
                                     me->self.id,
                                     debug_msg[ans->type],
                                     debug_msg[ans->br_type],

@@ -1,0 +1,37 @@
+Envoie le message
+L'empile sur le dynar sync_answers
+Tant que (vrai) fait
+   Réception message ...
+   Lit données de la réponse
+
+   Si (message est une requête)
+   |  Si (tâches_différées n'est pas vide ET requête = CNX_REQ)
+   |  |
+   |  |  Empile requête sur dynar remain_tasks
+   |  |
+   |  Sinon
+   |  |
+   |  |  Traîte requête
+   |  |
+   |  |  Si (réponse reçue entre temps)
+   |  |     Lit données de la réponse
+   |  |     Dépile requête de sync_answers
+   |  |     Exécute les tâches différées
+   |  |     break
+   |  |  FinSi
+   |  |
+   |  FinSi
+   Sinon
+      Si (message est la réponse attendue)
+         Dépile requête de sync_answers
+         Exécute les tâches différées
+         break
+      Sinon
+         Si (message est réponse 'sync')
+            Enregistre la réponse dans la requête correspondante dans
+               sync_answers
+         Sinon
+         FinSi
+      FinSi
+   FinDi
+FinTantQue
