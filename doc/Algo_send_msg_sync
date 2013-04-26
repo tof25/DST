@@ -1,10 +1,16 @@
+********************************************************************************
+*                                                                              *
+*                      SEND_MSG_SYNC                                           *
+*                                                                              *
+********************************************************************************
+
 Envoie le message
 L'empile sur le dynar sync_answers
 
 Tant que (vrai) fait
 |
 |  Réception message ...
-|  Lit données de la réponse
+|  Lit données du message
 |
 |  Si (message est une requête)
 |  |  Si (tâches_différées n'est pas vide ET requête = CNX_REQ)
@@ -17,7 +23,7 @@ Tant que (vrai) fait
 |  |  |
 |  |  |  Si (réponse reçue entre temps)
 |  |  |  |
-|  |  |  |  Lit données de la réponse
+|  |  |  |  Lit données de la réponse stockée dans le dynar
 |  |  |  |  Dépile requête de sync_answers
 |  |  |  |  Exécute les tâches différées
 |  |  |  |  break
@@ -32,11 +38,16 @@ Tant que (vrai) fait
 |  |  |  break
 |  |  |
 |  |  Sinon
-|  |  |  Si (message est une réponse 'sync')
+|  |  |  Si (message est une réponse 'sync' attendue)
 |  |  |  |
 |  |  |  |  Enregistre la réponse dans la requête correspondante de sync_answers
 |  |  |  |
 |  |  |  Sinon
+|  |  |  |  Si (message est une réponse 'async' attendue)
+|  |  |  |  |
+|  |  |  |  |  Enregistre la réponse dans la requête correspondante d'async_answers
+|  |  |  |  |
+|  |  |  |  FinSi
 |  |  |  FinSi
 |  |  FinSi
 |  FinSi

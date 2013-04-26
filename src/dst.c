@@ -2922,7 +2922,7 @@ static msg_error_t send_msg_sync(node_t me,
                         me->self.id,
                         xbt_dynar_length(me->sync_answers));
 
-                // if it exists, my answer is at the top of dynar
+                // if it exists, the expected answer is at the top of dynar
                 elem_ptr = xbt_dynar_get_ptr(
                         me->sync_answers,
                         xbt_dynar_length(me->sync_answers) - 1);
@@ -2990,7 +2990,7 @@ static msg_error_t send_msg_sync(node_t me,
                     xbt_dynar_pop(me->sync_answers, &ans_elem);
 
                     // free memory
-                    if (ans_elem->answer_data != NULL) {
+                    if (ans_elem->answer_data != NULL) {    // NOTE: answer_data devrait toujours être NULL ici
 
                         xbt_free(ans_elem->answer_data);
                         ans_elem->answer_data = NULL;
@@ -3015,7 +3015,7 @@ static msg_error_t send_msg_sync(node_t me,
                         rec_sync_answer(me, dynar_idx, ans);
 
                         XBT_VERB("Node %d: This not expected sync answer"
-                                " has been recorded in sync_answers dynar ->"
+                                " has been recorded into sync_answers dynar ->"
                                 " req_type = %s-%s - sent to %d | ans_type = %s-%s"
                                 " - received from %d",
                                 me->self.id,
@@ -3026,11 +3026,7 @@ static msg_error_t send_msg_sync(node_t me,
                                 debug_msg[ans->type],
                                 debug_msg[ans->br_type],
                                 ans->sender_id);
-                        // get ready for a new loop
-                        /*
-                        data_ans_free(me, &ans);
-                        task_free(&task_received);
-                        */
+
                     } else {
 
                         // No. Is it an async expected answer, then ?
