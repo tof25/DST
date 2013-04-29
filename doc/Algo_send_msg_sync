@@ -8,47 +8,47 @@ Envoie le message
 L'empile sur le dynar sync_answers
 
 Tant que (vrai) fait
-|
-|  Réception message ...
-|  Lit données du message
-|
-|  Si (message est une requête)
-|  |  Si (tâches_différées n'est pas vide ET requête = CNX_REQ)
-|  |  |
-|  |  |  Empile requête sur dynar remain_tasks
-|  |  |
-|  |  Sinon
-|  |  |
-|  |  |  Traîte requête
-|  |  |
-|  |  |  Si (réponse reçue entre temps)
-|  |  |  |
-|  |  |  |  Lit données de la réponse stockée dans le dynar
-|  |  |  |  Dépile requête de sync_answers
-|  |  |  |  Exécute les tâches différées
-|  |  |  |  break
-|  |  |  |
-|  |  |  FinSi
-|  |  FinSi
-|  Sinon
-|  |  Si (message est la réponse attendue)
-|  |  |
-|  |  |  Dépile requête de sync_answers
-|  |  |  Exécute les tâches différées
-|  |  |  break
-|  |  |
-|  |  Sinon
-|  |  |  Si (message est une réponse 'sync' attendue)
-|  |  |  |
-|  |  |  |  Enregistre la réponse dans la requête correspondante de sync_answers
-|  |  |  |
-|  |  |  Sinon
-|  |  |  |  Si (message est une réponse 'async' attendue)
-|  |  |  |  |
-|  |  |  |  |  Enregistre la réponse dans la requête correspondante d'async_answers
-|  |  |  |  |
-|  |  |  |  FinSi
-|  |  |  FinSi
-|  |  FinSi
-|  FinSi
+｜
+｜  Réception message ...
+｜  Lit données du message
+｜
+｜  Si (message est une requête)
+｜  ｜  Si (tâches_différées n'est pas vide ET requête = CNX_REQ)
+｜  ｜  ｜
+｜  ｜  ｜  Empile requête sur dynar remain_tasks
+｜  ｜  ｜
+｜  ｜  Sinon
+｜  ｜  ｜
+｜  ｜  ｜  Traîte requête
+｜  ｜  ｜
+｜  ｜  ｜  Si (réponse reçue entre temps)
+｜  ｜  ｜  ｜
+｜  ｜  ｜  ｜  Lit données de la réponse stockée dans le dynar
+｜  ｜  ｜  ｜  Dépile requête de sync_answers
+｜  ｜  ｜  ｜  Exécute les tâches différées
+｜  ｜  ｜  ｜  break
+｜  ｜  ｜  ｜
+｜  ｜  ｜  FinSi
+｜  ｜  FinSi
+｜  Sinon
+｜  ｜  Si (message est la réponse attendue)
+｜  ｜  ｜
+｜  ｜  ｜  Dépile requête de sync_answers
+｜  ｜  ｜  Exécute les tâches différées
+｜  ｜  ｜  break
+｜  ｜  ｜
+｜  ｜  Sinon
+｜  ｜  ｜  Si (message est une réponse 'sync' attendue)
+｜  ｜  ｜  ｜
+｜  ｜  ｜  ｜  Enregistre la réponse dans la requête correspondante de sync_answers
+｜  ｜  ｜  ｜
+｜  ｜  ｜  Sinon
+｜  ｜  ｜  ｜  Si (message est une réponse 'async' attendue)
+｜  ｜  ｜  ｜  ｜
+｜  ｜  ｜  ｜  ｜  Enregistre la réponse dans la requête correspondante d'async_answers
+｜  ｜  ｜  ｜  ｜
+｜  ｜  ｜  ｜  FinSi
+｜  ｜  ｜  FinSi
+｜  ｜  FinSi
+｜  FinSi
 FinTantQue
