@@ -669,6 +669,7 @@ static e_val_ret_t  cs_req(node_t me, int sender_id, int new_node_id);
 static void         cs_rel(node_t me, int new_node_id);
 static void         rec_async_answer(node_t me, int idx, ans_data_t ans);
 static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
+static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id);
 
 // communication functions
 static msg_error_t send_msg_sync(node_t        me,
@@ -1450,6 +1451,61 @@ static void rec_sync_answer(node_t me, int idx, ans_data_t ans) {
 }
 
 /**
+ * \brief Auxiliary function for wait_for_completion().
+ *        Search for received answers in async_answers dynar, adjust ans_cpt accordingly,
+ *        and records any NOK answer.
+ * \param me the current node
+ * \param ans_cpt number of expected answers
+ * \param ret return value (OK or UPDATE_NOK)
+ * \param nok_id the first met node's id that answered NOK
+ * \param new_node_id the current new coming node
+ */
+static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id) {
+    XBT_IN();
+
+    recp_rec_t *elem_ptr = NULL;
+    int idx;
+    int dynar_size = (int) xbt_dynar_length(me->async_answers);
+
+    for (idx = dynar_size - 1; idx >= dynar_size - *ans_cpt; idx--) {
+
+        XBT_DEBUG("IDX = %d - ans_cpt = %d - dynar_size = %d", idx, *ans_cpt, dynar_size);
+
+        elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
+        if ((*elem_ptr)->recp.id == -1) {
+
+            // check if an UPDATE_NOK has been received
+            if ((*elem_ptr)->answer_data != NULL && *ret != UPDATE_NOK) {
+
+                /* only records answers for the same "instance" of
+                   wait_for_completion */
+                if ((*elem_ptr)->new_node_id == new_node_id) {
+
+                    *ret = (*elem_ptr)->answer_data->answer.handle.val_ret;
+                    *nok_id = (*ret == UPDATE_NOK ?
+                               (*elem_ptr)->answer_data->answer.handle.val_ret_id : -1);
+                }
+            }
+
+            if ((*elem_ptr)->answer_data != NULL) {
+
+                xbt_free((*elem_ptr)->answer_data);
+                (*elem_ptr)->answer_data = NULL;
+            }
+
+            // yes
+            (*ans_cpt) --;
+
+            // delete this entry from expected answers
+            xbt_dynar_remove_at(me->async_answers, idx, NULL);
+            dynar_size = (int) xbt_dynar_length(me->async_answers);
+        }
+    }
+
+    XBT_OUT();
+}
+
+/**
  * \brief Wait for the completion of a bunch of async sent tasks
  * \param me the current node
  * \param ans_cpt the number of expected anwswers
@@ -1484,6 +1540,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     s_state_t state;
 
     // async answers already received ? (from other recursive calls of this function)
+
+    /*
     for (idx = dynar_size - 1; idx >= dynar_size - ans_cpt; idx--) {
 
         elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
@@ -1492,8 +1550,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             // check if an UPDATE_NOK has been received
             if ((*elem_ptr)->answer_data != NULL && ret != UPDATE_NOK) {
 
-                /* only records answers for the same "instance" of
-                   wait_for_completion */
+                // only records answers for the same "instance" of
+                // wait_for_completion
                 if ((*elem_ptr)->new_node_id == new_node_id) {
 
                     ret = (*elem_ptr)->answer_data->answer.handle.val_ret;
@@ -1516,6 +1574,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             dynar_size = (int) xbt_dynar_length(me->async_answers);
         }
     }
+    */
+
+    check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
 
     xbt_assert(ans_cpt >= 0,
             "Node %d: in wait_for_completion - ack reception error",
@@ -1716,6 +1777,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         me->self.id);
 
                 // async expected answers received meanwhile ?
+
+                /*
                 dynar_size = (int) xbt_dynar_length(me->async_answers);
                 for (idx = dynar_size - 1;
                         idx >= dynar_size - ans_cpt; idx--) {
@@ -1732,8 +1795,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                             ret = (*elem_ptr)->answer_data->answer.handle.val_ret;
                             nok_id = (ret == UPDATE_NOK ?
-                                    (*elem_ptr)->answer_data->answer.handle.val_ret_id :
-                                    -1);
+                                      (*elem_ptr)->answer_data->answer.handle.val_ret_id : -1);
                         }
 
                         // free data
@@ -1750,6 +1812,15 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         dynar_size = (int) xbt_dynar_length(me->async_answers);
                     }
                 }
+                */
+
+                XBT_DEBUG("Before check : ans_cpt = %d - dynar_size = %d",
+                        ans_cpt, (int) xbt_dynar_length(me->async_answers));
+
+                check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
+
+                XBT_DEBUG("After check : ans_cpt = %d - dynar_size = %d",
+                        ans_cpt, (int) xbt_dynar_length(me->async_answers));
 
                 xbt_assert(ans_cpt >= 0,
                         "Node %d: ack reception error",
