@@ -3471,13 +3471,7 @@ static void init(node_t me) {
 
     XBT_IN();
     XBT_INFO("Node %d: init() ...", me->self.id);
-
     int i;
-    g_cpt = xbt_new0(int, TYPE_NBR);
-    for (i = 0; i < TYPE_NBR; i++) {
-
-        g_cpt[i] = 0;
-    }
 
     //xbt_assert(1 == 0, "sizeof(u_ans_data_t) = %ld", sizeof(u_ans_data_t));
     //xbt_assert(1 == 0, "sizeof(u_req_args_t) = %ld", sizeof(u_req_args_t));
@@ -7440,10 +7434,12 @@ int node(int argc, char *argv[]) {
             } else {
 
                 // some task has been received
+
                 res = MSG_comm_get_status(node.comm_received);
                 MSG_comm_destroy(node.comm_received);
                 node.comm_received = NULL;
                 req_data_t req = MSG_task_get_data(task_received);
+                ans_data_t ans = (ans_data_t)req;
 
                 XBT_VERB("Node %d: Task received", node.self.id);
 
@@ -7451,9 +7447,6 @@ int node(int argc, char *argv[]) {
                     if (strcmp(MSG_task_get_name(task_received), "ans") != 0) {
 
                         // ignore answers, only process requests
-                        xbt_assert(req->type < TYPE_NBR, "STOP !! %s - type = %d", MSG_task_get_name(task_received), req->type);
-                        g_cpt[req->type]++;
-
                         if (xbt_dynar_is_empty(node.remain_tasks) == 0 &&
                                 req->type == TASK_CNX_REQ) {
 
@@ -7466,6 +7459,12 @@ int node(int argc, char *argv[]) {
 
                         // run remaining tasks, if any
                         run_delayed_tasks(&node, '4');
+                    } else {
+                        if (ans != NULL){
+
+                            xbt_free(ans);
+                        }
+                        task_free(&task_received);
                     }
                 } else {
 
@@ -8640,6 +8639,14 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    int i;
+    g_cpt = xbt_new0(int, TYPE_NBR);
+    for (i = 0; i < TYPE_NBR; i++) {
+
+        g_cpt[i] = 0;
+    }
+
+
     if (b != 2 * a) {
 
         printf("Bounds error : b should be twice a : a = %d, b = %d", a, b);
@@ -8680,7 +8687,6 @@ int main(int argc, char *argv[]) {
     // to store non active nodes id
     int size = 100;
     int non_active[size];
-    int i;
     for (i = 0; i < size; i++) {
 
         non_active[i] = -1;
