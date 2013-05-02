@@ -62,6 +62,7 @@ typedef struct f_node {                     // node that failed to join
 
 static int nb_abort = 0;                    // number of join abortions
 static s_f_node_t *failed_nodes = NULL;     // array of nodes that couldn't join the DST
+static int *g_cpt = NULL;
 
 /**
  * Infos about the DST (for reporting purposes)
@@ -907,7 +908,7 @@ static void set_n_store_infos(node_t me) {
  */
 static void display_preds(node_t me, char log) {
 
-    XBT_IN();
+    //XBT_IN();
 
     xbt_dynar_t tab;
     tab = xbt_dynar_new(sizeof(char *), &xbt_free_ref);
@@ -988,7 +989,7 @@ static void display_preds(node_t me, char log) {
     xbt_free(s);
     xbt_dynar_free(&tab);
 
-    XBT_OUT();
+    //XBT_OUT();
 }
 
 /**
@@ -997,7 +998,7 @@ static void display_preds(node_t me, char log) {
  */
 static void display_rout_table(node_t me, char log) {
 
-    XBT_IN();
+    //XBT_IN();
 
     char *rt = routing_table(me);
 
@@ -1018,7 +1019,7 @@ static void display_rout_table(node_t me, char log) {
 
     xbt_free(rt);
 
-    XBT_OUT();
+    //XBT_OUT();
 }
 
 /**
@@ -1039,7 +1040,7 @@ static void get_mailbox(int node_id, char* mailbox) {
  */
 static void task_free(msg_task_t *task) {
 
-    XBT_IN();
+    //XBT_IN();
     xbt_ex_t ex;
 
     if (*task == NULL) {
@@ -1059,7 +1060,7 @@ static void task_free(msg_task_t *task) {
             XBT_DEBUG("Error in task_free");
         }
     }
-    XBT_OUT();
+    //XBT_OUT();
 }
 
 /**
@@ -1540,42 +1541,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     s_state_t state;
 
     // async answers already received ? (from other recursive calls of this function)
-
-    /*
-    for (idx = dynar_size - 1; idx >= dynar_size - ans_cpt; idx--) {
-
-        elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
-        if ((*elem_ptr)->recp.id == -1) {
-
-            // check if an UPDATE_NOK has been received
-            if ((*elem_ptr)->answer_data != NULL && ret != UPDATE_NOK) {
-
-                // only records answers for the same "instance" of
-                // wait_for_completion
-                if ((*elem_ptr)->new_node_id == new_node_id) {
-
-                    ret = (*elem_ptr)->answer_data->answer.handle.val_ret;
-                    nok_id = (ret == UPDATE_NOK ?
-                              (*elem_ptr)->answer_data->answer.handle.val_ret_id : -1);
-                }
-            }
-
-            if ((*elem_ptr)->answer_data != NULL) {
-
-                xbt_free((*elem_ptr)->answer_data);
-                (*elem_ptr)->answer_data = NULL;
-            }
-
-            // yes
-            ans_cpt--;
-
-            // delete this entry from expected answers
-            xbt_dynar_remove_at(me->async_answers, idx, NULL);
-            dynar_size = (int) xbt_dynar_length(me->async_answers);
-        }
-    }
-    */
-
     check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
 
     xbt_assert(ans_cpt >= 0,
@@ -1778,42 +1743,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                 // async expected answers received meanwhile ?
 
-                /*
-                dynar_size = (int) xbt_dynar_length(me->async_answers);
-                for (idx = dynar_size - 1;
-                        idx >= dynar_size - ans_cpt; idx--) {
-
-                    elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
-                    if ((*elem_ptr)->recp.id == -1) {
-
-                        // yes
-                        ans_cpt--;
-
-                        // check if an UPDATE_NOK has been received
-                        if ((*elem_ptr)->answer_data != NULL &&
-                                ret != UPDATE_NOK) {
-
-                            ret = (*elem_ptr)->answer_data->answer.handle.val_ret;
-                            nok_id = (ret == UPDATE_NOK ?
-                                      (*elem_ptr)->answer_data->answer.handle.val_ret_id : -1);
-                        }
-
-                        // free data
-                        if ((*elem_ptr)->answer_data != NULL) {
-
-                            xbt_free((*elem_ptr)->answer_data);
-                            (*elem_ptr)->answer_data = NULL;
-                        }
-
-                        // delete this entry from expected answers
-                        xbt_dynar_remove_at(me->async_answers,
-                                idx,
-                                NULL);
-                        dynar_size = (int) xbt_dynar_length(me->async_answers);
-                    }
-                }
-                */
-
                 XBT_DEBUG("Before check : ans_cpt = %d - dynar_size = %d",
                         ans_cpt, (int) xbt_dynar_length(me->async_answers));
 
@@ -1972,7 +1901,7 @@ static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) 
  */
 static s_state_t get_state(node_t me) {
 
-    XBT_IN();
+    //XBT_IN();
     unsigned int len = xbt_dynar_length(me->states);
     s_state_t state;
 
@@ -1989,7 +1918,7 @@ static s_state_t get_state(node_t me) {
         state.new_id = (*state_ptr)->new_id;
     }
 
-    XBT_OUT();
+    //XBT_OUT();
     return state;
 }
 
@@ -2128,7 +2057,7 @@ static e_val_ret_t set_update(node_t me, int new_id) {
  */
 static void set_state(node_t me, int new_id, char active) {
 
-    XBT_IN();
+    //XBT_IN();
 
     /*
        XBT_DEBUG("Node %d: (before set) Dynar states length: %u",
@@ -2164,7 +2093,7 @@ static void set_state(node_t me, int new_id, char active) {
        xbt_dynar_length(me->states));
        */
 
-    XBT_OUT();
+    //XBT_OUT();
 }
 
 /**
@@ -3543,6 +3472,13 @@ static void init(node_t me) {
     XBT_IN();
     XBT_INFO("Node %d: init() ...", me->self.id);
 
+    int i;
+    g_cpt = xbt_new0(int, TYPE_NBR);
+    for (i = 0; i < TYPE_NBR; i++) {
+
+        g_cpt[i] = 0;
+    }
+
     //xbt_assert(1 == 0, "sizeof(u_ans_data_t) = %ld", sizeof(u_ans_data_t));
     //xbt_assert(1 == 0, "sizeof(u_req_args_t) = %ld", sizeof(u_req_args_t));
 
@@ -3574,7 +3510,6 @@ static void init(node_t me) {
     me->bro_index = xbt_new0(int, me->height);
     me->brothers = xbt_new0(node_rep_t, me->height);
 
-    int i;
     for (i = 0; i < me->height; i++) {
 
         me->brothers[i] = xbt_new0(s_node_rep_t, b);
@@ -7510,6 +7445,8 @@ int node(int argc, char *argv[]) {
                 node.comm_received = NULL;
                 req_data_t req = MSG_task_get_data(task_received);
 
+                g_cpt[req->type]++;
+
                 XBT_VERB("Node %d: Task received", node.self.id);
 
                 if (res == MSG_OK) {
@@ -8824,6 +8761,12 @@ int main(int argc, char *argv[]) {
     }
 
     XBT_INFO("");
+    for (i = 0; i < TYPE_NBR; i++) {
+        XBT_INFO("g_cpt[%s] = %d", debug_msg[i], g_cpt[i]);
+    }
+    XBT_INFO("");
+    xbt_free(g_cpt);
+
     XBT_INFO("Total number of messages: %d\n", tot_msg_number());
     XBT_INFO("Max messages needed by node %d: %d\n",
             max_node,
