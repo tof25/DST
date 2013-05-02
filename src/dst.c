@@ -7445,24 +7445,28 @@ int node(int argc, char *argv[]) {
                 node.comm_received = NULL;
                 req_data_t req = MSG_task_get_data(task_received);
 
-                g_cpt[req->type]++;
-
                 XBT_VERB("Node %d: Task received", node.self.id);
 
                 if (res == MSG_OK) {
+                    if (strcmp(MSG_task_get_name(task_received), "ans") != 0) {
 
-                    if (xbt_dynar_is_empty(node.remain_tasks) == 0 &&
-                        req->type == TASK_CNX_REQ) {
+                        // ignore answers, only process requests
+                        xbt_assert(req->type < TYPE_NBR, "STOP !! %s - type = %d", MSG_task_get_name(task_received), req->type);
+                        g_cpt[req->type]++;
 
-                        xbt_dynar_push(node.remain_tasks, &task_received);
-                        task_received = NULL;
-                    } else {
+                        if (xbt_dynar_is_empty(node.remain_tasks) == 0 &&
+                                req->type == TASK_CNX_REQ) {
 
-                        handle_task(&node, &task_received);
+                            xbt_dynar_push(node.remain_tasks, &task_received);
+                            task_received = NULL;
+                        } else {
+
+                            handle_task(&node, &task_received);
+                        }
+
+                        // run remaining tasks, if any
+                        run_delayed_tasks(&node, '4');
                     }
-
-                    // run remaining tasks, if any
-                    run_delayed_tasks(&node, '4');
                 } else {
 
                     // reception failure
