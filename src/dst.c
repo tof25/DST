@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/04/24
+ *  Written by Christophe Enderlin on 2013/05/03
  *
  */
 
@@ -62,7 +62,7 @@ typedef struct f_node {                     // node that failed to join
 
 static int nb_abort = 0;                    // number of join abortions
 static s_f_node_t *failed_nodes = NULL;     // array of nodes that couldn't join the DST
-static int *g_cpt = NULL;
+//static int *g_cpt = NULL;
 
 /**
  * Infos about the DST (for reporting purposes)
@@ -1041,6 +1041,7 @@ static void get_mailbox(int node_id, char* mailbox) {
 static void task_free(msg_task_t *task) {
 
     //XBT_IN();
+
     xbt_ex_t ex;
 
     if (*task == NULL) {
@@ -2358,6 +2359,8 @@ static void node_free(node_t me) {
     me->bro_index = NULL;
     xbt_free(me->pred_index);
     me->pred_index = NULL;
+    xbt_free(me->comm_received);
+    me->comm_received = NULL;
 
     int i;
     for (i = 0; i < me->height; i++) {
@@ -7515,7 +7518,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
     e_val_ret_t val_ret = OK;
 
     // don't handle answers
-    if (strcmp(MSG_task_get_name(*task), "ans") == 0) {
+    if (!strcmp(MSG_task_get_name(*task), "ans")) {
 
         XBT_DEBUG("Node %d: only requests accepted in handle_task !",
                 me->self.id);
@@ -7622,7 +7625,10 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             type,
                             rcv_req->sender_id,
                             answer);
-                    *task = NULL;
+
+                    data_req_free(me, &rcv_req);
+                    task_free(task);
+
                 } else {
 
                     // ... or store task (CNX_REQ isn't broadcasted)
@@ -8640,12 +8646,14 @@ int main(int argc, char *argv[]) {
     }
 
     int i;
-    g_cpt = xbt_new0(int, TYPE_NBR);
-    for (i = 0; i < TYPE_NBR; i++) {
 
-        g_cpt[i] = 0;
-    }
+    /*
+       g_cpt = xbt_new0(int, TYPE_NBR);
+       for (i = 0; i < TYPE_NBR; i++) {
 
+       g_cpt[i] = 0;
+       }
+    */
 
     if (b != 2 * a) {
 
@@ -8771,11 +8779,14 @@ int main(int argc, char *argv[]) {
     }
 
     XBT_INFO("");
-    for (i = 0; i < TYPE_NBR; i++) {
-        XBT_INFO("g_cpt[%s] = %d", debug_msg[i], g_cpt[i]);
-    }
-    XBT_INFO("");
-    xbt_free(g_cpt);
+
+    /*
+       for (i = 0; i < TYPE_NBR; i++) {
+       XBT_INFO("g_cpt[%s] = %d", debug_msg[i], g_cpt[i]);
+       }
+       XBT_INFO("");
+       xbt_free(g_cpt);
+    */
 
     XBT_INFO("Total number of messages: %d\n", tot_msg_number());
     XBT_INFO("Max messages needed by node %d: %d\n",
@@ -8788,6 +8799,7 @@ int main(int argc, char *argv[]) {
                 failed_nodes[i].id,
                 failed_nodes[i].f_time);
     }
+    xbt_free(failed_nodes);
 
     // all elements have already been freed during foreach
     xbt_dynar_free_container(&infos_dst);
