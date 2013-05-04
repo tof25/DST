@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/04/24
+ *  Written by Christophe Enderlin on 2013/05/03
  *
  */
 
@@ -62,7 +62,7 @@ typedef struct f_node {                     // node that failed to join
 
 static int nb_abort = 0;                    // number of join abortions
 static s_f_node_t *failed_nodes = NULL;     // array of nodes that couldn't join the DST
-static int *g_cpt = NULL;
+//static int *g_cpt = NULL;
 
 /**
  * Infos about the DST (for reporting purposes)
@@ -178,23 +178,19 @@ typedef struct node {
     s_node_rep_t    self;                   // node's id and mailbox
     s_node_rep_t    **brothers;             // routing table of size b * height
     s_node_rep_t    **preds;                // predecessors table
-    int             *pred_index;            /* for each stage, the last
-                                               predecessor index */
-    int             *bro_index;             /* for each stage, the last brother
-                                               index */
+    int             *pred_index;            // for each stage, the last predecessor index
+    int             *bro_index;             // for each stage, the last brother index
     int             height;                 // height of the DST
     msg_comm_t      comm_received;          // current communication
     double          deadline;               // time to leave the DST
-    xbt_dynar_t     states;                 // node states
-
+    xbt_dynar_t     states;                 // node states dynar
     s_dst_infos_t   dst_infos;              // infos about the DST
-
-    xbt_dynar_t     async_answers;          // expected async answers
-    xbt_dynar_t     remain_tasks;           // delayed tasks
-    xbt_dynar_t     sync_answers;           // expected sync answers
+    xbt_dynar_t     async_answers;          // expected async answers dynar
+    xbt_dynar_t     remain_tasks;           // delayed tasks dynar
+    xbt_dynar_t     sync_answers;           // expected sync answers dynar
     char            cs_req;                 // Critical Section requested
-    float           cs_req_time;            // time when cs_req was set
-    int             cs_new_id;              // new_node_id that caused cs_req to be TRUE
+    float           cs_req_time;            // timestamp when cs_req was set
+    int             cs_new_id;              // new node's id that set cs_req
 } s_node_t, *node_t;
 
 /**
@@ -240,10 +236,12 @@ static const char* debug_msg[] = {
     "Critical Section Released"
 };
 
-/**
- * Requests args
- * IMPORTANT NOTE : new_node_id must be the first field of every structures
- */
+/*
+  =============================  REQUESTS ARGS  ===============================
+*/
+
+// IMPORTANT NOTE : new_node_id must be the first field of every structure
+
 typedef struct {
 
     int new_node_id;
@@ -253,7 +251,7 @@ typedef struct {
 typedef struct {
 
     int new_node_id;
-    int          try;
+    int try;
 } s_task_cnx_req_t;             // get the DST ready to receive a new node
 
 typedef struct {
@@ -287,8 +285,7 @@ typedef struct {
 
     int new_node_id;
     int stage;
-} s_task_nb_pred_t;             /* get the number of predecessors of a node,
-                                   given its stage */
+} s_task_nb_pred_t;             // get the number of predecessors of a node, given its stage
 
 typedef struct {
 
@@ -308,13 +305,13 @@ typedef union req_args u_req_args_t, *req_args_t;
 
 typedef struct {
 
-    int new_node_id;
+    int           new_node_id;
     e_task_type_t type;
-    int stage;
-    int first_call;
-    int source_id;
-    int lead_br;
-    req_args_t args;
+    int           stage;
+    int           first_call;
+    int           source_id;
+    int           lead_br;
+    req_args_t    args;
 } s_task_broadcast_t;           // broadcast a message of type 'type'
 
 typedef struct {
@@ -410,9 +407,9 @@ typedef struct {
 
 typedef struct {
 
-    int  stage;
-    int  start;
-    int  end;
+    int stage;
+    int start;
+    int end;
 } s_task_del_member_t;          // delete a part of current group during a transfer
 
 typedef struct {
@@ -426,10 +423,10 @@ typedef struct {
 
 typedef struct {
 
-    int new_node_id;
-    int stage;
+    int          new_node_id;
+    int          stage;
     s_node_rep_t new_node;
-    int right;
+    int          right;
 } s_task_shift_bro_t;           // shift brothers to let a new one come in
 
 typedef struct {
@@ -471,8 +468,8 @@ typedef struct {
 
 typedef struct {
 
-    int          new_node_id;
-    int          sender_id;
+    int new_node_id;
+    int sender_id;
 } s_task_cs_req_t;             // ask permission to get into Critical Section
 
 typedef struct {
@@ -525,20 +522,19 @@ union req_args {
  */
 typedef struct req_data {
 
-    e_task_type_t type;                         // type of request task
-    int sender_id;                              // sender id
-    char answer_to[MAILBOX_NAME_SIZE];          // mailbox for the answer
-    int recipient_id;                           // recipient id
-    char sent_to[MAILBOX_NAME_SIZE];            // recipient mailbox
-    u_req_args_t args;                          // request args
+    e_task_type_t type;                                // type of request task
+    int           sender_id;                           // sender id
+    char          answer_to[MAILBOX_NAME_SIZE];        // mailbox for the answer
+    int           recipient_id;                        // recipient id
+    char          sent_to[MAILBOX_NAME_SIZE];          // recipient mailbox
+    u_req_args_t args;                                 // request args
 
 } s_req_data_t, *req_data_t;
 
-/*****************************************************************************/
+/*
+  ================================  ANSWERS ARGS =============================
+*/
 
-/**
- * Return values
- */
 typedef struct {
 
     s_node_rep_t new_rep;
@@ -584,8 +580,8 @@ typedef struct {
 typedef struct {
 
     node_rep_t rep_array;
-    int rep_array_size;
-    int stay_id;
+    int        rep_array_size;
+    int        stay_id;
 } s_task_ans_transfer_t;
 
 typedef struct {
@@ -623,8 +619,10 @@ struct ans_data {
     u_ans_data_t  answer;                      // returned data
 };
 
+/*
+  ==========================  UTILITY FUNCTIONS ===============================
+*/
 
-// utility functions
 static void         display_var(node_t me);
 static char*        routing_table(node_t me);
 static void         set_n_store_infos(node_t me);
@@ -672,7 +670,10 @@ static void         rec_async_answer(node_t me, int idx, ans_data_t ans);
 static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
 static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id);
 
-// communication functions
+/*
+  ======================= COMMUNICATION FUNCTIONS =============================
+*/
+
 static msg_error_t send_msg_sync(node_t        me,
                                  e_task_type_t type,
                                  int           recipient_id,
@@ -693,7 +694,10 @@ static msg_error_t send_ans_sync(node_t me,
 static e_val_ret_t broadcast(node_t me, u_req_args_t args);
 static void        send_completed(node_t me, e_task_type_t type, int recipient_id, int new_node_id);
 
-// core functions
+/*
+ =========================== CORE FUNCTIONS ===================================
+*/
+
 static void         init(node_t me);
 static int          join(node_t me, int contact_id, int try);
 static u_ans_data_t get_rep(node_t me, int stage, int new_node_id);
@@ -772,9 +776,16 @@ static void         merge_request(node_t me, int new_node_id);
 static void         load_balance(node_t me, int contact_id);
 static u_ans_data_t get_new_contact(node_t me, int new_node_id);
 
-// process functions
+/*
+ ============================ PROCESS FUNCTIONS ===============================
+*/
+
 static int         node(int argc, char *argv[]);
 static e_val_ret_t handle_task(node_t me, msg_task_t* task);
+
+/*
+ ========================== FUNCTIONS DEFINITIONS =============================
+*/
 
 /**
  * \brief Ask a remote node to display some variable (for debug)
@@ -1041,6 +1052,7 @@ static void get_mailbox(int node_id, char* mailbox) {
 static void task_free(msg_task_t *task) {
 
     //XBT_IN();
+
     xbt_ex_t ex;
 
     if (*task == NULL) {
@@ -2358,6 +2370,8 @@ static void node_free(node_t me) {
     me->bro_index = NULL;
     xbt_free(me->pred_index);
     me->pred_index = NULL;
+    xbt_free(me->comm_received);
+    me->comm_received = NULL;
 
     int i;
     for (i = 0; i < me->height; i++) {
@@ -7515,7 +7529,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
     e_val_ret_t val_ret = OK;
 
     // don't handle answers
-    if (strcmp(MSG_task_get_name(*task), "ans") == 0) {
+    if (!strcmp(MSG_task_get_name(*task), "ans")) {
 
         XBT_DEBUG("Node %d: only requests accepted in handle_task !",
                 me->self.id);
@@ -7622,7 +7636,10 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             type,
                             rcv_req->sender_id,
                             answer);
-                    *task = NULL;
+
+                    data_req_free(me, &rcv_req);
+                    task_free(task);
+
                 } else {
 
                     // ... or store task (CNX_REQ isn't broadcasted)
@@ -8640,12 +8657,14 @@ int main(int argc, char *argv[]) {
     }
 
     int i;
-    g_cpt = xbt_new0(int, TYPE_NBR);
-    for (i = 0; i < TYPE_NBR; i++) {
 
-        g_cpt[i] = 0;
-    }
+    /*
+       g_cpt = xbt_new0(int, TYPE_NBR);
+       for (i = 0; i < TYPE_NBR; i++) {
 
+       g_cpt[i] = 0;
+       }
+    */
 
     if (b != 2 * a) {
 
@@ -8771,11 +8790,14 @@ int main(int argc, char *argv[]) {
     }
 
     XBT_INFO("");
-    for (i = 0; i < TYPE_NBR; i++) {
-        XBT_INFO("g_cpt[%s] = %d", debug_msg[i], g_cpt[i]);
-    }
-    XBT_INFO("");
-    xbt_free(g_cpt);
+
+    /*
+       for (i = 0; i < TYPE_NBR; i++) {
+       XBT_INFO("g_cpt[%s] = %d", debug_msg[i], g_cpt[i]);
+       }
+       XBT_INFO("");
+       xbt_free(g_cpt);
+    */
 
     XBT_INFO("Total number of messages: %d\n", tot_msg_number());
     XBT_INFO("Max messages needed by node %d: %d\n",
@@ -8788,6 +8810,7 @@ int main(int argc, char *argv[]) {
                 failed_nodes[i].id,
                 failed_nodes[i].f_time);
     }
+    xbt_free(failed_nodes);
 
     // all elements have already been freed during foreach
     xbt_dynar_free_container(&infos_dst);
