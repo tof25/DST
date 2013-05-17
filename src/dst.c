@@ -35,7 +35,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define COMM_SIZE 10                        // message size when creating a new task
 #define COMP_SIZE 0                         // compute duration when creating a new task
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
-#define TYPE_NBR 35                         // number of task types
+#define TYPE_NBR 36                         // number of task types
 #define MAX_WAIT_COMPL 3000                 // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 2000               // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 200                        // number of joining attempts
@@ -133,7 +133,8 @@ typedef enum {
     TASK_UPDATE_UPPER_STAGE,// update upper stage after a transfer
     TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join too much
     TASK_CS_REQ,            // ask for permission to get into Critical Section (splitted area)
-    TASK_END_GET_REP        // remove 'g' state after load balance
+    TASK_END_GET_REP,       // remove 'g' state after load balance
+    TASK_POP_STATE          // pops given state from states dynar (if found on top)
 } e_task_type_t;
 
 /**
@@ -233,7 +234,8 @@ static const char* debug_msg[] = {
     "Update Upper Stage",
     "Get New Contact",
     "Critical Section Request",
-    "Critical Section Released"
+    "Critical Section Released",
+    "Pop State"
 };
 
 /*
@@ -477,6 +479,11 @@ typedef struct {
     int new_node_id;
 } s_task_end_get_rep_t;        // remove 'g' state after load balance
 
+typedef struct {
+    int new_node_id;
+    char active;
+} s_task_pop_state_t;          // pops given state if found on top of states dynar
+
 /**
  * Generic request args
  */
@@ -515,6 +522,7 @@ union req_args {
     s_task_get_new_contact_t    get_new_contact;
     s_task_cs_req_t             cs_req;
     s_task_end_get_rep_t        end_get_rep;
+    s_task_pop_state_t          pop_state;
 };
 
 /**
@@ -645,6 +653,7 @@ static s_state_t    get_state(node_t me);
 static void         set_active(node_t me, int new_id);
 static e_val_ret_t  set_update(node_t me, int new_id);
 static void         set_state(node_t me, int new_id, char active);
+static void         pop_state(node_t me, int new_id, char active);
 static int          check(node_t me);
 static void         run_delayed_tasks(node_t me, char c);
 static void         node_free(node_t me);
@@ -2002,6 +2011,7 @@ static e_val_ret_t set_update(node_t me, int new_id) {
 
     XBT_VERB("Node %d: in set_update()", me->self.id);
     display_sc(me, 'V');
+    display_states(me, 'V');
 
     // test = 1 is this set_update is the one that's expected
     if (((me->cs_req == 1 && me->cs_new_id == new_id) || (me->cs_req == 0)) &&
@@ -2106,6 +2116,40 @@ static void set_state(node_t me, int new_id, char active) {
        */
 
     //XBT_OUT();
+}
+
+/**
+ * \brief pops given state from states dynar (in case of set_update broadcast failed)
+ *        if it's on the top of it
+ * \param me the current node
+ * \param new_id the new coming node
+ * \param active the active state to be poped
+ */
+static void pop_state(node_t me, int new_id, char active) {
+    XBT_IN();
+
+    s_state_t state = get_state(me);
+    XBT_VERB("Node %d: '%c'/%d for new node %d - start pop_state()",
+            me->self.id,
+            state.active,
+            state.new_id,
+            new_id);
+
+    if (state.active == active && state.new_id == new_id) {
+
+        state_t state_ptr = NULL;
+        xbt_dynar_pop(me->states, &state_ptr);
+        xbt_free(state_ptr);
+        state = get_state(me);
+    }
+
+    XBT_VERB("Node %d: '%c'/%d for new node %d - end pop_state()",
+            me->self.id,
+            state.active,
+            state.new_id,
+            new_id);
+
+    XBT_OUT();
 }
 
 /**
@@ -2245,7 +2289,7 @@ static void run_delayed_tasks(node_t me, char c) {
     }
 
     // run delayed tasks
-    if (state.active == 'a' &&
+    if (state.active == 'a' && me->cs_req == 0 &&
             xbt_dynar_is_empty(me->remain_tasks) == 0) {
 
         if (nb_elems > 0) {
@@ -3421,29 +3465,33 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         ret = wait_for_completion(me, ans_cpt, args.broadcast.new_node_id);
     }
 
-    // Handle local task
-    if (!(args.broadcast.type == TASK_CLEAN_STAGE &&
-                args.broadcast.stage == 0 &&
-                me->self.id == args.broadcast.source_id)) {
+    // Handle local task if OK
+    if (ret != UPDATE_NOK) {
+        if (!(args.broadcast.type == TASK_CLEAN_STAGE &&
+                    args.broadcast.stage == 0 &&
+                    me->self.id == args.broadcast.source_id)) {
 
-        // return NOK if any of both answers is NOK
-        if (task_sent != NULL) {
+            // return NOK if any of both answers is NOK
+            if (task_sent != NULL) {
 
-            local_ret = handle_task(me, &task_sent);
-            if (local_ret == UPDATE_NOK || ret == UPDATE_NOK) {
+                local_ret = handle_task(me, &task_sent);
+                if (local_ret == UPDATE_NOK || ret == UPDATE_NOK) {
 
-                ret = UPDATE_NOK;
+                    ret = UPDATE_NOK;
+                }
             }
+        } else {
+
+            /* If a clean_stage is broadcasted, the source branch mustn't locally
+             * run this task since it has already been run before launching
+             * broadcast */
+
+            XBT_VERB("Node %d: DON'T run TASK_CLEAN_STAGE - source_id = %d",
+                    me->self.id,
+                    args.broadcast.source_id);
         }
     } else {
-
-        /* If a clean_stage is broadcasted, the source branch mustn't locally
-         * run this task since it has already been run before launching
-         * broadcast */
-
-        XBT_VERB("Node %d: DON'T run TASK_CLEAN_STAGE - source_id = %d",
-                me->self.id,
-                args.broadcast.source_id);
+        XBT_VERB("Node %d: STOP BROADCAST", me->self.id);
     }
 
     xbt_free(cpy_brothers);
@@ -3894,38 +3942,45 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 me->self.id,
                 try);
 
-        display_sc(me, 'V');
+        //display_sc(me, 'V');
 
-        // if current node isn't available, reject request
-        if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
-                (state.active == 'u' && state.new_id != new_node_id) ||
-                (state.active != 'u' && state.active != 'a')) {
+        /*** Ask for permission to get into the Critical Section ***/
+        val_ret = cs_req(me, me->self.id, new_node_id);
 
+        XBT_VERB("Node %d: back to connection_request()", me->self.id);
+
+        /* if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
+           (state.active == 'u' && state.new_id != new_node_id) ||
+           (state.active != 'u' && state.active != 'a')) */
+
+        if (val_ret == UPDATE_NOK) {
+
+            // if current node isn't available, reject request
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
                     me->self.id,
                     state.active,
                     state.new_id);
 
-            val_ret = UPDATE_NOK;
+            //val_ret = UPDATE_NOK;
         } else {
 
-            val_ret = OK;
+            //val_ret = OK;
 
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - available",
                     me->self.id,
                     state.active,
                     state.new_id);
 
-            /*** Ask for permission to get into the Critical Section ***/
-
+            /*
             // set cs_req
             me->cs_req = 1;
             me->cs_new_id = new_node_id;
             me->cs_req_time = MSG_get_clock();
 
             XBT_DEBUG("Node %d: in connection_request() - after cs_req",
-                      me->self.id);
-            display_sc(me, 'D');
+            me->self.id);
+            */
+            //display_sc(me, 'D');
 
             u_req_args_t args;
             msg_task_t task_sent = NULL;
@@ -3987,7 +4042,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 if (val_ret != UPDATE_NOK) {
 
                     // set all concerned nodes as 'u' if cs_req succeeded
-                    XBT_VERB("Node %d: set all concerned nodes as 'u'",
+                    XBT_VERB("Node %d: set all concerned leaders as 'u'",
                             me->self.id);
 
                     args.broadcast.type = TASK_SET_UPDATE;
@@ -4015,59 +4070,97 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     xbt_free(args.broadcast.args);
                     args.broadcast.args = NULL;
 
-                    /* Set_Update broadcast isn't supposed to fail if cs_req
-                       returned OK */
+                    /*
+                    // Set_Update broadcast isn't supposed to fail if cs_req returned OK
                     xbt_assert(val_ret != UPDATE_NOK,
                             "Node %d: Set UPDATE error while making room for node %d",
                             me->self.id,
                             new_node_id);
+                    */
+                    if (val_ret == UPDATE_NOK) {
 
-                    // splits stages
-                    int k;
-                    for (k = n; k > 0; k--) {
+                        /* Set_Update broadcast (probably because a cs_req has been reset meanwhile)
+                           'u' leaders have to be reset to their former state */
 
-                        split_request(me, k, new_node_id);
-                    }
+                        XBT_VERB("Node %d: Set_Update failed : reset all concerned leaders",
+                                me->self.id);
 
-                    XBT_VERB("Node %d: Back to connection request for new node %d",
-                            me->self.id,
-                            new_node_id);
+                        args.broadcast.type = TASK_POP_STATE;
 
-                    // reset all concerned nodes as 'a'
-                    XBT_VERB("Node %d: reset all concerned nodes as 'a'",
-                            me->self.id);
+                        /* broadcast starts one level higher than highest splitted stage
+                           because of connect_splitted_groups */
+                        if (n == me->height) {
 
-                    args.broadcast.type = TASK_SET_ACTIVE;
+                            args.broadcast.stage = n - 1;
+                        } else {
 
-                    /* broadcast starts one level higher than highest splitted stage
-                       because of connect_splitted_groups */
-                    if (n == me->height) {
+                            args.broadcast.stage = n;
+                        }
+                        args.broadcast.first_call = 1;
+                        args.broadcast.source_id = me->self.id;
+                        args.broadcast.new_node_id = new_node_id;
+                        args.broadcast.lead_br = 1;     // broadcast only to leaders
 
-                        args.broadcast.stage = n - 1;
+                        args.broadcast.args = xbt_new0(u_req_args_t, 1);
+                        args.broadcast.args->pop_state.new_node_id = new_node_id;
+                        args.broadcast.args->pop_state.active = 'u';
+                        make_broadcast_task(me, args, &task_sent);
+
+                        handle_task(me, &task_sent);
+
+                        xbt_free(args.broadcast.args);
+                        args.broadcast.args = NULL;
+
+                        answer.cnx_req.new_contact.id = -1;
                     } else {
 
-                        args.broadcast.stage = n;
+                        // splits stages
+                        int k;
+                        for (k = n; k > 0; k--) {
+
+                            split_request(me, k, new_node_id);
+                        }
+
+                        XBT_VERB("Node %d: Back to connection request for new node %d",
+                                me->self.id,
+                                new_node_id);
+
+                        // reset all concerned nodes as 'a'
+                        XBT_VERB("Node %d: reset all concerned nodes as 'a'",
+                                me->self.id);
+
+                        args.broadcast.type = TASK_SET_ACTIVE;
+
+                        /* broadcast starts one level higher than highest splitted stage
+                           because of connect_splitted_groups */
+                        if (n == me->height) {
+
+                            args.broadcast.stage = n - 1;
+                        } else {
+
+                            args.broadcast.stage = n;
+                        }
+                        args.broadcast.first_call = 1;
+                        args.broadcast.source_id = me->self.id;
+                        args.broadcast.new_node_id = new_node_id;
+                        args.broadcast.lead_br = 0;             //TODO !! test passer à 1
+
+                        args.broadcast.args = xbt_new0(u_req_args_t, 1);
+                        args.broadcast.args->set_active.new_id = new_node_id;
+                        make_broadcast_task(me, args, &task_sent);
+
+                        handle_task(me, &task_sent);
+
+                        xbt_free(args.broadcast.args);
+                        args.broadcast.args = NULL;
+
+                        state = get_state(me);
+                        XBT_INFO("Node %d: '%c'/%d -  **** ROOM MADE FOR NODE %d ****",
+                                me->self.id,
+                                state.active,
+                                state.new_id,
+                                new_node_id);
                     }
-                    args.broadcast.first_call = 1;
-                    args.broadcast.source_id = me->self.id;
-                    args.broadcast.new_node_id = new_node_id;
-                    args.broadcast.lead_br = 0;             //TODO !! test passer à 1
-
-                    args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                    args.broadcast.args->set_active.new_id = new_node_id;
-                    make_broadcast_task(me, args, &task_sent);
-
-                    handle_task(me, &task_sent);
-
-                    xbt_free(args.broadcast.args);
-                    args.broadcast.args = NULL;
-
-                    state = get_state(me);
-                    XBT_INFO("Node %d: '%c'/%d -  **** ROOM MADE FOR NODE %d ****",
-                            me->self.id,
-                            state.active,
-                            state.new_id,
-                            new_node_id);
                 } else {
 
                     // cs_req returned NOK
@@ -7440,8 +7533,7 @@ int node(int argc, char *argv[]) {
                     XBT_INFO("Node %d left ...", node.self.id);
                 } else {
 
-                    XBT_DEBUG("Node %d: nothing to do: sleep for a while",
-                            node.self.id);
+                    //XBT_DEBUG("Node %d: nothing to do: sleep for a while", node.self.id);
 
                     MSG_process_sleep(0.2);     //TODO: pb synchros si plus long
                 }
@@ -7456,6 +7548,7 @@ int node(int argc, char *argv[]) {
                 ans_data_t ans = (ans_data_t)req;
 
                 XBT_VERB("Node %d: Task received", node.self.id);
+                display_sc(&node, 'V');
 
                 if (res == MSG_OK) {
                     if (strcmp(MSG_task_get_name(task_received), "ans") != 0) {
@@ -7864,6 +7957,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                        - SPLIT
                        - CS_REQ
                        - CS_REL
+                       - POP_STATE
                        */
                     (state.active == 'u' &&
                      (
@@ -7873,7 +7967,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                       rcv_args.broadcast.type != TASK_SET_ACTIVE &&
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT &&
-                      rcv_args.broadcast.type != TASK_CS_REQ
+                      rcv_args.broadcast.type != TASK_CS_REQ &&
+                      rcv_args.broadcast.type != TASK_POP_STATE
                      )
                     )
                         ) {
@@ -8049,8 +8144,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
                                     task_free(task);
 
-                                    //TODO: Ne pas continuer si UPDATE_NOK ici sauf pour CS_REQ ?
-
                                     // Transmit the message to lower stage.
                                     rcv_args.broadcast.stage--;
                                     val_ret = broadcast(me, rcv_args);
@@ -8115,7 +8208,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                             me->self.id,
                                             debug_msg[rcv_args.broadcast.type]);
                                 }
-
                             }
                             // send an answer back if task hasn't been stored
                             if (rcv_req->sender_id != me->self.id && val_ret != STORED) {
@@ -8610,6 +8702,15 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             task_free(task);
 
             XBT_VERB("Node %d: TASK_END_GET_REP done", me->self.id);
+            break;
+
+        case TASK_POP_STATE:
+            pop_state(me, rcv_args.pop_state.new_node_id, rcv_args.pop_state.active);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
+            XBT_VERB("Node %d: TASK_POP_STATE done", me->self.id);
             break;
     }
 
