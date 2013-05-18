@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/05/04
+ *  Written by Christophe Enderlin on 2013/05/18
  *
  */
 
@@ -38,7 +38,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define TYPE_NBR 36                         // number of task types
 #define MAX_WAIT_COMPL 3000                 // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 2000               // won't wait longer an answer to a GET_REP request
-#define MAX_JOIN 200                        // number of joining attempts
+#define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 10                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 100                      // max time between cs_req and matching set_update
 
@@ -2048,7 +2048,7 @@ static e_val_ret_t set_update(node_t me, int new_id) {
                 int found = state_search(me, 'u', new_id);
                 if (found == -1) {
 
-                    val_ret = STORED;
+                    val_ret = UPDATE_NOK;
                 } else {
 
                     val_ret = UPDATE_OK;
@@ -2056,7 +2056,7 @@ static e_val_ret_t set_update(node_t me, int new_id) {
             }
         } else {
 
-            val_ret = STORED;
+            val_ret = UPDATE_NOK;
         }
     }
 
@@ -8150,7 +8150,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                 } else {
 
                                     /* stage 0 reached: handle the broadcasted task */
-                                    XBT_VERB("Node %d: run broadcasted task - '%s'",
+                                    XBT_VERB("Node %d: stage 0 - run broadcasted task - '%s'",
                                             me->self.id,
                                             debug_msg[rcv_args.broadcast.type]);
 
