@@ -7394,7 +7394,7 @@ int node(int argc, char *argv[]) {
             if (tries > 1) {
 
                 // TODO: faire des essais avec différentes bornes
-                int max = 309;
+                int max = 1309;
                 int min = 53;
                 srand(time(NULL));
                 sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
