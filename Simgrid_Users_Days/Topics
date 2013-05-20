@@ -1,0 +1,43 @@
+*************************************************
+***   Sujets à aborder aux Simgrid Users Days ***
+*************************************************
+
+1) MESSAGES PERDUS
+   ***************
+
+   1.a) Voir exemple que j'avais posté
+
+        3 senders envoient chacun 4 messages au même receiver. Vérifier si le receiver les reçoit tous.
+        (rechercher Task.*done)
+
+   1.b) Pourquoi on ne peut pas mettre un grand MSG_process_sleep dans node()
+   1.c) Pourquoi deux envois de réponse nécessaire dans TASK_DEL_BRO de handle_task() 
+        (peut-être difficile à montrer)
+
+2) TIMER DEPRECATED
+   ****************
+
+   Besoin d'un timer dans main(), comment le remplacer ?
+
+    XBT_INFO("\nSimulation time %lf", xbt_os_timer_elapsed(timer));
+    XBT_INFO("Simulated time: %g", MSG_get_clock());
+
+    xbt_os_timer_free(timer);
+
+
+3) TRACES
+   ******
+
+   Qu'est-ce que ça permet de tracer ? Comment ça marche ?
+
+
+4) MODEL-CHECKING
+   **************
+
+   A quoi ça sert et comment l'utilise-t-on ? Ok sur OSX ?
+
+
+5) MECANISME des CONTEXTES
+   ***********************
+
+   Théorie ?

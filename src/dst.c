@@ -4079,7 +4079,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     */
                     if (val_ret == UPDATE_NOK) {
 
-                        /* Set_Update broadcast (probably because a cs_req has been reset meanwhile)
+                        /* Set_Update broadcast failed (probably because a cs_req has been reset meanwhile)
                            'u' leaders have to be reset to their former state */
 
                         XBT_VERB("Node %d: Set_Update failed : reset all concerned leaders",
@@ -7535,7 +7535,7 @@ int node(int argc, char *argv[]) {
 
                     //XBT_DEBUG("Node %d: nothing to do: sleep for a while", node.self.id);
 
-                    MSG_process_sleep(0.2);     //TODO: pb synchros si plus long
+                    MSG_process_sleep(0.2);     //TODO: pb messages perdus si plus long ??
                 }
             } else {
 
