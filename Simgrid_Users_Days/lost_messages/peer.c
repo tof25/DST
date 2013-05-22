@@ -114,6 +114,7 @@ int receiver(int argc, char *argv[])
   msg_comm_t res_irecv;
   double sleep_start_time = atof(argv[2]);
   double sleep_test_time = atof(argv[3]);
+  long senders_count = atol(argv[4]);
   XBT_INFO("sleep_start_time : %f , sleep_test_time : %f", sleep_start_time,
         sleep_test_time);
   int timeout = -1;
@@ -154,13 +155,21 @@ int receiver(int argc, char *argv[])
 
     XBT_INFO("Received \"%s\"", MSG_task_get_name(task));
     if (!strcmp(MSG_task_get_name(task), "finalize")) {
-      MSG_task_destroy(task);
-      break;
-    }
 
-    XBT_INFO("Processing \"%s\"", MSG_task_get_name(task));
-    MSG_task_execute(task);
-    XBT_INFO("\"%s\" done", MSG_task_get_name(task));
+        //MSG_task_destroy(task);
+        //task = NULL;
+        senders_count--;
+        if (senders_count == 0) {
+            break;
+        }
+    } else {
+
+        XBT_INFO("Processing \"%s\"", MSG_task_get_name(task));
+        MSG_task_execute(task);
+        XBT_INFO("\"%s\" done", MSG_task_get_name(task));
+        //MSG_task_destroy(task);
+        //task = NULL;
+    }
     MSG_task_destroy(task);
     task = NULL;
   }

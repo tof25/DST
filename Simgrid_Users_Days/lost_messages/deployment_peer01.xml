@@ -34,5 +34,6 @@
     <argument value="0"/>
     <argument value="3"/>         <!-- Sleep_start_time -->
     <argument value="0"/>      <!-- Time for test -->
+    <argument value="3"/>      <!-- Number of senders -->
   </process>
 </platform>
