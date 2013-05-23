@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/05/18
+ *  Written by Christophe Enderlin on 2013/05/23
  *
  */
 
@@ -39,7 +39,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_WAIT_COMPL 3000                 // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 4000               // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 250                         // number of joining attempts
-#define TRY_STEP 10                         // number of tries before requesting a new contact
+#define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 500                      // max time between cs_req and matching set_update
 
 static const int a = 2;                     /* min number of brothers in a node
