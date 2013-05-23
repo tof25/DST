@@ -7586,7 +7586,7 @@ int node(int argc, char *argv[]) {
 
                         // checks if cs_req has to be reset (avoids deadlocks)
                         XBT_VERB("Node %d: cs_req has to be reset ?", node.self.id);
-                        display_sc(&node, 'I');
+                        display_sc(&node, 'V');
 
                         u_req_args_t args_chk;
                         args_chk.check_cs.new_node_id = node.cs_new_id; // not used
