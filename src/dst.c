@@ -37,7 +37,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
 #define TYPE_NBR 38                         // number of task types
 #define MAX_WAIT_COMPL 3000                 // won't wait longer for broadcast completion
-#define MAX_WAIT_GET_REP 4000               // won't wait longer an answer to a GET_REP request
+#define MAX_WAIT_GET_REP 500               // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 250                         // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 500                      // max time between cs_req and matching set_update
@@ -1357,7 +1357,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id) {
             new_node_id,
             sender_id);
 
-    display_sc(me, 'V');
+    display_sc(me, 'D');
 
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
@@ -1389,11 +1389,12 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id) {
         }
     } else {
 
+        me->cs_req = 1;
+        me->cs_new_id = new_node_id;
+        me->cs_req_time = MSG_get_clock();
+
         if (state.active == 'a') {
 
-            me->cs_req = 1;
-            me->cs_new_id = new_node_id;
-            me->cs_req_time = MSG_get_clock();
             val_ret = OK;
         } else {
 
@@ -1563,15 +1564,17 @@ static void check_cs(node_t me, int sender_id) {
 
             // send a cs_rel if active
             u_req_args_t args;
-            args.cs_rel.new_node_id = me->self.id;
+            //args.cs_rel.new_node_id = me->self.id;
+            args.set_active.new_id = me->self.id;
 
             msg_error_t res = send_msg_async(me,
-                    TASK_CS_REL,
+                    //TASK_CS_REL,
+                    TASK_SET_ACTIVE,
                     sender_id,
                     args);
         } else {
 
-            cs_rel(me, me->self.id);
+            set_active(me, me->self.id);
         }
     }
 
@@ -3996,15 +3999,17 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
         display_sc(me, 'D');
 
         /*** Ask for permission to get into the Critical Section ***/
-        //val_ret = cs_req(me, me->self.id, new_node_id);
+        val_ret = cs_req(me, me->self.id, new_node_id);
 
-        //XBT_VERB("Node %d: back to connection_request()", me->self.id);
+        XBT_VERB("Node %d: back to connection_request()", me->self.id);
 
-        if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
-                (state.active == 'u' && state.new_id != new_node_id) ||
-                (state.active != 'u' && state.active != 'a')) {
+        /*
+           if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
+           (state.active == 'u' && state.new_id != new_node_id) ||
+           (state.active != 'u' && state.active != 'a'))
+        */
 
-            //if (val_ret == UPDATE_NOK) 
+        if (val_ret == UPDATE_NOK) {
 
             // if current node isn't available, reject request
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
@@ -4012,10 +4017,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     state.active,
                     state.new_id);
 
-            val_ret = UPDATE_NOK;
+            //val_ret = UPDATE_NOK;
         } else {
 
-            val_ret = OK;
+            //val_ret = OK;
 
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - available",
                     me->self.id,
@@ -4023,13 +4028,15 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     state.new_id);
 
             // set cs_req
-            me->cs_req = 1;
-            me->cs_new_id = new_node_id;
-            me->cs_req_time = MSG_get_clock();
+            /*
+               me->cs_req = 1;
+               me->cs_new_id = new_node_id;
+               me->cs_req_time = MSG_get_clock();
 
-            XBT_DEBUG("Node %d: in connection_request() - after cs_req",
-                    me->self.id);
-            display_sc(me, 'D');
+               XBT_DEBUG("Node %d: in connection_request() - after cs_req",
+               me->self.id);
+               display_sc(me, 'D');
+            */
 
             u_req_args_t args;
             msg_task_t task_sent = NULL;
@@ -7443,8 +7450,8 @@ int node(int argc, char *argv[]) {
             if (tries > 1) {
 
                 // TODO: faire des essais avec différentes bornes
-                int max = 1309;
-                int min = 53;
+                int max = 25;
+                int min = 13;
                 srand(time(NULL));
                 sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
 
@@ -7585,11 +7592,15 @@ int node(int argc, char *argv[]) {
                     if (node.cs_req == 1 && MSG_get_clock() - node.cs_req_time >= MAX_CS_REQ) {
 
                         // checks if cs_req has to be reset (avoids deadlocks)
-                        XBT_VERB("Node %d: cs_req has to be reset ?", node.self.id);
+                        XBT_VERB("Node %d: asks node %d if cs_req has to be reset",
+                                node.self.id,
+                                node.cs_new_id);
                         display_sc(&node, 'V');
 
                         u_req_args_t args_chk;
                         args_chk.check_cs.new_node_id = node.cs_new_id; // not used
+
+                        xbt_assert(node.cs_new_id != node.self.id, "Check_cs error !!");
 
                         msg_error_t res = send_msg_async(&node,
                                 TASK_CHECK_CS,
@@ -7757,8 +7768,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_CNX_REQ:
-            if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) ||
-                (state.active == 'a')) {
+            //if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) || (state.active == 'a')) {
+            if (1 == 1) {           //TODO : ne pas oublier
 
                 // run task now
                 answer = connection_request(me,
