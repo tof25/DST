@@ -35,10 +35,10 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define COMM_SIZE 10                        // message size when creating a new task
 #define COMP_SIZE 0                         // compute duration when creating a new task
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
-#define TYPE_NBR 36                         // number of task types
+#define TYPE_NBR 38                         // number of task types
 #define MAX_WAIT_COMPL 3000                 // won't wait longer for broadcast completion
-#define MAX_WAIT_GET_REP 2000               // won't wait longer an answer to a GET_REP request
-#define MAX_JOIN 250                        // number of joining attempts
+#define MAX_WAIT_GET_REP 4000               // won't wait longer an answer to a GET_REP request
+#define MAX_JOIN 50                         // number of joining attempts
 #define TRY_STEP 10                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 100                      // max time between cs_req and matching set_update
 
@@ -134,7 +134,9 @@ typedef enum {
     TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join too much
     TASK_CS_REQ,            // ask for permission to get into Critical Section (splitted area)
     TASK_END_GET_REP,       // remove 'g' state after load balance
-    TASK_POP_STATE          // pops given state from states dynar (if found on top)
+    TASK_POP_STATE,         // pops given state from states dynar (if found on top)
+    TASK_CS_REL,            // reset cs_req flag
+    TASK_CHECK_CS           // send back a CS_REL if not 'b' neither 'n'
 } e_task_type_t;
 
 /**
@@ -234,8 +236,10 @@ static const char* debug_msg[] = {
     "Update Upper Stage",
     "Get New Contact",
     "Critical Section Request",
+    "End Get Rep",
+    "Pop State",
     "Critical Section Released",
-    "Pop State"
+    "Check CS"
 };
 
 /*
@@ -484,6 +488,14 @@ typedef struct {
     char active;
 } s_task_pop_state_t;          // pops given state if found on top of states dynar
 
+typedef struct {
+    int new_node_id;
+} s_task_cs_rel_t;             // reset cs_req flag
+
+typedef struct {
+    int new_node_id;
+} s_task_check_cs_t;           // send back a CS_REL if not 'b' neither 'n'
+
 /**
  * Generic request args
  */
@@ -523,6 +535,8 @@ union req_args {
     s_task_cs_req_t             cs_req;
     s_task_end_get_rep_t        end_get_rep;
     s_task_pop_state_t          pop_state;
+    s_task_cs_rel_t             cs_rel;
+    s_task_check_cs_t           check_cs;
 };
 
 /**
@@ -678,6 +692,7 @@ static void         cs_rel(node_t me, int new_node_id);
 static void         rec_async_answer(node_t me, int idx, ans_data_t ans);
 static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
 static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id);
+static void         check_cs(node_t me, int sender_id);
 
 /*
   ======================= COMMUNICATION FUNCTIONS =============================
@@ -1522,6 +1537,34 @@ static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_
             xbt_dynar_remove_at(me->async_answers, idx, NULL);
             dynar_size = (int) xbt_dynar_length(me->async_answers);
         }
+    }
+
+    XBT_OUT();
+}
+
+/**
+ * \brief If state is not 'n' nor 'b', sends a cs_rel to sender_id
+ * \param me the current node
+ * \param sender_id cs_rel has to be sent to this node
+ */
+static void check_cs(node_t me, int sender_id) {
+    XBT_IN();
+
+    s_state_t state = get_state(me);
+    if (state.active != 'n' && state.active != 'b') {
+
+        XBT_VERB("Node %d: Yes, node %d's cs_req has to be reset",
+                me->self.id,
+                sender_id);
+
+        // send a cs_rel if active
+        u_req_args_t args;
+        args.cs_rel.new_node_id = me->self.id;
+
+        msg_error_t res = send_msg_async(me,
+                TASK_CS_REL,
+                sender_id,
+                args);
     }
 
     XBT_OUT();
@@ -3942,18 +3985,18 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 me->self.id,
                 try);
 
-        //display_sc(me, 'V');
+        display_sc(me, 'D');
 
         /*** Ask for permission to get into the Critical Section ***/
-        val_ret = cs_req(me, me->self.id, new_node_id);
+        //val_ret = cs_req(me, me->self.id, new_node_id);
 
-        XBT_VERB("Node %d: back to connection_request()", me->self.id);
+        //XBT_VERB("Node %d: back to connection_request()", me->self.id);
 
-        /* if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
-           (state.active == 'u' && state.new_id != new_node_id) ||
-           (state.active != 'u' && state.active != 'a')) */
+        if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
+                (state.active == 'u' && state.new_id != new_node_id) ||
+                (state.active != 'u' && state.active != 'a')) {
 
-        if (val_ret == UPDATE_NOK) {
+            //if (val_ret == UPDATE_NOK) 
 
             // if current node isn't available, reject request
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
@@ -3961,26 +4004,24 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     state.active,
                     state.new_id);
 
-            //val_ret = UPDATE_NOK;
+            val_ret = UPDATE_NOK;
         } else {
 
-            //val_ret = OK;
+            val_ret = OK;
 
             XBT_VERB("Node %d: '%c'/%d - in connection_request() - available",
                     me->self.id,
                     state.active,
                     state.new_id);
 
-            /*
             // set cs_req
             me->cs_req = 1;
             me->cs_new_id = new_node_id;
             me->cs_req_time = MSG_get_clock();
 
             XBT_DEBUG("Node %d: in connection_request() - after cs_req",
-            me->self.id);
-            */
-            //display_sc(me, 'D');
+                    me->self.id);
+            display_sc(me, 'D');
 
             u_req_args_t args;
             msg_task_t task_sent = NULL;
@@ -7533,9 +7574,26 @@ int node(int argc, char *argv[]) {
                     XBT_INFO("Node %d left ...", node.self.id);
                 } else {
 
-                    //XBT_DEBUG("Node %d: nothing to do: sleep for a while", node.self.id);
+                    if (node.cs_req == 1) {
 
-                    MSG_process_sleep(0.2);     //TODO: pb messages perdus si plus long ??
+                        // checks if cs_req has to be reset (avoids deadlocks)
+                        XBT_VERB("Node %d: cs_req has to be reset ?", node.self.id);
+                        display_sc(&node, 'V');
+
+                        u_req_args_t args_chk;
+                        args_chk.check_cs.new_node_id = node.cs_new_id; // not used
+
+                        msg_error_t res = send_msg_async(&node,
+                                TASK_CHECK_CS,
+                                node.cs_new_id,
+                                args_chk);
+                    }
+
+                    XBT_INFO("Node %d: nothing else to do: sleep for a while", node.self.id);
+
+                    MSG_process_sleep(20);     //TODO: pb messages perdus si plus long ??
+
+                    XBT_INFO("Node %d: wake up", node.self.id);
                 }
             } else {
 
@@ -8712,6 +8770,25 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
             XBT_VERB("Node %d: TASK_POP_STATE done", me->self.id);
             break;
+
+        case TASK_CS_REL:
+            cs_rel(me, rcv_args.cs_rel.new_node_id);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
+            XBT_VERB("Node %d: TASK_CS_REL done", me->self.id);
+            break;
+
+        case TASK_CHECK_CS:
+            check_cs(me, rcv_req->sender_id);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
+            XBT_VERB("Node %d: TASK_CHECK_CS done", me->self.id);
+            break;
+
     }
 
     if (type != TASK_BROADCAST) {

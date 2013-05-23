@@ -5,39 +5,60 @@
 1) MESSAGES PERDUS
    ***************
 
-   1.a) Voir exemple que j'avais posté
+    1.a) Voir exemple que j'avais posté
 
-        3 senders envoient chacun 4 messages au même receiver. Vérifier si le receiver les reçoit tous.
-        (rechercher Task.*done)
+        3 senders envoient chacun 4 messages au même receiver.
+        Le receiver ne reçoit pas toutes les tâches dès lors qu'il y a un
+        timeout, comme si le timeout effaçait la file d'attente des messages
+        reçus.
 
-   1.b) Pourquoi on ne peut pas mettre un grand MSG_process_sleep dans node()
-   1.c) Pourquoi deux envois de réponse nécessaire dans TASK_DEL_BRO de handle_task() 
-        (peut-être difficile à montrer)
+
+    1.b) Pourquoi on ne peut pas mettre un grand MSG_process_sleep dans node()
+
+        Je n'arrive pas à reproduire le phénomène sur un exemple simple ...
+
+
+    1.c) Pourquoi deux envois de réponse nécessaire dans TASK_DEL_BRO de handle_task() 
+         (peut-être difficile à montrer)
+
 
 2) TIMER DEPRECATED
    ****************
 
-   Besoin d'un timer dans main(), comment le remplacer ?
+    Besoin d'un timer dans main(), comment le remplacer ?
 
-    XBT_INFO("\nSimulation time %lf", xbt_os_timer_elapsed(timer));
-    XBT_INFO("Simulated time: %g", MSG_get_clock());
+        XBT_INFO("\nSimulation time %lf", xbt_os_timer_elapsed(timer));
+        XBT_INFO("Simulated time: %g", MSG_get_clock());
 
-    xbt_os_timer_free(timer);
+        xbt_os_timer_free(timer);
 
 
-3) TRACES
+3) PERFORMANCES DE LA SIMULATION
+   *****************************
+
+    Presque 16 jours pour construire un DST de 100 000 noeuds avec une BP de 5E-7 ...
+
+
+4) TRACES
    ******
 
-   Qu'est-ce que ça permet de tracer ? Comment ça marche ?
+    Qu'est-ce que ça permet de tracer ? Comment ça marche ?
 
 
-4) MODEL-CHECKING
+5) MODEL-CHECKING
    **************
 
-   A quoi ça sert et comment l'utilise-t-on ? Ok sur OSX ?
+    A quoi ça sert et comment l'utilise-t-on ? Ok sur OSX ?
 
 
-5) MECANISME des CONTEXTES
+6) Réalisation d'un fichier plat pour travailler sur un DST déjà construit
+   ***********************************************************************
+
+    XML meilleur format ? quel parser utiliser ? comment constituer le fichier ?
+
+
+6) MECANISME des CONTEXTES
    ***********************
 
    Théorie ?
+

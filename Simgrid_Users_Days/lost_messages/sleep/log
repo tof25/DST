@@ -1,0 +1,108 @@
+[Tremblay:sender:(1) 0.000000] [msg_test/INFO] Node 1: sleep_start_time : 3.000000 , sleep_test_time : 0.100000
+[Ruby:sender:(2) 0.000000] [msg_test/INFO] Node 2: sleep_start_time : 3.000000 , sleep_test_time : 0.100000
+[Perl:sender:(3) 0.000000] [msg_test/INFO] Node 3: sleep_start_time : 3.000000 , sleep_test_time : 0.100000
+[Java:receiver:(4) 0.000000] [msg_test/INFO] sleep_start_time : 10.000000 , sleep_test_time : 10.000000
+[Perl:sender:(3) 3.000000] [msg_test/INFO] Send to receiver-0 Task_3-0
+[Tremblay:sender:(1) 3.000000] [msg_test/INFO] Send to receiver-0 Task_1-0
+[Ruby:sender:(2) 3.000000] [msg_test/INFO] Send to receiver-0 Task_2-0
+[Ruby:sender:(2) 3.200000] [msg_test/INFO] Send to receiver-0 Task_2-1
+[Perl:sender:(3) 3.200000] [msg_test/INFO] Send to receiver-0 Task_3-1
+[Tremblay:sender:(1) 3.200000] [msg_test/INFO] Send to receiver-0 Task_1-1
+[Tremblay:sender:(1) 3.400000] [msg_test/INFO] Send to receiver-0 Task_1-2
+[Ruby:sender:(2) 3.400000] [msg_test/INFO] Send to receiver-0 Task_2-2
+[Perl:sender:(3) 3.400000] [msg_test/INFO] Send to receiver-0 Task_3-2
+[Perl:sender:(3) 3.600000] [msg_test/INFO] Send to receiver-0 Task_3-3
+[Tremblay:sender:(1) 3.600000] [msg_test/INFO] Send to receiver-0 Task_1-3
+[Ruby:sender:(2) 3.600000] [msg_test/INFO] Send to receiver-0 Task_2-3
+[Ruby:sender:(2) 3.800000] [msg_test/INFO] Send to receiver-0 finalize
+[Perl:sender:(3) 3.800000] [msg_test/INFO] Send to receiver-0 finalize
+[Tremblay:sender:(1) 3.800000] [msg_test/INFO] Send to receiver-0 finalize
+[Java:receiver:(4) 10.000000] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 10.000000] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 20.000000] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 20.000000] [msg_test/INFO] Received "Task_3-0"
+[Java:receiver:(4) 20.000000] [msg_test/INFO] Processing "Task_3-0"
+[Java:receiver:(4) 20.509710] [msg_test/INFO] "Task_3-0" done
+[Java:receiver:(4) 20.509710] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 20.509710] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 30.509710] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 30.509710] [msg_test/INFO] Received "Task_1-0"
+[Java:receiver:(4) 30.509710] [msg_test/INFO] Processing "Task_1-0"
+[Java:receiver:(4) 31.019420] [msg_test/INFO] "Task_1-0" done
+[Java:receiver:(4) 31.019420] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 31.019420] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 41.019420] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 41.019420] [msg_test/INFO] Received "Task_2-0"
+[Java:receiver:(4) 41.019420] [msg_test/INFO] Processing "Task_2-0"
+[Java:receiver:(4) 41.529130] [msg_test/INFO] "Task_2-0" done
+[Java:receiver:(4) 41.529130] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 41.529130] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 51.529130] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 51.529130] [msg_test/INFO] Received "Task_2-1"
+[Java:receiver:(4) 51.529130] [msg_test/INFO] Processing "Task_2-1"
+[Java:receiver:(4) 52.038840] [msg_test/INFO] "Task_2-1" done
+[Java:receiver:(4) 52.038840] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 52.038840] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 62.038840] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 62.038840] [msg_test/INFO] Received "Task_3-1"
+[Java:receiver:(4) 62.038840] [msg_test/INFO] Processing "Task_3-1"
+[Java:receiver:(4) 62.548550] [msg_test/INFO] "Task_3-1" done
+[Java:receiver:(4) 62.548550] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 62.548550] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 72.548550] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 72.548550] [msg_test/INFO] Received "Task_1-1"
+[Java:receiver:(4) 72.548550] [msg_test/INFO] Processing "Task_1-1"
+[Java:receiver:(4) 73.058260] [msg_test/INFO] "Task_1-1" done
+[Java:receiver:(4) 73.058260] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 73.058260] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 83.058260] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 83.058260] [msg_test/INFO] Received "Task_1-2"
+[Java:receiver:(4) 83.058260] [msg_test/INFO] Processing "Task_1-2"
+[Java:receiver:(4) 83.567970] [msg_test/INFO] "Task_1-2" done
+[Java:receiver:(4) 83.567970] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 83.567970] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 93.567970] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 93.567970] [msg_test/INFO] Received "Task_2-2"
+[Java:receiver:(4) 93.567970] [msg_test/INFO] Processing "Task_2-2"
+[Java:receiver:(4) 94.077680] [msg_test/INFO] "Task_2-2" done
+[Java:receiver:(4) 94.077680] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 94.077680] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 104.077680] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 104.077680] [msg_test/INFO] Received "Task_3-2"
+[Java:receiver:(4) 104.077680] [msg_test/INFO] Processing "Task_3-2"
+[Java:receiver:(4) 104.587390] [msg_test/INFO] "Task_3-2" done
+[Java:receiver:(4) 104.587390] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 104.587390] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 114.587390] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 114.587390] [msg_test/INFO] Received "Task_3-3"
+[Java:receiver:(4) 114.587390] [msg_test/INFO] Processing "Task_3-3"
+[Java:receiver:(4) 115.097100] [msg_test/INFO] "Task_3-3" done
+[Java:receiver:(4) 115.097100] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 115.097100] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 125.097100] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 125.097100] [msg_test/INFO] Received "Task_1-3"
+[Java:receiver:(4) 125.097100] [msg_test/INFO] Processing "Task_1-3"
+[Java:receiver:(4) 125.606810] [msg_test/INFO] "Task_1-3" done
+[Java:receiver:(4) 125.606810] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 125.606810] [msg_test/INFO] Attente ...
+[Java:receiver:(4) 135.606810] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 135.606810] [msg_test/INFO] Received "Task_2-3"
+[Java:receiver:(4) 135.606810] [msg_test/INFO] Processing "Task_2-3"
+[Java:receiver:(4) 136.116520] [msg_test/INFO] "Task_2-3" done
+[Java:receiver:(4) 136.116520] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 136.116520] [msg_test/INFO] Attente ...
+[Ruby:sender:(2) 136.200000] [msg_test/INFO] Goodbye now!
+[Java:receiver:(4) 146.116520] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 146.116520] [msg_test/INFO] Received "finalize"
+[Java:receiver:(4) 146.116520] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 146.116520] [msg_test/INFO] Attente ...
+[Perl:sender:(3) 146.200000] [msg_test/INFO] Goodbye now!
+[Java:receiver:(4) 156.116520] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 156.116520] [msg_test/INFO] Received "finalize"
+[Java:receiver:(4) 156.116520] [msg_test/INFO] Wait to receive a task - sleep_test = 10.000000
+[Java:receiver:(4) 156.116520] [msg_test/INFO] Attente ...
+[Tremblay:sender:(1) 156.200000] [msg_test/INFO] Goodbye now!
+[Java:receiver:(4) 166.116520] [msg_test/INFO] comm destroy
+[Java:receiver:(4) 166.116520] [msg_test/INFO] Received "finalize"
+[Java:receiver:(4) 166.116520] [msg_test/INFO] I'm done. See you!
+[166.116520] [msg_test/INFO] Simulation time 166.117
