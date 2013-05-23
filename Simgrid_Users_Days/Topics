@@ -12,13 +12,7 @@
         timeout, comme si le timeout effaçait la file d'attente des messages
         reçus.
 
-
-    1.b) Pourquoi on ne peut pas mettre un grand MSG_process_sleep dans node()
-
-        Je n'arrive pas à reproduire le phénomène sur un exemple simple ...
-
-
-    1.c) Pourquoi deux envois de réponse nécessaire dans TASK_DEL_BRO de handle_task() 
+    1.b) Pourquoi deux envois de réponse nécessaire dans TASK_DEL_BRO de handle_task() 
          (peut-être difficile à montrer)
 
 
@@ -37,6 +31,8 @@
    *****************************
 
     Presque 16 jours pour construire un DST de 100 000 noeuds avec une BP de 5E-7 ...
+    Parallélisation possible ? utile ?
+    Gestion mémoire ? Partage ?
 
 
 4) TRACES

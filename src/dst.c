@@ -38,9 +38,9 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define TYPE_NBR 38                         // number of task types
 #define MAX_WAIT_COMPL 3000                 // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 4000               // won't wait longer an answer to a GET_REP request
-#define MAX_JOIN 50                         // number of joining attempts
+#define MAX_JOIN 250                         // number of joining attempts
 #define TRY_STEP 10                         // number of tries before requesting a new contact
-#define MAX_CS_REQ 100                      // max time between cs_req and matching set_update
+#define MAX_CS_REQ 500                      // max time between cs_req and matching set_update
 
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
@@ -1429,6 +1429,8 @@ static void cs_rel(node_t me, int new_node_id) {
 
     display_sc(me, 'V');
 
+    xbt_assert(state.active != 'u', "'u' state in cs_rel() !!");
+
     XBT_OUT();
 }
 
@@ -1557,14 +1559,20 @@ static void check_cs(node_t me, int sender_id) {
                 me->self.id,
                 sender_id);
 
-        // send a cs_rel if active
-        u_req_args_t args;
-        args.cs_rel.new_node_id = me->self.id;
+        if (me->self.id != sender_id) {
 
-        msg_error_t res = send_msg_async(me,
-                TASK_CS_REL,
-                sender_id,
-                args);
+            // send a cs_rel if active
+            u_req_args_t args;
+            args.cs_rel.new_node_id = me->self.id;
+
+            msg_error_t res = send_msg_async(me,
+                    TASK_CS_REL,
+                    sender_id,
+                    args);
+        } else {
+
+            cs_rel(me, me->self.id);
+        }
     }
 
     XBT_OUT();
@@ -7574,11 +7582,11 @@ int node(int argc, char *argv[]) {
                     XBT_INFO("Node %d left ...", node.self.id);
                 } else {
 
-                    if (node.cs_req == 1) {
+                    if (node.cs_req == 1 && MSG_get_clock() - node.cs_req_time >= MAX_CS_REQ) {
 
                         // checks if cs_req has to be reset (avoids deadlocks)
                         XBT_VERB("Node %d: cs_req has to be reset ?", node.self.id);
-                        display_sc(&node, 'V');
+                        display_sc(&node, 'I');
 
                         u_req_args_t args_chk;
                         args_chk.check_cs.new_node_id = node.cs_new_id; // not used
@@ -7589,11 +7597,12 @@ int node(int argc, char *argv[]) {
                                 args_chk);
                     }
 
-                    XBT_INFO("Node %d: nothing else to do: sleep for a while", node.self.id);
+                    XBT_DEBUG("Node %d: nothing else to do: sleep for a while", node.self.id);
 
-                    MSG_process_sleep(20);     //TODO: pb messages perdus si plus long ??
+                    // simulation time will increase a lot if sleep time is too long
+                    MSG_process_sleep(0.2);
 
-                    XBT_INFO("Node %d: wake up", node.self.id);
+                    XBT_DEBUG("Node %d: wake up", node.self.id);
                 }
             } else {
 
