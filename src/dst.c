@@ -7769,7 +7769,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
         case TASK_CNX_REQ:
             //if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) || (state.active == 'a')) {
-            if (1 == 1) {           //TODO : ne pas oublier
+            if (state.active != 'l') {           //TODO : ne pas oublier
 
                 // run task now
                 answer = connection_request(me,
