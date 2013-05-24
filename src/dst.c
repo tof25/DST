@@ -4629,7 +4629,7 @@ static void add_pred(node_t me, int stage, int id) {
             get_mailbox(0, me->preds[stage][i].mailbox);
         }
 
-        XBT_VERB("Node %d: Predecessors array has been set bigger", me->self.id);
+        XBT_DEBUG("Node %d: Predecessors array has been set bigger", me->self.id);
     }
 
     /* if current state is 'p', then it's an add_pred coming from load_balance() :
@@ -7552,6 +7552,7 @@ int node(int argc, char *argv[]) {
         msg_task_t task_received = NULL;
         msg_error_t res = MSG_TRANSFER_FAILURE;
         s_state_t state = get_state(&node);
+        long last_check_time = 0;
 
         while (MSG_get_clock() < max_simulation_time && state.active != 'n') {
 
@@ -7577,6 +7578,7 @@ int node(int argc, char *argv[]) {
                 }
                 */
 
+                // TODO: remplacer les get_clock() par une variable ?
                 if (MSG_get_clock() >= node.deadline && state.active == 'a' && 1 == 0) {    //TODO : ne pas oublier
 
                     XBT_INFO("Node %d: deadline reached: time to leave !",
@@ -7589,13 +7591,17 @@ int node(int argc, char *argv[]) {
                     XBT_INFO("Node %d left ...", node.self.id);
                 } else {
 
-                    if (node.cs_req == 1 && MSG_get_clock() - node.cs_req_time >= MAX_CS_REQ) {
+                    if (node.cs_req == 1 &&
+                        MSG_get_clock() - node.cs_req_time >= MAX_CS_REQ &&
+                        MSG_get_clock() - last_check_time >= MAX_CS_REQ) {
 
                         // checks if cs_req has to be reset (avoids deadlocks)
                         XBT_VERB("Node %d: asks node %d if cs_req has to be reset",
                                 node.self.id,
                                 node.cs_new_id);
                         display_sc(&node, 'V');
+
+                        last_check_time = MSG_get_clock();
 
                         u_req_args_t args_chk;
                         args_chk.check_cs.new_node_id = node.cs_new_id; // not used
@@ -7769,7 +7775,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
         case TASK_CNX_REQ:
             //if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) || (state.active == 'a')) {
-            if (state.active != 'l') {           //TODO : ne pas oublier
+            if (state.active != 'l'&& state.active != 'b') {           //TODO : ne pas oublier
 
                 // run task now
                 answer = connection_request(me,
