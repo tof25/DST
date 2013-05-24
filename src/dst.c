@@ -37,10 +37,10 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAILBOX_NAME_SIZE 15                // name size of a mailbox
 #define TYPE_NBR 38                         // number of task types
 #define MAX_WAIT_COMPL 3000                 // won't wait longer for broadcast completion
-#define MAX_WAIT_GET_REP 500               // won't wait longer an answer to a GET_REP request
-#define MAX_JOIN 250                         // number of joining attempts
+#define MAX_WAIT_GET_REP 500                // won't wait longer an answer to a GET_REP request
+#define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
-#define MAX_CS_REQ 500                      // max time between cs_req and matching set_update
+#define MAX_CS_REQ 100                      // max time between cs_req and matching set_update
 
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
@@ -194,6 +194,7 @@ typedef struct node {
     char            cs_req;                 // Critical Section requested
     float           cs_req_time;            // timestamp when cs_req was set
     int             cs_new_id;              // new node's id that set cs_req
+    float           last_check_time;        // last time when checking if cs_req has to be reset occured
 } s_node_t, *node_t;
 
 /**
@@ -3405,11 +3406,13 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             set_update(me, args.broadcast.args->set_active.new_id);
             break;
 
+        /*
         case TASK_CS_REQ:
             cs_req(me,
                     args.broadcast.args->cs_req.sender_id,
                     args.broadcast.args->cs_req.new_node_id);
             break;
+         */
     }
 
     e_val_ret_t ret = OK;
@@ -3594,6 +3597,7 @@ static void init(node_t me) {
 
     me->height = 1;
     me->comm_received = NULL;
+    me->last_check_time = 0;
 
     // set current state
     me->states = xbt_dynar_new(sizeof(state_t), &xbt_free_ref);
@@ -7552,7 +7556,6 @@ int node(int argc, char *argv[]) {
         msg_task_t task_received = NULL;
         msg_error_t res = MSG_TRANSFER_FAILURE;
         s_state_t state = get_state(&node);
-        long last_check_time = 0;
 
         while (MSG_get_clock() < max_simulation_time && state.active != 'n') {
 
@@ -7593,7 +7596,7 @@ int node(int argc, char *argv[]) {
 
                     if (node.cs_req == 1 &&
                         MSG_get_clock() - node.cs_req_time >= MAX_CS_REQ &&
-                        MSG_get_clock() - last_check_time >= MAX_CS_REQ) {
+                        MSG_get_clock() - node.last_check_time >= MAX_CS_REQ) {
 
                         // checks if cs_req has to be reset (avoids deadlocks)
                         XBT_VERB("Node %d: asks node %d if cs_req has to be reset",
@@ -7601,7 +7604,7 @@ int node(int argc, char *argv[]) {
                                 node.cs_new_id);
                         display_sc(&node, 'V');
 
-                        last_check_time = MSG_get_clock();
+                        node.last_check_time = MSG_get_clock();
 
                         u_req_args_t args_chk;
                         args_chk.check_cs.new_node_id = node.cs_new_id; // not used
