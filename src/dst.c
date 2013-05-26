@@ -1366,7 +1366,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id) {
     /* to avoid dealocks : if CS has been requested and not answered for long
        ago, cancel this request */
     if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
-        MSG_get_clock() - me->cs_req_time > MAX_CS_REQ) {
+        MSG_get_clock() - me->cs_req_time > 2 * MAX_CS_REQ) {
 
         me->cs_req = 0;
 
@@ -1390,11 +1390,11 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id) {
         }
     } else {
 
-        me->cs_req = 1;
-        me->cs_new_id = new_node_id;
-        me->cs_req_time = MSG_get_clock();
-
         if (state.active == 'a') {
+
+            me->cs_req = 1;
+            me->cs_new_id = new_node_id;
+            me->cs_req_time = MSG_get_clock();
 
             val_ret = OK;
         } else {
@@ -2344,8 +2344,8 @@ static void run_delayed_tasks(node_t me, char c) {
     }
 
     // run delayed tasks
-    if (state.active == 'a' && me->cs_req == 0 &&
-            xbt_dynar_is_empty(me->remain_tasks) == 0) {
+    //if (state.active == 'a' && me->cs_req == 0 &&
+    if (state.active == 'a' && me->cs_req == 0 && xbt_dynar_is_empty(me->remain_tasks) == 0) {
 
         if (nb_elems > 0) {
 
@@ -4021,6 +4021,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     state.active,
                     state.new_id);
 
+            answer.cnx_req.new_contact.id = -1;
             //val_ret = UPDATE_NOK;
         } else {
 
@@ -4364,11 +4365,12 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
     }
 
     state = get_state(me);
-    XBT_INFO("Node %d: '%c'/%d -  end of connection_request() - val_ret = '%s'",
+    XBT_INFO("Node %d: '%c'/%d -  end of connection_request() - val_ret = '%s', contact = %d",
             me->self.id,
             state.active,
             state.new_id,
-            (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"));
+            (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
+            answer.cnx_req.new_contact.id);
 
     XBT_DEBUG("Node %d: answer.cnx_req.add_stage = %d",
             me->self.id,
@@ -7622,7 +7624,7 @@ int node(int argc, char *argv[]) {
                     // simulation time will increase a lot if sleep time is too long
                     MSG_process_sleep(0.2);
 
-                    XBT_DEBUG("Node %d: wake up", node.self.id);
+                    XBT_DEBUG("Node %d: wake up - comm = %p", node.self.id, node.comm_received);
                 }
             } else {
 
@@ -7777,8 +7779,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_CNX_REQ:
-            //if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) || (state.active == 'a')) {
-            if (state.active != 'l'&& state.active != 'b') {           //TODO : ne pas oublier
+            //if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) || (state.active == 'a'))
+            if (state.active != 'l'&& state.active != 'b') {            //TODO : ne pas oublier
 
                 // run task now
                 answer = connection_request(me,
@@ -7790,50 +7792,58 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         answer.cnx_req.val_ret,
                         answer.cnx_req.new_contact.id);
 
-                res = send_ans_sync(me,
-                        rcv_args.cnx_req.new_node_id,
-                        type,
-                        rcv_req->sender_id,
-                        answer);
+                val_ret = answer.cnx_req.val_ret;
+                if (val_ret != UPDATE_NOK) {
 
-                data_req_free(me, &rcv_req);
-                task_free(task);
-
-                XBT_VERB("Node %d: TASK_CNX_REQ done", me->self.id);
-                display_sc(me, 'V');
-
-            } else {
-
-                //if (state.active == 'b')
-                if (1 == 1) {
-
-                    val_ret = UPDATE_NOK;
-
-                    // send an answer back ...
-                    answer.cnx_req.val_ret = val_ret;
                     res = send_ans_sync(me,
                             rcv_args.cnx_req.new_node_id,
                             type,
                             rcv_req->sender_id,
                             answer);
-
-                    data_req_free(me, &rcv_req);
-                    task_free(task);
-
-                } else {
-
-                    // ... or store task (CNX_REQ isn't broadcasted)
-                    XBT_VERB("Node %d: '%c'/%d -  store CNX_REQ/%d for later execution",
-                            me->self.id,
-                            state.active,
-                            state.new_id,
-                            rcv_args.cnx_req.new_node_id);
-
-                    xbt_dynar_push(me->remain_tasks, task);
-                    *task = NULL;
-                    val_ret = STORED;
                 }
             }
+
+            if (val_ret == UPDATE_NOK || state.active == 'l' || state.active == 'b') {
+
+                /*
+                   if (1 == 1) {
+
+                   val_ret = UPDATE_NOK;
+
+                // send an answer back ...
+                answer.cnx_req.val_ret = val_ret;
+                res = send_ans_sync(me,
+                rcv_args.cnx_req.new_node_id,
+                type,
+                rcv_req->sender_id,
+                answer);
+
+                data_req_free(me, &rcv_req);
+                task_free(task);
+
+                } else {
+                */
+
+                // ... or store task (CNX_REQ isn't broadcasted)
+                XBT_VERB("Node %d: '%c'/%d -  store CNX_REQ/%d for later execution",
+                        me->self.id,
+                        state.active,
+                        state.new_id,
+                        rcv_args.cnx_req.new_node_id);
+
+                xbt_dynar_push(me->remain_tasks, task);
+                *task = NULL;
+                val_ret = STORED;
+            } else {
+
+                data_req_free(me, &rcv_req);
+                task_free(task);
+            }
+
+            XBT_VERB("Node %d: TASK_CNX_REQ done", me->self.id);
+            display_sc(me, 'V');
+
+            //}
             break;
 
         case TASK_NEW_BROTHER_RCV:
@@ -8578,22 +8588,22 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             XBT_VERB("Node %d: TASK_TRANSFER done", me->self.id);
             break;
 
-        /*
-        case TASK_DEL_MEMBER:
-            del_member(me,
-                    rcv_args.del_member.stage,
-                    rcv_args.del_member.start,
-                    rcv_args.del_member.end);
+            /*
+               case TASK_DEL_MEMBER:
+               del_member(me,
+               rcv_args.del_member.stage,
+               rcv_args.del_member.start,
+               rcv_args.del_member.end);
 
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id);
+            send_completed(me, type, rcv_req->sender_id);
             }
 
             XBT_VERB("Node %d: TASK_DEL_MEMBER done", me->self.id);
             break;
-        */
+            */
 
         case TASK_ADD_BRO_ARRAY:
             add_bro_array(me,
@@ -8617,10 +8627,10 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
         case TASK_SHIFT_BRO:
             shift_bro(me,
-            rcv_args.shift_bro.stage,
-            rcv_args.shift_bro.new_node,
-            rcv_args.shift_bro.right,
-            rcv_args.shift_bro.new_node_id);
+                    rcv_args.shift_bro.stage,
+                    rcv_args.shift_bro.new_node,
+                    rcv_args.shift_bro.right,
+                    rcv_args.shift_bro.new_node_id);
 
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
@@ -8775,15 +8785,15 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     me->self.id);
 
             /*
-            if (rcv_req->sender_id != me->self.id) {
+               if (rcv_req->sender_id != me->self.id) {
 
-                res = send_ans_sync(me,
-                        rcv_args.end_get_rep.new_node_id,
-                        type,
-                        rcv_req->sender_id,
-                        answer);
-            }
-            */
+               res = send_ans_sync(me,
+               rcv_args.end_get_rep.new_node_id,
+               type,
+               rcv_req->sender_id,
+               answer);
+               }
+               */
 
             data_req_free(me, &rcv_req);
             task_free(task);
