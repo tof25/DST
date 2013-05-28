@@ -1,7 +1,8 @@
 /*
+ *  Git branch : dst_new
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/05/23
+ *  Written by Christophe Enderlin on 2013/05/28
  *
  */
 
