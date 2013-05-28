@@ -1,0 +1,14 @@
+Problème
+********
+
+    2 noeuds -- 249 et 14 -- ont le même contact 121 et le même leader 42.
+
+    Lorsque 42 a fini d'intégrer 14, il répond à 121.
+    Mais 121 est en train d'attendre la réponse de 42 pour l'insertion de 249.
+    Cette réponse ne peut être émise que si 14 est inséré (il est encore à 'b')
+    ==> deadlock
+
+Solution
+********
+
+    Voir pour ne plus avoir qu'un seul point de communication.
