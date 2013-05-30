@@ -5676,7 +5676,6 @@ static void split(node_t me, int stage, int new_node_id) {
                     "Node %d: #8# recp.id is %d !!",
                     me->self.id,
                     elem->recp.id);
-
         }
     }
 
@@ -8128,6 +8127,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     } else {
 
                         /* start call: forward broadcast to the leader ? */
+                        //TODO : est-ce que ça a vraiment un intérêt de déléguer la diffusion au leader ?
                         if (rcv_args.broadcast.first_call == 1) {
 
                             if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
