@@ -3572,6 +3572,7 @@ static void send_completed(node_t me, e_task_type_t type, int recipient_id, int 
 
     u_ans_data_t answer;
     answer.handle.val_ret = OK;
+    answer.handle.val_ret_id = me->self.id;
 
     send_ans_sync(me, new_node_id, type, recipient_id, answer);
 
@@ -8054,261 +8055,160 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                        - ADD_STAGE
                        - SPLIT
                        - CS_REQ
-                       - CS_REL
                        - POP_STATE
                        */
                     (state.active == 'u' &&
                      (
                       !(rcv_args.broadcast.type == TASK_SET_UPDATE &&
-                          rcv_args.broadcast.args->set_update.new_id ==
-                          state.new_id) &&
+                        rcv_args.broadcast.args->set_update.new_id == state.new_id) &&
                       rcv_args.broadcast.type != TASK_SET_ACTIVE &&
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT &&
                       rcv_args.broadcast.type != TASK_CS_REQ &&
                       rcv_args.broadcast.type != TASK_POP_STATE
                      )
-                    )
-                        ) {
+                    )) {
 
-                            /* for refused broadcasted tasks, either send an answer back ... */
-                            if (rcv_args.broadcast.type == TASK_SET_ACTIVE ||
-                                    rcv_args.broadcast.type == TASK_SET_UPDATE) {
+                        /* for refused broadcasted tasks, either send an answer back ... */
+                        if (rcv_args.broadcast.type == TASK_SET_ACTIVE ||
+                            rcv_args.broadcast.type == TASK_SET_UPDATE) {
 
-                                XBT_VERB("Don't accept '%s' here - current new_id = %d"
-                                        " - rcv_new_id = %d",
-                                        debug_msg[rcv_args.broadcast.type],
-                                        state.new_id,
-                                        (rcv_args.broadcast.type == TASK_SET_UPDATE ?
-                                         rcv_args.broadcast.args->set_update.new_id :
-                                         rcv_args.broadcast.args->set_active.new_id));
+                            XBT_VERB("Don't accept '%s' here - current new_id = %d"
+                                    " - rcv_new_id = %d",
+                                    debug_msg[rcv_args.broadcast.type],
+                                    state.new_id,
+                                    (rcv_args.broadcast.type == TASK_SET_UPDATE ?
+                                     rcv_args.broadcast.args->set_update.new_id :
+                                     rcv_args.broadcast.args->set_active.new_id));
 
-                                /* if set_update is refused, tell the caller.
-                                   if set_active is refused, nevermind, it'll work another
-                                   time */
-                                val_ret = (rcv_args.broadcast.type == TASK_SET_UPDATE ?
-                                        UPDATE_NOK : OK);
+                            /* if set_update is refused, tell the caller.
+                               if set_active is refused, nevermind, it'll work another
+                               time */
+                            val_ret = (rcv_args.broadcast.type == TASK_SET_UPDATE ?
+                                    UPDATE_NOK : OK);
 
-                                if (rcv_req->sender_id != me->self.id) {
+                            if (rcv_req->sender_id != me->self.id) {
 
-                                    /* send an answer back (stop broadcast) */
-                                    answer.handle.val_ret = val_ret;
-                                    answer.handle.val_ret_id = me->self.id;
-                                    answer.handle.br_type = rcv_args.broadcast.type;
+                                /* send an answer back (stop broadcast) */
+                                answer.handle.val_ret = val_ret;
+                                answer.handle.val_ret_id = me->self.id;
+                                answer.handle.br_type = rcv_args.broadcast.type;
 
-                                    res = send_ans_sync(me,
-                                            rcv_args.broadcast.new_node_id,
-                                            type,
-                                            rcv_req->sender_id,
-                                            answer);
+                                res = send_ans_sync(me,
+                                        rcv_args.broadcast.new_node_id,
+                                        type,
+                                        rcv_req->sender_id,
+                                        answer);
 
-                                    XBT_VERB("Node %d: answer '%s' sent to %d",
-                                            me->self.id,
-                                            (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
-                                            rcv_req->sender_id);
-                                }
-
-                                //data_ans_free(me, &rcv);
-
-                                data_req_free(me, &rcv_req);
-                                task_free(task);
-
-                            } else {
-
-                                /* ... either store task */
-                                XBT_VERB("Node %d - active = '%c' - new_id = %d:"
-                                        " store task '%s' for later execution",
+                                XBT_VERB("Node %d: answer '%s' sent to %d",
                                         me->self.id,
-                                        state.active,
-                                        state.new_id,
-                                        debug_msg[rcv_args.broadcast.type]);
-
-                                xbt_dynar_push(me->remain_tasks, task);
-                                *task = NULL;
-                                val_ret = STORED;
+                                        (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
+                                        rcv_req->sender_id);
                             }
+
+                            //data_ans_free(me, &rcv);
+
+                            data_req_free(me, &rcv_req);
+                            task_free(task);
+
                         } else {
 
-                            /* start call: forward broadcast to the leader ? */
-                            if (rcv_args.broadcast.first_call == 1) {
+                            /* ... either store task */
+                            XBT_VERB("Node %d - active = '%c' - new_id = %d:"
+                                    " store task '%s' for later execution",
+                                    me->self.id,
+                                    state.active,
+                                    state.new_id,
+                                    debug_msg[rcv_args.broadcast.type]);
 
-                                if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
+                            xbt_dynar_push(me->remain_tasks, task);
+                            *task = NULL;
+                            val_ret = STORED;
+                        }
+                    } else {
 
-                                    XBT_VERB("Node %d: Run broadcast of Set Update for new_id = %d - state.new_id = %d",
-                                            me->self.id,
-                                            rcv_args.broadcast.args->set_update.new_id,
-                                            state.new_id);
-                                }
+                        /* start call: forward broadcast to the leader ? */
+                        if (rcv_args.broadcast.first_call == 1) {
 
-                                XBT_VERB("Node %d: broadcast first call - stage = %d -"
-                                        " height = %d - broadcasted task = '%s' - lead_br = %d",
+                            if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
+
+                                XBT_VERB("Node %d: Run broadcast of Set Update for new_id = %d - state.new_id = %d",
                                         me->self.id,
-                                        rcv_args.broadcast.stage,
-                                        me->height - 1,
-                                        debug_msg[rcv_args.broadcast.type],
-                                        rcv_args.broadcast.lead_br);
+                                        rcv_args.broadcast.args->set_update.new_id,
+                                        state.new_id);
+                            }
 
-                                /* - don't forward a MERGE task to the leader
-                                 *   (the leaving node may have left the leader, so it wouldn't
-                                 *    be able to broadcast a request properly)
-                                 *
-                                 * - don't forward a CLEAN_UPPER_STAGE task
-                                 * - don't forward an UPDATE_UPPER_STAGE task */
-                                if (me->self.id ==
-                                        //me->brothers[rcv_args.broadcast.stage][0].id ||
-                                        me->brothers[0][0].id ||
-                                        rcv_args.broadcast.type == TASK_MERGE ||
-                                        rcv_args.broadcast.type == TASK_CLEAN_STAGE ||
-                                        rcv_args.broadcast.type == TASK_UPDATE_UPPER_STAGE) {
+                            XBT_VERB("Node %d: broadcast first call - stage = %d -"
+                                    " height = %d - broadcasted task = '%s' - lead_br = %d",
+                                    me->self.id,
+                                    rcv_args.broadcast.stage,
+                                    me->height - 1,
+                                    debug_msg[rcv_args.broadcast.type],
+                                    rcv_args.broadcast.lead_br);
 
-                                    // I am the leader
-                                    XBT_DEBUG("Node %d: Broadcast '%s' start",
-                                            me->self.id,
-                                            debug_msg[rcv_args.broadcast.type]);
+                            /* - don't forward a MERGE task to the leader
+                             *   (the leaving node may have left the leader, so it wouldn't
+                             *    be able to broadcast a request properly)
+                             *
+                             * - don't forward a CLEAN_UPPER_STAGE task
+                             * - don't forward an UPDATE_UPPER_STAGE task */
+                            if (me->self.id ==
+                                    //me->brothers[rcv_args.broadcast.stage][0].id ||
+                                    me->brothers[0][0].id ||
+                                    rcv_args.broadcast.type == TASK_MERGE ||
+                                    rcv_args.broadcast.type == TASK_CLEAN_STAGE ||
+                                    rcv_args.broadcast.type == TASK_UPDATE_UPPER_STAGE) {
 
-                                    task_free(task);                            //TODO : vérifier cette libération
+                                // I am the leader
+                                XBT_DEBUG("Node %d: Broadcast '%s' start",
+                                        me->self.id,
+                                        debug_msg[rcv_args.broadcast.type]);
 
-                                    rcv_args.broadcast.first_call = 0;
-                                    val_ret = broadcast(me, rcv_args);
-                                } else {
+                                task_free(task);                            //TODO : vérifier cette libération
 
-                                    // forward broadcast request to the leader
-                                    XBT_VERB("Node %d: forward broadcast request to leader %d",
-                                            me->self.id,
-                                            me->brothers[0][0].id);
-
-                                    /* TODO : cette partie peut probablement
-                                       être supprimée depuis le mécanisme de cs_req */
-
-                                    /* If a Set Active task is broacasted, it
-                                     * mustn't be interrupted by another
-                                     * broadcast (of Set Update, for instance)
-                                     */
-                                    /*
-                                       if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
-
-                                       set_update(me,
-                                       rcv_args.broadcast.args->set_active.new_id);
-                                       }
-                                       */
-
-                                    ans_data_t answer_data = NULL;
-                                    res = send_msg_sync(me,
-                                            TASK_BROADCAST,
-                                            me->brothers[0][0].id,
-                                            rcv_args,
-                                            &answer_data);
-
-                                    xbt_assert(res == MSG_OK, "Node %d: Failed to send '%s' to %d",
-                                            me->self.id,
-                                            debug_msg[TASK_BROADCAST],
-                                            me->brothers[rcv_args.broadcast.stage][0].id);
-
-                                    // get the return value
-                                    val_ret = answer_data->answer.handle.val_ret;
-                                    data_ans_free(me, &answer_data);
-                                }
-
-                                /* send a message back (in case of sync call of TASK_BROADCAST) */
-                                if (rcv_req->sender_id != me->self.id) {
-
-                                    answer.handle.val_ret = val_ret;
-                                    answer.handle.val_ret_id = me->self.id;
-                                    answer.handle.br_type = rcv_args.broadcast.type;
-
-                                    res = send_ans_sync(me,
-                                            rcv_args.broadcast.new_node_id,
-                                            type,
-                                            rcv_req->sender_id,
-                                            answer);
-
-                                    XBT_DEBUG("Node %d: answer '%s' sent to %d",
-                                            me->self.id,
-                                            (val_ret == UPDATE_NOK ? "UPDATE NOK" : "OK"),
-                                            rcv_req->sender_id);
-                                }
-
-                                task_free(task);
-
+                                rcv_args.broadcast.first_call = 0;
+                                val_ret = broadcast(me, rcv_args);
                             } else {
 
-                                // next broadcast calls
-                                if (rcv_args.broadcast.stage > 0) {
+                                // forward broadcast request to the leader
+                                XBT_VERB("Node %d: forward broadcast request to leader %d",
+                                        me->self.id,
+                                        me->brothers[0][0].id);
 
-                                    XBT_VERB("Node %d: Received Broadcast '%s' - lead_br = %d",
-                                            me->self.id,
-                                            debug_msg[rcv_args.broadcast.type],
-                                            rcv_args.broadcast.lead_br);
+                                /* TODO : cette partie peut probablement
+                                   être supprimée depuis le mécanisme de cs_req */
 
-                                    task_free(task);
+                                /* If a Set Active task is broacasted, it
+                                 * mustn't be interrupted by another
+                                 * broadcast (of Set Update, for instance)
+                                 */
+                                /*
+                                   if (rcv_args.broadcast.type == TASK_SET_ACTIVE) {
 
-                                    // Transmit the message to lower stage.
-                                    rcv_args.broadcast.stage--;
-                                    val_ret = broadcast(me, rcv_args);
-                                } else {
+                                   set_update(me,
+                                   rcv_args.broadcast.args->set_active.new_id);
+                                   }
+                                   */
 
-                                    /* stage 0 reached: handle the broadcasted task */
-                                    XBT_VERB("Node %d: stage 0 - run broadcasted task - '%s'",
-                                            me->self.id,
-                                            debug_msg[rcv_args.broadcast.type]);
+                                ans_data_t answer_data = NULL;
+                                res = send_msg_sync(me,
+                                        TASK_BROADCAST,
+                                        me->brothers[0][0].id,
+                                        rcv_args,
+                                        &answer_data);
 
-                                    XBT_DEBUG("Node %d: active = '%c' - new_id = %d",
-                                            me->self.id,
-                                            state.active,
-                                            state.new_id);
+                                xbt_assert(res == MSG_OK, "Node %d: Failed to send '%s' to %d",
+                                        me->self.id,
+                                        debug_msg[TASK_BROADCAST],
+                                        me->brothers[rcv_args.broadcast.stage][0].id);
 
-                                    // only if me is active
-                                    if (state.active != 'n') {
-
-                                        req_data_t req_data = xbt_new0(s_req_data_t, 1);
-                                        req_data->type = rcv_args.broadcast.type;
-                                        req_data->sender_id = me->self.id;
-                                        req_data->recipient_id = me->self.id;
-                                        get_mailbox(me->self.id, req_data->answer_to);
-                                        get_mailbox(me->self.id, req_data->sent_to);
-
-                                        if (rcv_args.broadcast.args != NULL) {
-
-                                            req_data->args = *(rcv_args.broadcast.args);
-                                        } else {
-
-                                            /* XBT_DEBUG("Node %d: broadcast.args = NULL",
-                                               me->self.id); */
-                                        }
-
-                                        msg_task_t br_task = MSG_task_create("async",
-                                                COMP_SIZE,
-                                                COMM_SIZE,
-                                                req_data);
-                                        //MSG_task_set_name(br_task, "async");
-
-                                        val_ret = handle_task(me, &br_task);
-
-                                        /* if br_task has to be delayed, store the whole
-                                           broadcasted task */
-                                        if (val_ret == STORED) {
-
-                                            // store task
-                                            XBT_VERB("Node %d - active = '%c': store "
-                                                    "broadcasted task for later execution",
-                                                    me->self.id,
-                                                    state.active);
-
-                                            xbt_dynar_push(me->remain_tasks, task);
-                                            *task = NULL;     //TODO : utile ?
-                                        } else {
-
-                                            task_free(task);
-                                        }
-                                    }
-
-                                    XBT_VERB("Node %d: End of run broadcasted task - '%s'",
-                                            me->self.id,
-                                            debug_msg[rcv_args.broadcast.type]);
-                                }
+                                // get the return value
+                                val_ret = answer_data->answer.handle.val_ret;
+                                data_ans_free(me, &answer_data);
                             }
-                            // send an answer back if task hasn't been stored
-                            if (rcv_req->sender_id != me->self.id && val_ret != STORED) {
+
+                            /* send a message back (in case of sync call of TASK_BROADCAST) */
+                            if (rcv_req->sender_id != me->self.id) {
 
                                 answer.handle.val_ret = val_ret;
                                 answer.handle.val_ret_id = me->self.id;
@@ -8322,17 +8222,115 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
                                 XBT_DEBUG("Node %d: answer '%s' sent to %d",
                                         me->self.id,
-                                        (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
+                                        (val_ret == UPDATE_NOK ? "UPDATE NOK" : "OK"),
                                         rcv_req->sender_id);
                             }
 
-                            if (val_ret != STORED) {
+                            task_free(task);
 
-                                data_req_free(me, &rcv_req);
+                        } else {
+
+                            // next broadcast calls
+                            if (rcv_args.broadcast.stage > 0) {
+
+                                XBT_VERB("Node %d: Received Broadcast '%s' - lead_br = %d",
+                                        me->self.id,
+                                        debug_msg[rcv_args.broadcast.type],
+                                        rcv_args.broadcast.lead_br);
+
+                                task_free(task);
+
+                                // Transmit the message to lower stage.
+                                rcv_args.broadcast.stage--;
+                                val_ret = broadcast(me, rcv_args);
+                            } else {
+
+                                /* stage 0 reached: handle the broadcasted task */
+                                XBT_VERB("Node %d: stage 0 - run broadcasted task - '%s'",
+                                        me->self.id,
+                                        debug_msg[rcv_args.broadcast.type]);
+
+                                XBT_DEBUG("Node %d: active = '%c' - new_id = %d",
+                                        me->self.id,
+                                        state.active,
+                                        state.new_id);
+
+                                // only if me is active
+                                if (state.active != 'n') {
+
+                                    req_data_t req_data = xbt_new0(s_req_data_t, 1);
+                                    req_data->type = rcv_args.broadcast.type;
+                                    req_data->sender_id = me->self.id;
+                                    req_data->recipient_id = me->self.id;
+                                    get_mailbox(me->self.id, req_data->answer_to);
+                                    get_mailbox(me->self.id, req_data->sent_to);
+
+                                    if (rcv_args.broadcast.args != NULL) {
+
+                                        req_data->args = *(rcv_args.broadcast.args);
+                                    } else {
+
+                                        /* XBT_DEBUG("Node %d: broadcast.args = NULL",
+                                           me->self.id); */
+                                    }
+
+                                    msg_task_t br_task = MSG_task_create("async",
+                                            COMP_SIZE,
+                                            COMM_SIZE,
+                                            req_data);
+                                    //MSG_task_set_name(br_task, "async");
+
+                                    val_ret = handle_task(me, &br_task);
+
+                                    /* if br_task has to be delayed, store the whole
+                                       broadcasted task */
+                                    if (val_ret == STORED) {
+
+                                        // store task
+                                        XBT_VERB("Node %d - active = '%c': store "
+                                                "broadcasted task for later execution",
+                                                me->self.id,
+                                                state.active);
+
+                                        xbt_dynar_push(me->remain_tasks, task);
+                                        *task = NULL;     //TODO : utile ?
+                                    } else {
+
+                                        task_free(task);
+                                    }
+                                }
+
+                                XBT_VERB("Node %d: End of run broadcasted task - '%s'",
+                                        me->self.id,
+                                        debug_msg[rcv_args.broadcast.type]);
                             }
-                            // TODO : voir si cette libération ne pose pas de
-                            // problème avec les données stockées dans le dynar
                         }
+                        // send an answer back if task hasn't been stored
+                        if (rcv_req->sender_id != me->self.id && val_ret != STORED) {
+
+                            answer.handle.val_ret = val_ret;
+                            answer.handle.val_ret_id = me->self.id;
+                            answer.handle.br_type = rcv_args.broadcast.type;
+
+                            res = send_ans_sync(me,
+                                    rcv_args.broadcast.new_node_id,
+                                    type,
+                                    rcv_req->sender_id,
+                                    answer);
+
+                            XBT_DEBUG("Node %d: answer '%s' sent to %d",
+                                    me->self.id,
+                                    (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
+                                    rcv_req->sender_id);
+                        }
+
+                        if (val_ret != STORED) {
+
+                            data_req_free(me, &rcv_req);
+                        }
+                        // TODO : voir si cette libération ne pose pas de
+                        // problème avec les données stockées dans le dynar
+                    }
             break;
 
         case TASK_DISPLAY_VAR:
@@ -8794,7 +8792,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                rcv_req->sender_id,
                answer);
                }
-               */
+            */
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -8828,7 +8826,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
             XBT_VERB("Node %d: TASK_CHECK_CS done", me->self.id);
             break;
-
     }
 
     if (type != TASK_BROADCAST) {
