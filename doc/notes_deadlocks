@@ -21,7 +21,7 @@ Here's node 121's routing table (with load):
 - Node 121 lance CNX_REQ/14
   Node 121 --CNX_REQ/14--> Node 42           == 2 == NODE 121 ATTEND ACK CNX_REQ/14 de 42 ====
 
-- Node 42 --NEW_BRO_RCV--> 121 et attend la réponse
+- Node 42 --NEW_BRO_RCV/14--> 121 et attend la réponse
 
 - Node 42 <--CNX_REQ/46-- Node 46
 
@@ -30,7 +30,7 @@ Here's node 121's routing table (with load):
 - Node 121 <--CNX_REQ/249-- Node 249
   Node 121 --CNX_REQ/249--> Node 42          == 3 == NODE 121 ATTEND ACK CNX_REQ/249 de 42 ====
 
-- Node 42 <--ACK NEW_BRO_RCV-- Node 121
+- Node 42 <--ACK NEW_BRO_RCV/14-- Node 121
   Node 42 achève d'insérer 14
   Node 42 --ACK CNX_REQ/14--> Node 121       ==== ENVOI REPONSE à == 2 ==
 
