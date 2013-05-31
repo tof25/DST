@@ -1,0 +1,63 @@
+3 Arrivées de noeuds avec leader commun
+***************************************
+(contexte : * les échecs provoquent des stockages et pas des rejets
+            * réseau lent)
+
+* Node 14  via 121 --> 42
+* Node 46  via 42
+* Node 249 via 121 --> 42
+* 249 provoque des scissions
+***************************************************************
+
+- Node 14 --CNX_REQ/14--> Node 121           == 1 == NODE 14 ATTEND ACK_CNX_REQ/14 de 121 ====
+- 121 pas prêt ('b') et stocke CNX_REQ/14
+
+- 121 OK
+Here's node 121's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    |        |        |  | 2      |
++--------+--------+--------+--------+--------+  +--------+
+
+- Node 121 lance CNX_REQ/14
+  Node 121 --CNX_REQ/14--> Node 42           == 2 == NODE 121 ATTEND ACK CNX_REQ/14 de 42 ====
+
+- Node 42 --NEW_BRO_RCV--> 121 et attend la réponse
+
+- Node 42 <--CNX_REQ/46-- Node 46
+
+- Node 42 'u'/14 stocke CNX_REQ/46
+
+- Node 121 <--CNX_REQ/249-- Node 249
+  Node 121 --CNX_REQ/249--> Node 42          == 3 == NODE 121 ATTEND ACK CNX_REQ/249 de 42 ====
+
+- Node 42 <--ACK NEW_BRO_RCV-- Node 121
+  Node 42 achève d'insérer 14
+  Node 42 --ACK CNX_REQ/14--> Node 121       ==== ENVOI REPONSE à == 2 ==
+
+- Node 42 traite CNX_REQ/46 stockée
+
+- Node 42 --NEW_BRO_RCV--> 121, 14 et attend leur réponse
+
+- Node 42 <--CNX_REQ/249-- 121
+  Node 42 'u'/46 stocke CNX_REQ/249
+
+- Node 42 <--ACK_NEW_BRO_RCV-- 121, 14
+  Node 42 insère Node 46
+
+- Node 121 <--ACK_CNX_REQ/14-- Node 42       ==== RECEPTIION REPONSE à == 2 ==
+
+- Node 42 traite CNX_REQ/249 stockée
+
+Here's node 42's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    | 14     | 46     |  | 4      |
++--------+--------+--------+--------+--------+  +--------+
+
+- 42 --ADD_STAGE/249--> 121, 14 et 46
+
+======================================================================================================================================
+== 14 ne peut pas répondre. Il est toujours en 'b' parce qu'il n'a pas reçu la réponse de 121, bloqué en attente de ACK_CNX_REQ/249 ==
+======================================================================================================================================
+
+
+
