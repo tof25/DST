@@ -38,14 +38,12 @@ Here's node 121's routing table (with load):
          Node 121 --CNX_REQ/249--> Node 42
 
 [86.033] Node 42 <--ACK NEW_BRO_RCV/14-- Node 121
-=================================================================================================================
-  Node 42 achève d'insérer 14
-  Node 42 --ACK CNX_REQ/14--> Node 121       ==== ENVOI REPONSE à == 2 ==
+         Node 42 achève d'insérer 14
+         Node 42 --ACK CNX_REQ/14--> Node 121       ==== ENVOI REPONSE à == 2 ==
 
-- Node 42 traite CNX_REQ/46 stockée
-
-- Node 42 --NEW_BRO_RCV--> 121, 14 et attend leur réponse
-
+         Node 42 traite CNX_REQ/46 stockée
+         Node 42 --NEW_BRO_RCV--> 121, 14 et attend leur réponse
+==========================================================================================================
 - Node 42 <--CNX_REQ/249-- 121
   Node 42 'u'/46 stocke CNX_REQ/249
 
