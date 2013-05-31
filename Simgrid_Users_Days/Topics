@@ -12,8 +12,24 @@
         timeout, comme si le timeout effaçait la file d'attente des messages
         reçus.
 
-    1.b) Pourquoi deux envois de réponse nécessaire dans TASK_DEL_BRO de handle_task() 
+
+    1.b) Extrait d'un mail d'Arnaud Legrand de Septembre 2011:
+
+    "Les m_processus (thread dans ce que écris) qui
+     tournent sur un même m_host (noeud dans ce que tu écris) peuvent appeler
+     soit des fonctions bloquantes (genre MSG_task_send/MSG_task_recv) ou non
+     bloquantes (genre MSG_task_isend/MSG_task_irecv ou encore plus récemment
+     MSG_task_dsend). L'écoute ne s'interrompt donc pas forcément. D'autre
+     part, tu peux parfaitement avoir plusieurs threads par noeud. Un chargé
+     de l'écoute, et l'autre chargé du traitement du message. Les queues de
+     xbt peuvent être assez pratiques pour ça."
+
+    Je suis intéressé par ce mécanisme du multi-thread par noeud mais comment ça marche ??
+
+
+    1.c) Pourquoi deux envois de réponse nécessaire dans TASK_DEL_BRO de handle_task() 
          (peut-être difficile à montrer)
+
 
 
 2) TIMER DEPRECATED
