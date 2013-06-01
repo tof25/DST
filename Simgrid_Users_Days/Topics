@@ -2,8 +2,8 @@
 ***   Sujets à aborder aux Simgrid Users Days ***
 *************************************************
 
-1) MESSAGES PERDUS
-   ***************
+1) MESSAGES PERDUS et DEADLOCKS
+   ****************************
 
     1.a) Voir exemple que j'avais posté
 
@@ -15,24 +15,46 @@
 
     1.b) Extrait d'un mail d'Arnaud Legrand de Septembre 2011:
 
-    "Les m_processus (thread dans ce que écris) qui
-     tournent sur un même m_host (noeud dans ce que tu écris) peuvent appeler
-     soit des fonctions bloquantes (genre MSG_task_send/MSG_task_recv) ou non
-     bloquantes (genre MSG_task_isend/MSG_task_irecv ou encore plus récemment
-     MSG_task_dsend). L'écoute ne s'interrompt donc pas forcément. D'autre
-     part, tu peux parfaitement avoir plusieurs threads par noeud. Un chargé
-     de l'écoute, et l'autre chargé du traitement du message. Les queues de
-     xbt peuvent être assez pratiques pour ça."
+        "Les m_processus (thread dans ce que écris) qui
+         tournent sur un même m_host (noeud dans ce que tu écris) peuvent appeler
+         soit des fonctions bloquantes (genre MSG_task_send/MSG_task_recv) ou non
+         bloquantes (genre MSG_task_isend/MSG_task_irecv ou encore plus récemment
+         MSG_task_dsend). L'écoute ne s'interrompt donc pas forcément. D'autre
+         part, tu peux parfaitement avoir plusieurs threads par noeud. Un chargé
+         de l'écoute, et l'autre chargé du traitement du message. Les queues de
+         xbt peuvent être assez pratiques pour ça."
 
-    Je suis intéressé par ce mécanisme du multi-thread par noeud mais comment ça marche ??
+         Je suis intéressé par ce mécanisme du multi-thread par noeud mais comment ça marche ??
 
 
-    1.c) Pourquoi deux envois de réponse nécessaire dans TASK_DEL_BRO de handle_task() 
+    1.c) Flux messages :
+
+        Points de synchro bien définis ? Y a-t-il une autre façon de faire ?
+
+
+    1.d) Pourquoi deux envois de réponse nécessaire dans TASK_DEL_BRO de handle_task() 
          (peut-être difficile à montrer)
 
 
 
-2) TIMER DEPRECATED
+2) MODEL-CHECKING
+   **************
+
+    Comment l'utilise-t-on ? Ok sur OSX ?
+    Comment définir les invariants et comment les coder ?
+
+
+
+3) PERFORMANCES DE LA SIMULATION
+   *****************************
+
+    Presque 16 jours et 14 Go de RAM pour construire un DST de 100 000 noeuds avec une BP de 5E-7 ...
+    Parallélisation possible ? utile ?
+    Gestion mémoire ? Partage ?
+
+
+
+4) TIMER DEPRECATED
    ****************
 
     Besoin d'un timer dans main(), comment le remplacer ?
@@ -43,24 +65,10 @@
         xbt_os_timer_free(timer);
 
 
-3) PERFORMANCES DE LA SIMULATION
-   *****************************
-
-    Presque 16 jours pour construire un DST de 100 000 noeuds avec une BP de 5E-7 ...
-    Parallélisation possible ? utile ?
-    Gestion mémoire ? Partage ?
-
-
-4) TRACES
+5) TRACES
    ******
 
     Qu'est-ce que ça permet de tracer ? Comment ça marche ?
-
-
-5) MODEL-CHECKING
-   **************
-
-    A quoi ça sert et comment l'utilise-t-on ? Ok sur OSX ?
 
 
 6) Réalisation d'un fichier plat pour travailler sur un DST déjà construit
@@ -69,7 +77,7 @@
     XML meilleur format ? quel parser utiliser ? comment constituer le fichier ?
 
 
-6) MECANISME des CONTEXTES
+7) MECANISME des CONTEXTES
    ***********************
 
    Théorie ?
