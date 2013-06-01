@@ -4,21 +4,22 @@
 *                                                                              *
 ********************************************************************************
 
-ret = OK
+ret = OK                                      // valeur de retour de la fonction
 
 Vérifie dans async_answers si des réponses attendues ont déjà été reçues.
 Si oui:
    * ret = NOK si l'une des réponses est NOK
    * ajuste ans_cpt en conséquence
 
-Tant Que (pas timeout et ans_cpt > 0)
-｜  Réception message
+TantQue (pas timeout et ans_cpt > 0) Fait
+｜  Attente réception message                                   // avec receive
+｜  Lit données de la réponse
 ｜
 ｜  Si (message est une réponse)
 ｜  ｜  Si (message est une réponse async)
-｜  ｜  ｜  Si (message est une des réponses async attendues)
+｜  ｜  ｜  Si (message est une des ans_cpt réponses async attendues)
 ｜  ｜  ｜  ｜
-｜  ｜  ｜  ｜  ret = NOK si réponse est NOK
+｜  ｜  ｜  ｜  ret = NOK dès que l'une des réponses est NOK
 ｜  ｜  ｜  ｜  ans_cpt --
 ｜  ｜  ｜  ｜  ôte la réponse de async_answers
 ｜  ｜  ｜  ｜
@@ -39,9 +40,9 @@ Tant Que (pas timeout et ans_cpt > 0)
 ｜  ｜  ｜  FinSi
 ｜  ｜  FinSi
 ｜  Sinon
-｜  ｜  Si (remain_tasks n'est pas vide && message est CNX_REQ)
+｜  ｜  Si (remain_tasks n'est pas vide ET requête est CNX_REQ)
 ｜  ｜  ｜
-｜  ｜  ｜  empile message dans remain_tasks
+｜  ｜  ｜  Empile requête dans remain_tasks
 ｜  ｜  ｜
 ｜  ｜  Sinon
 ｜  ｜  ｜
@@ -56,5 +57,7 @@ Tant Que (pas timeout et ans_cpt > 0)
 ｜  ｜
 ｜  FinSi
 FinTantQue
+
+Si (timeout) stoppe le programme avec affichage d'une erreur
 
 Retourne ret

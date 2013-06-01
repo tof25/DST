@@ -4,16 +4,16 @@
 *                                                                              *
 ********************************************************************************
 
-Envoie le message
+Envoie le message                                                  // avec dsend
 L'empile sur le dynar sync_answers
 
-Tant que (vrai) fait
+TantQue (pas timeout) Fait
 ｜
-｜  Réception message ...
-｜  Lit données du message
+｜  Attente message ...                                        // avec receive
+｜  Lit données du message reçu
 ｜
 ｜  Si (message est une requête)
-｜  ｜  Si (tâches_différées n'est pas vide ET requête = CNX_REQ)
+｜  ｜  Si (remain_tasks n'est pas vide ET requête = CNX_REQ)
 ｜  ｜  ｜
 ｜  ｜  ｜  Empile requête sur dynar remain_tasks
 ｜  ｜  ｜
@@ -23,7 +23,7 @@ Tant que (vrai) fait
 ｜  ｜  ｜
 ｜  ｜  ｜  Si (réponse reçue entre temps)
 ｜  ｜  ｜  ｜
-｜  ｜  ｜  ｜  Lit données de la réponse stockée dans le dynar
+｜  ｜  ｜  ｜  Lit données de la réponse stockée dans sync_answers
 ｜  ｜  ｜  ｜  Dépile requête de sync_answers
 ｜  ｜  ｜  ｜  Exécute les tâches différées
 ｜  ｜  ｜  ｜  break
