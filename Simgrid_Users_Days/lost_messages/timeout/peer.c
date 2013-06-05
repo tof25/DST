@@ -56,6 +56,8 @@ int sender(int argc, char *argv[])
     char mailbox[256];
     char sprintf_buffer[256];
 
+    XBT_INFO("J'envoie");
+
     sprintf(mailbox, "receiver-%ld", i % receivers_count);
     sprintf(sprintf_buffer, "Task_%d-%d", id, num_task);
 
@@ -69,8 +71,7 @@ int sender(int argc, char *argv[])
             num_task++);
 
     MSG_process_sleep(sleep_test_time * 2);
-    MSG_comm_destroy(comm);
-    /*
+    //MSG_comm_destroy(comm);
     if (sleep_test_time == 0) {
         MSG_comm_wait(comm, -1);
     } else {
@@ -80,7 +81,6 @@ int sender(int argc, char *argv[])
       };
       MSG_comm_destroy(comm);
     }
-    */
   }
 
   for (i = 0; i < receivers_count; i++) {
@@ -129,7 +129,12 @@ int receiver(int argc, char *argv[])
 
   sprintf(mailbox, "receiver-%d", id);
   while (1) {
+    XBT_INFO("Je reçois");
     res_irecv = MSG_task_irecv(&(task), mailbox);
+    msg_error_t toto = MSG_comm_get_status(res_irecv);
+    if (toto != MSG_OK) {
+        XBT_INFO("STOP!!");
+    }
     XBT_INFO("Wait to receive a task - sleep_test = %f", sleep_test_time);
 
     if (sleep_test_time == 0) {

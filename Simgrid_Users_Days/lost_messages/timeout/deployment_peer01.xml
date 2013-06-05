@@ -8,7 +8,7 @@
      <argument value="1000000"/>   <!-- Communication size of tasks -->
      <argument value="1"/>         <!-- Number of receivers -->
      <argument value="3"/>         <!-- Sleep_start_time -->
-     <argument value="0.1"/>      <!-- Time for test -->
+     <argument value="0"/>      <!-- Time for test -->
      <argument value="1"/>        <!-- host number -->
   </process>
   <process host="Ruby" function="sender">
@@ -17,7 +17,7 @@
      <argument value="1000000"/>   <!-- Communication size of tasks -->
      <argument value="1"/>         <!-- Number of receivers -->
      <argument value="3"/>         <!-- Sleep_start_time -->
-     <argument value="0.1"/>      <!-- Time for test -->
+     <argument value="0"/>      <!-- Time for test -->
      <argument value="2"/>        <!-- host number -->
   </process>
   <process host="Perl" function="sender">
@@ -26,7 +26,7 @@
      <argument value="1000000"/>   <!-- Communication size of tasks -->
      <argument value="1"/>         <!-- Number of receivers -->
      <argument value="3"/>         <!-- Sleep_start_time -->
-     <argument value="0.1"/>      <!-- Time for test -->
+     <argument value="0"/>      <!-- Time for test -->
      <argument value="3"/>        <!-- host number -->
   </process>
   <!-- The receiver processes -->

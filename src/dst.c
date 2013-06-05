@@ -2,7 +2,7 @@
  *  Git branch : master
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/05/28
+ *  Written by Christophe Enderlin on 2013/06/05
  *
  */
 
@@ -8994,17 +8994,17 @@ int main(int argc, char *argv[]) {
 
     if (nb_nodes != nb_nodes_tot) {
 
-        XBT_INFO("");
+        XBT_INFO(" ");
         i = 0;
         while (non_active[i] != -1) {
 
             XBT_INFO("Node %d non active", non_active[i]);
             i++;
         }
-        XBT_INFO("");
+        XBT_INFO(" ");
     }
 
-    XBT_INFO("");
+    XBT_INFO(" ");
 
     /*
        for (i = 0; i < TYPE_NBR; i++) {

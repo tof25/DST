@@ -12,6 +12,34 @@
         timeout, comme si le timeout effaçait la file d'attente des messages
         reçus.
 
+        **********************************************************************
+        Détail établissement communication :
+        iSend
+        iRecv
+        Wait (sender)
+        Wait (receiver)
+
+        Si Detach : Wait sender pas nécessaire pour achever la communication
+
+
+
+        Solution Timeout :
+            Bien gérer le timeout des deux côtés (sender/receiver) : celui qui
+            fait le timeout est au courant et pas l'autre. Il faut que l'autre
+            en tienne compte.
+
+            --log=simix.thres:debug à condition de compiler simgrid avec l'option debug
+
+            Yield : Préparer
+            Handling : Exécution
+            Answer : Terminaison
+
+        Solution timer :
+            Avec MSG_get_clock()
+
+        Solution :
+            Gérer la charge par étage lors de l'ajout d'un prédécesseur. Rend GET_REP inutile.
+
 
     1.b) Extrait d'un mail d'Arnaud Legrand de Septembre 2011:
 
@@ -42,6 +70,17 @@
 
     Comment l'utilise-t-on ? Ok sur OSX ?
     Comment définir les invariants et comment les coder ?
+
+    - Compiler simgrid avec le model-checker
+    - Pas sur OSX
+    - --help pour avoir toutes les options d'exécution possible
+
+    --cfg=model-check:1 au lancement
+    changer la profondeur max : --cfg=model-check/max_depth = 10000 (défaut 1000)
+    par défaut les timeout sont désactivés : --cfg=model-check/timeout:1
+    représentation graphique : --cfg=model-check/dot_output:file_name.dot
+    convertir .dot -> .ps : dot -Tps file.dot -o file.ps
+
 
 
 
@@ -82,3 +121,11 @@
 
    Théorie ?
 
+
+DIVERS - ASTUCES
+****************
+
+make -jx  x étant le nombre de cores du processeur
+graphviz pour réaliser des graphes
+graphstream pour des graphes dynamiques
+Pajé à voir
