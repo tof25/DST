@@ -89,8 +89,7 @@ typedef struct s_dst_info {
 typedef struct node_rep {
 
     int id;                                 // representative id
-    char mailbox[MAILBOX_NAME_SIZE];        /* representative mailbox name
-                                               (string representation of the id) */
+    char mailbox[MAILBOX_NAME_SIZE];        /* representative main mailbox name */
 } s_node_rep_t, *node_rep_t;
 
 /**
@@ -1719,10 +1718,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         (dynar_idx == -1 ? " not " : " "),
                         dynar_idx);
 
-                XBT_INFO("Node %d: val = %d",
-                        me->self.id,
-                        ans->br_type);
-
                 if (dynar_idx != -1) {
 
                     /* Yes. Is it one of the current expected ones ? */
@@ -1769,10 +1764,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                             debug_msg[ans->br_type],
                             ans->sender_id,
                             ans_cpt);
-
-                XBT_INFO("Node %d: val = %d",
-                        me->self.id,
-                        ans->br_type);
 
                 } else {
 
@@ -7504,7 +7495,9 @@ int node(int argc, char *argv[]) {
     s_node_t node;
     node.self.id = atoi(argv[1]);
 
+    // set mailbox
     get_mailbox(node.self.id, node.self.mailbox);
+    MSG_mailbox_set_async(node.self.mailbox);
 
     int join_success = 1;       // success by default
     int tries = 0;
@@ -7724,7 +7717,17 @@ int node(int argc, char *argv[]) {
                             task_received = NULL;
                         } else {
 
-                            handle_task(&node, &task_received);
+                            if (req->type == TASK_CNX_REQ) {
+
+                                MSG_process_create("proc_name",
+                                        handle_task,
+                                        NULL,
+                                        MSG_host_self());
+
+                            } else {
+
+                                handle_task(&node, &task_received);
+                            }
                         }
 
                         // run remaining tasks, if any
