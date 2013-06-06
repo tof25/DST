@@ -197,6 +197,14 @@ typedef struct node {
 } s_node_t, *node_t;
 
 /**
+ * son process data
+ */
+typedef struct proc_data {
+    node_t node;
+    msg_task_t  *task;
+} s_proc_data_t, *proc_data_t;
+
+/**
  * Array of debug task messages
  */
 static const char* debug_msg[] = {
@@ -806,6 +814,7 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id);
 
 static int         node(int argc, char *argv[]);
 static e_val_ret_t handle_task(node_t me, msg_task_t* task);
+static int         proc_handle_task(int argc, char *argv[]);
 
 /*
  ========================== FUNCTIONS DEFINITIONS =============================
@@ -7719,11 +7728,14 @@ int node(int argc, char *argv[]) {
 
                             if (req->type == TASK_CNX_REQ) {
 
+                                proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+                                proc_data->node = &node;
+                                proc_data->task = &task_received;
                                 MSG_process_create("proc_name",
-                                        handle_task,
-                                        NULL,
+                                        proc_handle_task,
+                                        proc_data,
                                         MSG_host_self());
-
+                                xbt_free(proc_data);
                             } else {
 
                                 handle_task(&node, &task_received);
@@ -9118,4 +9130,16 @@ int main(int argc, char *argv[]) {
         return 0;
     else
         return 1;
+}
+
+
+/*
+ * \brief son process function
+ */
+static int proc_handle_task(int argc, char* argv[]) {
+
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    XBT_INFO("Node %d: in son process", proc_data->node->self.id);
+    handle_task(proc_data->node, proc_data->task);
+    return 0;
 }
