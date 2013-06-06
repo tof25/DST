@@ -21,7 +21,12 @@
 
         Si Detach : Wait sender pas nécessaire pour achever la communication
 
+        **********************************************************************
 
+        Demander confirmation que MSG_task_receive et MSG_task_send utilisent
+        bien le wait, de même que MSG_comm_test
+
+        **********************************************************************
 
         Solution Timeout :
             Bien gérer le timeout des deux côtés (sender/receiver) : celui qui
@@ -41,6 +46,7 @@
             Gérer la charge par étage lors de l'ajout d'un prédécesseur. Rend
             GET_REP moins coûteux
 
+        **********************************************************************
 
     1.b) Extrait d'un mail d'Arnaud Legrand de Septembre 2011:
 
@@ -54,6 +60,12 @@
          xbt peuvent être assez pratiques pour ça."
 
          Je suis intéressé par ce mécanisme du multi-thread par noeud mais comment ça marche ??
+
+        **********************************************************************
+
+        Il faut utiliser MSG_process_create() pour éxécuter une requête.
+        Comment détruit-on un process et à quel moment ?
+
 
 
     1.c) Flux messages :
@@ -72,6 +84,8 @@
     Comment l'utilise-t-on ? Ok sur OSX ?
     Comment définir les invariants et comment les coder ?
 
+    **********************************************************************
+
     - Compiler simgrid avec le model-checker
     - Pas sur OSX
     - --help pour avoir toutes les options d'exécution possible
@@ -81,8 +95,6 @@
     par défaut les timeout sont désactivés : --cfg=model-check/timeout:1
     représentation graphique : --cfg=model-check/dot_output:file_name.dot
     convertir .dot -> .ps : dot -Tps file.dot -o file.ps
-
-
 
 
 3) PERFORMANCES DE LA SIMULATION

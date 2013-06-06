@@ -47,7 +47,7 @@ static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     /* max number of brothers in a node
                                                (must be twice a) */
-//static int timeout = 100;                   // timeout for communications
+static int timeout = 1000;                  // timeout for communications
 static double max_simulation_time = 10500;  // max default simulation time
 static xbt_dynar_t infos_dst;               // to store all global DST infos
 static int nb_messages[TYPE_NBR] = {0};     /* total number of messages exchanged
@@ -3345,43 +3345,46 @@ static msg_error_t send_ans_sync(node_t me,
             ans_data->recipient_id,
             ans_data->sent_to);
 
-    //msg_error_t res = MSG_task_send(task_sent, ans_data->sent_to);
+    float max_wait = MSG_get_clock() + timeout;
+    msg_error_t res = MSG_TIMEOUT;
+    do{
+        res = MSG_task_send(task_sent, ans_data->sent_to);
+    } while (res == MSG_TIMEOUT && MSG_get_clock() <= timeout)
+
     //MSG_task_isend(task_sent, ans_data->sent_to);
-    // best effort send
-    MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
+    //MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
 
-    /*
-       if (res != MSG_OK) {
+    if (res != MSG_OK) {
 
-    // send failure
-    task_free(&task_sent);
+        // send failure
+        task_free(&task_sent);
 
-    XBT_ERROR("Node %d: Failed to send '%s' answer to %d",
-    ans_data->sender_id,
-    debug_msg[ans_data->type],
-    ans_data->recipient_id);
+        XBT_ERROR("Node %d: Failed to send '%s' answer to %d",
+                ans_data->sender_id,
+                debug_msg[ans_data->type],
+                ans_data->recipient_id);
 
-    if (res == MSG_TIMEOUT) {XBT_VERB("Timeout");}
-    } else {
+        if (res == MSG_TIMEOUT) {
 
-    nb_messages[type]++;
-    }
-    */
+            XBT_VERB("Node %d: Sender Timeout", me->self.id);
+        } else {
 
-    msg_error_t res = MSG_OK;
-    xbt_assert(res == MSG_OK, "Node %d: Failed to answer to '%s' from %d",
-            me->self.id,
-            debug_msg[type],
-            recipient_id);
+            nb_messages[type]++;
+        }
 
-    nb_messages[type]++;
-    if (type == TASK_BROADCAST) {
+        xbt_assert(res == MSG_OK, "Node %d: Failed to answer to '%s' from %d",
+                me->self.id,
+                debug_msg[type],
+                recipient_id);
 
-        nb_br_messages[ans_data->br_type]++;
-    }
+        nb_messages[type]++;
+        if (type == TASK_BROADCAST) {
 
-    XBT_OUT();
-    return res;
+            nb_br_messages[ans_data->br_type]++;
+        }
+
+        XBT_OUT();
+        return res;
 }
 
 /**
