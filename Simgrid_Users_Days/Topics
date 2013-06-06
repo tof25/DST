@@ -142,3 +142,5 @@ make -jx  x étant le nombre de cores du processeur
 graphviz pour réaliser des graphes
 graphstream pour des graphes dynamiques
 Pajé à voir
+
+valgrind --db-attach=yes ./dst ...    pour s'arrêter dès qu'il y a un problème

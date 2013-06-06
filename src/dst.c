@@ -7,9 +7,8 @@
  */
 
 /* TODO: gérer la non-réponse d'un contact lors de l'arrivée d'un nœud.
- *       D'une façon générale, il faut le faire pour toutes les communications
- *       synchrones et voir aussi ce qu'on fait si pas de réponse à wait_for_completion().
- *       En clair, introduire de la tolérance aux pannes. */
+ *       gérer tous les timeout des comm_wait() */
+
 
 /* TODO: voir si tout est OK pour les timers */
 
@@ -906,7 +905,6 @@ static char* routing_table(node_t me) {
  * \param me the current node
  */
 static void set_n_store_infos(node_t me) {
-
     XBT_IN();
 
     /*
@@ -1625,6 +1623,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             me->self.id);
 
     int dynar_idx = -1;
+    msg_comm_t comm = NULL;
     // waiting loop
     while (MSG_get_clock() <= max_wait && ans_cpt > 0) {
 
@@ -1634,7 +1633,10 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
         display_async_answers(me, 'V');
 
-        res = MSG_task_receive(&task_received, me->self.mailbox);
+        //res = MSG_task_receive(&task_received, me->self.mailbox);
+        comm = MSG_task_irecv(&task_received, me->self.mailbox);
+
+        res = MSG_comm_wait(comm, -1);
 
         // a communication has occurred
         state = get_state(me);
@@ -1643,6 +1645,15 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 state.active,
                 state.new_id,
                 ans_cpt);
+
+        xbt_assert(res != MSG_TIMEOUT,
+                "Node %d: receiving TIMEOUT in wait_for_completion",
+                me->self.id);
+
+        xbt_assert(res == MSG_OK,
+                "Node %d: receiving failure %d in wait_for_completion",
+                me->self.id,
+                res);
 
         if (res != MSG_OK) {
 
@@ -1655,6 +1666,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
             // reception success, extract data from task
             ans = MSG_task_get_data(task_received);
+
             req_data_t req = (req_data_t)ans;
 
             // log
@@ -1707,6 +1719,10 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         (dynar_idx == -1 ? " not " : " "),
                         dynar_idx);
 
+                XBT_INFO("Node %d: val = %d",
+                        me->self.id,
+                        ans->br_type);
+
                 if (dynar_idx != -1) {
 
                     /* Yes. Is it one of the current expected ones ? */
@@ -1753,6 +1769,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                             debug_msg[ans->br_type],
                             ans->sender_id,
                             ans_cpt);
+
+                XBT_INFO("Node %d: val = %d",
+                        me->self.id,
+                        ans->br_type);
+
                 } else {
 
                     /* No, this answer is not an async expected one.
@@ -1787,6 +1808,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 // answer has been processed. discard task and data
                 data_ans_free(me, &ans);
                 task_free(&task_received);
+
             } else {
 
                 /* the received message is a request
@@ -2881,16 +2903,16 @@ static msg_error_t send_msg_sync(node_t me,
     // create and send task with data
     msg_task_t task_sent = MSG_task_create("sync", COMP_SIZE, COMM_SIZE, req_data);
 
-    // async best effort send
-    MSG_task_dsend(task_sent, req_data->sent_to, NULL);
-
-    XBT_VERB("Node %d: Sent sync request '%s %s' to %d for new node %d",
+    XBT_VERB("Node %d: Sending sync request '%s %s' to %d for new node %d",
             req_data->sender_id,
             debug_msg[req_data->type],
             debug_msg[(req_data->type == TASK_BROADCAST ?
                 req_data->args.broadcast.type : TASK_NULL)],
             req_data->recipient_id,
             req_data->args.get_rep.new_node_id);
+
+    // async send
+    msg_comm_t comm = MSG_task_isend(task_sent, req_data->sent_to);
 
     // push onto sync_answers dynar
     recp_rec_t req_elem = xbt_new0(s_recp_rec_t, 1);
@@ -2925,10 +2947,26 @@ static msg_error_t send_msg_sync(node_t me,
         nb_br_messages[req_data->args.broadcast.type]++;
     }
 
+    msg_error_t res = MSG_comm_wait(comm, -1);
+
+    xbt_assert(res != MSG_TIMEOUT,
+            "Node %d: sending TIMEOUT in send_msg_sync to %d",
+            me->self.id,
+            recipient_id);
+
+    xbt_assert(res == MSG_OK,
+            "Node %d: sending failure %d in send_msg_sync to %d",
+            me->self.id,
+            res,
+            recipient_id);
+
+    // NOTE : req_data may be freed by receiver and mustn't be used anymore by
+    // the sender
+
     // reception loop to get the answer back
     msg_task_t task_received = NULL;
     ans_data_t ans = NULL;
-    msg_error_t res = MSG_OK;
+    res = MSG_OK;
     int dynar_idx;
     int idx;
     s_state_t state;
@@ -2959,7 +2997,7 @@ static msg_error_t send_msg_sync(node_t me,
                     " result : %d",
                     cpy_req_data->sender_id,
                     debug_msg[cpy_req_data->type],
-                    req_data->sent_to,
+                    cpy_req_data->sent_to,
                     res);
 
             task_free(&task_received);
@@ -3238,6 +3276,7 @@ static msg_error_t send_msg_sync(node_t me,
     }
 
     // TODO : regarder pourquoi il ne faut pas faire ces libérations
+    // ( probablement parce que le receiver le fait )
     /*
     xbt_free(task_sent);
 
@@ -3291,7 +3330,7 @@ static msg_error_t send_msg_async(node_t me,
             req_data->recipient_id);
 
     // best effort send
-    MSG_task_dsend(task_sent, req_data->sent_to, NULL);
+    msg_comm_t comm = MSG_task_isend(task_sent, req_data->sent_to);
 
     // count messages
     nb_messages[req_data->type]++;
@@ -3299,6 +3338,20 @@ static msg_error_t send_msg_async(node_t me,
 
         nb_br_messages[req_data->args.broadcast.type]++;
     }
+
+    msg_error_t res = MSG_comm_wait(comm, -1);
+
+    xbt_assert(res != MSG_TIMEOUT,
+            "Node %d: sending TIMEOUT in send_msg_async to %d",
+            me->self.id,
+            recipient_id);
+
+    xbt_assert(res == MSG_OK,
+            "Node %d: sending failure %d in send_msg_async to %d",
+            me->self.id,
+            res,
+            recipient_id);
+
 
     XBT_OUT();
     return MSG_OK;
@@ -3320,12 +3373,14 @@ static msg_error_t send_ans_sync(node_t me,
 
     XBT_IN();
 
+    e_task_type_t br_type = (type == TASK_BROADCAST ? u_ans_data.handle.br_type : TASK_NULL);
     ans_data_t ans_data = xbt_new0(s_ans_data_t, 1);
 
     // init answer data
     ans_data->new_node_id = new_node_id;
     ans_data->type = type;
-    ans_data->br_type = (type == TASK_BROADCAST ? u_ans_data.handle.br_type : TASK_NULL);
+    //ans_data->br_type = (type == TASK_BROADCAST ? u_ans_data.handle.br_type : TASK_NULL);
+    ans_data->br_type = br_type;
     ans_data->sender_id = me->self.id;
     ans_data->recipient_id = recipient_id;
     ans_data->answer = u_ans_data;
@@ -3346,23 +3401,37 @@ static msg_error_t send_ans_sync(node_t me,
             ans_data->sent_to);
 
     float max_wait = MSG_get_clock() + timeout;
-    msg_error_t res = MSG_TIMEOUT;
-    do{
-        res = MSG_task_send(task_sent, ans_data->sent_to);
-    } while (res == MSG_TIMEOUT && MSG_get_clock() <= timeout)
+    msg_comm_t comm = NULL;
+
+    // async send
+    comm = MSG_task_isend(task_sent, ans_data->sent_to);
+
+    msg_error_t res = MSG_comm_wait(comm, -1);
 
     //MSG_task_isend(task_sent, ans_data->sent_to);
     //MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
+
+    xbt_assert(res != MSG_TIMEOUT,
+            "Node %d: sending TIMEOUT in send_ans_sync to %d",
+            me->self.id,
+            recipient_id);
+
+    xbt_assert(res == MSG_OK,
+            "Node %d: sending failure %d in send_ans_sync to %d",
+            me->self.id,
+            res,
+            recipient_id);
 
     if (res != MSG_OK) {
 
         // send failure
         task_free(&task_sent);
+        data_ans_free(me, &ans_data);
 
         XBT_ERROR("Node %d: Failed to send '%s' answer to %d",
-                ans_data->sender_id,
-                debug_msg[ans_data->type],
-                ans_data->recipient_id);
+                me->self.id,
+                debug_msg[type],
+                recipient_id);
 
         if (res == MSG_TIMEOUT) {
 
@@ -3371,20 +3440,21 @@ static msg_error_t send_ans_sync(node_t me,
 
             nb_messages[type]++;
         }
+    }
 
-        xbt_assert(res == MSG_OK, "Node %d: Failed to answer to '%s' from %d",
-                me->self.id,
-                debug_msg[type],
-                recipient_id);
+    xbt_assert(res == MSG_OK, "Node %d: Failed to answer to '%s' from %d",
+            me->self.id,
+            debug_msg[type],
+            recipient_id);
 
-        nb_messages[type]++;
-        if (type == TASK_BROADCAST) {
+    nb_messages[type]++;
+    if (type == TASK_BROADCAST) {
 
-            nb_br_messages[ans_data->br_type]++;
-        }
+        nb_br_messages[br_type]++;
+    }
 
-        XBT_OUT();
-        return res;
+    XBT_OUT();
+    return res;
 }
 
 /**
