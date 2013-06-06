@@ -1,8 +1,8 @@
 /*
- *  Git branch : master
+ *  Git branch : SUD
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/06/05
+ *  Written by Christophe Enderlin on 2013/06/06
  *
  */
 

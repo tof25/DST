@@ -38,7 +38,8 @@
             Avec MSG_get_clock()
 
         Solution :
-            Gérer la charge par étage lors de l'ajout d'un prédécesseur. Rend GET_REP inutile.
+            Gérer la charge par étage lors de l'ajout d'un prédécesseur. Rend
+            GET_REP moins coûteux
 
 
     1.b) Extrait d'un mail d'Arnaud Legrand de Septembre 2011:
