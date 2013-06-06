@@ -200,6 +200,7 @@ typedef struct node {
  * son process data
  */
 typedef struct proc_data {
+    char proc_mailbox[MAILBOX_NAME_SIZE];
     node_t node;
     msg_task_t  *task;
 } s_proc_data_t, *proc_data_t;
@@ -659,6 +660,7 @@ static void         set_n_store_infos(node_t me);
 static void         display_preds(node_t me, char log);
 static void         display_rout_table(node_t me, char log);
 static void         get_mailbox(int node_id, char* mailbox);
+static void         get_fork_mailbox(int node_id, int new_node_id, char* mailbox);
 static void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
 static int          index_pred(node_t me, int stage, int id);
@@ -1066,7 +1068,7 @@ static void display_rout_table(node_t me, char log) {
 }
 
 /**
- * \brief Gets the mailbox name of a node
+ * \brief gets the mailbox name of a node
  * \param node_id node id
  * \param mailbox pointer to where the mailbox name should be written
  * (there must be enough space)
@@ -1074,6 +1076,18 @@ static void display_rout_table(node_t me, char log) {
 static void get_mailbox(int node_id, char* mailbox) {
 
     snprintf(mailbox, MAILBOX_NAME_SIZE, "%d", node_id);
+}
+
+/**
+ * \brief gets the fork mailbox name
+ * \param node_id the current node id
+ * \param new_node_id new coming node id
+ * \param mailbox pointer to where the mailbox name should be written
+ * (there must be enough space)
+ */
+static void get_fork_mailbox(int node_id, int new_node_id, char* mailbox) {
+
+    snprintf(mailbox, MAILBOX_NAME_SIZE, "%d-session-%d", node_id, new_node_id);
 }
 
 /**
@@ -7711,6 +7725,7 @@ int node(int argc, char *argv[]) {
                 node.comm_received = NULL;
                 req_data_t req = MSG_task_get_data(task_received);
                 ans_data_t ans = (ans_data_t)req;
+                char proc_name[MAILBOX_NAME_SIZE];
 
                 XBT_VERB("Node %d: Task received", node.self.id);
                 display_sc(&node, 'V');
@@ -7729,13 +7744,18 @@ int node(int argc, char *argv[]) {
                             if (req->type == TASK_CNX_REQ) {
 
                                 proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+
                                 proc_data->node = &node;
                                 proc_data->task = &task_received;
-                                MSG_process_create("proc_name",
+
+                                get_fork_mailbox(node.self.id,
+                                        req->args.cnx_req.new_node_id,
+                                        proc_name);
+
+                                MSG_process_create(proc_name,
                                         proc_handle_task,
                                         proc_data,
                                         MSG_host_self());
-                                xbt_free(proc_data);
                             } else {
 
                                 handle_task(&node, &task_received);
@@ -9139,7 +9159,13 @@ int main(int argc, char *argv[]) {
 static int proc_handle_task(int argc, char* argv[]) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
-    XBT_INFO("Node %d: in son process", proc_data->node->self.id);
+
+    XBT_INFO("Node %d: in son process - mailbox = '%s'",
+            proc_data->node->self.id,
+            MSG_process_get_name(MSG_process_self()));
+
     handle_task(proc_data->node, proc_data->task);
+
+    xbt_free(proc_data);
     return 0;
 }
