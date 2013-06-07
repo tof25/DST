@@ -2,6 +2,7 @@
 title DST : Node Arrival
 
 activate New_node
+New_node -> New_node: join
 activate New_node
 New_node -> Contact: Cnx_req
 
@@ -9,21 +10,63 @@ activate Contact
 Contact -> Leader: Cnx_req
 
 activate Leader
-Leader -> Leaders: Cs_req
-Leaders --> Leader: Ack Cs_req
+Leader -> Leaders: Br Cs_req
+Leaders -[#0000FF]-> Leader: Ack Br Cs_req
 
-Leader -> Leaders: Set_Upd
-Leaders --> Leader: Ack Set_Upd
+Leader -> Leaders: Br Set_Upd
+Leaders --> Leader: Ack Br Set_Upd
 
 activate Leader
-Leader -> Tree: Add_Stage
-Tree --> Leader: Ack Add_Stage
-Leader -> Sub_Tree: Split
+Leader -> Tree: Br Add_Stage
+Tree --> Leader: Ack Br Add_Stage
+Leader -> Sub_Tree: Br Split
 
 activate Sub_Tree
-Sub_Tree -> Del_Pred: Others
-Others --> Sub_Tree: Ack Del_Pred
+Sub_Tree -> Nodes: Del_Pred
+Nodes --> Sub_Tree: Ack Del_Pred
+Sub_Tree -> Nodes: Cnx_Groups
 
+activate Nodes
+Nodes -> Other_Nodes: Del_Pred
+Other_Nodes --> Nodes: Ack Del_Pred
+Nodes -> Other_Nodes: Add_Pred
+Other_Nodes --> Nodes: Ack Add_Pred
+
+Nodes --> Sub_Tree: Ans Cnx_Groups
+deactivate Nodes
+Sub_Tree --> Leader: Ack Br Split
+deactivate Sub_Tree
+deactivate Leader
+
+Leader -> Sub_Tree: Br Set_Active
+Sub_Tree --> Leader: Ack Br Set_Active
+Leader -> Nodes: New_Bro_Rcv
+Nodes --> Leader: Ack New_Bro_Rcv
+Leader -> Nodes: Set_State
+
+Leader --> Contact: Ans Cnx_Req
+deactivate Leader
+
+Contact --> New_node: Ans Cnx_Req
+deactivate Contact
+
+activate New_node
+New_node -> Nodes: Add_Pred
+New_node -> Nodes: Get_Rep
+
+activate Nodes
+Nodes -> Other_Nodes: Nb_Pred
+Other_Nodes --> Nodes: Ans Nb_Pred
+Nodes --> New_node: Ans Get_Rep
+deactivate Nodes
+
+New_node -> Nodes: Del_pred
+New_node -> Nodes: Add_pred
+Nodes --> New_node: Ack Add_pred
+New_node -> Nodes: End_Get_Rep
+deactivate New_node
+deactivate New_node
+deactivate New_node
 
 'note left: starting subscheduling round
 'Process_A -> Process_A: computation
