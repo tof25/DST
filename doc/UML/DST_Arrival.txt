@@ -9,14 +9,14 @@ New_node -> Contact: Cnx_req
 activate Contact
 Contact -> Leader: Cnx_req
 
-activate Leader
+activate Leader #FFBBBB
 Leader -> Leaders: Br Cs_req
 Leaders -[#0000FF]-> Leader: Ack Br Cs_req
 
 Leader -> Leaders: Br Set_Upd
 Leaders --> Leader: Ack Br Set_Upd
 
-activate Leader
+activate Leader #DarkSalmon
 Leader -> Tree: Br Add_Stage
 Tree --> Leader: Ack Br Add_Stage
 Leader -> Sub_Tree: Br Split
