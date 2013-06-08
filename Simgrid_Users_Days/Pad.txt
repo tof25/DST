@@ -1,0 +1,288 @@
+Bienvenue sur Notepad !
+Lien vers l'aide : https://wiki.inria.fr/support/FAQNotepad
+
+LOGIN: JQLLYDJK
+PASSWD: KSAVNFOU
+
+#simgrid on irc.debian.org
+
+http://piratepad.net/toXn7Opnuv
+* People introduction
+    - Sascha Hunold: DVFS, HPC, MPI ?
+    - Frédéric Suter: Disk model and API in SimDAG
+    - Pierre Veyre: Mass storage system simulation.
+    - Paul Bédaride: engineer, knows the internals of SG pretty well
+    - Guillaume Serierre : labbook and provenance
+    - Mark Stillwell: SMPI validation, improve experiment managmenet for validation and reproducibility
+    -  Dome: works with Mark
+    - Alexandra: energy profiling for clouds
+    - Marion Guthmuller : model-checking SMPI programs
+    - Jose Luis : Cloud Broker
+    - Ricardo : Generate trace failures and data-throttling transfers
+    - Christophe : Distributed spanning trees using MSG, objective = improving code
+    - Takahiro : improving virtual machine suport of simgrid. Migration of VM (API & modeling).
+    - George : trace based SMPI, communication modeling
+    - Jonathan : Clouds. Help people working on this; merge some diverging code in the code base
+    - Damien ; visualization techniques and trace analysis. Analyze parallel system traces
+    - Luka : use StarPU and SimGrid together; teach others about lab notebooks in org modes
+    - Lionel : take notes and StarPu
+    - Paul : StarPU/ SimGrid 
+    - Augustin : everything about SMPI
+    - Martin : a bit of everything (that means nothing actually ;))
+    - Arnaud : free electron
+    - Christian : uses SG to test/validate scheduling methods.
+* Planned work axes
+** DVFS + Energy modeling
+   Sascha, Anne-Cécile and Alexandra, Takahiro ? Lionel
+*** Takahiro knows best about internals ; Paul B could give details if needed
+** Multi-core Modeling
+   Takahiro, Sascha
+   Objective : allows to specify pinning of processes on cores
+** Failure and auto-restart
+   Takahiro, Paul B ?
+      - MSG_HOST_TURN(boolean state) state = ON / OFF
+      - MSG_HOST_SETLOAD(int cpuPercentage); 
+    Please speak with Takahiro but this feature will be really usefull for lot of people. 
+** StarPU
+    Middleware from Bordeaux aimed at scientific code (typically linear algebra), to use CPU and GPUs. Program expressed as a huge DAG, tasks can be executed on both C/GPU. 
+    StarPU performs scheduling decisions. StarPU has been "ported" to SimGrid, it works, but many validation issues remain
+    TODOs:    
+        - Incorporer la détection automatique de conflits. 
+        - Se former à l'infrastructure org/git pour lancer des expériences -- vérifier que tout ce qu'on veut faire y rentre
+        - Décider du plan d'expériences, observer. 
+        - Essayer LU sur StarPU : on a peur que certaines décisions d'ordonnancement dépendent du résultat des calculs. Or en simulation on ne fait pas les calculs...
+           Apparemment, Paul a réussi à lancer LU en RL et en SG pour des petites tailles de blocs, les timings sont comparables. Avec plus de blocs, la version RL ne termine pas.
+   Paul RG, Luka, Damien, Lionel
+** SMPI trace repository
+   Augustin, Georges, Mark, Dome
+** SMPI shared memory communications, collective algorithms ?
+    Lots of work to model MPI communications through the network. But much more difficult to model communications through memory
+    Very prospective
+** SGCB/SimIaaS and other cloud stuff
+   Jonathan, Jose Luis Lucas, Paul B, Alexandra
+   SGCB is high level, model of the whole infrastructure
+** Merging the hypervisor branch
+    - merge
+    - java API
+    - issues about live migration and Java thread factory. It seems Adrien had problems about this, but it is not clear
+    - Java with coroutines is working, but unstable because need of a special JVM which cannot be compiled anymore -- need to check if the problem has been fixed
+** Porting code to modernity
+   Christian
+   Has a code for old version of SimGrid, is interested in using newer versions, and discuss about platforms and such
+** Stochastic trace generation
+   Ricardo, Luka ? Martin :)
+   Some stuff exists, some cleanup to do probably. Martin swears that it works
+   (Ricardo: I've done my own trace generator on Java, and works too :))
+** Communication throtling
+   Ricardo, Jonathan ?
+** Article trace replay, sg3
+   Fred Suter, Arnaud, Augustin, Henri, Martin
+** Amadeus proposal
+   Sascha, Arnaud
+** Vérification of MPI compliance test
+   Augustin, Marion
+** Labbook, org-mode session
+   Luka, Guillaume, ...
+   WP8 about Open Science in ANR SONGS, to improve the way we do our experiments
+    We can organize a tutorial session so that everybody gets help to install this
+* What happened on the first day
+- Augustin : started calibrating SMPI on InfiniBand ; with George, worked on tracing BigDFT so that we can use replay on this usecase
+- Sascha : First examples with DVFS support ; did the Amadeus funding proposal
+- Takahiro : implement load capping function in MSG ; MSG_task_set_bound ; so far done 80% -- some problems remain, need some tricks for tasks running inside VMS
+- Alexandra and Anne-Cécile : first steps with SG, worked on DVFS with Sascha. Need a guided tour from Arnaud in SURF's internals.
+- Pierre et Fred : simplified the disk model; worked on a schema expliciting the execution flow between layers (Surf / Simix and co) within SimGrid so that it is well understood and may get simplifed
+- Jonathan : started working on merging SimIaaS and SGCB; some good progress has been done
+- Damien:
+- Christophe: a fait marcher le model-checker avec Marion, pour voir comment l'appliquer à son cas. 
+                         Bon résultat : un cas de deadlock identifié et corrigé. Travailllé sur le système de communications, comprendre les problèmes de timeout (Martin est là dessus et c'est compliqué)
+                         Discuté aussi sur la possibilité de paralléliser sa simulation en utilisant mieux les process et les channels. En fait, il y avait besoin d'une notion de session pour exprimer plus simplement les algos et éviter les deadlocks
+                        A vu les aspects traces et visualisation avec Arnaud. Outils potentiellement adaptés (Paje, Graphviz, graphstream)
+- Marion : a eu un use-case, a fait comprendre un besoin de simplifier les informations obtenues en sortie par exemple les comms, la sortie ne dit pas quel process a envoyé et qui a reçu ; aussi une possibilité d'enrichir la représentation
+- Paul B. a bossé sur la branche hypervisor, la merger risque d'être difficile à cause de plein de tests cassés, mais il commence à virer des Warnings
+- Mark: archiving and organizing traces. 
+              need a way to store, index, cite data online ; looking at different tools that they could install on a server. Progress : many tools exist in the UK       
+               A standard called SWORD  that supposedly make it very easy. He might do a couple slides to present this tomorrow morning
+- Dome : had problems vizualizing results obtained from his cluster. Conclusion is the cluster is not suited and so he got an account on G5K and is going to give a try to XPflow to try automatizing the MPI validation experiments.
+- Christian: started to substitute put with send, ... Nothing done yet about traces of Egee
+- Ricardo : tried to define the XML tags to do random generation of traces ; has looked at the SG code to see how to implement them
+- Paul RG and Luka : started to do some new experiments on new remote machines ; realized the need for new stuff to the git workflow. Paul tried to get LU to work with StarPU and SimGrid.
+- Guillaume: a regardé la liste des simcalls et s'ils étaient bloquants ou pas  pour faire l'exécution conditionnelle pour relacher du parallélisme.
+- Lionel: a repris en main le simulateur d'Adrien conçu pour étudier la consolidation de VM dans un clouds. A aussi suivi ce que Paul faisait.
+- George has updated tau2paje, now there's no more synchronisation error -- which happened when receive arrive before the send; With BigDFT, could link with the tool which get time-dependent traces, but requires to handle one more call (MPI_Init_thread)
+- Jose Luis: work on improving SGCB by developing  an algorithm for VM scheduling.
+
+
+
+* Storing Traces (Slides are in the SVN, link ?)
+  - When doing experiments, typically store data locally, maybe edit manually for weird errors, and then "archive" it on local disk in a tar archive
+  - No good solutions
+  - Partial solutions : source code repository, workflow engines : make life easier, and does the documentation process
+  - Issues : lack of metadata ! Might be differences between what you think the command does and what it actually does. Lack metadata about what the researcher thinks/what the data means.
+  - Even useful on an individual scale.
+  - Data management plans are started to be required by funding agencies
+  Q: Is it a "promote" thing, or is it really discriminant ? 
+  A: For now it's rather a very light touch. It's much more advanced in other fields like biology
+  - Bunch of questions that need to be answered if we want an data management policy + how to "cite" the data was cutoff in the slides
+  - Centralized repository is good, but many little experiments are not intended to be shared => need a standard way to store the data locally so that it is easy to publish it later
+  - Datacite.org does not provide storage, but only permanent links. How does it work with mirroring ? A: Don't know yet, part of thinks Mark wants to look at. 
+   - SWORD: 
+    - Loking at Data Flow and DSpace. We might want to go with one of those two technologies. Mark thinks storing on the Cloud is safer and quite cheap
+
+ - About the traces : 
+     - What metadata ? Link to / reference the RSS feed of G5K for recent issues would allow to link to things that happened *after* the experiments ...
+     - Something forgotten : if you do a deployemnet phase and then run several exeperiments, you should link to other experiments which were performed on the same deployment phase
+     - Storage of G5K images : that's something we can discuss with the G5K team (Olivier Richard and Lucas Nussbaum are the good people to talk to)
+
+Thoughts for now : keep taking a look on DataFlow and DSpace, maybe pick one and install it somewhere, and have a look at Cloud-based storage
+Also write a research data management policy, and then train ourselves to use this
+Would be a good outcome of the project
+
+Fred&George made a technical report about how to get traces. Kinda outdated because it's 2 years old, but lots of useful information. Maybe could be updated with a standard method with standard tools.
+
+Remark: Technical reports on ArXiv can include datasets as well.
+
+Concretely, next step ?
+  * Come up with an overall policy for the project, and for Tau traces in particular
+   * Summary of the metadata
+   * Find a server to place this data
+   * Arnaud has talked about this with people in Grenoble (P. Neyron and others), the possibility to have a machine dedicated to the project with enough storage. 
+   * Mark can set up a test server, Arnaud can take care of having a public accessible server with DMZ, safe.
+   * Dome will be working on XPFlow, we need to see how he's gonna do with that. If he makes good progress, he could be also involved in this open data thing
+   * First step of the script : check that the script is the most recent version in the repository, last step save the data objects to the researcher's local repository, or to the group repository
+
+
+
+** What happened on the second day
+*** DVFS / energy modeling working group
+**** A few fun facts from energy measurements first
+     Add ref to Anne-Cécile's articles:
+           - VM capping : http://people.irisa.fr/Anne-Cecile.Orgerie/EnergyAwareGridsAndClouds.pdf (Figure 4)
+           - application mix and matching non-homogeneity : http://people.irisa.fr/Anne-Cecile.Orgerie/IGCC2010.pdf (Figure 3)
+**** Energy
+       Regarding energy, in a given state, it is roughly linear in the load of  the machine (actually of the CPU) that can be easily obtained from LMM  (as it is donc when tracing uncategorized resource usage). 
+**** Proposed model for DVFS
+       A cpu can have several frequency/voltage states called P-states (http://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface )
+      These states induce a peak performance (in flop per second since that's what we have at the moment) and a power consumption (but we'll talk about this later).
+      In the surf/cpu_cas01.c, the state of a cpu is defined by power_peak and power_scale. power_scale is the remaining available peak power due to possible external load injected in a trace. This is somehow dirty since everytime power_scale is modified, we need to propagate this modification to the corresponding LMM constraint bound (and ideally to the bound of some variables). Instead we should have a p-state and a power scale that can be updated. The correspondance between p-states and peak power is stored in a separate table. Then we simply write a function such that every time a p-state or a power-scale is modified, the modification is propagated completely to LMM.
+      The DTD needs to be extended so that initial P-state are part of the description of the CPU:
+          <host power="1.3E6; 1.0E6; .7E6" c-state="2" />
+    0 is the default value of the c-state and C-states go from 0 (max speed) to N. So this is perfectly backward compatible.
+    On the MSG level, we need the following functions:
+        - MSG_get_pstate_list        <host power="3.34">
+        - MSG_set_pstate
+        - MSG_get_pstate
+     Power will be handled with something like
+            <host power="3.34">
+                <prop id="freq_power_list" value = "1.3E6:1.2:.5 ; power:intercept:slope ; ..."/>   
+     Another initial proposal was:
+            <host power="3.34">
+              <prop id="freq_power_list" value = "power:frequency:voltage ; ..."/>
+           Yet, despite what all energy scheduling articles say, looking infering intercept and slope out of frequency and voltage is quite haphazard...
+     Finally, note that in an ideal theoretical world, all this should be done per core as you can have cores in different c-states. But there is so much noise and factors we do not control that this seems haphazard. For example, as usual, the application that runs has a tremendous impact on both peak power and energy consumption. And what happens when you mix applications is really strange...
+     So everything we write here should be rough values for the whole platform.
+**** CPU state
+      A cpu can be in different C-states  (http://en.wikipedia.org/wiki/Advanced_Configuration_and_Power_Interface ) that indicates whether it is up or asleep or turned off. Again, we probably want some functions like
+      MSG_set_cstate that would allow to turn on and off the machine.
+      Yet, there switching from a C-state to another takes time and induces some energy consumption that have to be provided.
+**** Governors
+      The different governors are:
+- ondemand: Dynamically switch between CPU(s) available if at 95% cpu load 
+- performance  Run the cpu at max frequency  
+- conservative   Dynamically switch between CPU(s) available if at 75% load
+- powersave Run the cpu at the minimum frequency  
+- userspace   
+So userspace, performance and powersave are very easy to implement. ondemand and conservative are more tricky as they depend on thresholds and frequency at which load is defined. In SG we do not want to check such things regularly as it slows everything...
+
+** Wrap-up, what everybody did
+*** Martin implemented semaphores in MSG, wrote the 10 first lines of Surf in C++
+	Long discussion with Mark on how to save traces and data in scientific project. See notes above
+*** Arnaud discussed with Alexandra Sascha and Anne-Cécile about DVFS and energy in SimGrid. They converged on what it should look like
+	First working version which allows to define pstates and such in the XML. They implemented the MSG functions to change those states (userspace governors) and have still a few troubles with the corresponding simcalls.
+*** Takahiro discussed about how to have a better model of multicore machines. How to get a slightly better one which allows to pin processes to cores. Works on paper, still to understand what it means wrt real-life
+*** FredS banged his head when reading the messy storage interface. He wrote an org-document in the songs/WP1/ repository explaining how the API works and how you plan to refactor it and make it evolve.
+     He wrote a simcall to obtain the size of a file. This requires to modify 11 files!!!! :( In SD it's only one file because it can access data directly.
+	Lack of documentation to add a simcall.
+*** Jonathan for the cloud part: Merge in progress of SGCB and SimIaaS. The only missing part is to access the AS hierarchy. The description of the infrastructure is in the platform.xml file and there is now a cloud.xml that defines the infrastructure for the cloud user (VM templates, prices, ...)
+*** JoseLuis worked on platform.xml files, now works on the billing management, getting pricing schemes, and on a broker which uses those files. Yesterday's algorithm finished ^_^
+*** Takahiro implemented the load capping function, which is going to be quite useful for VM management.
+*** Luka and Paul: played with the workflow and labbook. Surprisingly they do not get the same experimental results than they used to get 2 days ago. They're still investigating this.
+*** Lionel: kept working on Adrien's VM simulator. Managed to use the VM hypervisor branch. Finished porting the semaphore functions to the java 
+world and still needs to test everything.
+*** Georges: used bigDFT, got a time independant trace for BigDFT, tried to fix an old MPI example that fails in SMPI
+*** Augustin: ran BigDFT w/wo IB/SMPI, played with the collective algorithm selector of ompi and tries to identify which ones are used. There is no perfect match with what we have in SMPI, but we should have a working selector quickly...
+*** Dome: played with G5K and ran some G5K xp. He will play with xpflow tomorrow.
+*** Paul: allowed to obtain AS information in MSG and java to help Jonathan moving forward
+*** Ricardo: he has implemented the stochastic traces and needs to test it now.
+*** Guillaume: mapped the simcalls, thinking about what should be done to allow conditional execution to merge scheduling rounds. Started implenting this.
+*** Christophe and Marion: worked on his application to hunt segfaults, deadlocks, invalid memory access. Managed to found the problems. Marion now works on model checking MPI complience tests.
+*** Damien: he modified his aggregation algorithm to handle parallel traces and now learns and plays with R to obtain fancy visualizations.
+
+*** Concerns about the XML parser. We need to serialize the commits, at least commits the stubs. This needs to be done before leaving here
+
+
+
+
+** Final day wrap-up
+*** Achievements
+**** Sascha and Alexandra: 
+    Achieved to improve DTD to describe cpu states and the consequence on peak power. Wrote all corresponding acces functions.
+    Next step is to Implement the energy counter and tracing. They will take care of this in the next days/weeks.
+**** Jonathan
+        Merge Simiaas and SGCB is almost done. Instead of dupplicating the structure parsing, Java can now access SimGrid internal state in read-mode. 
+        It's not finished yet, but should be within the next week or so. All SimIaas functions are now available within SGCB
+        Next step is to run experiments on virtual machine performance modeling in multi-core environments (DoE with Takahiro and Arnaud)
+**** Jose and Jonathan
+        SGCB network trafics needs to be changed: Amazon changed the billing process and created at least 8 different traffic classes, and they need to be ported to SGCB.
+        He's basically constructing sockets on top of mailboxes...
+        There might be things in SG that could be done to help Jonathan do his stuff
+**** Takahiro
+     Implemented capping, discussed on models and experiments for multicore
+**** Luka
+       Added / Debugged the workflow for experiments 
+       Changed the way *PU generates platform.xml to make things clearer and correct behaviors
+**** Augustin and Georges
+    - Lots of new experiments on BigDFT with George. Replay of BigDFT is now possible, which will allow to compare RL, SMPI, replay. They improved the tracing and replaying seems pretty efficient. It's time for comparison now.
+    - A selector algoritm mimicing the one of openMPI is expected to be finished in a few hours.
+**** Dome
+    - Experimented with G5K but still has a few troubles. He should definitely hang around on the simgrid chan and try to poke sbadia.
+**** Pierre and Fred
+   - Played with MSG and set up a prototype simulator for MSG transfers that will be used later for modeling the CC.
+   - Worked on storage and files. Cleaned a bunch of useless crap full of copy/paste.
+**** Christophe
+   - Could find bugs with the MC
+   - Got a better understanding of the semantic of communications and fixed many memory and design issues.
+   - Learnt a lot and is redesigning the whole code.
+**** Ricardo
+   - Got some things done that need to be finished but.
+**** Christian
+   - Did not succeed in upgrading his code
+   - Need to obtain network traces from Renater to build decent network platforms. Fred Suter is working on it.
+**** Marion
+   - Helped Christophe
+   - She's still working on complience test model checking.
+**** Guillaume
+   - Now understands exactly how the simcalls and communication work.
+   - He should now be able to implement conditional execution 
+   - Learnt org-mode and describes everything with plantUML! :)
+**** Lionel
+   - Played with semaphores and java and is now able to do whatever he wants instead of waiting for others to do it.
+   - Moved on the cloud simulation and interactions helped a lot.
+**** Martin
+   - Failed implementing a simple function and realized again how SG is a pain in term of software engineering and started to look into C++ and how to refactor SURF.
+*** Feeling on the organization
+ - Wifi and DSL could be improved but otherwise (especially for those interacting a lot with repositories) , the location and everything else was nice.
+ - On SG code base, Sascha and Alexandra  wanted to implement DVFS -- a simple thing, but requires to dig for hours into the code. Issues in SURF and SIMIX calls, hence frustration : they want to do something simple, but they got almost nothing done.
+    Not only documentation issue, the code itself is too intricate, which prevents users to contribute.
+ - Although Christophe uses SG since a long time he could not find in the documentation information to get the whole picture of communication semantic.
+ - Three days is good but more is not reasonable.
+ - Fred hopes the next sprint will be in Nice at fall/winter... :)
+ - Comparison between SUD and SUS: 
+    + talks are good to get to know each others and have fruitful discussions
+    + but they are not necessary to understand SimGrid
+    + However, this time was not targeted towards new users
+    + Christophe enjoyed finding answers to his very precise questions
+ - Too sunny! :) Thionville maybe. ;)
+ - Nobody seemed to miss a "real" social event.
+
+
+
