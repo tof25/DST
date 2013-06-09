@@ -12,24 +12,16 @@ activate Contact #CadetBlue
 Contact -> Leader: Cnx_req
 note left of Contact: cnx_req()
 
-<<<<<<< HEAD
 activate Leader #CadetBlue
 note left of Leader: cnx_req()
-=======
-activate Leader #FFBBBB
->>>>>>> 94e4a88340e0c314903234191ad29561d3298579
 Leader -> Leaders: Br Cs_req
 Leaders -[#0000FF]-> Leader: Ack Br Cs_req
 
 Leader -> Leaders: Br Set_upd
 Leaders --> Leader: Ack Br Set_upd
 
-<<<<<<< HEAD
 activate Leader #SpringGreen
 note left of Leader: split_req()
-=======
-activate Leader #DarkSalmon
->>>>>>> 94e4a88340e0c314903234191ad29561d3298579
 Leader -> Tree: Br Add_Stage
 Tree --> Leader: Ack Br Add_stage
 Leader -> Sub_Tree: Br Split
