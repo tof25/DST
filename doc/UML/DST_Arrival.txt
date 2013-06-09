@@ -1,118 +1,84 @@
 @startuml 
-title DST : Node Arrival
+title DST : Node Arrival\n
 
-activate New_node
-New_node -> New_node: join
-activate New_node
+note left of New_node: node()
+activate New_node #AntiqueWhite
+New_node -> New_node: Join
+activate New_node #Orange
+note left of New_node: join()
 New_node -> Contact: Cnx_req
 
-activate Contact
+activate Contact #CadetBlue
 Contact -> Leader: Cnx_req
+note left of Contact: cnx_req()
 
-activate Leader
+activate Leader #CadetBlue
+note left of Leader: cnx_req()
 Leader -> Leaders: Br Cs_req
 Leaders -[#0000FF]-> Leader: Ack Br Cs_req
 
-Leader -> Leaders: Br Set_Upd
-Leaders --> Leader: Ack Br Set_Upd
+Leader -> Leaders: Br Set_upd
+Leaders --> Leader: Ack Br Set_upd
 
-activate Leader
+activate Leader #SpringGreen
+note left of Leader: split_req()
 Leader -> Tree: Br Add_Stage
-Tree --> Leader: Ack Br Add_Stage
+Tree --> Leader: Ack Br Add_stage
 Leader -> Sub_Tree: Br Split
 
-activate Sub_Tree
-Sub_Tree -> Nodes: Del_Pred
-Nodes --> Sub_Tree: Ack Del_Pred
-Sub_Tree -> Nodes: Cnx_Groups
+activate Sub_Tree #Purple
+note left of Sub_Tree: Split()
+Sub_Tree -> Nodes: Del_pred
+Nodes --> Sub_Tree: Ack Del_pred
+Sub_Tree -> Nodes: Cnx_groups
 
-activate Nodes
-Nodes -> Other_Nodes: Del_Pred
-Other_Nodes --> Nodes: Ack Del_Pred
-Nodes -> Other_Nodes: Add_Pred
-Other_Nodes --> Nodes: Ack Add_Pred
+activate Nodes #MediumBlue
+note left of Nodes: Cnx_groups
+Nodes -> Other_Nodes: Del_pred
+Other_Nodes --> Nodes: Ack Del_pred
+Nodes -> Other_Nodes: Add_pred
+Other_Nodes --> Nodes: Ack Add_pred
 
-Nodes --> Sub_Tree: Ans Cnx_Groups
+Nodes --> Sub_Tree: Ans Cnx_groups
 deactivate Nodes
 Sub_Tree --> Leader: Ack Br Split
 deactivate Sub_Tree
 deactivate Leader
 
-Leader -> Sub_Tree: Br Set_Active
-Sub_Tree --> Leader: Ack Br Set_Active
-Leader -> Nodes: New_Bro_Rcv
-Nodes --> Leader: Ack New_Bro_Rcv
-Leader -> Nodes: Set_State
+Leader -> Sub_Tree: Br Set_active
+Sub_Tree --> Leader: Ack Br Set_active
+Leader -> Nodes: New_bro_rcv
+Nodes --> Leader: Ack New_bro_rcv
+Leader -> Nodes: Set_state
 
-Leader --> Contact: Ans Cnx_Req
+Leader --> Contact: Ans Cnx_req
 deactivate Leader
 
-Contact --> New_node: Ans Cnx_Req
+Contact --> New_node: Ans Cnx_req
 deactivate Contact
 
-activate New_node
-New_node -> Nodes: Add_Pred
-New_node -> Nodes: Get_Rep
+activate New_node #DarkRed
+note left of New_node: load_balance()
+New_node -> Nodes: Add_pred
+New_node -> Nodes: Get_rep
 
-activate Nodes
-Nodes -> Other_Nodes: Nb_Pred
-Other_Nodes --> Nodes: Ans Nb_Pred
-Nodes --> New_node: Ans Get_Rep
+activate Nodes #Red
+note left of Nodes: Get_rep()
+Nodes -> Other_Nodes: Nb_pred
+Other_Nodes --> Nodes: Ans Nb_pred
+Nodes --> New_node: Ans Get_rep
 deactivate Nodes
 
 New_node -> Nodes: Del_pred
 New_node -> Nodes: Add_pred
 Nodes --> New_node: Ack Add_pred
-New_node -> Nodes: End_Get_Rep
-deactivate New_node
-deactivate New_node
-deactivate New_node
+New_node -> Nodes: End_get_rep
+New_node -> New_node:
 
-'note left: starting subscheduling round
-'Process_A -> Process_A: computation
-'Process_A -> Maestro: yield (in send)
-'note left: suspend Process_A_test
-'deactivate Process_A
-'activate Maestro
-'Maestro -> Process_B: resume
-'deactivate Maestro
-'activate Process_B
-'Process_B -> Process_B: computation
-'Process_B -> Maestro: yield(in get_PID)
-'note left: suspend Porcess_B
-'deactivate Process_B
-'activate Maestro
-'Maestro -> Process_C: resume
-'deactivate Maestro
-'activate Process_C
-'Process_C -> Process_C: computation
-'Process_C -> Maestro: yield(in recv)
-'note left: suspend Process_C
-'deactivate Process_C
-'activate Maestro
-'Maestro -> Maestro: process pre_send
-'Maestro -> Maestro: process_pre_getPID
-'note left: we answer directly to process
-'Maestro -> Maestro: process_pre_recv
-'note left: end of pre execution
-'Maestro -> Process_B: resume
-'deactivate Maestro
-'activate Process_B
-'note left: Starting new subscheduling round with survivor
-'Process_B -> Process_B: computation
-'Process_B -> Maestro: yield(in send)
-'deactivate Process_B
-'activate Maestro
-'Maestro -> Maestro: process_pre_send
-'Maestro -> surf:solve
-'note right: no more process to run start solving
-'deactivate Maestro
-'activate surf
-'surf->surf: solving constraint
-'note left: passing through solver
-'surf-> Maestro
-'deactivate surf
-'activate Maestro
-
+deactivate New_node
+New_node -> New_node:
+deactivate New_node
+New_node -> New_node:
+deactivate New_node
 
 @enduml
