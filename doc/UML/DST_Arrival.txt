@@ -6,73 +6,79 @@ activate New_node #AntiqueWhite
 New_node -> New_node: Join
 activate New_node #Orange
 note left of New_node: join()
-New_node -> Contact: Cnx_req
+New_node -> Contact: CNX_REQ
 
 activate Contact #CadetBlue
-Contact -> Leader: Cnx_req
+Contact -> Leader: CNX_REQ
 note left of Contact: cnx_req()
 
 activate Leader #CadetBlue
 note left of Leader: cnx_req()
-Leader -> Leaders: Br Cs_req
-Leaders -[#0000FF]-> Leader: Ack Br Cs_req
-
-Leader -> Leaders: Br Set_upd
-Leaders --> Leader: Ack Br Set_upd
+Leader -> Leader: cs_req
+activate Leader #Yellow
+note left of Leader: cs_req()
+Leader -> Leader
+deactivate Leader
+|||
+Leader ->o Leaders: Br CS_REQ
+Leaders -[#0000FF]-> Leader: ACK Br CS_REQ
+|||
+Leader ->o Leaders: Br SET_UPD
+Leaders -[#0000FF]-> Leader: ACK Br SET_UPD
 
 activate Leader #SpringGreen
 note left of Leader: split_req()
-Leader -> Tree: Br Add_Stage
-Tree --> Leader: Ack Br Add_stage
-Leader -> Sub_Tree: Br Split
+Leader ->o Tree: Br ADD_STAGE
+Tree -[#0000FF]-> Leader: ACK Br ADD_STAGE
+Leader ->o Sub_Tree: Br SPLIT
 
 activate Sub_Tree #Purple
-note left of Sub_Tree: Split()
-Sub_Tree -> Nodes: Del_pred
-Nodes --> Sub_Tree: Ack Del_pred
-Sub_Tree -> Nodes: Cnx_groups
+note left of Sub_Tree: split()
+Sub_Tree -> Nodes: DEL_PRED
+Nodes --> Sub_Tree: ACK DEL_PRED
+Sub_Tree -> Nodes: CNX_GROUPS
 
 activate Nodes #MediumBlue
-note left of Nodes: Cnx_groups
-Nodes -> Other_Nodes: Del_pred
-Other_Nodes --> Nodes: Ack Del_pred
-Nodes -> Other_Nodes: Add_pred
-Other_Nodes --> Nodes: Ack Add_pred
+note left of Nodes: cnx_groups()
+Nodes -> Other_Nodes: DEL_PRED
+Other_Nodes --> Nodes: ACK DEL_PRED
+Nodes -> Other_Nodes: ADD_PRED
+Other_Nodes --> Nodes: ACK ADD_PRED
 
-Nodes --> Sub_Tree: Ans Cnx_groups
+Nodes --> Sub_Tree: Ans CNX_GROUPS
 deactivate Nodes
-Sub_Tree --> Leader: Ack Br Split
+Sub_Tree -[#0000FF]-> Leader: ACK Br SPLIT
 deactivate Sub_Tree
 deactivate Leader
 
-Leader -> Sub_Tree: Br Set_active
-Sub_Tree --> Leader: Ack Br Set_active
-Leader -> Nodes: New_bro_rcv
-Nodes --> Leader: Ack New_bro_rcv
-Leader -> Nodes: Set_state
+Leader ->o Sub_Tree: Br SET_ACTIVE
+Sub_Tree -[#0000FF]-> Leader: ACK Br SET_ACTIVE
+Leader -> Nodes: NEW_BRO_RCV
+Nodes -[#0000FF]-> Leader: ACK NEW_BRO_RCV
+Leader -> Nodes: SET_STATE
 
-Leader --> Contact: Ans Cnx_req
+Leader --> Contact: Ans CNX_REQ
 deactivate Leader
 
-Contact --> New_node: Ans Cnx_req
+Contact --> New_node: Ans CNX_REQ
 deactivate Contact
 
 activate New_node #DarkRed
 note left of New_node: load_balance()
-New_node -> Nodes: Add_pred
-New_node -> Nodes: Get_rep
+New_node -> Nodes: ADD_PRED
+New_node -> Nodes: GET_REP
 
 activate Nodes #Red
 note left of Nodes: Get_rep()
-Nodes -> Other_Nodes: Nb_pred
-Other_Nodes --> Nodes: Ans Nb_pred
-Nodes --> New_node: Ans Get_rep
+Nodes -> Other_Nodes: NB_PRED
+Other_Nodes --> Nodes: Ans NB_PRED
+Nodes --> New_node: Ans GET_REP
 deactivate Nodes
 
-New_node -> Nodes: Del_pred
-New_node -> Nodes: Add_pred
-Nodes --> New_node: Ack Add_pred
-New_node -> Nodes: End_get_rep
+New_node -> Nodes: DEL_PRED
+New_node -> Nodes: ADD_PRED
+Nodes --> New_node: ACK ADD_PRED
+New_node -> Nodes: END_GET_REP
 New_node -> New_node:
 
 deactivate New_node
