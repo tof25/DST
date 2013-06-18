@@ -107,10 +107,10 @@ end
 
 Leader -[#0000FF]-> Contact: Ans CNX_REQ
 deactivate Leader
+end
 
 Contact -[#0000FF]-> New_node: Ans CNX_REQ
 deactivate Contact
-end
 |||
 
 group Load Balance
