@@ -1,84 +1,161 @@
 @startuml 
 title DST : Node Arrival\n
 
+group New Node Join
+
 note left of New_node: node()
-activate New_node #AntiqueWhite
+activate New_node #LightSeaGreen
 New_node -> New_node: Join
-activate New_node #Orange
+
+activate New_node #YellowGreen
 note left of New_node: join()
 New_node -> Contact: CNX_REQ
 
-activate Contact #CadetBlue
+activate Contact #Indigo
 Contact -> Leader: CNX_REQ
 note left of Contact: cnx_req()
 
-activate Leader #CadetBlue
+activate Leader #Maroon
 note left of Leader: cnx_req()
 Leader -> Leader: cs_req
-activate Leader #Yellow
-note left of Leader: cs_req()
+activate Leader #Wheat
+note right of Leader: cs_req()
 Leader -> Leader
 deactivate Leader
 |||
-Leader ->o Leaders: Br CS_REQ
-Leaders -[#0000FF]-> Leader: ACK Br CS_REQ
+
+opt Not Enough Room
+
+group Put Lock
+
+Leader ->>o Leaders: Br CS_REQ
+activate Leaders #Gold
+note right of Leaders: cs_req()
+Leaders -[#0000FF]->>o Leader: ACK Br CS_REQ
+deactivate Leaders
 |||
-Leader ->o Leaders: Br SET_UPD
-Leaders -[#0000FF]-> Leader: ACK Br SET_UPD
+Leader ->>o Leaders: Br SET_UPD
+activate Leaders #Yellow
+note right of Leaders: set_upd()
+Leaders -[#0000FF]->>o Leader: ACK Br SET_UPD
+deactivate Leaders
+|||
+end
 
-activate Leader #SpringGreen
+group Make Room
+
+Leader -> Leader: split_req
+activate Leader #SandyBrown
 note left of Leader: split_req()
-Leader ->o Tree: Br ADD_STAGE
-Tree -[#0000FF]-> Leader: ACK Br ADD_STAGE
-Leader ->o Sub_Tree: Br SPLIT
+Leader ->>o Tree: Br ADD_STAGE
+activate Tree #Violet
+note right of Tree: add_stage()
+Tree -[#0000FF]->>o Leader: ACK Br ADD_STAGE
+deactivate Tree
 
-activate Sub_Tree #Purple
+Leader ->>o Sub_Tree: Br SPLIT
+activate Sub_Tree #OrangeRed
 note left of Sub_Tree: split()
-Sub_Tree -> Nodes: DEL_PRED
-Nodes --> Sub_Tree: ACK DEL_PRED
-Sub_Tree -> Nodes: CNX_GROUPS
-
-activate Nodes #MediumBlue
-note left of Nodes: cnx_groups()
-Nodes -> Other_Nodes: DEL_PRED
-Other_Nodes --> Nodes: ACK DEL_PRED
-Nodes -> Other_Nodes: ADD_PRED
-Other_Nodes --> Nodes: ACK ADD_PRED
-
-Nodes --> Sub_Tree: Ans CNX_GROUPS
+Sub_Tree -\o Nodes: DEL_PRED
+activate Nodes #Khaki
+note right of Nodes: del_pred()
+Nodes -[#0000FF]-\o Sub_Tree: ACK DEL_PRED
 deactivate Nodes
-Sub_Tree -[#0000FF]-> Leader: ACK Br SPLIT
+|||
+Sub_Tree -\o Nodes: CNX_GROUPS
+activate Nodes #PeachPuff
+note left of Nodes: cnx_groups()
+Nodes ->]: DEL_PRED
+Nodes <-[#0000FF]-]: ACK
+|||
+Nodes ->]: ADD_PRED
+Nodes <-[#0000FF]-]: ACK
+
+Nodes -[#0000FF]-\o Sub_Tree: Ans CNX_GROUPS
+deactivate Nodes
+Sub_Tree -[#0000FF]->>o Leader: ACK Br SPLIT
 deactivate Sub_Tree
+Leader -> Leader
 deactivate Leader
+|||
+end
 
-Leader ->o Sub_Tree: Br SET_ACTIVE
-Sub_Tree -[#0000FF]-> Leader: ACK Br SET_ACTIVE
-Leader -> Nodes: NEW_BRO_RCV
-Nodes -[#0000FF]-> Leader: ACK NEW_BRO_RCV
-Leader -> Nodes: SET_STATE
+group Lock Release
 
-Leader --> Contact: Ans CNX_REQ
+Leader ->>o Sub_Tree: Br SET_ACTIVE
+activate Sub_Tree #LimeGreen
+note right of Sub_Tree: set_active()
+Sub_Tree -[#0000FF]->>o Leader: ACK Br SET_ACTIVE
+deactivate Sub_Tree
+|||
+end
+
+else Enough Room
+
+group New Node Insert
+Leader -\o Nodes: NEW_BRO_RCV
+activate Nodes #Aqua
+note left of Nodes: new_bro_rcv()
+Nodes -[#0000FF]-\o Leader: ACK NEW_BRO_RCV
+deactivate Nodes
+|||
+end
+
+Leader -\o Nodes: SET_STATE('p')
+activate Nodes #LightSteelBlue
+note right of Nodes: set_state()
+Nodes -> Nodes
+deactivate Nodes
+
+Leader -[#0000FF]-> Contact: Ans CNX_REQ
 deactivate Leader
+end
 
-Contact --> New_node: Ans CNX_REQ
+Contact -[#0000FF]-> New_node: Ans CNX_REQ
 deactivate Contact
+end
 
-activate New_node #DarkRed
+|||
+
+group Load Balance
+
+New_node -> New_node: load_balance
+activate New_node #Lime
 note left of New_node: load_balance()
-New_node -> Nodes: ADD_PRED
-New_node -> Nodes: GET_REP
+New_node -\o Nodes: ADD_PRED
+activate Nodes #SaddleBrown
+note right of Nodes: add_pred()
+Nodes -> Nodes
+deactivate Nodes
 
+New_node -\o Nodes: GET_REP
 activate Nodes #Red
 note left of Nodes: Get_rep()
-Nodes -> Other_Nodes: NB_PRED
-Other_Nodes --> Nodes: Ans NB_PRED
-Nodes --> New_node: Ans GET_REP
+loop look for less loaded node
+Nodes ->]: NB_PRED
+Nodes <-[#0000FF]-]: Ans NB_PRED
+end
+Nodes -[#0000FF]-> New_node: Ans GET_REP
 deactivate Nodes
 
-New_node -> Nodes: DEL_PRED
-New_node -> Nodes: ADD_PRED
-Nodes --> New_node: ACK ADD_PRED
-New_node -> Nodes: END_GET_REP
+New_node -\o Nodes: DEL_PRED
+activate Nodes #MistyRose
+note right of Nodes: del_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+New_node -\o Nodes: ADD_PRED
+activate Nodes #AntiqueWhite
+note right of Nodes: add_pred()
+Nodes -[#0000FF]-\o New_node: ACK ADD_PRED
+deactivate Nodes
+
+New_node -\o Nodes: END_GET_REP
+activate Nodes #Silver
+note right of Nodes: end_get_rep()
+Nodes -> Nodes
+deactivate Nodes
+
 New_node -> New_node:
 
 deactivate New_node
@@ -86,5 +163,7 @@ New_node -> New_node:
 deactivate New_node
 New_node -> New_node:
 deactivate New_node
+|||
+end
 
 @enduml
