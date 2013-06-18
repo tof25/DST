@@ -112,6 +112,7 @@ end
 Contact -[#0000FF]-> New_node: Ans CNX_REQ
 deactivate Contact
 |||
+newpage
 
 group Load Balance
 
