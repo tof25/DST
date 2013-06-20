@@ -1,0 +1,21 @@
+@startuml
+(*) -->Listen
+
+if "Message received ?" then
+  --> "Listen"
+else
+  if "" then
+    --> "CNX_REQ" as cnx
+    cnx -->Create Process
+    -->Listen
+  else
+    --> "Other"
+    -->if "Answer ?" then
+      -->"Answer"
+    else
+      -->"No"
+    endif
+  endif
+endif
+
+@enduml
