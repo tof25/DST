@@ -5,7 +5,7 @@ if "Message received ?" then
   -->"Periodic Listen"
 else
   [Yes]if "" then
-    -right->[Answer]"Transmit answer to recipient"
+    -right->[Answer]"Forward answer to recipient"
     -->"Send Ack"
     -left->"Periodic Listen"
   else
