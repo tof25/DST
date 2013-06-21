@@ -1,19 +1,20 @@
 @startuml
-(*) -->Listen
+(*top) -->"Periodic Listen"
 
 if "Message received ?" then
-  --> "Listen"
+  -->"Periodic Listen"
 else
-  if "" then
-    --> "CNX_REQ" as cnx
-    cnx -->Create Process
-    -->Listen
+  [Yes]if "" then
+    -right->[Answer]"Forward answer to recipient"
+    -->"Send Ack"
+    -left->"Periodic Listen"
   else
-    --> "Other"
-    -->if "Answer ?" then
-      -->"Answer"
+    [Request]if "" then
+      -->"Handle Req"
+      -up->"Periodic Listen"
     else
-      -->"No"
+      -->"Create proc Req"
+      -up->"Periodic Listen"
     endif
   endif
 endif
