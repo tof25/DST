@@ -7677,8 +7677,7 @@ int node(int argc, char *argv[]) {
             if (node.comm_received == NULL) {
 
                 task_received = NULL;
-                node.comm_received =
-                    MSG_task_irecv(&task_received, node.self.mailbox);
+                node.comm_received = MSG_task_irecv(&task_received, node.self.mailbox);
 
                 XBT_VERB("Node %d: Waiting for a task...", node.self.id);
             }
@@ -7743,20 +7742,24 @@ int node(int argc, char *argv[]) {
                 // some task has been received
 
                 res = MSG_comm_get_status(node.comm_received);
+
                 MSG_comm_destroy(node.comm_received);
                 node.comm_received = NULL;
-                req_data_t req = MSG_task_get_data(task_received);
-                ans_data_t ans = (ans_data_t)req;
-                char proc_name[MAILBOX_NAME_SIZE];
 
                 XBT_VERB("Node %d: Task received", node.self.id);
                 display_sc(&node, 'V');
 
                 if (res == MSG_OK) {
+
+                    req_data_t req = MSG_task_get_data(task_received);
+                    ans_data_t ans = (ans_data_t)req;
+
+                    char proc_name[MAILBOX_NAME_SIZE];
+
                     if (strcmp(MSG_task_get_name(task_received), "ans") != 0) {
 
-                        // ignore answers, only process requests
-                        if (xbt_dynar_is_empty(node.remain_tasks) == 0 &&
+                        // Received request
+                        if (xbt_dynar_is_empty(node.remain_tasks) == 0 &&      //TODO : peut-être inutile avec forks
                                 req->type == TASK_CNX_REQ) {
 
                             xbt_dynar_push(node.remain_tasks, &task_received);
@@ -7790,6 +7793,8 @@ int node(int argc, char *argv[]) {
                         // run remaining tasks, if any
                         run_delayed_tasks(&node, '4');
                     } else {
+
+                        // ignore answers, only process requests
                         if (ans != NULL){
 
                             xbt_free(ans);
@@ -7804,7 +7809,7 @@ int node(int argc, char *argv[]) {
                 }
             }
             state = get_state(&node);
-        }
+        }   // End While
     } else {
 
         XBT_INFO("Node %d: **** JOIN ABORT ... ****", node.self.id);
