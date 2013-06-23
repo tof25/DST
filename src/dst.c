@@ -200,7 +200,7 @@ typedef struct node {
  * son process data
  */
 typedef struct proc_data {
-    char *proc_mailbox;
+    char proc_mailbox[MAILBOX_NAME_SIZE];
     node_t node;
     msg_task_t  *task;
 } s_proc_data_t, *proc_data_t;
@@ -1079,12 +1079,12 @@ static void get_mailbox(int node_id, char* mailbox) {
 }
 
 /**
- * \brief gets the fork mailbox name
+ * \brief Sets the fork process mailbox name
  * \param node_id the current node id
  * \param new_node_id new coming node id
  * \param session session name
  * \param mailbox pointer to where the mailbox name should be written
- * (there must be enough space)
+ *        (there must be enough space)
  */
 static void set_fork_mailbox(int node_id, int new_node_id, char* session, char* mailbox) {
 
@@ -3695,12 +3695,12 @@ static void init(node_t me) {
 
     // set mailbox
     get_mailbox(me->self.id, me->self.mailbox);
-    MSG_mailbox_set_async(me->self.mailbox);
+    MSG_mailbox_set_async(me->self.mailbox);   //TODO : faut-il le faire aussi pour proc_mailbox ?
 
     // set process data
     proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
 
-    proc_data->proc_mailbox = strdup(me->self.mailbox);
+    get_mailbox(me->self.id, proc_data->proc_mailbox);
     proc_data->node = NULL;
     proc_data->task = NULL;
 
@@ -7754,8 +7754,6 @@ int node(int argc, char *argv[]) {
                     req_data_t req = MSG_task_get_data(task_received);
                     ans_data_t ans = (ans_data_t)req;
 
-                    char proc_name[MAILBOX_NAME_SIZE];
-
                     if (strcmp(MSG_task_get_name(task_received), "ans") != 0) {
 
                         // Received request
@@ -7776,11 +7774,10 @@ int node(int argc, char *argv[]) {
                                 set_fork_mailbox(node.self.id,
                                         req->args.cnx_req.new_node_id,
                                         "Cnx_req",
-                                        proc_name);
+                                        proc_data->proc_mailbox);
 
-                                proc_data->proc_mailbox = strdup(proc_name);
-
-                                MSG_process_create(proc_name,
+                                XBT_VERB("Node %d: create fork process", node.self.id);
+                                MSG_process_create(proc_data->proc_mailbox,
                                         proc_handle_task,
                                         proc_data,
                                         MSG_host_self());
@@ -9183,19 +9180,19 @@ int main(int argc, char *argv[]) {
 }
 
 /*
- * \brief son process function
+ * \brief Fork process function
  */
 static int proc_handle_task(int argc, char* argv[]) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
-    char *proc_mailbox = proc_data->proc_mailbox;
 
-    XBT_INFO("Node %d: in son process - mailbox = '%s'",
+    XBT_INFO("Node %d: in fork process - mailbox = '%s'",
             proc_data->node->self.id,
-            proc_mailbox);
+            proc_data->proc_mailbox);
 
     handle_task(proc_data->node, proc_data->task);
 
-    xbt_free(proc_data);
+    XBT_VERB("Node %d: fork process dies", proc_data->node->self.id);
+    MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
     return 0;
 }
