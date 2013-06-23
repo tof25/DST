@@ -2,20 +2,22 @@
 (*top) -->"Periodic Listen"
 
 if "Message received ?" then
-  -left->[No]"Do other things"
+  -right->[No]"Do other things"
   -->"Periodic Listen"
 else
   [Yes]if "" then
-    -right->[Answer]"Send Ack"
+    -left->[Answer]"Send Ack"
     -->"Periodic Listen"
   else
     [Request]if "" then
       -->"Handle Req"
-      -up->"Periodic Listen"
+      --> == BEFORE_RUN ==
     else
       -->"Create proc Req"
-      -up->"Periodic Listen"
+      --> == BEFORE_RUN ==
     endif
+    -->"Run remain tasks"
+    -up->"Periodic Listen"
   endif
 endif
 
