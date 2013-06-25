@@ -660,6 +660,7 @@ static void         set_n_store_infos(node_t me);
 static void         display_preds(node_t me, char log);
 static void         display_rout_table(node_t me, char log);
 static void         get_mailbox(int node_id, char* mailbox);
+static void         get_proc_mailbox(char* proc_mailbox);
 static void         set_fork_mailbox(int node_id, int new_node_id, char* session, char* mailbox);
 static void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
@@ -723,10 +724,15 @@ static msg_error_t send_ans_sync(node_t me,
                                  int new_node_id,
                                  e_task_type_t type,
                                  int recipient_id,
+                                 char* recipient_mailbox,
                                  u_ans_data_t u_ans_data);
 
 static e_val_ret_t broadcast(node_t me, u_req_args_t args);
-static void        send_completed(node_t me, e_task_type_t type, int recipient_id, int new_node_id);
+static void        send_completed(node_t        me,
+                                  e_task_type_t type,
+                                  int           recipient_id,
+                                  char*         recipient_mailbox,
+                                  int           new_node_id);
 
 /*
  =========================== CORE FUNCTIONS ===================================
@@ -1071,11 +1077,22 @@ static void display_rout_table(node_t me, char log) {
  * \brief gets the mailbox name of a node
  * \param node_id node id
  * \param mailbox pointer to where the mailbox name should be written
- * (there must be enough space)
+ * i      (there must be enough space)
  */
 static void get_mailbox(int node_id, char* mailbox) {
 
     snprintf(mailbox, MAILBOX_NAME_SIZE, "%d", node_id);
+}
+
+/**
+ * \brief gets the mailbox name of current process
+ * \param proc_mailbox pointer to where the mailbox name should be written
+ *        (there must be enough space)
+ */
+static void get_proc_mailbox(char* proc_mailbox) {
+
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    snprintf(proc_mailbox, MAILBOX_NAME_SIZE, "%s", proc_data->proc_mailbox);
 }
 
 /**
@@ -1992,7 +2009,8 @@ static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) 
     req_data->sender_id = me->self.id;
     req_data->recipient_id = me->self.id;
 
-    get_mailbox(me->self.id, req_data->answer_to);
+    //get_mailbox(me->self.id, req_data->answer_to);
+    get_proc_mailbox(req_data->answer_to);
     get_mailbox(me->self.id, req_data->sent_to);
 
     req_data->args = args;
@@ -2914,7 +2932,8 @@ static msg_error_t send_msg_sync(node_t me,
 
     // create mailboxes
     get_mailbox(req_data->recipient_id, req_data->sent_to);
-    get_mailbox(req_data->sender_id, req_data->answer_to);
+    get_proc_mailbox(req_data->answer_to);
+    //get_mailbox(req_data->sender_id, req_data->answer_to);
 
     // req_data may be altered during loops
     *cpy_req_data = *req_data;
@@ -3335,7 +3354,8 @@ static msg_error_t send_msg_async(node_t me,
 
     // create mailboxes
     get_mailbox(req_data->recipient_id, req_data->sent_to);
-    get_mailbox(req_data->sender_id, req_data->answer_to);
+    get_proc_mailbox(req_data->answer_to);
+    //get_mailbox(req_data->sender_id, req_data->answer_to);
 
     // create and send task with data
     msg_task_t task_sent = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
@@ -3382,12 +3402,14 @@ static msg_error_t send_msg_async(node_t me,
  * \param new_node_id new involved coming node
  * \param type type of sent task (must match the type of request that is answered)
  * \param recipient_id answer's recipient id
+ * \param recipient_mailbox mailbox name to answer to
  * \param u_answer_data data answered back
  */
 static msg_error_t send_ans_sync(node_t me,
         int new_node_id,
         e_task_type_t type,
         int recipient_id,
+        char* recipient_mailbox,
         u_ans_data_t u_ans_data) {
 
     XBT_IN();
@@ -3405,7 +3427,8 @@ static msg_error_t send_ans_sync(node_t me,
     ans_data->answer = u_ans_data;
 
     // create mailbox
-    get_mailbox(ans_data->recipient_id, ans_data->sent_to);
+    //get_mailbox(ans_data->recipient_id, ans_data->sent_to);
+    snprintf(ans_data->sent_to, MAILBOX_NAME_SIZE, "%s", recipient_mailbox);
 
     // create and send task with answer data
     msg_task_t task_sent = MSG_task_create("ans", COMP_SIZE, COMM_SIZE, ans_data);
@@ -3658,7 +3681,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
  * \param recipient_id the recipient of this message
  * \param new_node_id new involved coming node
  */
-static void send_completed(node_t me, e_task_type_t type, int recipient_id, int new_node_id) {
+static void send_completed(node_t me, e_task_type_t type, int recipient_id, char* recipient_mailbox, int new_node_id) {
 
     XBT_IN();
 
@@ -3666,7 +3689,7 @@ static void send_completed(node_t me, e_task_type_t type, int recipient_id, int 
     answer.handle.val_ret = OK;
     answer.handle.val_ret_id = me->self.id;
 
-    send_ans_sync(me, new_node_id, type, recipient_id, answer);
+    send_ans_sync(me, new_node_id, type, recipient_id, recipient_mailbox, answer);
 
     XBT_VERB("Node %d: '%s Completed' message sent to %d",
             me->self.id,
@@ -7863,13 +7886,14 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
     req_data_t rcv_req = (req_data_t) MSG_task_get_data(*task);
     e_task_type_t type = rcv_req->type;
 
-    XBT_VERB("Node %d - '%c'/%d: Handling task '%s - %s' received from node %d",
+    XBT_VERB("Node %d - '%c'/%d: Handling task '%s - %s' received from node %d - answer to '%s'",
             me->self.id,
             state.active,
             state.new_id,
             MSG_task_get_name(*task),
             debug_msg[type],
-            rcv_req->sender_id);
+            rcv_req->sender_id,
+            rcv_req->answer_to);
 
     u_req_args_t rcv_args;
     if (rcv_req != NULL) {
@@ -7905,6 +7929,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         rcv_args.get_rep.new_node_id,
                         type,
                         rcv_req->sender_id,
+                        rcv_req->answer_to,
                         answer);
 
                 data_req_free(me, &rcv_req);
@@ -7935,6 +7960,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             rcv_args.cnx_req.new_node_id,
                             type,
                             rcv_req->sender_id,
+                            rcv_req->answer_to,
                             answer);
                 }
             }
@@ -7988,6 +8014,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.new_brother_rcv.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);          //TODO : answer n'est pas initialisé
 
             data_req_free(me, &rcv_req);
@@ -8019,6 +8046,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         rcv_args.split_req.new_node_id,
                         type,
                         rcv_req->sender_id,
+                        rcv_req->answer_to,
                         answer);      //TODO : answer n'est pas initialisé
 
                 data_req_free(me, &rcv_req);
@@ -8065,7 +8093,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 // send a 'completed task' message back
                 if (rcv_req->sender_id != me->self.id) {
 
-                    send_completed(me, type, rcv_req->sender_id, rcv_args.cnx_groups.new_node_id);
+                    send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.cnx_groups.new_node_id);
                 }
 
                 data_req_free(me, &rcv_req);
@@ -8118,6 +8146,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.nb_pred.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);
 
             data_req_free(me, &rcv_req);
@@ -8146,7 +8175,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 // send a 'completed task' message back
                 if (rcv_req->sender_id != me->self.id) {
 
-                    send_completed(me, type, rcv_req->sender_id, rcv_args.add_pred.new_node_id);
+                    send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.add_pred.new_node_id);
                 }
 
                 data_req_free(me, &rcv_req);
@@ -8162,7 +8191,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id, rcv_args.del_pred.new_node_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.del_pred.new_node_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -8232,6 +8261,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                         rcv_args.broadcast.new_node_id,
                                         type,
                                         rcv_req->sender_id,
+                                        rcv_req->answer_to,
                                         answer);
 
                                 XBT_VERB("Node %d: answer '%s' sent to %d",
@@ -8353,6 +8383,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                         rcv_args.broadcast.new_node_id,
                                         type,
                                         rcv_req->sender_id,
+                                        rcv_req->answer_to,
                                         answer);
 
                                 XBT_DEBUG("Node %d: answer '%s' sent to %d",
@@ -8397,7 +8428,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                     req_data->type = rcv_args.broadcast.type;
                                     req_data->sender_id = me->self.id;
                                     req_data->recipient_id = me->self.id;
-                                    get_mailbox(me->self.id, req_data->answer_to);
+                                    get_proc_mailbox(req_data->answer_to);
+                                    //get_mailbox(me->self.id, req_data->answer_to);
                                     get_mailbox(me->self.id, req_data->sent_to);
 
                                     if (rcv_args.broadcast.args != NULL) {
@@ -8451,6 +8483,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                     rcv_args.broadcast.new_node_id,
                                     type,
                                     rcv_req->sender_id,
+                                    rcv_req->answer_to,
                                     answer);
 
                             XBT_DEBUG("Node %d: answer '%s' sent to %d",
@@ -8483,6 +8516,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.get_size.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);
 
             data_req_free(me, &rcv_req);
@@ -8501,8 +8535,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
                 //TODO: le premier envoi n'est pas reçu par wait_for_completion. bug ?
                 //on peut tenter d'en ôter un
-                send_completed(me, type, rcv_req->sender_id, rcv_args.del_bro.new_node_id);
-                send_completed(me, type, rcv_req->sender_id, rcv_args.del_bro.new_node_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.del_bro.new_node_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.del_bro.new_node_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -8529,7 +8563,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id, rcv_args.repl_bro.new_node_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.repl_bro.new_node_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -8551,7 +8585,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id, rcv_args.merge.new_node_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.merge.new_node_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -8573,6 +8607,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.broad_merge.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);          //TODO : answer pas initialisé
 
             data_req_free(me, &rcv_req);
@@ -8610,6 +8645,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.merge_req.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);          //TODO : answer pas initialisé
 
             data_req_free(me, &rcv_req);
@@ -8624,7 +8660,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id, rcv_args.set_active.new_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.set_active.new_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -8650,6 +8686,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         rcv_args.set_update.new_id,
                         type,
                         rcv_req->sender_id,
+                        rcv_req->answer_to,
                         answer);
             }
 
@@ -8694,6 +8731,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.is_brother.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);
 
             data_req_free(me, &rcv_req);
@@ -8714,6 +8752,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.transfer.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);
 
             data_req_free(me, &rcv_req);
@@ -8750,7 +8789,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id, rcv_args.add_bro_array.new_node_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.add_bro_array.new_node_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -8769,7 +8808,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id, rcv_args.shift_bro.new_node_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.shift_bro.new_node_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -8786,7 +8825,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id, rcv_args.add_bro.new_node_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.add_bro.new_node_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -8805,7 +8844,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id, rcv_args.cut_node.new_node_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.cut_node.new_node_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -8826,6 +8865,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.br_add_bro_array.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);
 
             data_req_free(me, &rcv_req);
@@ -8845,6 +8885,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.update_upper_stage.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);
 
             data_req_free(me, &rcv_req);
@@ -8860,6 +8901,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.get_new_contact.new_node_id,
                     type,
                     rcv_req->sender_id,
+                    rcv_req->answer_to,
                     answer);
 
             data_req_free(me, &rcv_req);
@@ -8888,6 +8930,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         rcv_args.cs_req.new_node_id,
                         type,
                         rcv_req->sender_id,
+                        rcv_req->answer_to,
                         answer);
             }
 
