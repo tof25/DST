@@ -1654,6 +1654,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     msg_error_t res = MSG_OK;
     int k, idx, nok_id;
     s_state_t state;
+    char proc_mailbox[MAILBOX_NAME_SIZE];
+    get_proc_mailbox(proc_mailbox);
 
     // async answers already received ? (from other recursive calls of this function)
     check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
@@ -1674,7 +1676,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
         display_async_answers(me, 'V');
 
         //res = MSG_task_receive(&task_received, me->self.mailbox);
-        comm = MSG_task_irecv(&task_received, me->self.mailbox);
+        //comm = MSG_task_irecv(&task_received, me->self.mailbox);
+        comm = MSG_task_irecv(&task_received, proc_mailbox);
 
         res = MSG_comm_wait(comm, -1);
 
@@ -7705,6 +7708,8 @@ int node(int argc, char *argv[]) {
                 XBT_VERB("Node %d: Waiting for a task...", node.self.id);
             }
 
+            XBT_DEBUG("Node %d: comm test", node.self.id);
+
             if (!MSG_comm_test(node.comm_received)) {
 
                 // no task was received: make some periodic calls
@@ -7753,12 +7758,12 @@ int node(int argc, char *argv[]) {
                                 args_chk);
                     }
 
-                    XBT_DEBUG("Node %d: nothing else to do: sleep for a while", node.self.id);
+                    //XBT_DEBUG("Node %d: nothing else to do: sleep for a while", node.self.id);
 
                     // simulation time will increase a lot if sleep time is too long
                     MSG_process_sleep(0.2);
 
-                    XBT_DEBUG("Node %d: wake up - comm = %p", node.self.id, node.comm_received);
+                    //XBT_DEBUG("Node %d: wake up - comm = %p", node.self.id, node.comm_received);
                 }
             } else {
 
