@@ -3364,24 +3364,23 @@ static msg_error_t send_msg_async(node_t me,
     msg_task_t task_sent = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
     //MSG_task_set_name(task_sent, "async");
 
-    XBT_VERB("Node %d: Sending async '%s %s' to %d",
+    XBT_VERB("Node %d: Sending async '%s %s' to %d - '%s'",
             req_data->sender_id,
             debug_msg[req_data->type],
             debug_msg[(req_data->type == TASK_BROADCAST ?
                             req_data->args.broadcast.type : TASK_NULL)],
-            req_data->recipient_id);
+            req_data->recipient_id,
+            req_data->sent_to);
 
     // best effort send
     msg_comm_t comm = MSG_task_isend(task_sent, req_data->sent_to);
 
-    // count messages
-    nb_messages[req_data->type]++;
-    if (req_data->type == TASK_BROADCAST) {
-
-        nb_br_messages[req_data->args.broadcast.type]++;
-    }
-
-    msg_error_t res = MSG_comm_wait(comm, -1);
+    msg_error_t res = MSG_OK;
+    /*  TODO : ne pas oublier
+        XBT_DEBUG("Node %d: send async wait ...", me->self.id);
+        res = MSG_comm_wait(comm, -1);
+        XBT_DEBUG("Node %d: send async wait ok", me->self.id);
+    */
 
     xbt_assert(res != MSG_TIMEOUT,
             "Node %d: sending TIMEOUT in send_msg_async to %d",
@@ -3394,6 +3393,12 @@ static msg_error_t send_msg_async(node_t me,
             res,
             recipient_id);
 
+    // count messages
+    nb_messages[req_data->type]++;
+    if (req_data->type == TASK_BROADCAST) {
+
+        nb_br_messages[req_data->args.broadcast.type]++;
+    }
 
     XBT_OUT();
     return MSG_OK;
