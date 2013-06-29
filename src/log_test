@@ -1007,2056 +1007,283 @@ Here's node 200's routing table (with load):
 [ 10.000000][    c-1.me:node      ] Node 121: order = 1, nb_msg = 0
 [ 10.000000][    c-1.me:node      ] Node 121: 'b'/121 - join() ...
 [ 10.000000][    c-1.me:node      ] Node 121: Sending sync request 'Connexion Request ...' to 42 for new node 121
-[ 10.006518][    c-1.me:node      ] Node 121: 'b'/121 - Waiting for sync answer ...
-[ 10.200000][    c-0.me:node      ] Node 42: Task received
-[ 10.200000][    c-0.me:node      ] Node 42: 'a'/42 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 10.200000][    c-0.me:node      ] Node 42: create fork process
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: in fork process - mailbox = '42-Cnx_req-121'
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42 - 'a'/42: Handling task 'sync - Connexion Request' received from node 121 - answer to '121'
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - connection_request() ... - new_node = 121
-[ 10.200000][    c-0.me:42-Cnx_req-121] 
+[ 20.000000][    c-2.me:node      ] Node 14: **** START JOINING DST *** (try number 1)
+[ 20.000000][    c-2.me:node      ] Node 14: Let's join the system ! (via contact 121) - deadline = 20000.000000
+[ 20.000000][    c-2.me:node      ] Node 14: order = 2, nb_msg = 1
+[ 20.000000][    c-2.me:node      ] Node 14: 'b'/14 - join() ...
+[ 20.000000][    c-2.me:node      ] Node 14: Sending sync request 'Connexion Request ...' to 121 for new node 14
+[ 23.016510][    c-1.me:node      ] Node 121: 'b'/121 - Waiting for sync answer ...
+[ 23.200000][    c-0.me:node      ] Node 42: Task received
+[ 23.200000][    c-0.me:node      ] Node 42: 'a'/42 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
+[ 23.200000][    c-0.me:node      ] Node 42: create fork process
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: in fork process - mailbox = '42-Cnx_req-121' - task = 0x10b65fb30 - *task = 0x7fe4d05031d0
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42 - 'a'/42: Handling task 'sync - Connexion Request' received from node 121 - answer to '121'
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - connection_request() ... - new_node = 121
+[ 23.200000][    c-0.me:42-Cnx_req-121] 
 Here's node 42's routing table (with load):
 +--------+--------+--------+--------+--------+  +--------+
 | S0     | 42     |        |        |        |  | 1      |
 +--------+--------+--------+--------+--------+  +--------+
 
 
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - I am the leader
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: in cs_req for new node 121 from 42
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - cs_req = 1 cs_new_id = 121 cs_req_time = 10.200000
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: back to connection_request()
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - in connection_request() - available
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: in set_update()
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - cs_req = 1 cs_new_id = 121 cs_req_time = 10.200000
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: states dynar
-[ 10.200000][    c-0.me:42-Cnx_req-121]  {[0] --> 'a'/42}
-[ 10.200000][    c-0.me:42-Cnx_req-121] 
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - in set_update() : test = 1 - new_id = 121
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'u'/121 end of set_update(): val_ret = 'OK'
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'u'/121 - **** INSERTING NODE 121 ... ****
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 end of cs_rel()
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 - cs_req = 0 cs_new_id = 121 cs_req_time = 10.200000
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 - **** NODE 121 INSERTED ****
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 -  end of connection_request() - val_ret = 'OK', contact = 42
-[ 10.200000][    c-0.me:42-Cnx_req-121] Node 42: {121} Answering 'Connexion Request - ...' to 121 - '121'
-[ 10.200000][    c-0.me:node      ] Node 42: run 4 - 'a'/121 -  remain_tasks length = 0
-[ 10.200000][    c-0.me:node      ] Node 42: Waiting for a task...
-[ 10.206518][    c-1.me:node      ] Node 121: Received message : 'ans - Connexion Request ...' from 42 to 121 -> 121
-[ 10.206518][    c-1.me:node      ] Node 121: run 2 - 'b'/121 -  remain_tasks length = 0
-[ 10.206518][    c-1.me:node      ] Node 121: 'b'/121 - **** GETTING INFOS FROM ITS NEW CONTACT 42 ... ****
-[ 10.206518][    c-1.me:node      ] Node 121: 'b'/121 - contact 42 has 1 stages - add_stage = 0 - nbr_split_stages = 0 - its state was 'u'/121
-[ 10.206518][    c-1.me:node      ] 
-Here's node 121's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 42     | 121    |        |        |  | 2      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 10.206518][    c-1.me:node      ] Node 121: My new contact is 42
-[ 10.206518][    c-1.me:node      ] 
-Here's node 121's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 42     | 121    |        |        |  | 2      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 10.206518][    c-1.me:node      ] Node 121: 'b'/121 - **** DONE (before load_balance) ***
-[ 10.206518][    c-1.me:node      ] Node 121: 'l'/121 - **** START LOAD BALANCE ****
-[ 10.206518][    c-1.me:node      ] Node 121: 'a'/121 end of cs_rel()
-[ 10.206518][    c-1.me:node      ] Node 121: 'a'/121 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 10.206518][    c-1.me:node      ] Node 121: 'a'/121  **** LOAD BALANCE COMPLETED ****
-[ 10.206518][    c-1.me:node      ] 
-Here's node 121's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 42     | 121    |        |        |  | 2      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 10.206518][    c-1.me:node      ] Node 121: 'a'/121 - **** DONE (after load_balance) ***
-[ 10.206518][    c-1.me:node      ] Node 121: nb_msg = 2
-[ 10.206518][    c-1.me:node      ] 
-Here's node 121's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 42     | 121    |        |        |  | 2      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 10.206518][    c-1.me:node      ] Node 121: **** JOIN COMPLETED ****
-[ 10.206518][    c-1.me:node      ] Node 121: 'a'/121 end of cs_rel()
-[ 10.206518][    c-1.me:node      ] Node 121: 'a'/121 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 10.206518][    c-1.me:node      ] Node 121: run 3 - 'a'/121 -  remain_tasks length = 0
-[ 10.206518][    c-0.me:42-Cnx_req-121] in task_free, task = 0x0
-[ 10.206518][    c-0.me:42-Cnx_req-121] Node 42: TASK_CNX_REQ done
-[ 10.206518][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 - cs_req = 0 cs_new_id = 121 cs_req_time = 10.200000
-[ 10.206518][    c-0.me:42-Cnx_req-121] 
-Here's node 42's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 42     | 121    |        |        |  | 2      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 10.206518][    c-0.me:42-Cnx_req-121] Node 42: fork process dies
-[ 10.206518][    c-1.me:node      ] Node 121: Waiting for a task...
-[ 20.000000][    c-2.me:node      ] Node 14: **** START JOINING DST *** (try number 1)
-[ 20.000000][    c-2.me:node      ] Node 14: Let's join the system ! (via contact 121) - deadline = 20000.000000
-[ 20.000000][    c-2.me:node      ] Node 14: order = 2, nb_msg = 2
-[ 20.000000][    c-2.me:node      ] Node 14: 'b'/14 - join() ...
-[ 20.000000][    c-2.me:node      ] Node 14: Sending sync request 'Connexion Request ...' to 121 for new node 14
-[ 20.006518][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 20.206518][    c-1.me:node      ] Node 121: Task received
-[ 20.206518][    c-1.me:node      ] Node 121: 'a'/121 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 20.206518][    c-1.me:node      ] Node 121: create fork process
-[ 20.206518][    c-1.me:121-Cnx_req-14] Node 121: in fork process - mailbox = '121-Cnx_req-14'
-[ 20.206518][    c-1.me:121-Cnx_req-14] Node 121 - 'a'/121: Handling task 'sync - Connexion Request' received from node 14 - answer to '14'
-[ 20.206518][    c-1.me:121-Cnx_req-14] Node 121: 'a'/121 - connection_request() ... - new_node = 14
-[ 20.206518][    c-1.me:121-Cnx_req-14] 
-Here's node 121's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 42     | 121    |        |        |  | 2      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 20.206518][    c-1.me:121-Cnx_req-14] Node 121: 'a'/121 -Transfering 'Connection request' to the leader 42
-[ 20.206518][    c-1.me:121-Cnx_req-14] Node 121: Sending sync request 'Connexion Request ...' to 42 for new node 14
-[ 20.206518][    c-1.me:node      ] Node 121: run 4 - 'a'/121 -  remain_tasks length = 0
-[ 20.206518][    c-1.me:node      ] Node 121: Waiting for a task...
-[ 20.213036][    c-1.me:121-Cnx_req-14] Node 121: 'a'/121 - Waiting for sync answer ...
-[ 20.400000][    c-0.me:node      ] Node 42: Task received
-[ 20.400000][    c-0.me:node      ] Node 42: 'a'/121 - cs_req = 0 cs_new_id = 121 cs_req_time = 10.200000
-[ 20.400000][    c-0.me:node      ] Node 42: create fork process
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: in fork process - mailbox = '42-Cnx_req-14'
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42 - 'a'/121: Handling task 'sync - Connexion Request' received from node 121 - answer to '121-Cnx_req-14'
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - connection_request() ... - new_node = 14
-[ 20.400000][    c-0.me:42-Cnx_req-14] 
-Here's node 42's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 42     | 121    |        |        |  | 2      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - I am the leader
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: in cs_req for new node 14 from 42
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: back to connection_request()
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - in connection_request() - available
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: in set_update()
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: states dynar
-[ 20.400000][    c-0.me:42-Cnx_req-14]  {[0] --> 'a'/121}
-[ 20.400000][    c-0.me:42-Cnx_req-14] 
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - in set_update() : test = 1 - new_id = 14
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: 'u'/14 end of set_update(): val_ret = 'OK'
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: 'u'/14 - **** INSERTING NODE 14 ... ****
-[ 20.400000][    c-0.me:42-Cnx_req-14] Node 42: Sending async 'New Brother Received ...' to 121
-[ 20.400000][    c-0.me:node      ] Node 42: run 4 - 'u'/14 -  remain_tasks length = 0
-[ 20.400000][    c-0.me:node      ] Node 42: Waiting for a task...
-[ 20.406518][    c-0.me:42-Cnx_req-14] Node 42: Waiting for completion ... - ans_cpt = 1
-[ 20.406518][    c-0.me:42-Cnx_req-14] Node 42: dynar of 1 expected answers
-[ 20.406518][    c-0.me:42-Cnx_req-14] elem[0] = {New Brother Received | ... - 121-'121' - 0x0 - new_node 14}
-[ 20.606518][    c-1.me:node      ] Node 121: Task received
-[ 20.606518][    c-1.me:node      ] Node 121: 'a'/121 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 20.606518][    c-1.me:node      ] Node 121 - 'a'/121: Handling task 'async - New Brother Received' received from node 42 - answer to '42-Cnx_req-14'
-[ 20.606518][    c-1.me:node      ] Node 121: {14} Answering 'New Brother Received - ...' to 42 - '42-Cnx_req-14'
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - I am the leader
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: in cs_req for new node 121 from 42
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - cs_req = 1 cs_new_id = 121 cs_req_time = 23.200001
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: back to connection_request()
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - in connection_request() - available
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: in set_update()
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - cs_req = 1 cs_new_id = 121 cs_req_time = 23.200001
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: states dynar
+[ 23.200000][    c-0.me:42-Cnx_req-121]  {[0] --> 'a'/42}
+[ 23.200000][    c-0.me:42-Cnx_req-121] 
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/42 - in set_update() : test = 1 - new_id = 121
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'u'/121 end of set_update(): val_ret = 'OK'
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'u'/121 - **** INSERTING NODE 121 ... ****
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 end of cs_rel()
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 - cs_req = 0 cs_new_id = 121 cs_req_time = 23.200001
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 - **** NODE 121 INSERTED ****
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 -  end of connection_request() - val_ret = 'OK', contact = 42
+[ 23.200000][    c-0.me:42-Cnx_req-121] Node 42: {121} Answering 'Connexion Request - ...' to 121 - '121'
+[ 23.200000][    c-0.me:node      ] Node 42: run 4 - 'a'/121 -  remain_tasks length = 0
+[ 23.200000][    c-0.me:node      ] Node 42: Waiting for a task...
 [ 30.000000][    c-3.me:node      ] Node 163: **** START JOINING DST *** (try number 1)
 [ 30.000000][    c-3.me:node      ] Node 163: Let's join the system ! (via contact 14) - deadline = 20000.000000
-[ 30.000000][    c-3.me:node      ] Node 163: order = 3, nb_msg = 5
+[ 30.000000][    c-3.me:node      ] Node 163: order = 3, nb_msg = 2
 [ 30.000000][    c-3.me:node      ] Node 163: 'b'/163 - join() ...
 [ 30.000000][    c-3.me:node      ] Node 163: Sending sync request 'Connexion Request ...' to 14 for new node 163
-[ 30.006518][    c-2.me:node      ] Node 14: Received message : 'sync - Connexion Request ...' from 163 to 14 -> 14
-[ 30.006518][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Connexion Request' request from 163
-[ 30.006518][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'sync - Connexion Request' received from node 163 - answer to '163'
-[ 30.006518][    c-2.me:node      ] Node 14: 'b'/14 -  store CNX_REQ/163 for later execution
-[ 30.006518][    c-2.me:node      ] Node 14: TASK_CNX_REQ done
-[ 30.006518][    c-2.me:node      ] Node 14: 'b'/14 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 30.006518][    c-2.me:node      ] 
+[ 33.016510][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
+[ 33.016510][    c-1.me:node      ] Node 121: Received message : 'sync - Connexion Request ...' from 14 to 121 -> 121
+[ 33.016510][    c-1.me:node      ] Node 121: This is not the expected answer {'Connexion Request' from 42}, it's a 'Connexion Request' request from 14
+[ 33.016510][    c-1.me:node      ] Node 121 - 'b'/121: Handling task 'sync - Connexion Request' received from node 14 - answer to '14'
+[ 33.016510][    c-1.me:node      ] Node 121: 'b'/121 -  store CNX_REQ/14 for later execution
+[ 33.016510][    c-1.me:node      ] Node 121: TASK_CNX_REQ done
+[ 33.016510][    c-1.me:node      ] Node 121: 'b'/121 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
+[ 33.016510][    c-1.me:node      ] 
+Here's node 121's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 121    |        |        |        |  | 1      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 33.016510][    c-1.me:node      ] Node 121: back to send_sync(). Answer received meanwhile? - dynar length = 1
+[ 33.016510][    c-1.me:node      ] Node 121: No. dynar length = 1
+[ 33.016510][    c-1.me:node      ] Node 121: 'b'/121 - Waiting for sync answer ...
+[ 36.216510][    c-0.me:42-Cnx_req-121] in task_free, task = 0x0
+[ 36.216510][    c-0.me:42-Cnx_req-121] Node 42: TASK_CNX_REQ done
+[ 36.216510][    c-0.me:42-Cnx_req-121] Node 42: 'a'/121 - cs_req = 0 cs_new_id = 121 cs_req_time = 23.200001
+[ 36.216510][    c-0.me:42-Cnx_req-121] 
+Here's node 42's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    |        |        |  | 2      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 36.216510][    c-0.me:42-Cnx_req-121] Node 42: fork process dies - task = 0x10b65fb30 - *task = 0x0
+[ 36.216510][    c-1.me:node      ] Node 121: Received message : 'ans - Connexion Request ...' from 42 to 121 -> 121
+[ 36.216510][    c-1.me:node      ] Node 121: run 2 - 'b'/121 -  remain_tasks length = 1
+[ 36.216510][    c-1.me:node      ] Node 121: task[0] = {'sync - Connexion Request' from 14}
+[ 36.216510][    c-1.me:node      ] Node 121: 'b'/121 - **** GETTING INFOS FROM ITS NEW CONTACT 42 ... ****
+[ 36.216510][    c-1.me:node      ] Node 121: 'b'/121 - contact 42 has 1 stages - add_stage = 0 - nbr_split_stages = 0 - its state was 'u'/121
+[ 36.216510][    c-1.me:node      ] 
+Here's node 121's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    |        |        |  | 2      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 36.216510][    c-1.me:node      ] Node 121: My new contact is 42
+[ 36.216510][    c-1.me:node      ] 
+Here's node 121's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    |        |        |  | 2      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 36.216510][    c-1.me:node      ] Node 121: 'b'/121 - **** DONE (before load_balance) ***
+[ 36.216510][    c-1.me:node      ] Node 121: 'l'/121 - **** START LOAD BALANCE ****
+[ 36.216510][    c-1.me:node      ] Node 121: 'a'/121 end of cs_rel()
+[ 36.216510][    c-1.me:node      ] Node 121: 'a'/121 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
+[ 36.216510][    c-1.me:node      ] Node 121: 'a'/121  **** LOAD BALANCE COMPLETED ****
+[ 36.216510][    c-1.me:node      ] 
+Here's node 121's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    |        |        |  | 2      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 36.216510][    c-1.me:node      ] Node 121: 'a'/121 - **** DONE (after load_balance) ***
+[ 36.216510][    c-1.me:node      ] Node 121: nb_msg = 5
+[ 36.216510][    c-1.me:node      ] 
+Here's node 121's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    |        |        |  | 2      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 36.216510][    c-1.me:node      ] Node 121: **** JOIN COMPLETED ****
+[ 36.216510][    c-1.me:node      ] Node 121: 'a'/121 end of cs_rel()
+[ 36.216510][    c-1.me:node      ] Node 121: 'a'/121 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
+[ 36.216510][    c-1.me:node      ] Node 121: run 3 - 'a'/121 -  remain_tasks length = 1
+[ 36.216510][    c-1.me:node      ] Node 121: task[0] = {'sync - Connexion Request' from 14}
+[ 36.216510][    c-1.me:node      ] Node 121: inside run 3 - 'a'/121 - task[0] is {'sync - Connexion Request' from 14} - nb CNX_REQ = 1
+[ 36.216510][    c-1.me:node      ] Node 121: run 3 - 'a'/121 - task[0] is {'sync - Connexion Request' from 14} - nb CNX_REQ = 1
+[ 36.216510][    c-1.me:node      ] Node 121 - 'a'/121: Handling task 'sync - Connexion Request' received from node 14 - answer to '14'
+[ 36.216510][    c-1.me:node      ] Node 121: 'a'/121 - connection_request() ... - new_node = 14
+[ 36.216510][    c-1.me:node      ] 
+Here's node 121's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    |        |        |  | 2      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 36.216510][    c-1.me:node      ] Node 121: 'a'/121 -Transfering 'Connection request' to the leader 42
+[ 36.216510][    c-1.me:node      ] Node 121: Sending sync request 'Connexion Request ...' to 42 for new node 14
+[ 40.000000][    c-4.me:node      ] Node 62: **** START JOINING DST *** (try number 1)
+[ 40.000000][    c-4.me:node      ] Node 62: Let's join the system ! (via contact 163) - deadline = 20000.000000
+[ 40.000000][    c-4.me:node      ] Node 62: order = 4, nb_msg = 5
+[ 40.000000][    c-4.me:node      ] Node 62: 'b'/62 - join() ...
+[ 40.000000][    c-4.me:node      ] Node 62: Sending sync request 'Connexion Request ...' to 163 for new node 62
+[ 43.016510][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
+[ 43.016510][    c-2.me:node      ] Node 14: Received message : 'sync - Connexion Request ...' from 163 to 14 -> 14
+[ 43.016510][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Connexion Request' request from 163
+[ 43.016510][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'sync - Connexion Request' received from node 163 - answer to '163'
+[ 43.016510][    c-2.me:node      ] Node 14: 'b'/14 -  store CNX_REQ/163 for later execution
+[ 43.016510][    c-2.me:node      ] Node 14: TASK_CNX_REQ done
+[ 43.016510][    c-2.me:node      ] Node 14: 'b'/14 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
+[ 43.016510][    c-2.me:node      ] 
 Here's node 14's routing table (with load):
 +--------+--------+--------+--------+--------+  +--------+
 | S0     | 14     |        |        |        |  | 1      |
 +--------+--------+--------+--------+--------+  +--------+
 
 
-[ 30.006518][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 30.006518][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 30.006518][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 30.006518][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
-[ 40.000000][    c-4.me:node      ] Node 62: **** START JOINING DST *** (try number 1)
-[ 40.000000][    c-4.me:node      ] Node 62: Let's join the system ! (via contact 163) - deadline = 20000.000000
-[ 40.000000][    c-4.me:node      ] Node 62: order = 4, nb_msg = 6
-[ 40.000000][    c-4.me:node      ] Node 62: 'b'/62 - join() ...
-[ 40.000000][    c-4.me:node      ] Node 62: Sending sync request 'Connexion Request ...' to 163 for new node 62
-[ 40.006518][    c-3.me:node      ] Node 163: Received message : 'sync - Connexion Request ...' from 62 to 163 -> 163
-[ 40.006518][    c-3.me:node      ] Node 163: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 62
-[ 40.006518][    c-3.me:node      ] Node 163 - 'b'/163: Handling task 'sync - Connexion Request' received from node 62 - answer to '62'
-[ 40.006518][    c-3.me:node      ] Node 163: 'b'/163 -  store CNX_REQ/62 for later execution
-[ 40.006518][    c-3.me:node      ] Node 163: TASK_CNX_REQ done
-[ 40.006518][    c-3.me:node      ] Node 163: 'b'/163 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 40.006518][    c-3.me:node      ] 
+[ 43.016510][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
+[ 43.016510][    c-2.me:node      ] Node 14: No. dynar length = 1
+[ 43.016510][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
+[ 49.233020][    c-1.me:node      ] Node 121: 'a'/121 - Waiting for sync answer ...
+[ 49.400000][    c-0.me:node      ] Node 42: Task received
+[ 49.400000][    c-0.me:node      ] Node 42: 'a'/121 - cs_req = 0 cs_new_id = 121 cs_req_time = 23.200001
+[ 49.400000][    c-0.me:node      ] Node 42: create fork process
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: in fork process - mailbox = '42-Cnx_req-14' - task = 0x10b65fb30 - *task = 0x7fe4d0503270
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42 - 'a'/121: Handling task 'sync - Connexion Request' received from node 121 - answer to '121'
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - connection_request() ... - new_node = 14
+[ 49.400000][    c-0.me:42-Cnx_req-14] 
+Here's node 42's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    |        |        |  | 2      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - I am the leader
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: in cs_req for new node 14 from 42
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - cs_req = 1 cs_new_id = 14 cs_req_time = 49.400002
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: back to connection_request()
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - in connection_request() - available
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: in set_update()
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - cs_req = 1 cs_new_id = 14 cs_req_time = 49.400002
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: states dynar
+[ 49.400000][    c-0.me:42-Cnx_req-14]  {[0] --> 'a'/121}
+[ 49.400000][    c-0.me:42-Cnx_req-14] 
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: 'a'/121 - in set_update() : test = 1 - new_id = 14
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: 'u'/14 end of set_update(): val_ret = 'OK'
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: 'u'/14 - **** INSERTING NODE 14 ... ****
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: Sending async 'New Brother Received ...' to 121 - '121'
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: Waiting for completion on mailbox '42-Cnx_req-14' ... - ans_cpt = 1
+[ 49.400000][    c-0.me:42-Cnx_req-14] Node 42: dynar of 1 expected answers
+[ 49.400000][    c-0.me:42-Cnx_req-14] elem[0] = {New Brother Received | ... - 121-'121' - 0x0 - new_node 14}
+[ 49.400000][    c-0.me:node      ] Node 42: run 4 - 'u'/14 -  remain_tasks length = 0
+[ 49.400000][    c-0.me:node      ] Node 42: Waiting for a task...
+[ 50.000000][    c-5.me:node      ] Node 253: **** START JOINING DST *** (try number 1)
+[ 50.000000][    c-5.me:node      ] Node 253: Let's join the system ! (via contact 163) - deadline = 20000.000000
+[ 50.000000][    c-5.me:node      ] Node 253: order = 5, nb_msg = 7
+[ 50.000000][    c-5.me:node      ] Node 253: 'b'/253 - join() ...
+[ 50.000000][    c-5.me:node      ] Node 253: Sending sync request 'Connexion Request ...' to 163 for new node 253
+[ 53.016510][    c-4.me:node      ] Node 62: 'b'/62 - Waiting for sync answer ...
+[ 53.016510][    c-3.me:node      ] Node 163: Received message : 'sync - Connexion Request ...' from 62 to 163 -> 163
+[ 53.016510][    c-3.me:node      ] Node 163: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 62
+[ 53.016510][    c-3.me:node      ] Node 163 - 'b'/163: Handling task 'sync - Connexion Request' received from node 62 - answer to '62'
+[ 53.016510][    c-3.me:node      ] Node 163: 'b'/163 -  store CNX_REQ/62 for later execution
+[ 53.016510][    c-3.me:node      ] Node 163: TASK_CNX_REQ done
+[ 53.016510][    c-3.me:node      ] Node 163: 'b'/163 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
+[ 53.016510][    c-3.me:node      ] 
 Here's node 163's routing table (with load):
 +--------+--------+--------+--------+--------+  +--------+
 | S0     | 163    |        |        |        |  | 1      |
 +--------+--------+--------+--------+--------+  +--------+
 
 
-[ 40.006518][    c-3.me:node      ] Node 163: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 40.006518][    c-3.me:node      ] Node 163: No. dynar length = 1
-[ 40.006518][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
-[ 40.006518][    c-4.me:node      ] Node 62: 'b'/62 - Waiting for sync answer ...
-[ 50.000000][    c-5.me:node      ] Node 253: **** START JOINING DST *** (try number 1)
-[ 50.000000][    c-5.me:node      ] Node 253: Let's join the system ! (via contact 163) - deadline = 20000.000000
-[ 50.000000][    c-5.me:node      ] Node 253: order = 5, nb_msg = 7
-[ 50.000000][    c-5.me:node      ] Node 253: 'b'/253 - join() ...
-[ 50.000000][    c-5.me:node      ] Node 253: Sending sync request 'Connexion Request ...' to 163 for new node 253
-[ 50.006518][    c-3.me:node      ] Node 163: Received message : 'sync - Connexion Request ...' from 253 to 163 -> 163
-[ 50.006518][    c-3.me:node      ] Node 163: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 253
-[ 50.006518][    c-3.me:node      ] Node 163: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 50.006518][    c-3.me:node      ] Node 163: No. dynar length = 1
-[ 50.006518][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
-[ 50.006518][    c-5.me:node      ] Node 253: 'b'/253 - Waiting for sync answer ...
+[ 53.016510][    c-3.me:node      ] Node 163: back to send_sync(). Answer received meanwhile? - dynar length = 1
+[ 53.016510][    c-3.me:node      ] Node 163: No. dynar length = 1
+[ 53.016510][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
 [ 60.000000][    c-6.me:node      ] Node 46: **** START JOINING DST *** (try number 1)
 [ 60.000000][    c-6.me:node      ] Node 46: Let's join the system ! (via contact 42) - deadline = 20000.000000
 [ 60.000000][    c-6.me:node      ] Node 46: order = 6, nb_msg = 8
 [ 60.000000][    c-6.me:node      ] Node 46: 'b'/46 - join() ...
 [ 60.000000][    c-6.me:node      ] Node 46: Sending sync request 'Connexion Request ...' to 42 for new node 46
-[ 60.006518][    c-6.me:node      ] Node 46: 'b'/46 - Waiting for sync answer ...
-[ 60.200000][    c-0.me:node      ] Node 42: Task received
-[ 60.200000][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 60.200000][    c-0.me:node      ] Node 42: create fork process
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: in fork process - mailbox = '42-Cnx_req-46'
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42 - 'u'/14: Handling task 'sync - Connexion Request' received from node 46 - answer to '46'
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - connection_request() ... - new_node = 46
-[ 60.200000][    c-0.me:42-Cnx_req-46] 
-Here's node 42's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 42     | 121    | 14     |        |  | 3      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - I am the leader
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: in cs_req for new node 46 from 42
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: back to connection_request()
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - in connection_request() - not available
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 -  end of connection_request() - val_ret = 'UPDATE_NOK', contact = -1
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 -  store CNX_REQ/46 for later execution
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: TASK_CNX_REQ done
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 60.200000][    c-0.me:42-Cnx_req-46] 
-Here's node 42's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 42     | 121    | 14     |        |  | 3      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 60.200000][    c-0.me:42-Cnx_req-46] Node 42: fork process dies
-[ 60.200000][    c-0.me:node      ] Node 42: run 4 - 'u'/14 -  remain_tasks length = 1
-[ 60.200000][    c-0.me:node      ] Node 42: task[0] = {'sync - Connexion Request' from 46}
-[ 60.200000][    c-0.me:node      ] Node 42: Waiting for a task...
+[ 62.416510][    c-1.me:node      ] Node 121: Received message : 'async - New Brother Received ...' from 42 to 121 -> 121
+[ 62.416510][    c-1.me:node      ] Node 121: This is not the expected answer {'Connexion Request' from 42}, it's a 'New Brother Received' request from 42
+[ 62.416510][    c-1.me:node      ] Node 121 - 'a'/121: Handling task 'async - New Brother Received' received from node 42 - answer to '42-Cnx_req-14'
+[ 62.416510][    c-1.me:node      ] Node 121: {14} Answering 'New Brother Received - ...' to 42 - '42-Cnx_req-14'
+[ 63.016510][    c-5.me:node      ] Node 253: 'b'/253 - Waiting for sync answer ...
+[ 63.016510][    c-3.me:node      ] Node 163: Received message : 'sync - Connexion Request ...' from 253 to 163 -> 163
+[ 63.016510][    c-3.me:node      ] Node 163: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 253
+[ 63.016510][    c-3.me:node      ] Node 163: back to send_sync(). Answer received meanwhile? - dynar length = 1
+[ 63.016510][    c-3.me:node      ] Node 163: No. dynar length = 1
+[ 63.016510][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
 [ 70.000000][    c-7.me:node      ] Node 249: **** START JOINING DST *** (try number 1)
 [ 70.000000][    c-7.me:node      ] Node 249: Let's join the system ! (via contact 121) - deadline = 20000.000000
 [ 70.000000][    c-7.me:node      ] Node 249: order = 7, nb_msg = 9
 [ 70.000000][    c-7.me:node      ] Node 249: 'b'/249 - join() ...
 [ 70.000000][    c-7.me:node      ] Node 249: Sending sync request 'Connexion Request ...' to 121 for new node 249
-[ 70.006518][    c-7.me:node      ] Node 249: 'b'/249 - Waiting for sync answer ...
-[ 80.000000][    c-8.me:node      ] Node 49: **** START JOINING DST *** (try number 1)
-[ 80.000000][    c-8.me:node      ] Node 49: Let's join the system ! (via contact 163) - deadline = 20000.000000
-[ 80.000000][    c-8.me:node      ] Node 49: order = 8, nb_msg = 10
-[ 80.000000][    c-8.me:node      ] Node 49: 'b'/49 - join() ...
-[ 80.000000][    c-8.me:node      ] Node 49: Sending sync request 'Connexion Request ...' to 163 for new node 49
-[ 80.006518][    c-3.me:node      ] Node 163: Received message : 'sync - Connexion Request ...' from 49 to 163 -> 163
-[ 80.006518][    c-3.me:node      ] Node 163: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 49
-[ 80.006518][    c-3.me:node      ] Node 163: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 80.006518][    c-3.me:node      ] Node 163: No. dynar length = 1
-[ 80.006518][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
-[ 80.006518][    c-8.me:node      ] Node 49: 'b'/49 - Waiting for sync answer ...
-[ 90.000000][    c-9.me:node      ] Node 119: **** START JOINING DST *** (try number 1)
-[ 90.000000][    c-9.me:node      ] Node 119: Let's join the system ! (via contact 249) - deadline = 20000.000000
-[ 90.000000][    c-9.me:node      ] Node 119: order = 9, nb_msg = 11
-[ 90.000000][    c-9.me:node      ] Node 119: 'b'/119 - join() ...
-[ 90.000000][    c-9.me:node      ] Node 119: Sending sync request 'Connexion Request ...' to 249 for new node 119
-[ 90.006518][    c-7.me:node      ] Node 249: Received message : 'sync - Connexion Request ...' from 119 to 249 -> 249
-[ 90.006518][    c-7.me:node      ] Node 249: This is not the expected answer {'Connexion Request' from 121}, it's a 'Connexion Request' request from 119
-[ 90.006518][    c-7.me:node      ] Node 249 - 'b'/249: Handling task 'sync - Connexion Request' received from node 119 - answer to '119'
-[ 90.006518][    c-7.me:node      ] Node 249: 'b'/249 -  store CNX_REQ/119 for later execution
-[ 90.006518][    c-7.me:node      ] Node 249: TASK_CNX_REQ done
-[ 90.006518][    c-7.me:node      ] Node 249: 'b'/249 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 90.006518][    c-7.me:node      ] 
-Here's node 249's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 249    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 90.006518][    c-7.me:node      ] Node 249: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 90.006518][    c-7.me:node      ] Node 249: No. dynar length = 1
-[ 90.006518][    c-7.me:node      ] Node 249: 'b'/249 - Waiting for sync answer ...
-[ 90.006518][    c-9.me:node      ] Node 119: 'b'/119 - Waiting for sync answer ...
-[ 100.000000][   c-10.me:node      ] Node 246: **** START JOINING DST *** (try number 1)
-[ 100.000000][   c-10.me:node      ] Node 246: Let's join the system ! (via contact 14) - deadline = 20000.000000
-[ 100.000000][   c-10.me:node      ] Node 246: order = 10, nb_msg = 12
-[ 100.000000][   c-10.me:node      ] Node 246: 'b'/246 - join() ...
-[ 100.000000][   c-10.me:node      ] Node 246: Sending sync request 'Connexion Request ...' to 14 for new node 246
-[ 100.006518][    c-2.me:node      ] Node 14: Received message : 'sync - Connexion Request ...' from 246 to 14 -> 14
-[ 100.006518][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Connexion Request' request from 246
-[ 100.006518][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 100.006518][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 100.006518][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 100.006518][   c-10.me:node      ] Node 246: 'b'/246 - Waiting for sync answer ...
-[ 110.000000][   c-11.me:node      ] Node 1: **** START JOINING DST *** (try number 1)
-[ 110.000000][   c-11.me:node      ] Node 1: Let's join the system ! (via contact 49) - deadline = 20000.000000
-[ 110.000000][   c-11.me:node      ] Node 1: order = 11, nb_msg = 13
-[ 110.000000][   c-11.me:node      ] Node 1: 'b'/1 - join() ...
-[ 110.000000][   c-11.me:node      ] Node 1: Sending sync request 'Connexion Request ...' to 49 for new node 1
-[ 110.006518][    c-8.me:node      ] Node 49: Received message : 'sync - Connexion Request ...' from 1 to 49 -> 49
-[ 110.006518][    c-8.me:node      ] Node 49: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 1
-[ 110.006518][    c-8.me:node      ] Node 49 - 'b'/49: Handling task 'sync - Connexion Request' received from node 1 - answer to '1'
-[ 110.006518][    c-8.me:node      ] Node 49: 'b'/49 -  store CNX_REQ/1 for later execution
-[ 110.006518][    c-8.me:node      ] Node 49: TASK_CNX_REQ done
-[ 110.006518][    c-8.me:node      ] Node 49: 'b'/49 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 110.006518][    c-8.me:node      ] 
-Here's node 49's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 49     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 110.006518][    c-8.me:node      ] Node 49: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 110.006518][    c-8.me:node      ] Node 49: No. dynar length = 1
-[ 110.006518][    c-8.me:node      ] Node 49: 'b'/49 - Waiting for sync answer ...
-[ 110.006518][   c-11.me:node      ] Node 1: 'b'/1 - Waiting for sync answer ...
-[ 120.000000][   c-12.me:node      ] Node 182: **** START JOINING DST *** (try number 1)
-[ 120.000000][   c-12.me:node      ] Node 182: Let's join the system ! (via contact 42) - deadline = 20000.000000
-[ 120.000000][   c-12.me:node      ] Node 182: order = 12, nb_msg = 14
-[ 120.000000][   c-12.me:node      ] Node 182: 'b'/182 - join() ...
-[ 120.000000][   c-12.me:node      ] Node 182: Sending sync request 'Connexion Request ...' to 42 for new node 182
-[ 120.006518][    c-0.me:42-Cnx_req-14] Node 42: 'u'/14 - End of wait - ans_cpt = 1
-[ 120.006518][    c-0.me:42-Cnx_req-14] Node 42: Received message  : 'sync - Connexion Request ...' from 182 to 42 -> 42
-[ 120.006518][    c-0.me:42-Cnx_req-14] Node 42: This is not an answer
-[ 120.006518][    c-0.me:42-Cnx_req-14] Node 42: back to wait_for_completion(). Answers received meanwhile ?
-[ 120.006518][    c-0.me:42-Cnx_req-14] Node 42: Waiting for completion ... - ans_cpt = 1
-[ 120.006518][    c-0.me:42-Cnx_req-14] Node 42: dynar of 1 expected answers
-[ 120.006518][    c-0.me:42-Cnx_req-14] elem[0] = {New Brother Received | ... - 121-'121' - 0x0 - new_node 14}
-[ 120.006518][   c-12.me:node      ] Node 182: 'b'/182 - Waiting for sync answer ...
-[ 120.400000][    c-0.me:node      ] Node 42: asks node 14 if cs_req has to be reset
-[ 120.400000][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 120.400000][    c-0.me:node      ] Node 42: Sending async 'Check CS ...' to 14
-[ 120.406518][    c-2.me:node      ] Node 14: Received message : 'async - Check CS ...' from 42 to 14 -> 14
-[ 120.406518][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Check CS' request from 42
-[ 120.406518][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'async - Check CS' received from node 42 - answer to '42'
-[ 120.406518][    c-2.me:node      ] Node 14: TASK_CHECK_CS done
-[ 120.406518][    c-2.me:node      ] 
-Here's node 14's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 14     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 120.406518][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 120.406518][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 120.406518][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 130.000000][   c-13.me:node      ] Node 215: **** START JOINING DST *** (try number 1)
-[ 130.000000][   c-13.me:node      ] Node 215: Let's join the system ! (via contact 253) - deadline = 20000.000000
-[ 130.000000][   c-13.me:node      ] Node 215: order = 13, nb_msg = 16
-[ 130.000000][   c-13.me:node      ] Node 215: 'b'/215 - join() ...
-[ 130.000000][   c-13.me:node      ] Node 215: Sending sync request 'Connexion Request ...' to 253 for new node 215
-[ 130.006518][    c-5.me:node      ] Node 253: Received message : 'sync - Connexion Request ...' from 215 to 253 -> 253
-[ 130.006518][    c-5.me:node      ] Node 253: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 215
-[ 130.006518][    c-5.me:node      ] Node 253 - 'b'/253: Handling task 'sync - Connexion Request' received from node 215 - answer to '215'
-[ 130.006518][    c-5.me:node      ] Node 253: 'b'/253 -  store CNX_REQ/215 for later execution
-[ 130.006518][    c-5.me:node      ] Node 253: TASK_CNX_REQ done
-[ 130.006518][    c-5.me:node      ] Node 253: 'b'/253 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 130.006518][    c-5.me:node      ] 
-Here's node 253's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 253    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 130.006518][    c-5.me:node      ] Node 253: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 130.006518][    c-5.me:node      ] Node 253: No. dynar length = 1
-[ 130.006518][    c-5.me:node      ] Node 253: 'b'/253 - Waiting for sync answer ...
-[ 130.006518][   c-13.me:node      ] Node 215: 'b'/215 - Waiting for sync answer ...
-[ 140.000000][   c-14.me:node      ] Node 16: **** START JOINING DST *** (try number 1)
-[ 140.000000][   c-14.me:node      ] Node 16: Let's join the system ! (via contact 182) - deadline = 20000.000000
-[ 140.000000][   c-14.me:node      ] Node 16: order = 14, nb_msg = 17
-[ 140.000000][   c-14.me:node      ] Node 16: 'b'/16 - join() ...
-[ 140.000000][   c-14.me:node      ] Node 16: Sending sync request 'Connexion Request ...' to 182 for new node 16
-[ 140.006518][   c-12.me:node      ] Node 182: Received message : 'sync - Connexion Request ...' from 16 to 182 -> 182
-[ 140.006518][   c-12.me:node      ] Node 182: This is not the expected answer {'Connexion Request' from 42}, it's a 'Connexion Request' request from 16
-[ 140.006518][   c-12.me:node      ] Node 182 - 'b'/182: Handling task 'sync - Connexion Request' received from node 16 - answer to '16'
-[ 140.006518][   c-12.me:node      ] Node 182: 'b'/182 -  store CNX_REQ/16 for later execution
-[ 140.006518][   c-12.me:node      ] Node 182: TASK_CNX_REQ done
-[ 140.006518][   c-12.me:node      ] Node 182: 'b'/182 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 140.006518][   c-12.me:node      ] 
-Here's node 182's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 182    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 140.006518][   c-12.me:node      ] Node 182: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 140.006518][   c-12.me:node      ] Node 182: No. dynar length = 1
-[ 140.006518][   c-12.me:node      ] Node 182: 'b'/182 - Waiting for sync answer ...
-[ 140.006518][   c-14.me:node      ] Node 16: 'b'/16 - Waiting for sync answer ...
-[ 150.000000][   c-15.me:node      ] Node 120: **** START JOINING DST *** (try number 1)
-[ 150.000000][   c-15.me:node      ] Node 120: Let's join the system ! (via contact 215) - deadline = 20000.000000
-[ 150.000000][   c-15.me:node      ] Node 120: order = 15, nb_msg = 18
-[ 150.000000][   c-15.me:node      ] Node 120: 'b'/120 - join() ...
-[ 150.000000][   c-15.me:node      ] Node 120: Sending sync request 'Connexion Request ...' to 215 for new node 120
-[ 150.006518][   c-13.me:node      ] Node 215: Received message : 'sync - Connexion Request ...' from 120 to 215 -> 215
-[ 150.006518][   c-13.me:node      ] Node 215: This is not the expected answer {'Connexion Request' from 253}, it's a 'Connexion Request' request from 120
-[ 150.006518][   c-13.me:node      ] Node 215 - 'b'/215: Handling task 'sync - Connexion Request' received from node 120 - answer to '120'
-[ 150.006518][   c-13.me:node      ] Node 215: 'b'/215 -  store CNX_REQ/120 for later execution
-[ 150.006518][   c-13.me:node      ] Node 215: TASK_CNX_REQ done
-[ 150.006518][   c-13.me:node      ] Node 215: 'b'/215 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 150.006518][   c-13.me:node      ] 
-Here's node 215's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 215    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 150.006518][   c-13.me:node      ] Node 215: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 150.006518][   c-13.me:node      ] Node 215: No. dynar length = 1
-[ 150.006518][   c-13.me:node      ] Node 215: 'b'/215 - Waiting for sync answer ...
-[ 150.006518][   c-15.me:node      ] Node 120: 'b'/120 - Waiting for sync answer ...
-[ 160.000000][   c-16.me:node      ] Node 171: **** START JOINING DST *** (try number 1)
-[ 160.000000][   c-16.me:node      ] Node 171: Let's join the system ! (via contact 120) - deadline = 20000.000000
-[ 160.000000][   c-16.me:node      ] Node 171: order = 16, nb_msg = 19
-[ 160.000000][   c-16.me:node      ] Node 171: 'b'/171 - join() ...
-[ 160.000000][   c-16.me:node      ] Node 171: Sending sync request 'Connexion Request ...' to 120 for new node 171
-[ 160.006518][   c-15.me:node      ] Node 120: Received message : 'sync - Connexion Request ...' from 171 to 120 -> 120
-[ 160.006518][   c-15.me:node      ] Node 120: This is not the expected answer {'Connexion Request' from 215}, it's a 'Connexion Request' request from 171
-[ 160.006518][   c-15.me:node      ] Node 120 - 'b'/120: Handling task 'sync - Connexion Request' received from node 171 - answer to '171'
-[ 160.006518][   c-15.me:node      ] Node 120: 'b'/120 -  store CNX_REQ/171 for later execution
-[ 160.006518][   c-15.me:node      ] Node 120: TASK_CNX_REQ done
-[ 160.006518][   c-15.me:node      ] Node 120: 'b'/120 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 160.006518][   c-15.me:node      ] 
-Here's node 120's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 120    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 160.006518][   c-15.me:node      ] Node 120: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 160.006518][   c-15.me:node      ] Node 120: No. dynar length = 1
-[ 160.006518][   c-15.me:node      ] Node 120: 'b'/120 - Waiting for sync answer ...
-[ 160.006518][   c-16.me:node      ] Node 171: 'b'/171 - Waiting for sync answer ...
-[ 170.000000][   c-17.me:node      ] Node 33: **** START JOINING DST *** (try number 1)
-[ 170.000000][   c-17.me:node      ] Node 33: Let's join the system ! (via contact 49) - deadline = 20000.000000
-[ 170.000000][   c-17.me:node      ] Node 33: order = 17, nb_msg = 20
-[ 170.000000][   c-17.me:node      ] Node 33: 'b'/33 - join() ...
-[ 170.000000][   c-17.me:node      ] Node 33: Sending sync request 'Connexion Request ...' to 49 for new node 33
-[ 170.006518][    c-8.me:node      ] Node 49: Received message : 'sync - Connexion Request ...' from 33 to 49 -> 49
-[ 170.006518][    c-8.me:node      ] Node 49: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 33
-[ 170.006518][    c-8.me:node      ] Node 49: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 170.006518][    c-8.me:node      ] Node 49: No. dynar length = 1
-[ 170.006518][    c-8.me:node      ] Node 49: 'b'/49 - Waiting for sync answer ...
-[ 170.006518][   c-17.me:node      ] Node 33: 'b'/33 - Waiting for sync answer ...
-[ 180.000000][   c-18.me:node      ] Node 130: **** START JOINING DST *** (try number 1)
-[ 180.000000][   c-18.me:node      ] Node 130: Let's join the system ! (via contact 16) - deadline = 20000.000000
-[ 180.000000][   c-18.me:node      ] Node 130: order = 18, nb_msg = 21
-[ 180.000000][   c-18.me:node      ] Node 130: 'b'/130 - join() ...
-[ 180.000000][   c-18.me:node      ] Node 130: Sending sync request 'Connexion Request ...' to 16 for new node 130
-[ 180.006518][   c-14.me:node      ] Node 16: Received message : 'sync - Connexion Request ...' from 130 to 16 -> 16
-[ 180.006518][   c-14.me:node      ] Node 16: This is not the expected answer {'Connexion Request' from 182}, it's a 'Connexion Request' request from 130
-[ 180.006518][   c-14.me:node      ] Node 16 - 'b'/16: Handling task 'sync - Connexion Request' received from node 130 - answer to '130'
-[ 180.006518][   c-14.me:node      ] Node 16: 'b'/16 -  store CNX_REQ/130 for later execution
-[ 180.006518][   c-14.me:node      ] Node 16: TASK_CNX_REQ done
-[ 180.006518][   c-14.me:node      ] Node 16: 'b'/16 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 180.006518][   c-14.me:node      ] 
-Here's node 16's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 16     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 180.006518][   c-14.me:node      ] Node 16: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 180.006518][   c-14.me:node      ] Node 16: No. dynar length = 1
-[ 180.006518][   c-14.me:node      ] Node 16: 'b'/16 - Waiting for sync answer ...
-[ 180.006518][   c-18.me:node      ] Node 130: 'b'/130 - Waiting for sync answer ...
-[ 190.000000][   c-19.me:node      ] Node 113: **** START JOINING DST *** (try number 1)
-[ 190.000000][   c-19.me:node      ] Node 113: Let's join the system ! (via contact 163) - deadline = 20000.000000
-[ 190.000000][   c-19.me:node      ] Node 113: order = 19, nb_msg = 22
-[ 190.000000][   c-19.me:node      ] Node 113: 'b'/113 - join() ...
-[ 190.000000][   c-19.me:node      ] Node 113: Sending sync request 'Connexion Request ...' to 163 for new node 113
-[ 190.006518][    c-3.me:node      ] Node 163: Received message : 'sync - Connexion Request ...' from 113 to 163 -> 163
-[ 190.006518][    c-3.me:node      ] Node 163: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 113
-[ 190.006518][    c-3.me:node      ] Node 163: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 190.006518][    c-3.me:node      ] Node 163: No. dynar length = 1
-[ 190.006518][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
-[ 190.006518][   c-19.me:node      ] Node 113: 'b'/113 - Waiting for sync answer ...
-[ 200.000000][   c-20.me:node      ] Node 32: **** START JOINING DST *** (try number 1)
-[ 200.000000][   c-20.me:node      ] Node 32: Let's join the system ! (via contact 171) - deadline = 20000.000000
-[ 200.000000][   c-20.me:node      ] Node 32: order = 20, nb_msg = 23
-[ 200.000000][   c-20.me:node      ] Node 32: 'b'/32 - join() ...
-[ 200.000000][   c-20.me:node      ] Node 32: Sending sync request 'Connexion Request ...' to 171 for new node 32
-[ 200.006518][   c-16.me:node      ] Node 171: Received message : 'sync - Connexion Request ...' from 32 to 171 -> 171
-[ 200.006518][   c-16.me:node      ] Node 171: This is not the expected answer {'Connexion Request' from 120}, it's a 'Connexion Request' request from 32
-[ 200.006518][   c-16.me:node      ] Node 171 - 'b'/171: Handling task 'sync - Connexion Request' received from node 32 - answer to '32'
-[ 200.006518][   c-16.me:node      ] Node 171: 'b'/171 -  store CNX_REQ/32 for later execution
-[ 200.006518][   c-16.me:node      ] Node 171: TASK_CNX_REQ done
-[ 200.006518][   c-16.me:node      ] Node 171: 'b'/171 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 200.006518][   c-16.me:node      ] 
-Here's node 171's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 171    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 200.006518][   c-16.me:node      ] Node 171: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 200.006518][   c-16.me:node      ] Node 171: No. dynar length = 1
-[ 200.006518][   c-16.me:node      ] Node 171: 'b'/171 - Waiting for sync answer ...
-[ 200.006518][   c-20.me:node      ] Node 32: 'b'/32 - Waiting for sync answer ...
-[ 210.000000][   c-21.me:node      ] Node 178: **** START JOINING DST *** (try number 1)
-[ 210.000000][   c-21.me:node      ] Node 178: Let's join the system ! (via contact 120) - deadline = 20000.000000
-[ 210.000000][   c-21.me:node      ] Node 178: order = 21, nb_msg = 24
-[ 210.000000][   c-21.me:node      ] Node 178: 'b'/178 - join() ...
-[ 210.000000][   c-21.me:node      ] Node 178: Sending sync request 'Connexion Request ...' to 120 for new node 178
-[ 210.006518][   c-15.me:node      ] Node 120: Received message : 'sync - Connexion Request ...' from 178 to 120 -> 120
-[ 210.006518][   c-15.me:node      ] Node 120: This is not the expected answer {'Connexion Request' from 215}, it's a 'Connexion Request' request from 178
-[ 210.006518][   c-15.me:node      ] Node 120: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 210.006518][   c-15.me:node      ] Node 120: No. dynar length = 1
-[ 210.006518][   c-15.me:node      ] Node 120: 'b'/120 - Waiting for sync answer ...
-[ 210.006518][   c-21.me:node      ] Node 178: 'b'/178 - Waiting for sync answer ...
-[ 220.000000][   c-22.me:node      ] Node 250: **** START JOINING DST *** (try number 1)
-[ 220.000000][   c-22.me:node      ] Node 250: Let's join the system ! (via contact 215) - deadline = 20000.000000
-[ 220.000000][   c-22.me:node      ] Node 250: order = 22, nb_msg = 25
-[ 220.000000][   c-22.me:node      ] Node 250: 'b'/250 - join() ...
-[ 220.000000][   c-22.me:node      ] Node 250: Sending sync request 'Connexion Request ...' to 215 for new node 250
-[ 220.006518][   c-13.me:node      ] Node 215: Received message : 'sync - Connexion Request ...' from 250 to 215 -> 215
-[ 220.006518][   c-13.me:node      ] Node 215: This is not the expected answer {'Connexion Request' from 253}, it's a 'Connexion Request' request from 250
-[ 220.006518][   c-13.me:node      ] Node 215: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 220.006518][   c-13.me:node      ] Node 215: No. dynar length = 1
-[ 220.006518][   c-13.me:node      ] Node 215: 'b'/215 - Waiting for sync answer ...
-[ 220.006518][   c-22.me:node      ] Node 250: 'b'/250 - Waiting for sync answer ...
-[ 220.406518][    c-0.me:node      ] Node 42: asks node 14 if cs_req has to be reset
-[ 220.406518][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 220.406518][    c-0.me:node      ] Node 42: Sending async 'Check CS ...' to 14
-[ 220.413036][    c-2.me:node      ] Node 14: Received message : 'async - Check CS ...' from 42 to 14 -> 14
-[ 220.413036][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Check CS' request from 42
-[ 220.413036][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'async - Check CS' received from node 42 - answer to '42'
-[ 220.413036][    c-2.me:node      ] Node 14: TASK_CHECK_CS done
-[ 220.413036][    c-2.me:node      ] 
-Here's node 14's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 14     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 220.413036][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 220.413036][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 220.413036][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 230.000000][   c-23.me:node      ] Node 25: **** START JOINING DST *** (try number 1)
-[ 230.000000][   c-23.me:node      ] Node 25: Let's join the system ! (via contact 62) - deadline = 20000.000000
-[ 230.000000][   c-23.me:node      ] Node 25: order = 23, nb_msg = 27
-[ 230.000000][   c-23.me:node      ] Node 25: 'b'/25 - join() ...
-[ 230.000000][   c-23.me:node      ] Node 25: Sending sync request 'Connexion Request ...' to 62 for new node 25
-[ 230.006518][    c-4.me:node      ] Node 62: Received message : 'sync - Connexion Request ...' from 25 to 62 -> 62
-[ 230.006518][    c-4.me:node      ] Node 62: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 25
-[ 230.006518][    c-4.me:node      ] Node 62 - 'b'/62: Handling task 'sync - Connexion Request' received from node 25 - answer to '25'
-[ 230.006518][    c-4.me:node      ] Node 62: 'b'/62 -  store CNX_REQ/25 for later execution
-[ 230.006518][    c-4.me:node      ] Node 62: TASK_CNX_REQ done
-[ 230.006518][    c-4.me:node      ] Node 62: 'b'/62 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 230.006518][    c-4.me:node      ] 
-Here's node 62's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 62     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 230.006518][    c-4.me:node      ] Node 62: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 230.006518][    c-4.me:node      ] Node 62: No. dynar length = 1
-[ 230.006518][    c-4.me:node      ] Node 62: 'b'/62 - Waiting for sync answer ...
-[ 230.006518][   c-23.me:node      ] Node 25: 'b'/25 - Waiting for sync answer ...
-[ 240.000000][   c-24.me:node      ] Node 136: **** START JOINING DST *** (try number 1)
-[ 240.000000][   c-24.me:node      ] Node 136: Let's join the system ! (via contact 163) - deadline = 20000.000000
-[ 240.000000][   c-24.me:node      ] Node 136: order = 24, nb_msg = 28
-[ 240.000000][   c-24.me:node      ] Node 136: 'b'/136 - join() ...
-[ 240.000000][   c-24.me:node      ] Node 136: Sending sync request 'Connexion Request ...' to 163 for new node 136
-[ 240.006518][    c-3.me:node      ] Node 163: Received message : 'sync - Connexion Request ...' from 136 to 163 -> 163
-[ 240.006518][    c-3.me:node      ] Node 163: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 136
-[ 240.006518][    c-3.me:node      ] Node 163: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 240.006518][    c-3.me:node      ] Node 163: No. dynar length = 1
-[ 240.006518][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
-[ 240.006518][   c-24.me:node      ] Node 136: 'b'/136 - Waiting for sync answer ...
-[ 250.000000][   c-25.me:node      ] Node 248: **** START JOINING DST *** (try number 1)
-[ 250.000000][   c-25.me:node      ] Node 248: Let's join the system ! (via contact 46) - deadline = 20000.000000
-[ 250.000000][   c-25.me:node      ] Node 248: order = 25, nb_msg = 29
-[ 250.000000][   c-25.me:node      ] Node 248: 'b'/248 - join() ...
-[ 250.000000][   c-25.me:node      ] Node 248: Sending sync request 'Connexion Request ...' to 46 for new node 248
-[ 250.006518][    c-6.me:node      ] Node 46: Received message : 'sync - Connexion Request ...' from 248 to 46 -> 46
-[ 250.006518][    c-6.me:node      ] Node 46: This is not the expected answer {'Connexion Request' from 42}, it's a 'Connexion Request' request from 248
-[ 250.006518][    c-6.me:node      ] Node 46 - 'b'/46: Handling task 'sync - Connexion Request' received from node 248 - answer to '248'
-[ 250.006518][    c-6.me:node      ] Node 46: 'b'/46 -  store CNX_REQ/248 for later execution
-[ 250.006518][    c-6.me:node      ] Node 46: TASK_CNX_REQ done
-[ 250.006518][    c-6.me:node      ] Node 46: 'b'/46 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 250.006518][    c-6.me:node      ] 
-Here's node 46's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 46     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 250.006518][    c-6.me:node      ] Node 46: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 250.006518][    c-6.me:node      ] Node 46: No. dynar length = 1
-[ 250.006518][    c-6.me:node      ] Node 46: 'b'/46 - Waiting for sync answer ...
-[ 250.006518][   c-25.me:node      ] Node 248: 'b'/248 - Waiting for sync answer ...
-[ 260.000000][   c-26.me:node      ] Node 117: **** START JOINING DST *** (try number 1)
-[ 260.000000][   c-26.me:node      ] Node 117: Let's join the system ! (via contact 136) - deadline = 20000.000000
-[ 260.000000][   c-26.me:node      ] Node 117: order = 26, nb_msg = 30
-[ 260.000000][   c-26.me:node      ] Node 117: 'b'/117 - join() ...
-[ 260.000000][   c-26.me:node      ] Node 117: Sending sync request 'Connexion Request ...' to 136 for new node 117
-[ 260.006518][   c-24.me:node      ] Node 136: Received message : 'sync - Connexion Request ...' from 117 to 136 -> 136
-[ 260.006518][   c-24.me:node      ] Node 136: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 117
-[ 260.006518][   c-24.me:node      ] Node 136 - 'b'/136: Handling task 'sync - Connexion Request' received from node 117 - answer to '117'
-[ 260.006518][   c-24.me:node      ] Node 136: 'b'/136 -  store CNX_REQ/117 for later execution
-[ 260.006518][   c-24.me:node      ] Node 136: TASK_CNX_REQ done
-[ 260.006518][   c-24.me:node      ] Node 136: 'b'/136 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 260.006518][   c-24.me:node      ] 
-Here's node 136's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 136    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 260.006518][   c-24.me:node      ] Node 136: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 260.006518][   c-24.me:node      ] Node 136: No. dynar length = 1
-[ 260.006518][   c-24.me:node      ] Node 136: 'b'/136 - Waiting for sync answer ...
-[ 260.006518][   c-26.me:node      ] Node 117: 'b'/117 - Waiting for sync answer ...
-[ 270.000000][   c-27.me:node      ] Node 107: **** START JOINING DST *** (try number 1)
-[ 270.000000][   c-27.me:node      ] Node 107: Let's join the system ! (via contact 250) - deadline = 20000.000000
-[ 270.000000][   c-27.me:node      ] Node 107: order = 27, nb_msg = 31
-[ 270.000000][   c-27.me:node      ] Node 107: 'b'/107 - join() ...
-[ 270.000000][   c-27.me:node      ] Node 107: Sending sync request 'Connexion Request ...' to 250 for new node 107
-[ 270.006518][   c-22.me:node      ] Node 250: Received message : 'sync - Connexion Request ...' from 107 to 250 -> 250
-[ 270.006518][   c-22.me:node      ] Node 250: This is not the expected answer {'Connexion Request' from 215}, it's a 'Connexion Request' request from 107
-[ 270.006518][   c-22.me:node      ] Node 250 - 'b'/250: Handling task 'sync - Connexion Request' received from node 107 - answer to '107'
-[ 270.006518][   c-22.me:node      ] Node 250: 'b'/250 -  store CNX_REQ/107 for later execution
-[ 270.006518][   c-22.me:node      ] Node 250: TASK_CNX_REQ done
-[ 270.006518][   c-22.me:node      ] Node 250: 'b'/250 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 270.006518][   c-22.me:node      ] 
-Here's node 250's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 250    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 270.006518][   c-22.me:node      ] Node 250: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 270.006518][   c-22.me:node      ] Node 250: No. dynar length = 1
-[ 270.006518][   c-22.me:node      ] Node 250: 'b'/250 - Waiting for sync answer ...
-[ 270.006518][   c-27.me:node      ] Node 107: 'b'/107 - Waiting for sync answer ...
-[ 280.000000][   c-28.me:node      ] Node 226: **** START JOINING DST *** (try number 1)
-[ 280.000000][   c-28.me:node      ] Node 226: Let's join the system ! (via contact 130) - deadline = 20000.000000
-[ 280.000000][   c-28.me:node      ] Node 226: order = 28, nb_msg = 32
-[ 280.000000][   c-28.me:node      ] Node 226: 'b'/226 - join() ...
-[ 280.000000][   c-28.me:node      ] Node 226: Sending sync request 'Connexion Request ...' to 130 for new node 226
-[ 280.006518][   c-18.me:node      ] Node 130: Received message : 'sync - Connexion Request ...' from 226 to 130 -> 130
-[ 280.006518][   c-18.me:node      ] Node 130: This is not the expected answer {'Connexion Request' from 16}, it's a 'Connexion Request' request from 226
-[ 280.006518][   c-18.me:node      ] Node 130 - 'b'/130: Handling task 'sync - Connexion Request' received from node 226 - answer to '226'
-[ 280.006518][   c-18.me:node      ] Node 130: 'b'/130 -  store CNX_REQ/226 for later execution
-[ 280.006518][   c-18.me:node      ] Node 130: TASK_CNX_REQ done
-[ 280.006518][   c-18.me:node      ] Node 130: 'b'/130 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 280.006518][   c-18.me:node      ] 
-Here's node 130's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 130    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 280.006518][   c-18.me:node      ] Node 130: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 280.006518][   c-18.me:node      ] Node 130: No. dynar length = 1
-[ 280.006518][   c-18.me:node      ] Node 130: 'b'/130 - Waiting for sync answer ...
-[ 280.006518][   c-28.me:node      ] Node 226: 'b'/226 - Waiting for sync answer ...
-[ 290.000000][   c-29.me:node      ] Node 232: **** START JOINING DST *** (try number 1)
-[ 290.000000][   c-29.me:node      ] Node 232: Let's join the system ! (via contact 248) - deadline = 20000.000000
-[ 290.000000][   c-29.me:node      ] Node 232: order = 29, nb_msg = 33
-[ 290.000000][   c-29.me:node      ] Node 232: 'b'/232 - join() ...
-[ 290.000000][   c-29.me:node      ] Node 232: Sending sync request 'Connexion Request ...' to 248 for new node 232
-[ 290.006518][   c-25.me:node      ] Node 248: Received message : 'sync - Connexion Request ...' from 232 to 248 -> 248
-[ 290.006518][   c-25.me:node      ] Node 248: This is not the expected answer {'Connexion Request' from 46}, it's a 'Connexion Request' request from 232
-[ 290.006518][   c-25.me:node      ] Node 248 - 'b'/248: Handling task 'sync - Connexion Request' received from node 232 - answer to '232'
-[ 290.006518][   c-25.me:node      ] Node 248: 'b'/248 -  store CNX_REQ/232 for later execution
-[ 290.006518][   c-25.me:node      ] Node 248: TASK_CNX_REQ done
-[ 290.006518][   c-25.me:node      ] Node 248: 'b'/248 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 290.006518][   c-25.me:node      ] 
-Here's node 248's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 248    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 290.006518][   c-25.me:node      ] Node 248: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 290.006518][   c-25.me:node      ] Node 248: No. dynar length = 1
-[ 290.006518][   c-25.me:node      ] Node 248: 'b'/248 - Waiting for sync answer ...
-[ 290.006518][   c-29.me:node      ] Node 232: 'b'/232 - Waiting for sync answer ...
-[ 300.000000][   c-30.me:node      ] Node 124: **** START JOINING DST *** (try number 1)
-[ 300.000000][   c-30.me:node      ] Node 124: Let's join the system ! (via contact 249) - deadline = 20000.000000
-[ 300.000000][   c-30.me:node      ] Node 124: order = 30, nb_msg = 34
-[ 300.000000][   c-30.me:node      ] Node 124: 'b'/124 - join() ...
-[ 300.000000][   c-30.me:node      ] Node 124: Sending sync request 'Connexion Request ...' to 249 for new node 124
-[ 300.006518][    c-7.me:node      ] Node 249: Received message : 'sync - Connexion Request ...' from 124 to 249 -> 249
-[ 300.006518][    c-7.me:node      ] Node 249: This is not the expected answer {'Connexion Request' from 121}, it's a 'Connexion Request' request from 124
-[ 300.006518][    c-7.me:node      ] Node 249: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 300.006518][    c-7.me:node      ] Node 249: No. dynar length = 1
-[ 300.006518][    c-7.me:node      ] Node 249: 'b'/249 - Waiting for sync answer ...
-[ 300.006518][   c-30.me:node      ] Node 124: 'b'/124 - Waiting for sync answer ...
-[ 310.000000][   c-31.me:node      ] Node 64: **** START JOINING DST *** (try number 1)
-[ 310.000000][   c-31.me:node      ] Node 64: Let's join the system ! (via contact 248) - deadline = 20000.000000
-[ 310.000000][   c-31.me:node      ] Node 64: order = 31, nb_msg = 35
-[ 310.000000][   c-31.me:node      ] Node 64: 'b'/64 - join() ...
-[ 310.000000][   c-31.me:node      ] Node 64: Sending sync request 'Connexion Request ...' to 248 for new node 64
-[ 310.006518][   c-25.me:node      ] Node 248: Received message : 'sync - Connexion Request ...' from 64 to 248 -> 248
-[ 310.006518][   c-25.me:node      ] Node 248: This is not the expected answer {'Connexion Request' from 46}, it's a 'Connexion Request' request from 64
-[ 310.006518][   c-25.me:node      ] Node 248: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 310.006518][   c-25.me:node      ] Node 248: No. dynar length = 1
-[ 310.006518][   c-25.me:node      ] Node 248: 'b'/248 - Waiting for sync answer ...
-[ 310.006518][   c-31.me:node      ] Node 64: 'b'/64 - Waiting for sync answer ...
-[ 320.000000][   c-32.me:node      ] Node 98: **** START JOINING DST *** (try number 1)
-[ 320.000000][   c-32.me:node      ] Node 98: Let's join the system ! (via contact 14) - deadline = 20000.000000
-[ 320.000000][   c-32.me:node      ] Node 98: order = 32, nb_msg = 36
-[ 320.000000][   c-32.me:node      ] Node 98: 'b'/98 - join() ...
-[ 320.000000][   c-32.me:node      ] Node 98: Sending sync request 'Connexion Request ...' to 14 for new node 98
-[ 320.006518][    c-2.me:node      ] Node 14: Received message : 'sync - Connexion Request ...' from 98 to 14 -> 14
-[ 320.006518][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Connexion Request' request from 98
-[ 320.006518][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 320.006518][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 320.006518][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 320.006518][   c-32.me:node      ] Node 98: 'b'/98 - Waiting for sync answer ...
-[ 320.413036][    c-0.me:node      ] Node 42: asks node 14 if cs_req has to be reset
-[ 320.413036][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 320.413036][    c-0.me:node      ] Node 42: Sending async 'Check CS ...' to 14
-[ 320.419554][    c-2.me:node      ] Node 14: Received message : 'async - Check CS ...' from 42 to 14 -> 14
-[ 320.419554][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Check CS' request from 42
-[ 320.419554][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'async - Check CS' received from node 42 - answer to '42'
-[ 320.419554][    c-2.me:node      ] Node 14: TASK_CHECK_CS done
-[ 320.419554][    c-2.me:node      ] 
-Here's node 14's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 14     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 320.419554][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 320.419554][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 320.419554][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 330.000000][   c-33.me:node      ] Node 177: **** START JOINING DST *** (try number 1)
-[ 330.000000][   c-33.me:node      ] Node 177: Let's join the system ! (via contact 182) - deadline = 20000.000000
-[ 330.000000][   c-33.me:node      ] Node 177: order = 33, nb_msg = 38
-[ 330.000000][   c-33.me:node      ] Node 177: 'b'/177 - join() ...
-[ 330.000000][   c-33.me:node      ] Node 177: Sending sync request 'Connexion Request ...' to 182 for new node 177
-[ 330.006518][   c-12.me:node      ] Node 182: Received message : 'sync - Connexion Request ...' from 177 to 182 -> 182
-[ 330.006518][   c-12.me:node      ] Node 182: This is not the expected answer {'Connexion Request' from 42}, it's a 'Connexion Request' request from 177
-[ 330.006518][   c-12.me:node      ] Node 182: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 330.006518][   c-12.me:node      ] Node 182: No. dynar length = 1
-[ 330.006518][   c-12.me:node      ] Node 182: 'b'/182 - Waiting for sync answer ...
-[ 330.006518][   c-33.me:node      ] Node 177: 'b'/177 - Waiting for sync answer ...
-[ 340.000000][   c-34.me:node      ] Node 35: **** START JOINING DST *** (try number 1)
-[ 340.000000][   c-34.me:node      ] Node 35: Let's join the system ! (via contact 130) - deadline = 20000.000000
-[ 340.000000][   c-34.me:node      ] Node 35: order = 34, nb_msg = 39
-[ 340.000000][   c-34.me:node      ] Node 35: 'b'/35 - join() ...
-[ 340.000000][   c-34.me:node      ] Node 35: Sending sync request 'Connexion Request ...' to 130 for new node 35
-[ 340.006518][   c-18.me:node      ] Node 130: Received message : 'sync - Connexion Request ...' from 35 to 130 -> 130
-[ 340.006518][   c-18.me:node      ] Node 130: This is not the expected answer {'Connexion Request' from 16}, it's a 'Connexion Request' request from 35
-[ 340.006518][   c-18.me:node      ] Node 130: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 340.006518][   c-18.me:node      ] Node 130: No. dynar length = 1
-[ 340.006518][   c-18.me:node      ] Node 130: 'b'/130 - Waiting for sync answer ...
-[ 340.006518][   c-34.me:node      ] Node 35: 'b'/35 - Waiting for sync answer ...
-[ 350.000000][   c-35.me:node      ] Node 244: **** START JOINING DST *** (try number 1)
-[ 350.000000][   c-35.me:node      ] Node 244: Let's join the system ! (via contact 120) - deadline = 20000.000000
-[ 350.000000][   c-35.me:node      ] Node 244: order = 35, nb_msg = 40
-[ 350.000000][   c-35.me:node      ] Node 244: 'b'/244 - join() ...
-[ 350.000000][   c-35.me:node      ] Node 244: Sending sync request 'Connexion Request ...' to 120 for new node 244
-[ 350.006518][   c-15.me:node      ] Node 120: Received message : 'sync - Connexion Request ...' from 244 to 120 -> 120
-[ 350.006518][   c-15.me:node      ] Node 120: This is not the expected answer {'Connexion Request' from 215}, it's a 'Connexion Request' request from 244
-[ 350.006518][   c-15.me:node      ] Node 120: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 350.006518][   c-15.me:node      ] Node 120: No. dynar length = 1
-[ 350.006518][   c-15.me:node      ] Node 120: 'b'/120 - Waiting for sync answer ...
-[ 350.006518][   c-35.me:node      ] Node 244: 'b'/244 - Waiting for sync answer ...
-[ 360.000000][   c-36.me:node      ] Node 231: **** START JOINING DST *** (try number 1)
-[ 360.000000][   c-36.me:node      ] Node 231: Let's join the system ! (via contact 182) - deadline = 20000.000000
-[ 360.000000][   c-36.me:node      ] Node 231: order = 36, nb_msg = 41
-[ 360.000000][   c-36.me:node      ] Node 231: 'b'/231 - join() ...
-[ 360.000000][   c-36.me:node      ] Node 231: Sending sync request 'Connexion Request ...' to 182 for new node 231
-[ 360.006518][   c-12.me:node      ] Node 182: Received message : 'sync - Connexion Request ...' from 231 to 182 -> 182
-[ 360.006518][   c-12.me:node      ] Node 182: This is not the expected answer {'Connexion Request' from 42}, it's a 'Connexion Request' request from 231
-[ 360.006518][   c-12.me:node      ] Node 182: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 360.006518][   c-12.me:node      ] Node 182: No. dynar length = 1
-[ 360.006518][   c-12.me:node      ] Node 182: 'b'/182 - Waiting for sync answer ...
-[ 360.006518][   c-36.me:node      ] Node 231: 'b'/231 - Waiting for sync answer ...
-[ 370.000000][   c-37.me:node      ] Node 213: **** START JOINING DST *** (try number 1)
-[ 370.000000][   c-37.me:node      ] Node 213: Let's join the system ! (via contact 1) - deadline = 20000.000000
-[ 370.000000][   c-37.me:node      ] Node 213: order = 37, nb_msg = 42
-[ 370.000000][   c-37.me:node      ] Node 213: 'b'/213 - join() ...
-[ 370.000000][   c-37.me:node      ] Node 213: Sending sync request 'Connexion Request ...' to 1 for new node 213
-[ 370.006518][   c-11.me:node      ] Node 1: Received message : 'sync - Connexion Request ...' from 213 to 1 -> 1
-[ 370.006518][   c-11.me:node      ] Node 1: This is not the expected answer {'Connexion Request' from 49}, it's a 'Connexion Request' request from 213
-[ 370.006518][   c-11.me:node      ] Node 1 - 'b'/1: Handling task 'sync - Connexion Request' received from node 213 - answer to '213'
-[ 370.006518][   c-11.me:node      ] Node 1: 'b'/1 -  store CNX_REQ/213 for later execution
-[ 370.006518][   c-11.me:node      ] Node 1: TASK_CNX_REQ done
-[ 370.006518][   c-11.me:node      ] Node 1: 'b'/1 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 370.006518][   c-11.me:node      ] 
-Here's node 1's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 1      |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 370.006518][   c-11.me:node      ] Node 1: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 370.006518][   c-11.me:node      ] Node 1: No. dynar length = 1
-[ 370.006518][   c-11.me:node      ] Node 1: 'b'/1 - Waiting for sync answer ...
-[ 370.006518][   c-37.me:node      ] Node 213: 'b'/213 - Waiting for sync answer ...
-[ 380.000000][   c-38.me:node      ] Node 132: **** START JOINING DST *** (try number 1)
-[ 380.000000][   c-38.me:node      ] Node 132: Let's join the system ! (via contact 49) - deadline = 20000.000000
-[ 380.000000][   c-38.me:node      ] Node 132: order = 38, nb_msg = 43
-[ 380.000000][   c-38.me:node      ] Node 132: 'b'/132 - join() ...
-[ 380.000000][   c-38.me:node      ] Node 132: Sending sync request 'Connexion Request ...' to 49 for new node 132
-[ 380.006518][    c-8.me:node      ] Node 49: Received message : 'sync - Connexion Request ...' from 132 to 49 -> 49
-[ 380.006518][    c-8.me:node      ] Node 49: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 132
-[ 380.006518][    c-8.me:node      ] Node 49: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 380.006518][    c-8.me:node      ] Node 49: No. dynar length = 1
-[ 380.006518][    c-8.me:node      ] Node 49: 'b'/49 - Waiting for sync answer ...
-[ 380.006518][   c-38.me:node      ] Node 132: 'b'/132 - Waiting for sync answer ...
-[ 390.000000][   c-39.me:node      ] Node 187: **** START JOINING DST *** (try number 1)
-[ 390.000000][   c-39.me:node      ] Node 187: Let's join the system ! (via contact 119) - deadline = 20000.000000
-[ 390.000000][   c-39.me:node      ] Node 187: order = 39, nb_msg = 44
-[ 390.000000][   c-39.me:node      ] Node 187: 'b'/187 - join() ...
-[ 390.000000][   c-39.me:node      ] Node 187: Sending sync request 'Connexion Request ...' to 119 for new node 187
-[ 390.006518][    c-9.me:node      ] Node 119: Received message : 'sync - Connexion Request ...' from 187 to 119 -> 119
-[ 390.006518][    c-9.me:node      ] Node 119: This is not the expected answer {'Connexion Request' from 249}, it's a 'Connexion Request' request from 187
-[ 390.006518][    c-9.me:node      ] Node 119 - 'b'/119: Handling task 'sync - Connexion Request' received from node 187 - answer to '187'
-[ 390.006518][    c-9.me:node      ] Node 119: 'b'/119 -  store CNX_REQ/187 for later execution
-[ 390.006518][    c-9.me:node      ] Node 119: TASK_CNX_REQ done
-[ 390.006518][    c-9.me:node      ] Node 119: 'b'/119 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 390.006518][    c-9.me:node      ] 
-Here's node 119's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 119    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 390.006518][    c-9.me:node      ] Node 119: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 390.006518][    c-9.me:node      ] Node 119: No. dynar length = 1
-[ 390.006518][    c-9.me:node      ] Node 119: 'b'/119 - Waiting for sync answer ...
-[ 390.006518][   c-39.me:node      ] Node 187: 'b'/187 - Waiting for sync answer ...
-[ 400.000000][   c-40.me:node      ] Node 87: **** START JOINING DST *** (try number 1)
-[ 400.000000][   c-40.me:node      ] Node 87: Let's join the system ! (via contact 14) - deadline = 20000.000000
-[ 400.000000][   c-40.me:node      ] Node 87: order = 40, nb_msg = 45
-[ 400.000000][   c-40.me:node      ] Node 87: 'b'/87 - join() ...
-[ 400.000000][   c-40.me:node      ] Node 87: Sending sync request 'Connexion Request ...' to 14 for new node 87
-[ 400.006518][    c-2.me:node      ] Node 14: Received message : 'sync - Connexion Request ...' from 87 to 14 -> 14
-[ 400.006518][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Connexion Request' request from 87
-[ 400.006518][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 400.006518][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 400.006518][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 400.006518][   c-40.me:node      ] Node 87: 'b'/87 - Waiting for sync answer ...
-[ 410.000000][   c-41.me:node      ] Node 8: **** START JOINING DST *** (try number 1)
-[ 410.000000][   c-41.me:node      ] Node 8: Let's join the system ! (via contact 117) - deadline = 20000.000000
-[ 410.000000][   c-41.me:node      ] Node 8: order = 41, nb_msg = 46
-[ 410.000000][   c-41.me:node      ] Node 8: 'b'/8 - join() ...
-[ 410.000000][   c-41.me:node      ] Node 8: Sending sync request 'Connexion Request ...' to 117 for new node 8
-[ 410.006518][   c-26.me:node      ] Node 117: Received message : 'sync - Connexion Request ...' from 8 to 117 -> 117
-[ 410.006518][   c-26.me:node      ] Node 117: This is not the expected answer {'Connexion Request' from 136}, it's a 'Connexion Request' request from 8
-[ 410.006518][   c-26.me:node      ] Node 117 - 'b'/117: Handling task 'sync - Connexion Request' received from node 8 - answer to '8'
-[ 410.006518][   c-26.me:node      ] Node 117: 'b'/117 -  store CNX_REQ/8 for later execution
-[ 410.006518][   c-26.me:node      ] Node 117: TASK_CNX_REQ done
-[ 410.006518][   c-26.me:node      ] Node 117: 'b'/117 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 410.006518][   c-26.me:node      ] 
-Here's node 117's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 117    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 410.006518][   c-26.me:node      ] Node 117: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 410.006518][   c-26.me:node      ] Node 117: No. dynar length = 1
-[ 410.006518][   c-26.me:node      ] Node 117: 'b'/117 - Waiting for sync answer ...
-[ 410.006518][   c-41.me:node      ] Node 8: 'b'/8 - Waiting for sync answer ...
-[ 420.000000][   c-42.me:node      ] Node 109: **** START JOINING DST *** (try number 1)
-[ 420.000000][   c-42.me:node      ] Node 109: Let's join the system ! (via contact 182) - deadline = 20000.000000
-[ 420.000000][   c-42.me:node      ] Node 109: order = 42, nb_msg = 47
-[ 420.000000][   c-42.me:node      ] Node 109: 'b'/109 - join() ...
-[ 420.000000][   c-42.me:node      ] Node 109: Sending sync request 'Connexion Request ...' to 182 for new node 109
-[ 420.006518][   c-12.me:node      ] Node 182: Received message : 'sync - Connexion Request ...' from 109 to 182 -> 182
-[ 420.006518][   c-12.me:node      ] Node 182: This is not the expected answer {'Connexion Request' from 42}, it's a 'Connexion Request' request from 109
-[ 420.006518][   c-12.me:node      ] Node 182: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 420.006518][   c-12.me:node      ] Node 182: No. dynar length = 1
-[ 420.006518][   c-12.me:node      ] Node 182: 'b'/182 - Waiting for sync answer ...
-[ 420.006518][   c-42.me:node      ] Node 109: 'b'/109 - Waiting for sync answer ...
-[ 420.419554][    c-0.me:node      ] Node 42: asks node 14 if cs_req has to be reset
-[ 420.419554][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 420.419554][    c-0.me:node      ] Node 42: Sending async 'Check CS ...' to 14
-[ 420.426072][    c-2.me:node      ] Node 14: Received message : 'async - Check CS ...' from 42 to 14 -> 14
-[ 420.426072][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Check CS' request from 42
-[ 420.426072][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'async - Check CS' received from node 42 - answer to '42'
-[ 420.426072][    c-2.me:node      ] Node 14: TASK_CHECK_CS done
-[ 420.426072][    c-2.me:node      ] 
-Here's node 14's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 14     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 420.426072][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 420.426072][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 420.426072][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 430.000000][   c-43.me:node      ] Node 175: **** START JOINING DST *** (try number 1)
-[ 430.000000][   c-43.me:node      ] Node 175: Let's join the system ! (via contact 226) - deadline = 20000.000000
-[ 430.000000][   c-43.me:node      ] Node 175: order = 43, nb_msg = 49
-[ 430.000000][   c-43.me:node      ] Node 175: 'b'/175 - join() ...
-[ 430.000000][   c-43.me:node      ] Node 175: Sending sync request 'Connexion Request ...' to 226 for new node 175
-[ 430.006518][   c-28.me:node      ] Node 226: Received message : 'sync - Connexion Request ...' from 175 to 226 -> 226
-[ 430.006518][   c-28.me:node      ] Node 226: This is not the expected answer {'Connexion Request' from 130}, it's a 'Connexion Request' request from 175
-[ 430.006518][   c-28.me:node      ] Node 226 - 'b'/226: Handling task 'sync - Connexion Request' received from node 175 - answer to '175'
-[ 430.006518][   c-28.me:node      ] Node 226: 'b'/226 -  store CNX_REQ/175 for later execution
-[ 430.006518][   c-28.me:node      ] Node 226: TASK_CNX_REQ done
-[ 430.006518][   c-28.me:node      ] Node 226: 'b'/226 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 430.006518][   c-28.me:node      ] 
-Here's node 226's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 226    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 430.006518][   c-28.me:node      ] Node 226: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 430.006518][   c-28.me:node      ] Node 226: No. dynar length = 1
-[ 430.006518][   c-28.me:node      ] Node 226: 'b'/226 - Waiting for sync answer ...
-[ 430.006518][   c-43.me:node      ] Node 175: 'b'/175 - Waiting for sync answer ...
-[ 440.000000][   c-44.me:node      ] Node 28: **** START JOINING DST *** (try number 1)
-[ 440.000000][   c-44.me:node      ] Node 28: Let's join the system ! (via contact 120) - deadline = 20000.000000
-[ 440.000000][   c-44.me:node      ] Node 28: order = 44, nb_msg = 50
-[ 440.000000][   c-44.me:node      ] Node 28: 'b'/28 - join() ...
-[ 440.000000][   c-44.me:node      ] Node 28: Sending sync request 'Connexion Request ...' to 120 for new node 28
-[ 440.006518][   c-15.me:node      ] Node 120: Received message : 'sync - Connexion Request ...' from 28 to 120 -> 120
-[ 440.006518][   c-15.me:node      ] Node 120: This is not the expected answer {'Connexion Request' from 215}, it's a 'Connexion Request' request from 28
-[ 440.006518][   c-15.me:node      ] Node 120: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 440.006518][   c-15.me:node      ] Node 120: No. dynar length = 1
-[ 440.006518][   c-15.me:node      ] Node 120: 'b'/120 - Waiting for sync answer ...
-[ 440.006518][   c-44.me:node      ] Node 28: 'b'/28 - Waiting for sync answer ...
-[ 450.000000][   c-45.me:node      ] Node 40: **** START JOINING DST *** (try number 1)
-[ 450.000000][   c-45.me:node      ] Node 40: Let's join the system ! (via contact 25) - deadline = 20000.000000
-[ 450.000000][   c-45.me:node      ] Node 40: order = 45, nb_msg = 51
-[ 450.000000][   c-45.me:node      ] Node 40: 'b'/40 - join() ...
-[ 450.000000][   c-45.me:node      ] Node 40: Sending sync request 'Connexion Request ...' to 25 for new node 40
-[ 450.006518][   c-23.me:node      ] Node 25: Received message : 'sync - Connexion Request ...' from 40 to 25 -> 25
-[ 450.006518][   c-23.me:node      ] Node 25: This is not the expected answer {'Connexion Request' from 62}, it's a 'Connexion Request' request from 40
-[ 450.006518][   c-23.me:node      ] Node 25 - 'b'/25: Handling task 'sync - Connexion Request' received from node 40 - answer to '40'
-[ 450.006518][   c-23.me:node      ] Node 25: 'b'/25 -  store CNX_REQ/40 for later execution
-[ 450.006518][   c-23.me:node      ] Node 25: TASK_CNX_REQ done
-[ 450.006518][   c-23.me:node      ] Node 25: 'b'/25 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 450.006518][   c-23.me:node      ] 
-Here's node 25's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 25     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 450.006518][   c-23.me:node      ] Node 25: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 450.006518][   c-23.me:node      ] Node 25: No. dynar length = 1
-[ 450.006518][   c-23.me:node      ] Node 25: 'b'/25 - Waiting for sync answer ...
-[ 450.006518][   c-45.me:node      ] Node 40: 'b'/40 - Waiting for sync answer ...
-[ 460.000000][   c-46.me:node      ] Node 172: **** START JOINING DST *** (try number 1)
-[ 460.000000][   c-46.me:node      ] Node 172: Let's join the system ! (via contact 117) - deadline = 20000.000000
-[ 460.000000][   c-46.me:node      ] Node 172: order = 46, nb_msg = 52
-[ 460.000000][   c-46.me:node      ] Node 172: 'b'/172 - join() ...
-[ 460.000000][   c-46.me:node      ] Node 172: Sending sync request 'Connexion Request ...' to 117 for new node 172
-[ 460.006518][   c-26.me:node      ] Node 117: Received message : 'sync - Connexion Request ...' from 172 to 117 -> 117
-[ 460.006518][   c-26.me:node      ] Node 117: This is not the expected answer {'Connexion Request' from 136}, it's a 'Connexion Request' request from 172
-[ 460.006518][   c-26.me:node      ] Node 117: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 460.006518][   c-26.me:node      ] Node 117: No. dynar length = 1
-[ 460.006518][   c-26.me:node      ] Node 117: 'b'/117 - Waiting for sync answer ...
-[ 460.006518][   c-46.me:node      ] Node 172: 'b'/172 - Waiting for sync answer ...
-[ 470.000000][   c-47.me:node      ] Node 164: **** START JOINING DST *** (try number 1)
-[ 470.000000][   c-47.me:node      ] Node 164: Let's join the system ! (via contact 175) - deadline = 20000.000000
-[ 470.000000][   c-47.me:node      ] Node 164: order = 47, nb_msg = 53
-[ 470.000000][   c-47.me:node      ] Node 164: 'b'/164 - join() ...
-[ 470.000000][   c-47.me:node      ] Node 164: Sending sync request 'Connexion Request ...' to 175 for new node 164
-[ 470.006518][   c-43.me:node      ] Node 175: Received message : 'sync - Connexion Request ...' from 164 to 175 -> 175
-[ 470.006518][   c-43.me:node      ] Node 175: This is not the expected answer {'Connexion Request' from 226}, it's a 'Connexion Request' request from 164
-[ 470.006518][   c-43.me:node      ] Node 175 - 'b'/175: Handling task 'sync - Connexion Request' received from node 164 - answer to '164'
-[ 470.006518][   c-43.me:node      ] Node 175: 'b'/175 -  store CNX_REQ/164 for later execution
-[ 470.006518][   c-43.me:node      ] Node 175: TASK_CNX_REQ done
-[ 470.006518][   c-43.me:node      ] Node 175: 'b'/175 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 470.006518][   c-43.me:node      ] 
-Here's node 175's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 175    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 470.006518][   c-43.me:node      ] Node 175: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 470.006518][   c-43.me:node      ] Node 175: No. dynar length = 1
-[ 470.006518][   c-43.me:node      ] Node 175: 'b'/175 - Waiting for sync answer ...
-[ 470.006518][   c-47.me:node      ] Node 164: 'b'/164 - Waiting for sync answer ...
-[ 480.000000][   c-48.me:node      ] Node 141: **** START JOINING DST *** (try number 1)
-[ 480.000000][   c-48.me:node      ] Node 141: Let's join the system ! (via contact 187) - deadline = 20000.000000
-[ 480.000000][   c-48.me:node      ] Node 141: order = 48, nb_msg = 54
-[ 480.000000][   c-48.me:node      ] Node 141: 'b'/141 - join() ...
-[ 480.000000][   c-48.me:node      ] Node 141: Sending sync request 'Connexion Request ...' to 187 for new node 141
-[ 480.006518][   c-39.me:node      ] Node 187: Received message : 'sync - Connexion Request ...' from 141 to 187 -> 187
-[ 480.006518][   c-39.me:node      ] Node 187: This is not the expected answer {'Connexion Request' from 119}, it's a 'Connexion Request' request from 141
-[ 480.006518][   c-39.me:node      ] Node 187 - 'b'/187: Handling task 'sync - Connexion Request' received from node 141 - answer to '141'
-[ 480.006518][   c-39.me:node      ] Node 187: 'b'/187 -  store CNX_REQ/141 for later execution
-[ 480.006518][   c-39.me:node      ] Node 187: TASK_CNX_REQ done
-[ 480.006518][   c-39.me:node      ] Node 187: 'b'/187 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 480.006518][   c-39.me:node      ] 
-Here's node 187's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 187    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 480.006518][   c-39.me:node      ] Node 187: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 480.006518][   c-39.me:node      ] Node 187: No. dynar length = 1
-[ 480.006518][   c-39.me:node      ] Node 187: 'b'/187 - Waiting for sync answer ...
-[ 480.006518][   c-48.me:node      ] Node 141: 'b'/141 - Waiting for sync answer ...
-[ 490.000000][   c-49.me:node      ] Node 128: **** START JOINING DST *** (try number 1)
-[ 490.000000][   c-49.me:node      ] Node 128: Let's join the system ! (via contact 14) - deadline = 20000.000000
-[ 490.000000][   c-49.me:node      ] Node 128: order = 49, nb_msg = 55
-[ 490.000000][   c-49.me:node      ] Node 128: 'b'/128 - join() ...
-[ 490.000000][   c-49.me:node      ] Node 128: Sending sync request 'Connexion Request ...' to 14 for new node 128
-[ 490.006518][    c-2.me:node      ] Node 14: Received message : 'sync - Connexion Request ...' from 128 to 14 -> 14
-[ 490.006518][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Connexion Request' request from 128
-[ 490.006518][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 490.006518][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 490.006518][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 490.006518][   c-49.me:node      ] Node 128: 'b'/128 - Waiting for sync answer ...
-[ 500.000000][   c-50.me:node      ] Node 61: **** START JOINING DST *** (try number 1)
-[ 500.000000][   c-50.me:node      ] Node 61: Let's join the system ! (via contact 141) - deadline = 20000.000000
-[ 500.000000][   c-50.me:node      ] Node 61: order = 50, nb_msg = 56
-[ 500.000000][   c-50.me:node      ] Node 61: 'b'/61 - join() ...
-[ 500.000000][   c-50.me:node      ] Node 61: Sending sync request 'Connexion Request ...' to 141 for new node 61
-[ 500.006518][   c-48.me:node      ] Node 141: Received message : 'sync - Connexion Request ...' from 61 to 141 -> 141
-[ 500.006518][   c-48.me:node      ] Node 141: This is not the expected answer {'Connexion Request' from 187}, it's a 'Connexion Request' request from 61
-[ 500.006518][   c-48.me:node      ] Node 141 - 'b'/141: Handling task 'sync - Connexion Request' received from node 61 - answer to '61'
-[ 500.006518][   c-48.me:node      ] Node 141: 'b'/141 -  store CNX_REQ/61 for later execution
-[ 500.006518][   c-48.me:node      ] Node 141: TASK_CNX_REQ done
-[ 500.006518][   c-48.me:node      ] Node 141: 'b'/141 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 500.006518][   c-48.me:node      ] 
-Here's node 141's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 141    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 500.006518][   c-48.me:node      ] Node 141: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 500.006518][   c-48.me:node      ] Node 141: No. dynar length = 1
-[ 500.006518][   c-48.me:node      ] Node 141: 'b'/141 - Waiting for sync answer ...
-[ 500.006518][   c-50.me:node      ] Node 61: 'b'/61 - Waiting for sync answer ...
-[ 510.000000][   c-51.me:node      ] Node 189: **** START JOINING DST *** (try number 1)
-[ 510.000000][   c-51.me:node      ] Node 189: Let's join the system ! (via contact 61) - deadline = 20000.000000
-[ 510.000000][   c-51.me:node      ] Node 189: order = 51, nb_msg = 57
-[ 510.000000][   c-51.me:node      ] Node 189: 'b'/189 - join() ...
-[ 510.000000][   c-51.me:node      ] Node 189: Sending sync request 'Connexion Request ...' to 61 for new node 189
-[ 510.006518][   c-50.me:node      ] Node 61: Received message : 'sync - Connexion Request ...' from 189 to 61 -> 61
-[ 510.006518][   c-50.me:node      ] Node 61: This is not the expected answer {'Connexion Request' from 141}, it's a 'Connexion Request' request from 189
-[ 510.006518][   c-50.me:node      ] Node 61 - 'b'/61: Handling task 'sync - Connexion Request' received from node 189 - answer to '189'
-[ 510.006518][   c-50.me:node      ] Node 61: 'b'/61 -  store CNX_REQ/189 for later execution
-[ 510.006518][   c-50.me:node      ] Node 61: TASK_CNX_REQ done
-[ 510.006518][   c-50.me:node      ] Node 61: 'b'/61 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 510.006518][   c-50.me:node      ] 
-Here's node 61's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 61     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 510.006518][   c-50.me:node      ] Node 61: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 510.006518][   c-50.me:node      ] Node 61: No. dynar length = 1
-[ 510.006518][   c-50.me:node      ] Node 61: 'b'/61 - Waiting for sync answer ...
-[ 510.006518][   c-51.me:node      ] Node 189: 'b'/189 - Waiting for sync answer ...
-[ 520.000000][   c-52.me:node      ] Node 112: **** START JOINING DST *** (try number 1)
-[ 520.000000][   c-52.me:node      ] Node 112: Let's join the system ! (via contact 189) - deadline = 20000.000000
-[ 520.000000][   c-52.me:node      ] Node 112: order = 52, nb_msg = 58
-[ 520.000000][   c-52.me:node      ] Node 112: 'b'/112 - join() ...
-[ 520.000000][   c-52.me:node      ] Node 112: Sending sync request 'Connexion Request ...' to 189 for new node 112
-[ 520.006518][   c-51.me:node      ] Node 189: Received message : 'sync - Connexion Request ...' from 112 to 189 -> 189
-[ 520.006518][   c-51.me:node      ] Node 189: This is not the expected answer {'Connexion Request' from 61}, it's a 'Connexion Request' request from 112
-[ 520.006518][   c-51.me:node      ] Node 189 - 'b'/189: Handling task 'sync - Connexion Request' received from node 112 - answer to '112'
-[ 520.006518][   c-51.me:node      ] Node 189: 'b'/189 -  store CNX_REQ/112 for later execution
-[ 520.006518][   c-51.me:node      ] Node 189: TASK_CNX_REQ done
-[ 520.006518][   c-51.me:node      ] Node 189: 'b'/189 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 520.006518][   c-51.me:node      ] 
-Here's node 189's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 189    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 520.006518][   c-51.me:node      ] Node 189: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 520.006518][   c-51.me:node      ] Node 189: No. dynar length = 1
-[ 520.006518][   c-51.me:node      ] Node 189: 'b'/189 - Waiting for sync answer ...
-[ 520.006518][   c-52.me:node      ] Node 112: 'b'/112 - Waiting for sync answer ...
-[ 520.426072][    c-0.me:node      ] Node 42: asks node 14 if cs_req has to be reset
-[ 520.426072][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 520.426072][    c-0.me:node      ] Node 42: Sending async 'Check CS ...' to 14
-[ 520.432590][    c-2.me:node      ] Node 14: Received message : 'async - Check CS ...' from 42 to 14 -> 14
-[ 520.432590][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Check CS' request from 42
-[ 520.432590][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'async - Check CS' received from node 42 - answer to '42'
-[ 520.432590][    c-2.me:node      ] Node 14: TASK_CHECK_CS done
-[ 520.432590][    c-2.me:node      ] 
-Here's node 14's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 14     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 520.432590][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 520.432590][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 520.432590][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 530.000000][   c-53.me:node      ] Node 115: **** START JOINING DST *** (try number 1)
-[ 530.000000][   c-53.me:node      ] Node 115: Let's join the system ! (via contact 35) - deadline = 20000.000000
-[ 530.000000][   c-53.me:node      ] Node 115: order = 53, nb_msg = 60
-[ 530.000000][   c-53.me:node      ] Node 115: 'b'/115 - join() ...
-[ 530.000000][   c-53.me:node      ] Node 115: Sending sync request 'Connexion Request ...' to 35 for new node 115
-[ 530.006518][   c-34.me:node      ] Node 35: Received message : 'sync - Connexion Request ...' from 115 to 35 -> 35
-[ 530.006518][   c-34.me:node      ] Node 35: This is not the expected answer {'Connexion Request' from 130}, it's a 'Connexion Request' request from 115
-[ 530.006518][   c-34.me:node      ] Node 35 - 'b'/35: Handling task 'sync - Connexion Request' received from node 115 - answer to '115'
-[ 530.006518][   c-34.me:node      ] Node 35: 'b'/35 -  store CNX_REQ/115 for later execution
-[ 530.006518][   c-34.me:node      ] Node 35: TASK_CNX_REQ done
-[ 530.006518][   c-34.me:node      ] Node 35: 'b'/35 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 530.006518][   c-34.me:node      ] 
-Here's node 35's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 35     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 530.006518][   c-34.me:node      ] Node 35: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 530.006518][   c-34.me:node      ] Node 35: No. dynar length = 1
-[ 530.006518][   c-34.me:node      ] Node 35: 'b'/35 - Waiting for sync answer ...
-[ 530.006518][   c-53.me:node      ] Node 115: 'b'/115 - Waiting for sync answer ...
-[ 540.000000][   c-54.me:node      ] Node 198: **** START JOINING DST *** (try number 1)
-[ 540.000000][   c-54.me:node      ] Node 198: Let's join the system ! (via contact 182) - deadline = 20000.000000
-[ 540.000000][   c-54.me:node      ] Node 198: order = 54, nb_msg = 61
-[ 540.000000][   c-54.me:node      ] Node 198: 'b'/198 - join() ...
-[ 540.000000][   c-54.me:node      ] Node 198: Sending sync request 'Connexion Request ...' to 182 for new node 198
-[ 540.006518][   c-12.me:node      ] Node 182: Received message : 'sync - Connexion Request ...' from 198 to 182 -> 182
-[ 540.006518][   c-12.me:node      ] Node 182: This is not the expected answer {'Connexion Request' from 42}, it's a 'Connexion Request' request from 198
-[ 540.006518][   c-12.me:node      ] Node 182: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 540.006518][   c-12.me:node      ] Node 182: No. dynar length = 1
-[ 540.006518][   c-12.me:node      ] Node 182: 'b'/182 - Waiting for sync answer ...
-[ 540.006518][   c-54.me:node      ] Node 198: 'b'/198 - Waiting for sync answer ...
-[ 550.000000][   c-55.me:node      ] Node 154: **** START JOINING DST *** (try number 1)
-[ 550.000000][   c-55.me:node      ] Node 154: Let's join the system ! (via contact 87) - deadline = 20000.000000
-[ 550.000000][   c-55.me:node      ] Node 154: order = 55, nb_msg = 62
-[ 550.000000][   c-55.me:node      ] Node 154: 'b'/154 - join() ...
-[ 550.000000][   c-55.me:node      ] Node 154: Sending sync request 'Connexion Request ...' to 87 for new node 154
-[ 550.006518][   c-40.me:node      ] Node 87: Received message : 'sync - Connexion Request ...' from 154 to 87 -> 87
-[ 550.006518][   c-40.me:node      ] Node 87: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 154
-[ 550.006518][   c-40.me:node      ] Node 87 - 'b'/87: Handling task 'sync - Connexion Request' received from node 154 - answer to '154'
-[ 550.006518][   c-40.me:node      ] Node 87: 'b'/87 -  store CNX_REQ/154 for later execution
-[ 550.006518][   c-40.me:node      ] Node 87: TASK_CNX_REQ done
-[ 550.006518][   c-40.me:node      ] Node 87: 'b'/87 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 550.006518][   c-40.me:node      ] 
-Here's node 87's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 87     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 550.006518][   c-40.me:node      ] Node 87: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 550.006518][   c-40.me:node      ] Node 87: No. dynar length = 1
-[ 550.006518][   c-40.me:node      ] Node 87: 'b'/87 - Waiting for sync answer ...
-[ 550.006518][   c-55.me:node      ] Node 154: 'b'/154 - Waiting for sync answer ...
-[ 560.000000][   c-56.me:node      ] Node 199: **** START JOINING DST *** (try number 1)
-[ 560.000000][   c-56.me:node      ] Node 199: Let's join the system ! (via contact 198) - deadline = 20000.000000
-[ 560.000000][   c-56.me:node      ] Node 199: order = 56, nb_msg = 63
-[ 560.000000][   c-56.me:node      ] Node 199: 'b'/199 - join() ...
-[ 560.000000][   c-56.me:node      ] Node 199: Sending sync request 'Connexion Request ...' to 198 for new node 199
-[ 560.006518][   c-54.me:node      ] Node 198: Received message : 'sync - Connexion Request ...' from 199 to 198 -> 198
-[ 560.006518][   c-54.me:node      ] Node 198: This is not the expected answer {'Connexion Request' from 182}, it's a 'Connexion Request' request from 199
-[ 560.006518][   c-54.me:node      ] Node 198 - 'b'/198: Handling task 'sync - Connexion Request' received from node 199 - answer to '199'
-[ 560.006518][   c-54.me:node      ] Node 198: 'b'/198 -  store CNX_REQ/199 for later execution
-[ 560.006518][   c-54.me:node      ] Node 198: TASK_CNX_REQ done
-[ 560.006518][   c-54.me:node      ] Node 198: 'b'/198 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 560.006518][   c-54.me:node      ] 
-Here's node 198's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 198    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 560.006518][   c-54.me:node      ] Node 198: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 560.006518][   c-54.me:node      ] Node 198: No. dynar length = 1
-[ 560.006518][   c-54.me:node      ] Node 198: 'b'/198 - Waiting for sync answer ...
-[ 560.006518][   c-56.me:node      ] Node 199: 'b'/199 - Waiting for sync answer ...
-[ 570.000000][   c-57.me:node      ] Node 225: **** START JOINING DST *** (try number 1)
-[ 570.000000][   c-57.me:node      ] Node 225: Let's join the system ! (via contact 253) - deadline = 20000.000000
-[ 570.000000][   c-57.me:node      ] Node 225: order = 57, nb_msg = 64
-[ 570.000000][   c-57.me:node      ] Node 225: 'b'/225 - join() ...
-[ 570.000000][   c-57.me:node      ] Node 225: Sending sync request 'Connexion Request ...' to 253 for new node 225
-[ 570.006518][    c-5.me:node      ] Node 253: Received message : 'sync - Connexion Request ...' from 225 to 253 -> 253
-[ 570.006518][    c-5.me:node      ] Node 253: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 225
-[ 570.006518][    c-5.me:node      ] Node 253: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 570.006518][    c-5.me:node      ] Node 253: No. dynar length = 1
-[ 570.006518][    c-5.me:node      ] Node 253: 'b'/253 - Waiting for sync answer ...
-[ 570.006518][   c-57.me:node      ] Node 225: 'b'/225 - Waiting for sync answer ...
-[ 580.000000][   c-58.me:node      ] Node 63: **** START JOINING DST *** (try number 1)
-[ 580.000000][   c-58.me:node      ] Node 63: Let's join the system ! (via contact 107) - deadline = 20000.000000
-[ 580.000000][   c-58.me:node      ] Node 63: order = 58, nb_msg = 65
-[ 580.000000][   c-58.me:node      ] Node 63: 'b'/63 - join() ...
-[ 580.000000][   c-58.me:node      ] Node 63: Sending sync request 'Connexion Request ...' to 107 for new node 63
-[ 580.006518][   c-27.me:node      ] Node 107: Received message : 'sync - Connexion Request ...' from 63 to 107 -> 107
-[ 580.006518][   c-27.me:node      ] Node 107: This is not the expected answer {'Connexion Request' from 250}, it's a 'Connexion Request' request from 63
-[ 580.006518][   c-27.me:node      ] Node 107 - 'b'/107: Handling task 'sync - Connexion Request' received from node 63 - answer to '63'
-[ 580.006518][   c-27.me:node      ] Node 107: 'b'/107 -  store CNX_REQ/63 for later execution
-[ 580.006518][   c-27.me:node      ] Node 107: TASK_CNX_REQ done
-[ 580.006518][   c-27.me:node      ] Node 107: 'b'/107 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 580.006518][   c-27.me:node      ] 
-Here's node 107's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 107    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 580.006518][   c-27.me:node      ] Node 107: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 580.006518][   c-27.me:node      ] Node 107: No. dynar length = 1
-[ 580.006518][   c-27.me:node      ] Node 107: 'b'/107 - Waiting for sync answer ...
-[ 580.006518][   c-58.me:node      ] Node 63: 'b'/63 - Waiting for sync answer ...
-[ 590.000000][   c-59.me:node      ] Node 97: **** START JOINING DST *** (try number 1)
-[ 590.000000][   c-59.me:node      ] Node 97: Let's join the system ! (via contact 33) - deadline = 20000.000000
-[ 590.000000][   c-59.me:node      ] Node 97: order = 59, nb_msg = 66
-[ 590.000000][   c-59.me:node      ] Node 97: 'b'/97 - join() ...
-[ 590.000000][   c-59.me:node      ] Node 97: Sending sync request 'Connexion Request ...' to 33 for new node 97
-[ 590.006518][   c-17.me:node      ] Node 33: Received message : 'sync - Connexion Request ...' from 97 to 33 -> 33
-[ 590.006518][   c-17.me:node      ] Node 33: This is not the expected answer {'Connexion Request' from 49}, it's a 'Connexion Request' request from 97
-[ 590.006518][   c-17.me:node      ] Node 33 - 'b'/33: Handling task 'sync - Connexion Request' received from node 97 - answer to '97'
-[ 590.006518][   c-17.me:node      ] Node 33: 'b'/33 -  store CNX_REQ/97 for later execution
-[ 590.006518][   c-17.me:node      ] Node 33: TASK_CNX_REQ done
-[ 590.006518][   c-17.me:node      ] Node 33: 'b'/33 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 590.006518][   c-17.me:node      ] 
-Here's node 33's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 33     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 590.006518][   c-17.me:node      ] Node 33: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 590.006518][   c-17.me:node      ] Node 33: No. dynar length = 1
-[ 590.006518][   c-17.me:node      ] Node 33: 'b'/33 - Waiting for sync answer ...
-[ 590.006518][   c-59.me:node      ] Node 97: 'b'/97 - Waiting for sync answer ...
-[ 600.000000][   c-60.me:node      ] Node 83: **** START JOINING DST *** (try number 1)
-[ 600.000000][   c-60.me:node      ] Node 83: Let's join the system ! (via contact 198) - deadline = 20000.000000
-[ 600.000000][   c-60.me:node      ] Node 83: order = 60, nb_msg = 67
-[ 600.000000][   c-60.me:node      ] Node 83: 'b'/83 - join() ...
-[ 600.000000][   c-60.me:node      ] Node 83: Sending sync request 'Connexion Request ...' to 198 for new node 83
-[ 600.006518][   c-54.me:node      ] Node 198: Received message : 'sync - Connexion Request ...' from 83 to 198 -> 198
-[ 600.006518][   c-54.me:node      ] Node 198: This is not the expected answer {'Connexion Request' from 182}, it's a 'Connexion Request' request from 83
-[ 600.006518][   c-54.me:node      ] Node 198: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 600.006518][   c-54.me:node      ] Node 198: No. dynar length = 1
-[ 600.006518][   c-54.me:node      ] Node 198: 'b'/198 - Waiting for sync answer ...
-[ 600.006518][   c-60.me:node      ] Node 83: 'b'/83 - Waiting for sync answer ...
-[ 610.000000][   c-61.me:node      ] Node 78: **** START JOINING DST *** (try number 1)
-[ 610.000000][   c-61.me:node      ] Node 78: Let's join the system ! (via contact 187) - deadline = 20000.000000
-[ 610.000000][   c-61.me:node      ] Node 78: order = 61, nb_msg = 68
-[ 610.000000][   c-61.me:node      ] Node 78: 'b'/78 - join() ...
-[ 610.000000][   c-61.me:node      ] Node 78: Sending sync request 'Connexion Request ...' to 187 for new node 78
-[ 610.006518][   c-39.me:node      ] Node 187: Received message : 'sync - Connexion Request ...' from 78 to 187 -> 187
-[ 610.006518][   c-39.me:node      ] Node 187: This is not the expected answer {'Connexion Request' from 119}, it's a 'Connexion Request' request from 78
-[ 610.006518][   c-39.me:node      ] Node 187: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 610.006518][   c-39.me:node      ] Node 187: No. dynar length = 1
-[ 610.006518][   c-39.me:node      ] Node 187: 'b'/187 - Waiting for sync answer ...
-[ 610.006518][   c-61.me:node      ] Node 78: 'b'/78 - Waiting for sync answer ...
-[ 620.000000][   c-62.me:node      ] Node 123: **** START JOINING DST *** (try number 1)
-[ 620.000000][   c-62.me:node      ] Node 123: Let's join the system ! (via contact 136) - deadline = 20000.000000
-[ 620.000000][   c-62.me:node      ] Node 123: order = 62, nb_msg = 69
-[ 620.000000][   c-62.me:node      ] Node 123: 'b'/123 - join() ...
-[ 620.000000][   c-62.me:node      ] Node 123: Sending sync request 'Connexion Request ...' to 136 for new node 123
-[ 620.006518][   c-24.me:node      ] Node 136: Received message : 'sync - Connexion Request ...' from 123 to 136 -> 136
-[ 620.006518][   c-24.me:node      ] Node 136: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 123
-[ 620.006518][   c-24.me:node      ] Node 136: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 620.006518][   c-24.me:node      ] Node 136: No. dynar length = 1
-[ 620.006518][   c-24.me:node      ] Node 136: 'b'/136 - Waiting for sync answer ...
-[ 620.006518][   c-62.me:node      ] Node 123: 'b'/123 - Waiting for sync answer ...
-[ 620.432590][    c-0.me:node      ] Node 42: asks node 14 if cs_req has to be reset
-[ 620.432590][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 620.432590][    c-0.me:node      ] Node 42: Sending async 'Check CS ...' to 14
-[ 620.439108][    c-2.me:node      ] Node 14: Received message : 'async - Check CS ...' from 42 to 14 -> 14
-[ 620.439108][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Check CS' request from 42
-[ 620.439108][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'async - Check CS' received from node 42 - answer to '42'
-[ 620.439108][    c-2.me:node      ] Node 14: TASK_CHECK_CS done
-[ 620.439108][    c-2.me:node      ] 
-Here's node 14's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 14     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 620.439108][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 620.439108][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 620.439108][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 630.000000][   c-63.me:node      ] Node 92: **** START JOINING DST *** (try number 1)
-[ 630.000000][   c-63.me:node      ] Node 92: Let's join the system ! (via contact 178) - deadline = 20000.000000
-[ 630.000000][   c-63.me:node      ] Node 92: order = 63, nb_msg = 71
-[ 630.000000][   c-63.me:node      ] Node 92: 'b'/92 - join() ...
-[ 630.000000][   c-63.me:node      ] Node 92: Sending sync request 'Connexion Request ...' to 178 for new node 92
-[ 630.006518][   c-21.me:node      ] Node 178: Received message : 'sync - Connexion Request ...' from 92 to 178 -> 178
-[ 630.006518][   c-21.me:node      ] Node 178: This is not the expected answer {'Connexion Request' from 120}, it's a 'Connexion Request' request from 92
-[ 630.006518][   c-21.me:node      ] Node 178 - 'b'/178: Handling task 'sync - Connexion Request' received from node 92 - answer to '92'
-[ 630.006518][   c-21.me:node      ] Node 178: 'b'/178 -  store CNX_REQ/92 for later execution
-[ 630.006518][   c-21.me:node      ] Node 178: TASK_CNX_REQ done
-[ 630.006518][   c-21.me:node      ] Node 178: 'b'/178 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 630.006518][   c-21.me:node      ] 
-Here's node 178's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 178    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 630.006518][   c-21.me:node      ] Node 178: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 630.006518][   c-21.me:node      ] Node 178: No. dynar length = 1
-[ 630.006518][   c-21.me:node      ] Node 178: 'b'/178 - Waiting for sync answer ...
-[ 630.006518][   c-63.me:node      ] Node 92: 'b'/92 - Waiting for sync answer ...
-[ 640.000000][   c-64.me:node      ] Node 134: **** START JOINING DST *** (try number 1)
-[ 640.000000][   c-64.me:node      ] Node 134: Let's join the system ! (via contact 163) - deadline = 20000.000000
-[ 640.000000][   c-64.me:node      ] Node 134: order = 64, nb_msg = 72
-[ 640.000000][   c-64.me:node      ] Node 134: 'b'/134 - join() ...
-[ 640.000000][   c-64.me:node      ] Node 134: Sending sync request 'Connexion Request ...' to 163 for new node 134
-[ 640.006518][    c-3.me:node      ] Node 163: Received message : 'sync - Connexion Request ...' from 134 to 163 -> 163
-[ 640.006518][    c-3.me:node      ] Node 163: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 134
-[ 640.006518][    c-3.me:node      ] Node 163: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 640.006518][    c-3.me:node      ] Node 163: No. dynar length = 1
-[ 640.006518][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
-[ 640.006518][   c-64.me:node      ] Node 134: 'b'/134 - Waiting for sync answer ...
-[ 650.000000][   c-65.me:node      ] Node 70: **** START JOINING DST *** (try number 1)
-[ 650.000000][   c-65.me:node      ] Node 70: Let's join the system ! (via contact 92) - deadline = 20000.000000
-[ 650.000000][   c-65.me:node      ] Node 70: order = 65, nb_msg = 73
-[ 650.000000][   c-65.me:node      ] Node 70: 'b'/70 - join() ...
-[ 650.000000][   c-65.me:node      ] Node 70: Sending sync request 'Connexion Request ...' to 92 for new node 70
-[ 650.006518][   c-63.me:node      ] Node 92: Received message : 'sync - Connexion Request ...' from 70 to 92 -> 92
-[ 650.006518][   c-63.me:node      ] Node 92: This is not the expected answer {'Connexion Request' from 178}, it's a 'Connexion Request' request from 70
-[ 650.006518][   c-63.me:node      ] Node 92 - 'b'/92: Handling task 'sync - Connexion Request' received from node 70 - answer to '70'
-[ 650.006518][   c-63.me:node      ] Node 92: 'b'/92 -  store CNX_REQ/70 for later execution
-[ 650.006518][   c-63.me:node      ] Node 92: TASK_CNX_REQ done
-[ 650.006518][   c-63.me:node      ] Node 92: 'b'/92 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 650.006518][   c-63.me:node      ] 
-Here's node 92's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 92     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 650.006518][   c-63.me:node      ] Node 92: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 650.006518][   c-63.me:node      ] Node 92: No. dynar length = 1
-[ 650.006518][   c-63.me:node      ] Node 92: 'b'/92 - Waiting for sync answer ...
-[ 650.006518][   c-65.me:node      ] Node 70: 'b'/70 - Waiting for sync answer ...
-[ 660.000000][   c-66.me:node      ] Node 24: **** START JOINING DST *** (try number 1)
-[ 660.000000][   c-66.me:node      ] Node 24: Let's join the system ! (via contact 64) - deadline = 20000.000000
-[ 660.000000][   c-66.me:node      ] Node 24: order = 66, nb_msg = 74
-[ 660.000000][   c-66.me:node      ] Node 24: 'b'/24 - join() ...
-[ 660.000000][   c-66.me:node      ] Node 24: Sending sync request 'Connexion Request ...' to 64 for new node 24
-[ 660.006518][   c-31.me:node      ] Node 64: Received message : 'sync - Connexion Request ...' from 24 to 64 -> 64
-[ 660.006518][   c-31.me:node      ] Node 64: This is not the expected answer {'Connexion Request' from 248}, it's a 'Connexion Request' request from 24
-[ 660.006518][   c-31.me:node      ] Node 64 - 'b'/64: Handling task 'sync - Connexion Request' received from node 24 - answer to '24'
-[ 660.006518][   c-31.me:node      ] Node 64: 'b'/64 -  store CNX_REQ/24 for later execution
-[ 660.006518][   c-31.me:node      ] Node 64: TASK_CNX_REQ done
-[ 660.006518][   c-31.me:node      ] Node 64: 'b'/64 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 660.006518][   c-31.me:node      ] 
-Here's node 64's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 64     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 660.006518][   c-31.me:node      ] Node 64: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 660.006518][   c-31.me:node      ] Node 64: No. dynar length = 1
-[ 660.006518][   c-31.me:node      ] Node 64: 'b'/64 - Waiting for sync answer ...
-[ 660.006518][   c-66.me:node      ] Node 24: 'b'/24 - Waiting for sync answer ...
-[ 670.000000][   c-67.me:node      ] Node 21: **** START JOINING DST *** (try number 1)
-[ 670.000000][   c-67.me:node      ] Node 21: Let's join the system ! (via contact 128) - deadline = 20000.000000
-[ 670.000000][   c-67.me:node      ] Node 21: order = 67, nb_msg = 75
-[ 670.000000][   c-67.me:node      ] Node 21: 'b'/21 - join() ...
-[ 670.000000][   c-67.me:node      ] Node 21: Sending sync request 'Connexion Request ...' to 128 for new node 21
-[ 670.006518][   c-49.me:node      ] Node 128: Received message : 'sync - Connexion Request ...' from 21 to 128 -> 128
-[ 670.006518][   c-49.me:node      ] Node 128: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 21
-[ 670.006518][   c-49.me:node      ] Node 128 - 'b'/128: Handling task 'sync - Connexion Request' received from node 21 - answer to '21'
-[ 670.006518][   c-49.me:node      ] Node 128: 'b'/128 -  store CNX_REQ/21 for later execution
-[ 670.006518][   c-49.me:node      ] Node 128: TASK_CNX_REQ done
-[ 670.006518][   c-49.me:node      ] Node 128: 'b'/128 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 670.006518][   c-49.me:node      ] 
-Here's node 128's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 128    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 670.006518][   c-49.me:node      ] Node 128: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 670.006518][   c-49.me:node      ] Node 128: No. dynar length = 1
-[ 670.006518][   c-49.me:node      ] Node 128: 'b'/128 - Waiting for sync answer ...
-[ 670.006518][   c-67.me:node      ] Node 21: 'b'/21 - Waiting for sync answer ...
-[ 680.000000][   c-68.me:node      ] Node 179: **** START JOINING DST *** (try number 1)
-[ 680.000000][   c-68.me:node      ] Node 179: Let's join the system ! (via contact 130) - deadline = 20000.000000
-[ 680.000000][   c-68.me:node      ] Node 179: order = 68, nb_msg = 76
-[ 680.000000][   c-68.me:node      ] Node 179: 'b'/179 - join() ...
-[ 680.000000][   c-68.me:node      ] Node 179: Sending sync request 'Connexion Request ...' to 130 for new node 179
-[ 680.006518][   c-18.me:node      ] Node 130: Received message : 'sync - Connexion Request ...' from 179 to 130 -> 130
-[ 680.006518][   c-18.me:node      ] Node 130: This is not the expected answer {'Connexion Request' from 16}, it's a 'Connexion Request' request from 179
-[ 680.006518][   c-18.me:node      ] Node 130: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 680.006518][   c-18.me:node      ] Node 130: No. dynar length = 1
-[ 680.006518][   c-18.me:node      ] Node 130: 'b'/130 - Waiting for sync answer ...
-[ 680.006518][   c-68.me:node      ] Node 179: 'b'/179 - Waiting for sync answer ...
-[ 690.000000][   c-69.me:node      ] Node 67: **** START JOINING DST *** (try number 1)
-[ 690.000000][   c-69.me:node      ] Node 67: Let's join the system ! (via contact 163) - deadline = 20000.000000
-[ 690.000000][   c-69.me:node      ] Node 67: order = 69, nb_msg = 77
-[ 690.000000][   c-69.me:node      ] Node 67: 'b'/67 - join() ...
-[ 690.000000][   c-69.me:node      ] Node 67: Sending sync request 'Connexion Request ...' to 163 for new node 67
-[ 690.006518][    c-3.me:node      ] Node 163: Received message : 'sync - Connexion Request ...' from 67 to 163 -> 163
-[ 690.006518][    c-3.me:node      ] Node 163: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 67
-[ 690.006518][    c-3.me:node      ] Node 163: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 690.006518][    c-3.me:node      ] Node 163: No. dynar length = 1
-[ 690.006518][    c-3.me:node      ] Node 163: 'b'/163 - Waiting for sync answer ...
-[ 690.006518][   c-69.me:node      ] Node 67: 'b'/67 - Waiting for sync answer ...
-[ 700.000000][   c-70.me:node      ] Node 84: **** START JOINING DST *** (try number 1)
-[ 700.000000][   c-70.me:node      ] Node 84: Let's join the system ! (via contact 62) - deadline = 20000.000000
-[ 700.000000][   c-70.me:node      ] Node 84: order = 70, nb_msg = 78
-[ 700.000000][   c-70.me:node      ] Node 84: 'b'/84 - join() ...
-[ 700.000000][   c-70.me:node      ] Node 84: Sending sync request 'Connexion Request ...' to 62 for new node 84
-[ 700.006518][    c-4.me:node      ] Node 62: Received message : 'sync - Connexion Request ...' from 84 to 62 -> 62
-[ 700.006518][    c-4.me:node      ] Node 62: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 84
-[ 700.006518][    c-4.me:node      ] Node 62: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 700.006518][    c-4.me:node      ] Node 62: No. dynar length = 1
-[ 700.006518][    c-4.me:node      ] Node 62: 'b'/62 - Waiting for sync answer ...
-[ 700.006518][   c-70.me:node      ] Node 84: 'b'/84 - Waiting for sync answer ...
-[ 710.000000][   c-71.me:node      ] Node 233: **** START JOINING DST *** (try number 1)
-[ 710.000000][   c-71.me:node      ] Node 233: Let's join the system ! (via contact 78) - deadline = 20000.000000
-[ 710.000000][   c-71.me:node      ] Node 233: order = 71, nb_msg = 79
-[ 710.000000][   c-71.me:node      ] Node 233: 'b'/233 - join() ...
-[ 710.000000][   c-71.me:node      ] Node 233: Sending sync request 'Connexion Request ...' to 78 for new node 233
-[ 710.006518][   c-61.me:node      ] Node 78: Received message : 'sync - Connexion Request ...' from 233 to 78 -> 78
-[ 710.006518][   c-61.me:node      ] Node 78: This is not the expected answer {'Connexion Request' from 187}, it's a 'Connexion Request' request from 233
-[ 710.006518][   c-61.me:node      ] Node 78 - 'b'/78: Handling task 'sync - Connexion Request' received from node 233 - answer to '233'
-[ 710.006518][   c-61.me:node      ] Node 78: 'b'/78 -  store CNX_REQ/233 for later execution
-[ 710.006518][   c-61.me:node      ] Node 78: TASK_CNX_REQ done
-[ 710.006518][   c-61.me:node      ] Node 78: 'b'/78 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 710.006518][   c-61.me:node      ] 
-Here's node 78's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 78     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 710.006518][   c-61.me:node      ] Node 78: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 710.006518][   c-61.me:node      ] Node 78: No. dynar length = 1
-[ 710.006518][   c-61.me:node      ] Node 78: 'b'/78 - Waiting for sync answer ...
-[ 710.006518][   c-71.me:node      ] Node 233: 'b'/233 - Waiting for sync answer ...
-[ 720.000000][   c-72.me:node      ] Node 142: **** START JOINING DST *** (try number 1)
-[ 720.000000][   c-72.me:node      ] Node 142: Let's join the system ! (via contact 32) - deadline = 20000.000000
-[ 720.000000][   c-72.me:node      ] Node 142: order = 72, nb_msg = 80
-[ 720.000000][   c-72.me:node      ] Node 142: 'b'/142 - join() ...
-[ 720.000000][   c-72.me:node      ] Node 142: Sending sync request 'Connexion Request ...' to 32 for new node 142
-[ 720.006518][   c-20.me:node      ] Node 32: Received message : 'sync - Connexion Request ...' from 142 to 32 -> 32
-[ 720.006518][   c-20.me:node      ] Node 32: This is not the expected answer {'Connexion Request' from 171}, it's a 'Connexion Request' request from 142
-[ 720.006518][   c-20.me:node      ] Node 32 - 'b'/32: Handling task 'sync - Connexion Request' received from node 142 - answer to '142'
-[ 720.006518][   c-20.me:node      ] Node 32: 'b'/32 -  store CNX_REQ/142 for later execution
-[ 720.006518][   c-20.me:node      ] Node 32: TASK_CNX_REQ done
-[ 720.006518][   c-20.me:node      ] Node 32: 'b'/32 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 720.006518][   c-20.me:node      ] 
-Here's node 32's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 32     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 720.006518][   c-20.me:node      ] Node 32: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 720.006518][   c-20.me:node      ] Node 32: No. dynar length = 1
-[ 720.006518][   c-20.me:node      ] Node 32: 'b'/32 - Waiting for sync answer ...
-[ 720.006518][   c-72.me:node      ] Node 142: 'b'/142 - Waiting for sync answer ...
-[ 720.439108][    c-0.me:node      ] Node 42: asks node 14 if cs_req has to be reset
-[ 720.439108][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 720.439108][    c-0.me:node      ] Node 42: Sending async 'Check CS ...' to 14
-[ 720.445627][    c-2.me:node      ] Node 14: Received message : 'async - Check CS ...' from 42 to 14 -> 14
-[ 720.445627][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Check CS' request from 42
-[ 720.445627][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'async - Check CS' received from node 42 - answer to '42'
-[ 720.445627][    c-2.me:node      ] Node 14: TASK_CHECK_CS done
-[ 720.445627][    c-2.me:node      ] 
-Here's node 14's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 14     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 720.445627][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 720.445627][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 720.445627][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 730.000000][   c-73.me:node      ] Node 34: **** START JOINING DST *** (try number 1)
-[ 730.000000][   c-73.me:node      ] Node 34: Let's join the system ! (via contact 136) - deadline = 20000.000000
-[ 730.000000][   c-73.me:node      ] Node 34: order = 73, nb_msg = 82
-[ 730.000000][   c-73.me:node      ] Node 34: 'b'/34 - join() ...
-[ 730.000000][   c-73.me:node      ] Node 34: Sending sync request 'Connexion Request ...' to 136 for new node 34
-[ 730.006518][   c-24.me:node      ] Node 136: Received message : 'sync - Connexion Request ...' from 34 to 136 -> 136
-[ 730.006518][   c-24.me:node      ] Node 136: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 34
-[ 730.006518][   c-24.me:node      ] Node 136: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 730.006518][   c-24.me:node      ] Node 136: No. dynar length = 1
-[ 730.006518][   c-24.me:node      ] Node 136: 'b'/136 - Waiting for sync answer ...
-[ 730.006518][   c-73.me:node      ] Node 34: 'b'/34 - Waiting for sync answer ...
-[ 740.000000][   c-74.me:node      ] Node 195: **** START JOINING DST *** (try number 1)
-[ 740.000000][   c-74.me:node      ] Node 195: Let's join the system ! (via contact 42) - deadline = 20000.000000
-[ 740.000000][   c-74.me:node      ] Node 195: order = 74, nb_msg = 83
-[ 740.000000][   c-74.me:node      ] Node 195: 'b'/195 - join() ...
-[ 740.000000][   c-74.me:node      ] Node 195: Sending sync request 'Connexion Request ...' to 42 for new node 195
-[ 740.006518][   c-74.me:node      ] Node 195: 'b'/195 - Waiting for sync answer ...
-[ 740.045627][    c-0.me:node      ] Node 42: Task received
-[ 740.045627][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 740.045627][    c-0.me:node      ] Node 42: run 4 - 'u'/14 -  remain_tasks length = 3
-[ 740.045627][    c-0.me:node      ] Node 42: task[0] = {'sync - Connexion Request' from 46}
-[ 740.045627][    c-0.me:node      ] Node 42: task[1] = {'sync - Connexion Request' from 182}
-[ 740.045627][    c-0.me:node      ] Node 42: task[2] = {'sync - Connexion Request' from 195}
-[ 740.045627][    c-0.me:node      ] Node 42: Waiting for a task...
-[ 750.000000][   c-75.me:node      ] Node 254: **** START JOINING DST *** (try number 1)
-[ 750.000000][   c-75.me:node      ] Node 254: Let's join the system ! (via contact 115) - deadline = 20000.000000
-[ 750.000000][   c-75.me:node      ] Node 254: order = 75, nb_msg = 84
-[ 750.000000][   c-75.me:node      ] Node 254: 'b'/254 - join() ...
-[ 750.000000][   c-75.me:node      ] Node 254: Sending sync request 'Connexion Request ...' to 115 for new node 254
-[ 750.006518][   c-53.me:node      ] Node 115: Received message : 'sync - Connexion Request ...' from 254 to 115 -> 115
-[ 750.006518][   c-53.me:node      ] Node 115: This is not the expected answer {'Connexion Request' from 35}, it's a 'Connexion Request' request from 254
-[ 750.006518][   c-53.me:node      ] Node 115 - 'b'/115: Handling task 'sync - Connexion Request' received from node 254 - answer to '254'
-[ 750.006518][   c-53.me:node      ] Node 115: 'b'/115 -  store CNX_REQ/254 for later execution
-[ 750.006518][   c-53.me:node      ] Node 115: TASK_CNX_REQ done
-[ 750.006518][   c-53.me:node      ] Node 115: 'b'/115 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 750.006518][   c-53.me:node      ] 
-Here's node 115's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 115    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 750.006518][   c-53.me:node      ] Node 115: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 750.006518][   c-53.me:node      ] Node 115: No. dynar length = 1
-[ 750.006518][   c-53.me:node      ] Node 115: 'b'/115 - Waiting for sync answer ...
-[ 750.006518][   c-75.me:node      ] Node 254: 'b'/254 - Waiting for sync answer ...
-[ 760.000000][   c-76.me:node      ] Node 159: **** START JOINING DST *** (try number 1)
-[ 760.000000][   c-76.me:node      ] Node 159: Let's join the system ! (via contact 215) - deadline = 20000.000000
-[ 760.000000][   c-76.me:node      ] Node 159: order = 76, nb_msg = 85
-[ 760.000000][   c-76.me:node      ] Node 159: 'b'/159 - join() ...
-[ 760.000000][   c-76.me:node      ] Node 159: Sending sync request 'Connexion Request ...' to 215 for new node 159
-[ 760.006518][   c-13.me:node      ] Node 215: Received message : 'sync - Connexion Request ...' from 159 to 215 -> 215
-[ 760.006518][   c-13.me:node      ] Node 215: This is not the expected answer {'Connexion Request' from 253}, it's a 'Connexion Request' request from 159
-[ 760.006518][   c-13.me:node      ] Node 215: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 760.006518][   c-13.me:node      ] Node 215: No. dynar length = 1
-[ 760.006518][   c-13.me:node      ] Node 215: 'b'/215 - Waiting for sync answer ...
-[ 760.006518][   c-76.me:node      ] Node 159: 'b'/159 - Waiting for sync answer ...
-[ 770.000000][   c-77.me:node      ] Node 138: **** START JOINING DST *** (try number 1)
-[ 770.000000][   c-77.me:node      ] Node 138: Let's join the system ! (via contact 109) - deadline = 20000.000000
-[ 770.000000][   c-77.me:node      ] Node 138: order = 77, nb_msg = 86
-[ 770.000000][   c-77.me:node      ] Node 138: 'b'/138 - join() ...
-[ 770.000000][   c-77.me:node      ] Node 138: Sending sync request 'Connexion Request ...' to 109 for new node 138
-[ 770.006518][   c-42.me:node      ] Node 109: Received message : 'sync - Connexion Request ...' from 138 to 109 -> 109
-[ 770.006518][   c-42.me:node      ] Node 109: This is not the expected answer {'Connexion Request' from 182}, it's a 'Connexion Request' request from 138
-[ 770.006518][   c-42.me:node      ] Node 109 - 'b'/109: Handling task 'sync - Connexion Request' received from node 138 - answer to '138'
-[ 770.006518][   c-42.me:node      ] Node 109: 'b'/109 -  store CNX_REQ/138 for later execution
-[ 770.006518][   c-42.me:node      ] Node 109: TASK_CNX_REQ done
-[ 770.006518][   c-42.me:node      ] Node 109: 'b'/109 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 770.006518][   c-42.me:node      ] 
-Here's node 109's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 109    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 770.006518][   c-42.me:node      ] Node 109: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 770.006518][   c-42.me:node      ] Node 109: No. dynar length = 1
-[ 770.006518][   c-42.me:node      ] Node 109: 'b'/109 - Waiting for sync answer ...
-[ 770.006518][   c-77.me:node      ] Node 138: 'b'/138 - Waiting for sync answer ...
-[ 780.000000][   c-78.me:node      ] Node 30: **** START JOINING DST *** (try number 1)
-[ 780.000000][   c-78.me:node      ] Node 30: Let's join the system ! (via contact 42) - deadline = 20000.000000
-[ 780.000000][   c-78.me:node      ] Node 30: order = 78, nb_msg = 87
-[ 780.000000][   c-78.me:node      ] Node 30: 'b'/30 - join() ...
-[ 780.000000][   c-78.me:node      ] Node 30: Sending sync request 'Connexion Request ...' to 42 for new node 30
-[ 780.006518][    c-0.me:42-Cnx_req-14] Node 42: 'u'/14 - End of wait - ans_cpt = 1
-[ 780.006518][    c-0.me:42-Cnx_req-14] Node 42: Received message  : 'sync - Connexion Request ...' from 30 to 42 -> 42
-[ 780.006518][    c-0.me:42-Cnx_req-14] Node 42: This is not an answer
-[ 780.006518][    c-0.me:42-Cnx_req-14] Node 42: back to wait_for_completion(). Answers received meanwhile ?
-[ 780.006518][    c-0.me:42-Cnx_req-14] Node 42: Waiting for completion ... - ans_cpt = 1
-[ 780.006518][    c-0.me:42-Cnx_req-14] Node 42: dynar of 1 expected answers
-[ 780.006518][    c-0.me:42-Cnx_req-14] elem[0] = {New Brother Received | ... - 121-'121' - 0x0 - new_node 14}
-[ 780.006518][   c-78.me:node      ] Node 30: 'b'/30 - Waiting for sync answer ...
-[ 790.000000][   c-79.me:node      ] Node 38: **** START JOINING DST *** (try number 1)
-[ 790.000000][   c-79.me:node      ] Node 38: Let's join the system ! (via contact 215) - deadline = 20000.000000
-[ 790.000000][   c-79.me:node      ] Node 38: order = 79, nb_msg = 88
-[ 790.000000][   c-79.me:node      ] Node 38: 'b'/38 - join() ...
-[ 790.000000][   c-79.me:node      ] Node 38: Sending sync request 'Connexion Request ...' to 215 for new node 38
-[ 790.006518][   c-13.me:node      ] Node 215: Received message : 'sync - Connexion Request ...' from 38 to 215 -> 215
-[ 790.006518][   c-13.me:node      ] Node 215: This is not the expected answer {'Connexion Request' from 253}, it's a 'Connexion Request' request from 38
-[ 790.006518][   c-13.me:node      ] Node 215: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 790.006518][   c-13.me:node      ] Node 215: No. dynar length = 1
-[ 790.006518][   c-13.me:node      ] Node 215: 'b'/215 - Waiting for sync answer ...
-[ 790.006518][   c-79.me:node      ] Node 38: 'b'/38 - Waiting for sync answer ...
-[ 800.000000][   c-80.me:node      ] Node 79: **** START JOINING DST *** (try number 1)
-[ 800.000000][   c-80.me:node      ] Node 79: Let's join the system ! (via contact 61) - deadline = 20000.000000
-[ 800.000000][   c-80.me:node      ] Node 79: order = 80, nb_msg = 89
-[ 800.000000][   c-80.me:node      ] Node 79: 'b'/79 - join() ...
-[ 800.000000][   c-80.me:node      ] Node 79: Sending sync request 'Connexion Request ...' to 61 for new node 79
-[ 800.006518][   c-50.me:node      ] Node 61: Received message : 'sync - Connexion Request ...' from 79 to 61 -> 61
-[ 800.006518][   c-50.me:node      ] Node 61: This is not the expected answer {'Connexion Request' from 141}, it's a 'Connexion Request' request from 79
-[ 800.006518][   c-50.me:node      ] Node 61: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 800.006518][   c-50.me:node      ] Node 61: No. dynar length = 1
-[ 800.006518][   c-50.me:node      ] Node 61: 'b'/61 - Waiting for sync answer ...
-[ 800.006518][   c-80.me:node      ] Node 79: 'b'/79 - Waiting for sync answer ...
-[ 810.000000][   c-81.me:node      ] Node 104: **** START JOINING DST *** (try number 1)
-[ 810.000000][   c-81.me:node      ] Node 104: Let's join the system ! (via contact 87) - deadline = 20000.000000
-[ 810.000000][   c-81.me:node      ] Node 104: order = 81, nb_msg = 90
-[ 810.000000][   c-81.me:node      ] Node 104: 'b'/104 - join() ...
-[ 810.000000][   c-81.me:node      ] Node 104: Sending sync request 'Connexion Request ...' to 87 for new node 104
-[ 810.006518][   c-40.me:node      ] Node 87: Received message : 'sync - Connexion Request ...' from 104 to 87 -> 87
-[ 810.006518][   c-40.me:node      ] Node 87: This is not the expected answer {'Connexion Request' from 14}, it's a 'Connexion Request' request from 104
-[ 810.006518][   c-40.me:node      ] Node 87: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 810.006518][   c-40.me:node      ] Node 87: No. dynar length = 1
-[ 810.006518][   c-40.me:node      ] Node 87: 'b'/87 - Waiting for sync answer ...
-[ 810.006518][   c-81.me:node      ] Node 104: 'b'/104 - Waiting for sync answer ...
-[ 820.000000][   c-82.me:node      ] Node 0: **** START JOINING DST *** (try number 1)
-[ 820.000000][   c-82.me:node      ] Node 0: Let's join the system ! (via contact 25) - deadline = 20000.000000
-[ 820.000000][   c-82.me:node      ] Node 0: order = 82, nb_msg = 91
-[ 820.000000][   c-82.me:node      ] Node 0: 'b'/0 - join() ...
-[ 820.000000][   c-82.me:node      ] Node 0: Sending sync request 'Connexion Request ...' to 25 for new node 0
-[ 820.006518][   c-23.me:node      ] Node 25: Received message : 'sync - Connexion Request ...' from 0 to 25 -> 25
-[ 820.006518][   c-23.me:node      ] Node 25: This is not the expected answer {'Connexion Request' from 62}, it's a 'Connexion Request' request from 0
-[ 820.006518][   c-23.me:node      ] Node 25: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 820.006518][   c-23.me:node      ] Node 25: No. dynar length = 1
-[ 820.006518][   c-23.me:node      ] Node 25: 'b'/25 - Waiting for sync answer ...
-[ 820.006518][   c-82.me:node      ] Node 0: 'b'/0 - Waiting for sync answer ...
-[ 820.445627][    c-0.me:node      ] Node 42: asks node 14 if cs_req has to be reset
-[ 820.445627][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 820.445627][    c-0.me:node      ] Node 42: Sending async 'Check CS ...' to 14
-[ 820.452145][    c-2.me:node      ] Node 14: Received message : 'async - Check CS ...' from 42 to 14 -> 14
-[ 820.452145][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Check CS' request from 42
-[ 820.452145][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'async - Check CS' received from node 42 - answer to '42'
-[ 820.452145][    c-2.me:node      ] Node 14: TASK_CHECK_CS done
-[ 820.452145][    c-2.me:node      ] 
-Here's node 14's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 14     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 820.452145][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 820.452145][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 820.452145][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 830.000000][   c-83.me:node      ] Node 212: **** START JOINING DST *** (try number 1)
-[ 830.000000][   c-83.me:node      ] Node 212: Let's join the system ! (via contact 40) - deadline = 20000.000000
-[ 830.000000][   c-83.me:node      ] Node 212: order = 83, nb_msg = 93
-[ 830.000000][   c-83.me:node      ] Node 212: 'b'/212 - join() ...
-[ 830.000000][   c-83.me:node      ] Node 212: Sending sync request 'Connexion Request ...' to 40 for new node 212
-[ 830.006518][   c-45.me:node      ] Node 40: Received message : 'sync - Connexion Request ...' from 212 to 40 -> 40
-[ 830.006518][   c-45.me:node      ] Node 40: This is not the expected answer {'Connexion Request' from 25}, it's a 'Connexion Request' request from 212
-[ 830.006518][   c-45.me:node      ] Node 40 - 'b'/40: Handling task 'sync - Connexion Request' received from node 212 - answer to '212'
-[ 830.006518][   c-45.me:node      ] Node 40: 'b'/40 -  store CNX_REQ/212 for later execution
-[ 830.006518][   c-45.me:node      ] Node 40: TASK_CNX_REQ done
-[ 830.006518][   c-45.me:node      ] Node 40: 'b'/40 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 830.006518][   c-45.me:node      ] 
-Here's node 40's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 40     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 830.006518][   c-45.me:node      ] Node 40: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 830.006518][   c-45.me:node      ] Node 40: No. dynar length = 1
-[ 830.006518][   c-45.me:node      ] Node 40: 'b'/40 - Waiting for sync answer ...
-[ 830.006518][   c-83.me:node      ] Node 212: 'b'/212 - Waiting for sync answer ...
-[ 840.000000][   c-84.me:node      ] Node 73: **** START JOINING DST *** (try number 1)
-[ 840.000000][   c-84.me:node      ] Node 73: Let's join the system ! (via contact 138) - deadline = 20000.000000
-[ 840.000000][   c-84.me:node      ] Node 73: order = 84, nb_msg = 94
-[ 840.000000][   c-84.me:node      ] Node 73: 'b'/73 - join() ...
-[ 840.000000][   c-84.me:node      ] Node 73: Sending sync request 'Connexion Request ...' to 138 for new node 73
-[ 840.006518][   c-77.me:node      ] Node 138: Received message : 'sync - Connexion Request ...' from 73 to 138 -> 138
-[ 840.006518][   c-77.me:node      ] Node 138: This is not the expected answer {'Connexion Request' from 109}, it's a 'Connexion Request' request from 73
-[ 840.006518][   c-77.me:node      ] Node 138 - 'b'/138: Handling task 'sync - Connexion Request' received from node 73 - answer to '73'
-[ 840.006518][   c-77.me:node      ] Node 138: 'b'/138 -  store CNX_REQ/73 for later execution
-[ 840.006518][   c-77.me:node      ] Node 138: TASK_CNX_REQ done
-[ 840.006518][   c-77.me:node      ] Node 138: 'b'/138 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 840.006518][   c-77.me:node      ] 
-Here's node 138's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 138    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 840.006518][   c-77.me:node      ] Node 138: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 840.006518][   c-77.me:node      ] Node 138: No. dynar length = 1
-[ 840.006518][   c-77.me:node      ] Node 138: 'b'/138 - Waiting for sync answer ...
-[ 840.006518][   c-84.me:node      ] Node 73: 'b'/73 - Waiting for sync answer ...
-[ 850.000000][   c-85.me:node      ] Node 234: **** START JOINING DST *** (try number 1)
-[ 850.000000][   c-85.me:node      ] Node 234: Let's join the system ! (via contact 8) - deadline = 20000.000000
-[ 850.000000][   c-85.me:node      ] Node 234: order = 85, nb_msg = 95
-[ 850.000000][   c-85.me:node      ] Node 234: 'b'/234 - join() ...
-[ 850.000000][   c-85.me:node      ] Node 234: Sending sync request 'Connexion Request ...' to 8 for new node 234
-[ 850.006518][   c-41.me:node      ] Node 8: Received message : 'sync - Connexion Request ...' from 234 to 8 -> 8
-[ 850.006518][   c-41.me:node      ] Node 8: This is not the expected answer {'Connexion Request' from 117}, it's a 'Connexion Request' request from 234
-[ 850.006518][   c-41.me:node      ] Node 8 - 'b'/8: Handling task 'sync - Connexion Request' received from node 234 - answer to '234'
-[ 850.006518][   c-41.me:node      ] Node 8: 'b'/8 -  store CNX_REQ/234 for later execution
-[ 850.006518][   c-41.me:node      ] Node 8: TASK_CNX_REQ done
-[ 850.006518][   c-41.me:node      ] Node 8: 'b'/8 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 850.006518][   c-41.me:node      ] 
-Here's node 8's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 8      |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 850.006518][   c-41.me:node      ] Node 8: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 850.006518][   c-41.me:node      ] Node 8: No. dynar length = 1
-[ 850.006518][   c-41.me:node      ] Node 8: 'b'/8 - Waiting for sync answer ...
-[ 850.006518][   c-85.me:node      ] Node 234: 'b'/234 - Waiting for sync answer ...
-[ 860.000000][   c-86.me:node      ] Node 188: **** START JOINING DST *** (try number 1)
-[ 860.000000][   c-86.me:node      ] Node 188: Let's join the system ! (via contact 28) - deadline = 20000.000000
-[ 860.000000][   c-86.me:node      ] Node 188: order = 86, nb_msg = 96
-[ 860.000000][   c-86.me:node      ] Node 188: 'b'/188 - join() ...
-[ 860.000000][   c-86.me:node      ] Node 188: Sending sync request 'Connexion Request ...' to 28 for new node 188
-[ 860.006518][   c-44.me:node      ] Node 28: Received message : 'sync - Connexion Request ...' from 188 to 28 -> 28
-[ 860.006518][   c-44.me:node      ] Node 28: This is not the expected answer {'Connexion Request' from 120}, it's a 'Connexion Request' request from 188
-[ 860.006518][   c-44.me:node      ] Node 28 - 'b'/28: Handling task 'sync - Connexion Request' received from node 188 - answer to '188'
-[ 860.006518][   c-44.me:node      ] Node 28: 'b'/28 -  store CNX_REQ/188 for later execution
-[ 860.006518][   c-44.me:node      ] Node 28: TASK_CNX_REQ done
-[ 860.006518][   c-44.me:node      ] Node 28: 'b'/28 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 860.006518][   c-44.me:node      ] 
-Here's node 28's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 28     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 860.006518][   c-44.me:node      ] Node 28: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 860.006518][   c-44.me:node      ] Node 28: No. dynar length = 1
-[ 860.006518][   c-44.me:node      ] Node 28: 'b'/28 - Waiting for sync answer ...
-[ 860.006518][   c-86.me:node      ] Node 188: 'b'/188 - Waiting for sync answer ...
-[ 870.000000][   c-87.me:node      ] Node 140: **** START JOINING DST *** (try number 1)
-[ 870.000000][   c-87.me:node      ] Node 140: Let's join the system ! (via contact 172) - deadline = 20000.000000
-[ 870.000000][   c-87.me:node      ] Node 140: order = 87, nb_msg = 97
-[ 870.000000][   c-87.me:node      ] Node 140: 'b'/140 - join() ...
-[ 870.000000][   c-87.me:node      ] Node 140: Sending sync request 'Connexion Request ...' to 172 for new node 140
-[ 870.006518][   c-46.me:node      ] Node 172: Received message : 'sync - Connexion Request ...' from 140 to 172 -> 172
-[ 870.006518][   c-46.me:node      ] Node 172: This is not the expected answer {'Connexion Request' from 117}, it's a 'Connexion Request' request from 140
-[ 870.006518][   c-46.me:node      ] Node 172 - 'b'/172: Handling task 'sync - Connexion Request' received from node 140 - answer to '140'
-[ 870.006518][   c-46.me:node      ] Node 172: 'b'/172 -  store CNX_REQ/140 for later execution
-[ 870.006518][   c-46.me:node      ] Node 172: TASK_CNX_REQ done
-[ 870.006518][   c-46.me:node      ] Node 172: 'b'/172 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 870.006518][   c-46.me:node      ] 
-Here's node 172's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 172    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 870.006518][   c-46.me:node      ] Node 172: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 870.006518][   c-46.me:node      ] Node 172: No. dynar length = 1
-[ 870.006518][   c-46.me:node      ] Node 172: 'b'/172 - Waiting for sync answer ...
-[ 870.006518][   c-87.me:node      ] Node 140: 'b'/140 - Waiting for sync answer ...
-[ 880.000000][   c-88.me:node      ] Node 150: **** START JOINING DST *** (try number 1)
-[ 880.000000][   c-88.me:node      ] Node 150: Let's join the system ! (via contact 254) - deadline = 20000.000000
-[ 880.000000][   c-88.me:node      ] Node 150: order = 88, nb_msg = 98
-[ 880.000000][   c-88.me:node      ] Node 150: 'b'/150 - join() ...
-[ 880.000000][   c-88.me:node      ] Node 150: Sending sync request 'Connexion Request ...' to 254 for new node 150
-[ 880.006518][   c-75.me:node      ] Node 254: Received message : 'sync - Connexion Request ...' from 150 to 254 -> 254
-[ 880.006518][   c-75.me:node      ] Node 254: This is not the expected answer {'Connexion Request' from 115}, it's a 'Connexion Request' request from 150
-[ 880.006518][   c-75.me:node      ] Node 254 - 'b'/254: Handling task 'sync - Connexion Request' received from node 150 - answer to '150'
-[ 880.006518][   c-75.me:node      ] Node 254: 'b'/254 -  store CNX_REQ/150 for later execution
-[ 880.006518][   c-75.me:node      ] Node 254: TASK_CNX_REQ done
-[ 880.006518][   c-75.me:node      ] Node 254: 'b'/254 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 880.006518][   c-75.me:node      ] 
-Here's node 254's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 254    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 880.006518][   c-75.me:node      ] Node 254: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 880.006518][   c-75.me:node      ] Node 254: No. dynar length = 1
-[ 880.006518][   c-75.me:node      ] Node 254: 'b'/254 - Waiting for sync answer ...
-[ 880.006518][   c-88.me:node      ] Node 150: 'b'/150 - Waiting for sync answer ...
-[ 890.000000][   c-89.me:node      ] Node 29: **** START JOINING DST *** (try number 1)
-[ 890.000000][   c-89.me:node      ] Node 29: Let's join the system ! (via contact 123) - deadline = 20000.000000
-[ 890.000000][   c-89.me:node      ] Node 29: order = 89, nb_msg = 99
-[ 890.000000][   c-89.me:node      ] Node 29: 'b'/29 - join() ...
-[ 890.000000][   c-89.me:node      ] Node 29: Sending sync request 'Connexion Request ...' to 123 for new node 29
-[ 890.006518][   c-62.me:node      ] Node 123: Received message : 'sync - Connexion Request ...' from 29 to 123 -> 123
-[ 890.006518][   c-62.me:node      ] Node 123: This is not the expected answer {'Connexion Request' from 136}, it's a 'Connexion Request' request from 29
-[ 890.006518][   c-62.me:node      ] Node 123 - 'b'/123: Handling task 'sync - Connexion Request' received from node 29 - answer to '29'
-[ 890.006518][   c-62.me:node      ] Node 123: 'b'/123 -  store CNX_REQ/29 for later execution
-[ 890.006518][   c-62.me:node      ] Node 123: TASK_CNX_REQ done
-[ 890.006518][   c-62.me:node      ] Node 123: 'b'/123 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 890.006518][   c-62.me:node      ] 
-Here's node 123's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 123    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 890.006518][   c-62.me:node      ] Node 123: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 890.006518][   c-62.me:node      ] Node 123: No. dynar length = 1
-[ 890.006518][   c-62.me:node      ] Node 123: 'b'/123 - Waiting for sync answer ...
-[ 890.006518][   c-89.me:node      ] Node 29: 'b'/29 - Waiting for sync answer ...
-[ 900.000000][   c-90.me:node      ] Node 170: **** START JOINING DST *** (try number 1)
-[ 900.000000][   c-90.me:node      ] Node 170: Let's join the system ! (via contact 64) - deadline = 20000.000000
-[ 900.000000][   c-90.me:node      ] Node 170: order = 90, nb_msg = 100
-[ 900.000000][   c-90.me:node      ] Node 170: 'b'/170 - join() ...
-[ 900.000000][   c-90.me:node      ] Node 170: Sending sync request 'Connexion Request ...' to 64 for new node 170
-[ 900.006518][   c-31.me:node      ] Node 64: Received message : 'sync - Connexion Request ...' from 170 to 64 -> 64
-[ 900.006518][   c-31.me:node      ] Node 64: This is not the expected answer {'Connexion Request' from 248}, it's a 'Connexion Request' request from 170
-[ 900.006518][   c-31.me:node      ] Node 64: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 900.006518][   c-31.me:node      ] Node 64: No. dynar length = 1
-[ 900.006518][   c-31.me:node      ] Node 64: 'b'/64 - Waiting for sync answer ...
-[ 900.006518][   c-90.me:node      ] Node 170: 'b'/170 - Waiting for sync answer ...
-[ 910.000000][   c-91.me:node      ] Node 69: **** START JOINING DST *** (try number 1)
-[ 910.000000][   c-91.me:node      ] Node 69: Let's join the system ! (via contact 250) - deadline = 20000.000000
-[ 910.000000][   c-91.me:node      ] Node 69: order = 91, nb_msg = 101
-[ 910.000000][   c-91.me:node      ] Node 69: 'b'/69 - join() ...
-[ 910.000000][   c-91.me:node      ] Node 69: Sending sync request 'Connexion Request ...' to 250 for new node 69
-[ 910.006518][   c-22.me:node      ] Node 250: Received message : 'sync - Connexion Request ...' from 69 to 250 -> 250
-[ 910.006518][   c-22.me:node      ] Node 250: This is not the expected answer {'Connexion Request' from 215}, it's a 'Connexion Request' request from 69
-[ 910.006518][   c-22.me:node      ] Node 250: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 910.006518][   c-22.me:node      ] Node 250: No. dynar length = 1
-[ 910.006518][   c-22.me:node      ] Node 250: 'b'/250 - Waiting for sync answer ...
-[ 910.006518][   c-91.me:node      ] Node 69: 'b'/69 - Waiting for sync answer ...
-[ 920.000000][   c-92.me:node      ] Node 19: **** START JOINING DST *** (try number 1)
-[ 920.000000][   c-92.me:node      ] Node 19: Let's join the system ! (via contact 170) - deadline = 20000.000000
-[ 920.000000][   c-92.me:node      ] Node 19: order = 92, nb_msg = 102
-[ 920.000000][   c-92.me:node      ] Node 19: 'b'/19 - join() ...
-[ 920.000000][   c-92.me:node      ] Node 19: Sending sync request 'Connexion Request ...' to 170 for new node 19
-[ 920.006518][   c-90.me:node      ] Node 170: Received message : 'sync - Connexion Request ...' from 19 to 170 -> 170
-[ 920.006518][   c-90.me:node      ] Node 170: This is not the expected answer {'Connexion Request' from 64}, it's a 'Connexion Request' request from 19
-[ 920.006518][   c-90.me:node      ] Node 170 - 'b'/170: Handling task 'sync - Connexion Request' received from node 19 - answer to '19'
-[ 920.006518][   c-90.me:node      ] Node 170: 'b'/170 -  store CNX_REQ/19 for later execution
-[ 920.006518][   c-90.me:node      ] Node 170: TASK_CNX_REQ done
-[ 920.006518][   c-90.me:node      ] Node 170: 'b'/170 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 920.006518][   c-90.me:node      ] 
-Here's node 170's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 170    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 920.006518][   c-90.me:node      ] Node 170: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 920.006518][   c-90.me:node      ] Node 170: No. dynar length = 1
-[ 920.006518][   c-90.me:node      ] Node 170: 'b'/170 - Waiting for sync answer ...
-[ 920.006518][   c-92.me:node      ] Node 19: 'b'/19 - Waiting for sync answer ...
-[ 920.452145][    c-0.me:node      ] Node 42: asks node 14 if cs_req has to be reset
-[ 920.452145][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 20.400000
-[ 920.452145][    c-0.me:node      ] Node 42: Sending async 'Check CS ...' to 14
-[ 920.458663][    c-2.me:node      ] Node 14: Received message : 'async - Check CS ...' from 42 to 14 -> 14
-[ 920.458663][    c-2.me:node      ] Node 14: This is not the expected answer {'Connexion Request' from 121}, it's a 'Check CS' request from 42
-[ 920.458663][    c-2.me:node      ] Node 14 - 'b'/14: Handling task 'async - Check CS' received from node 42 - answer to '42'
-[ 920.458663][    c-2.me:node      ] Node 14: TASK_CHECK_CS done
-[ 920.458663][    c-2.me:node      ] 
-Here's node 14's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 14     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 920.458663][    c-2.me:node      ] Node 14: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 920.458663][    c-2.me:node      ] Node 14: No. dynar length = 1
-[ 920.458663][    c-2.me:node      ] Node 14: 'b'/14 - Waiting for sync answer ...
-[ 930.000000][   c-93.me:node      ] Node 31: **** START JOINING DST *** (try number 1)
-[ 930.000000][   c-93.me:node      ] Node 31: Let's join the system ! (via contact 67) - deadline = 20000.000000
-[ 930.000000][   c-93.me:node      ] Node 31: order = 93, nb_msg = 104
-[ 930.000000][   c-93.me:node      ] Node 31: 'b'/31 - join() ...
-[ 930.000000][   c-93.me:node      ] Node 31: Sending sync request 'Connexion Request ...' to 67 for new node 31
-[ 930.006518][   c-69.me:node      ] Node 67: Received message : 'sync - Connexion Request ...' from 31 to 67 -> 67
-[ 930.006518][   c-69.me:node      ] Node 67: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 31
-[ 930.006518][   c-69.me:node      ] Node 67 - 'b'/67: Handling task 'sync - Connexion Request' received from node 31 - answer to '31'
-[ 930.006518][   c-69.me:node      ] Node 67: 'b'/67 -  store CNX_REQ/31 for later execution
-[ 930.006518][   c-69.me:node      ] Node 67: TASK_CNX_REQ done
-[ 930.006518][   c-69.me:node      ] Node 67: 'b'/67 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 930.006518][   c-69.me:node      ] 
-Here's node 67's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 67     |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 930.006518][   c-69.me:node      ] Node 67: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 930.006518][   c-69.me:node      ] Node 67: No. dynar length = 1
-[ 930.006518][   c-69.me:node      ] Node 67: 'b'/67 - Waiting for sync answer ...
-[ 930.006518][   c-93.me:node      ] Node 31: 'b'/31 - Waiting for sync answer ...
-[ 940.000000][   c-94.me:node      ] Node 205: **** START JOINING DST *** (try number 1)
-[ 940.000000][   c-94.me:node      ] Node 205: Let's join the system ! (via contact 164) - deadline = 20000.000000
-[ 940.000000][   c-94.me:node      ] Node 205: order = 94, nb_msg = 105
-[ 940.000000][   c-94.me:node      ] Node 205: 'b'/205 - join() ...
-[ 940.000000][   c-94.me:node      ] Node 205: Sending sync request 'Connexion Request ...' to 164 for new node 205
-[ 940.006518][   c-47.me:node      ] Node 164: Received message : 'sync - Connexion Request ...' from 205 to 164 -> 164
-[ 940.006518][   c-47.me:node      ] Node 164: This is not the expected answer {'Connexion Request' from 175}, it's a 'Connexion Request' request from 205
-[ 940.006518][   c-47.me:node      ] Node 164 - 'b'/164: Handling task 'sync - Connexion Request' received from node 205 - answer to '205'
-[ 940.006518][   c-47.me:node      ] Node 164: 'b'/164 -  store CNX_REQ/205 for later execution
-[ 940.006518][   c-47.me:node      ] Node 164: TASK_CNX_REQ done
-[ 940.006518][   c-47.me:node      ] Node 164: 'b'/164 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 940.006518][   c-47.me:node      ] 
-Here's node 164's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 164    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 940.006518][   c-47.me:node      ] Node 164: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 940.006518][   c-47.me:node      ] Node 164: No. dynar length = 1
-[ 940.006518][   c-47.me:node      ] Node 164: 'b'/164 - Waiting for sync answer ...
-[ 940.006518][   c-94.me:node      ] Node 205: 'b'/205 - Waiting for sync answer ...
-[ 950.000000][   c-95.me:node      ] Node 4: **** START JOINING DST *** (try number 1)
-[ 950.000000][   c-95.me:node      ] Node 4: Let's join the system ! (via contact 119) - deadline = 20000.000000
-[ 950.000000][   c-95.me:node      ] Node 4: order = 95, nb_msg = 106
-[ 950.000000][   c-95.me:node      ] Node 4: 'b'/4 - join() ...
-[ 950.000000][   c-95.me:node      ] Node 4: Sending sync request 'Connexion Request ...' to 119 for new node 4
-[ 950.006518][    c-9.me:node      ] Node 119: Received message : 'sync - Connexion Request ...' from 4 to 119 -> 119
-[ 950.006518][    c-9.me:node      ] Node 119: This is not the expected answer {'Connexion Request' from 249}, it's a 'Connexion Request' request from 4
-[ 950.006518][    c-9.me:node      ] Node 119: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 950.006518][    c-9.me:node      ] Node 119: No. dynar length = 1
-[ 950.006518][    c-9.me:node      ] Node 119: 'b'/119 - Waiting for sync answer ...
-[ 950.006518][   c-95.me:node      ] Node 4: 'b'/4 - Waiting for sync answer ...
-[ 960.000000][   c-96.me:node      ] Node 145: **** START JOINING DST *** (try number 1)
-[ 960.000000][   c-96.me:node      ] Node 145: Let's join the system ! (via contact 62) - deadline = 20000.000000
-[ 960.000000][   c-96.me:node      ] Node 145: order = 96, nb_msg = 107
-[ 960.000000][   c-96.me:node      ] Node 145: 'b'/145 - join() ...
-[ 960.000000][   c-96.me:node      ] Node 145: Sending sync request 'Connexion Request ...' to 62 for new node 145
-[ 960.006518][    c-4.me:node      ] Node 62: Received message : 'sync - Connexion Request ...' from 145 to 62 -> 62
-[ 960.006518][    c-4.me:node      ] Node 62: This is not the expected answer {'Connexion Request' from 163}, it's a 'Connexion Request' request from 145
-[ 960.006518][    c-4.me:node      ] Node 62: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 960.006518][    c-4.me:node      ] Node 62: No. dynar length = 1
-[ 960.006518][    c-4.me:node      ] Node 62: 'b'/62 - Waiting for sync answer ...
-[ 960.006518][   c-96.me:node      ] Node 145: 'b'/145 - Waiting for sync answer ...
-[ 970.000000][   c-97.me:node      ] Node 155: **** START JOINING DST *** (try number 1)
-[ 970.000000][   c-97.me:node      ] Node 155: Let's join the system ! (via contact 164) - deadline = 20000.000000
-[ 970.000000][   c-97.me:node      ] Node 155: order = 97, nb_msg = 108
-[ 970.000000][   c-97.me:node      ] Node 155: 'b'/155 - join() ...
-[ 970.000000][   c-97.me:node      ] Node 155: Sending sync request 'Connexion Request ...' to 164 for new node 155
-[ 970.006518][   c-47.me:node      ] Node 164: Received message : 'sync - Connexion Request ...' from 155 to 164 -> 164
-[ 970.006518][   c-47.me:node      ] Node 164: This is not the expected answer {'Connexion Request' from 175}, it's a 'Connexion Request' request from 155
-[ 970.006518][   c-47.me:node      ] Node 164: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 970.006518][   c-47.me:node      ] Node 164: No. dynar length = 1
-[ 970.006518][   c-47.me:node      ] Node 164: 'b'/164 - Waiting for sync answer ...
-[ 970.006518][   c-97.me:node      ] Node 155: 'b'/155 - Waiting for sync answer ...
-[ 980.000000][   c-98.me:node      ] Node 194: **** START JOINING DST *** (try number 1)
-[ 980.000000][   c-98.me:node      ] Node 194: Let's join the system ! (via contact 40) - deadline = 20000.000000
-[ 980.000000][   c-98.me:node      ] Node 194: order = 98, nb_msg = 109
-[ 980.000000][   c-98.me:node      ] Node 194: 'b'/194 - join() ...
-[ 980.000000][   c-98.me:node      ] Node 194: Sending sync request 'Connexion Request ...' to 40 for new node 194
-[ 980.006518][   c-45.me:node      ] Node 40: Received message : 'sync - Connexion Request ...' from 194 to 40 -> 40
-[ 980.006518][   c-45.me:node      ] Node 40: This is not the expected answer {'Connexion Request' from 25}, it's a 'Connexion Request' request from 194
-[ 980.006518][   c-45.me:node      ] Node 40: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 980.006518][   c-45.me:node      ] Node 40: No. dynar length = 1
-[ 980.006518][   c-45.me:node      ] Node 40: 'b'/40 - Waiting for sync answer ...
-[ 980.006518][   c-98.me:node      ] Node 194: 'b'/194 - Waiting for sync answer ...
-[ 990.000000][   c-99.me:node      ] Node 200: **** START JOINING DST *** (try number 1)
-[ 990.000000][   c-99.me:node      ] Node 200: Let's join the system ! (via contact 234) - deadline = 20000.000000
-[ 990.000000][   c-99.me:node      ] Node 200: order = 99, nb_msg = 110
-[ 990.000000][   c-99.me:node      ] Node 200: 'b'/200 - join() ...
-[ 990.000000][   c-99.me:node      ] Node 200: Sending sync request 'Connexion Request ...' to 234 for new node 200
-[ 990.006518][   c-85.me:node      ] Node 234: Received message : 'sync - Connexion Request ...' from 200 to 234 -> 234
-[ 990.006518][   c-85.me:node      ] Node 234: This is not the expected answer {'Connexion Request' from 8}, it's a 'Connexion Request' request from 200
-[ 990.006518][   c-85.me:node      ] Node 234 - 'b'/234: Handling task 'sync - Connexion Request' received from node 200 - answer to '200'
-[ 990.006518][   c-85.me:node      ] Node 234: 'b'/234 -  store CNX_REQ/200 for later execution
-[ 990.006518][   c-85.me:node      ] Node 234: TASK_CNX_REQ done
-[ 990.006518][   c-85.me:node      ] Node 234: 'b'/234 - cs_req = 0 cs_new_id = -1 cs_req_time = 0.000000
-[ 990.006518][   c-85.me:node      ] 
-Here's node 234's routing table (with load):
-+--------+--------+--------+--------+--------+  +--------+
-| S0     | 234    |        |        |        |  | 1      |
-+--------+--------+--------+--------+--------+  +--------+
-
-
-[ 990.006518][   c-85.me:node      ] Node 234: back to send_sync(). Answer received meanwhile? - dynar length = 1
-[ 990.006518][   c-85.me:node      ] Node 234: No. dynar length = 1
-[ 990.006518][   c-85.me:node      ] Node 234: 'b'/234 - Waiting for sync answer ...
-[ 990.006518][   c-99.me:node      ] Node 200: 'b'/200 - Waiting for sync answer ...
-[1000.058663] /Users/viking/Development/git_repos/simgrid/src/simix/smx_global.c:341: [simix_kernel/WARNING] Oops ! Deadlock or code not perfectly clean.
-[1000.058663] [simix_kernel/INFO] 101 processes are still running, waiting for something.
-[1000.058663] [simix_kernel/INFO] Legend of the following listing: "Process <pid> (<name>@<host>): <status>"
-[1000.058663] [simix_kernel/INFO] Process 2 (node@c-1.me): waiting for communication action 0x7fcf78c86bd0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 3 (node@c-2.me): waiting for communication action 0x7fcf78c8c270 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 4 (node@c-3.me): waiting for communication action 0x7fcf78c8c190 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 5 (node@c-4.me): waiting for communication action 0x7fcf78c8bfd0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 6 (node@c-5.me): waiting for communication action 0x7fcf78c8bef0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 7 (node@c-6.me): waiting for communication action 0x7fcf78c8be10 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 8 (node@c-7.me): waiting for communication action 0x7fcf78c86af0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 9 (node@c-8.me): waiting for communication action 0x7fcf78c8bc50 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 10 (node@c-9.me): waiting for communication action 0x7fcf78c8bb70 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 11 (node@c-10.me): waiting for communication action 0x7fcf78c8ba90 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 12 (node@c-11.me): waiting for communication action 0x7fcf78c8b9b0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 13 (node@c-12.me): waiting for communication action 0x7fcf78c8b8d0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 14 (node@c-13.me): waiting for communication action 0x7fcf78c8b7f0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 15 (node@c-14.me): waiting for communication action 0x7fcf78c8b710 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 16 (node@c-15.me): waiting for communication action 0x7fcf78c8b630 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 17 (node@c-16.me): waiting for communication action 0x7fcf78c8b550 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 18 (node@c-17.me): waiting for communication action 0x7fcf78c8b470 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 19 (node@c-18.me): waiting for communication action 0x7fcf78c8b390 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 20 (node@c-19.me): waiting for communication action 0x7fcf78c8b2b0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 21 (node@c-20.me): waiting for communication action 0x7fcf78c8b1d0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 22 (node@c-21.me): waiting for communication action 0x7fcf78c8b0f0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 23 (node@c-22.me): waiting for communication action 0x7fcf78c8b010 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 24 (node@c-23.me): waiting for communication action 0x7fcf78c8af30 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 25 (node@c-24.me): waiting for communication action 0x7fcf78c8ae50 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 26 (node@c-25.me): waiting for communication action 0x7fcf78c8ad70 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 27 (node@c-26.me): waiting for communication action 0x7fcf78c8ac90 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 28 (node@c-27.me): waiting for communication action 0x7fcf78c8abb0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 29 (node@c-28.me): waiting for communication action 0x7fcf78c8aad0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 30 (node@c-29.me): waiting for communication action 0x7fcf78c8a9f0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 31 (node@c-30.me): waiting for communication action 0x7fcf78c8a910 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 32 (node@c-31.me): waiting for communication action 0x7fcf78c8a830 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 33 (node@c-32.me): waiting for communication action 0x7fcf78c8a750 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 34 (node@c-33.me): waiting for communication action 0x7fcf78c8a670 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 35 (node@c-34.me): waiting for communication action 0x7fcf78c8a590 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 36 (node@c-35.me): waiting for communication action 0x7fcf78c8a4b0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 37 (node@c-36.me): waiting for communication action 0x7fcf78c8a3d0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 38 (node@c-37.me): waiting for communication action 0x7fcf78c8a2f0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 39 (node@c-38.me): waiting for communication action 0x7fcf78c8a210 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 40 (node@c-39.me): waiting for communication action 0x7fcf78c8a130 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 41 (node@c-40.me): waiting for communication action 0x7fcf78c8a050 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 42 (node@c-41.me): waiting for communication action 0x7fcf78c89f70 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 43 (node@c-42.me): waiting for communication action 0x7fcf78c89e90 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 44 (node@c-43.me): waiting for communication action 0x7fcf78c89db0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 45 (node@c-44.me): waiting for communication action 0x7fcf78c89cd0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 46 (node@c-45.me): waiting for communication action 0x7fcf78c89bf0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 47 (node@c-46.me): waiting for communication action 0x7fcf78c89b10 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 48 (node@c-47.me): waiting for communication action 0x7fcf78c89a30 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 49 (node@c-48.me): waiting for communication action 0x7fcf78c89950 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 50 (node@c-49.me): waiting for communication action 0x7fcf78c89870 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 51 (node@c-50.me): waiting for communication action 0x7fcf78c89790 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 52 (node@c-51.me): waiting for communication action 0x7fcf78c896b0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 53 (node@c-52.me): waiting for communication action 0x7fcf78c895d0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 54 (node@c-53.me): waiting for communication action 0x7fcf78c894f0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 55 (node@c-54.me): waiting for communication action 0x7fcf78c89410 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 56 (node@c-55.me): waiting for communication action 0x7fcf78c89330 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 57 (node@c-56.me): waiting for communication action 0x7fcf78c89250 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 58 (node@c-57.me): waiting for communication action 0x7fcf78c89170 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 59 (node@c-58.me): waiting for communication action 0x7fcf78c89090 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 60 (node@c-59.me): waiting for communication action 0x7fcf78c88fb0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 61 (node@c-60.me): waiting for communication action 0x7fcf78c88ed0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 62 (node@c-61.me): waiting for communication action 0x7fcf78c88df0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 63 (node@c-62.me): waiting for communication action 0x7fcf78c88d10 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 64 (node@c-63.me): waiting for communication action 0x7fcf78c88c30 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 65 (node@c-64.me): waiting for communication action 0x7fcf78c88b50 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 66 (node@c-65.me): waiting for communication action 0x7fcf78c88a70 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 67 (node@c-66.me): waiting for communication action 0x7fcf78c88990 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 68 (node@c-67.me): waiting for communication action 0x7fcf78c888b0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 69 (node@c-68.me): waiting for communication action 0x7fcf78c887d0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 70 (node@c-69.me): waiting for communication action 0x7fcf78c886f0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 71 (node@c-70.me): waiting for communication action 0x7fcf78c88610 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 72 (node@c-71.me): waiting for communication action 0x7fcf78c88530 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 73 (node@c-72.me): waiting for communication action 0x7fcf78c88450 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 74 (node@c-73.me): waiting for communication action 0x7fcf78c88370 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 75 (node@c-74.me): waiting for communication action 0x7fcf78c88290 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 76 (node@c-75.me): waiting for communication action 0x7fcf78c881b0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 77 (node@c-76.me): waiting for communication action 0x7fcf78c880d0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 78 (node@c-77.me): waiting for communication action 0x7fcf78c87ff0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 79 (node@c-78.me): waiting for communication action 0x7fcf78c87f10 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 80 (node@c-79.me): waiting for communication action 0x7fcf78c87e30 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 81 (node@c-80.me): waiting for communication action 0x7fcf78c87d50 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 82 (node@c-81.me): waiting for communication action 0x7fcf78c87c70 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 83 (node@c-82.me): waiting for communication action 0x7fcf78c87b90 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 84 (node@c-83.me): waiting for communication action 0x7fcf78c87ab0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 85 (node@c-84.me): waiting for communication action 0x7fcf78c879d0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 86 (node@c-85.me): waiting for communication action 0x7fcf78c878f0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 87 (node@c-86.me): waiting for communication action 0x7fcf78c87810 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 88 (node@c-87.me): waiting for communication action 0x7fcf78c87730 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 89 (node@c-88.me): waiting for communication action 0x7fcf78c87650 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 90 (node@c-89.me): waiting for communication action 0x7fcf78c87570 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 91 (node@c-90.me): waiting for communication action 0x7fcf78c87490 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 92 (node@c-91.me): waiting for communication action 0x7fcf78c873b0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 93 (node@c-92.me): waiting for communication action 0x7fcf78c872d0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 94 (node@c-93.me): waiting for communication action 0x7fcf78c871f0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 95 (node@c-94.me): waiting for communication action 0x7fcf78c87110 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 96 (node@c-95.me): waiting for communication action 0x7fcf78c87030 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 97 (node@c-96.me): waiting for communication action 0x7fcf78c86f50 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 98 (node@c-97.me): waiting for communication action 0x7fcf78c86e70 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 99 (node@c-98.me): waiting for communication action 0x7fcf78c86d90 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 100 (node@c-99.me): waiting for communication action 0x7fcf78c86cb0 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 102 (121-Cnx_req-14@c-1.me): waiting for communication action 0x7fcf78c86a10 ((null)) in state 0 to finish
-[1000.058663] [simix_kernel/INFO] Process 103 (42-Cnx_req-14@c-0.me): waiting for communication action 0x7fcf78c86930 ((null)) in state 0 to finish
+[ 73.016510][    c-6.me:node      ] Node 46: 'b'/46 - Waiting for sync answer ...
+[ 73.200000][    c-0.me:node      ] Node 42: Task received
+[ 73.200000][    c-0.me:node      ] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 49.400002
+[ 73.200000][    c-0.me:node      ] Node 42: create fork process
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: in fork process - mailbox = '42-Cnx_req-46' - task = 0x10b65fb30 - *task = 0x7fe4d0523cb0
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42 - 'u'/14: Handling task 'sync - Connexion Request' received from node 46 - answer to '46'
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - connection_request() ... - new_node = 46
+[ 73.200000][    c-0.me:42-Cnx_req-46] 
+Here's node 42's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    | 14     |        |  | 3      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - I am the leader
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: in cs_req for new node 46 from 42
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 49.400002
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: back to connection_request()
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - in connection_request() - not available
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 -  end of connection_request() - val_ret = 'UPDATE_NOK', contact = -1
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 -  store CNX_REQ/46 for later execution
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: TASK_CNX_REQ done
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: 'u'/14 - cs_req = 1 cs_new_id = 14 cs_req_time = 49.400002
+[ 73.200000][    c-0.me:42-Cnx_req-46] 
+Here's node 42's routing table (with load):
++--------+--------+--------+--------+--------+  +--------+
+| S0     | 42     | 121    | 14     |        |  | 3      |
++--------+--------+--------+--------+--------+  +--------+
+
+
+[ 73.200000][    c-0.me:42-Cnx_req-46] Node 42: fork process dies - task = 0x10b65fb30 - *task = 0x0
+[ 73.200000][    c-0.me:node      ] Node 42: run 4 - 'u'/14 -  remain_tasks length = 1
+[ 73.200000][    c-0.me:node      ] Node 42: task[0] = {'sync - Connexion Request' from 46}
+[ 73.200000][    c-0.me:node      ] Node 42: Waiting for a task...
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42: 'u'/14 - End of wait - ans_cpt = 1
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42: Received message : 'ans - New Brother Received ...' from 121 to 42 -> 42-Cnx_req-14
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42 in wait_for_completion(): matching record found in async answers dynar: idx = 0
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42: answer 'New Brother Received - ...' received from 121 - ans_cpt = 0
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42: wait completed
+
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42: end of wait_for_completion(): val_ret = 'OK' - nok_id = -1
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42: 'a'/14 end of cs_rel()
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42: 'a'/14 - cs_req = 0 cs_new_id = 14 cs_req_time = 75.433022
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42: 'a'/14 - **** NODE 14 INSERTED ****
+[ 75.433020][    c-0.me:42-Cnx_req-14] Node 42: 'a'/14 -  end of connection_request() - val_ret = 'OK', contact = 42
+** SimGrid: UNCAUGHT EXCEPTION received on ./dst(102): category: unknown error; value: 0
+** STOP1 !! - task = 0x10b65fb30 - *task = 0x0
+** Thrown by 42-Cnx_req-14() in this process
+[ 75.433020][    c-0.me:42-Cnx_req-14] STOP1 !! - task = 0x10b65fb30 - *task = 0x0
+
+**   In handle_task() at dst.c:7986
+**   (no backtrace available)

@@ -1669,8 +1669,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     // waiting loop
     while (MSG_get_clock() <= max_wait && ans_cpt > 0) {
 
-        XBT_VERB("Node %d: Waiting for completion ... - ans_cpt = %d",
+        XBT_VERB("Node %d: Waiting for completion on mailbox '%s' ... - ans_cpt = %d",
                 me->self.id,
+                proc_mailbox,
                 ans_cpt);
 
         display_async_answers(me, 'V');
@@ -2463,6 +2464,30 @@ static void run_delayed_tasks(node_t me, char c) {
 
                     // store current length
                     mem_nb_elems = nb_elems;
+
+                    /*
+                    if (req->type == TASK_CNX_REQ) {
+
+                        proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+
+                        proc_data->node = me;
+                        proc_data->task = &elem;
+
+                        set_fork_mailbox(me->self.id,
+                                req->args.cnx_req.new_node_id,
+                                "Cnx_req",
+                                proc_data->proc_mailbox);
+
+                        XBT_VERB("Node %d: create fork process", me->self.id);
+                        MSG_process_create(proc_data->proc_mailbox,
+                                proc_handle_task,
+                                proc_data,
+                                MSG_host_self());
+                    } else {
+
+                        handle_task(me, &elem);
+                    }
+                    */
 
                     handle_task(me, &elem);
                     req = NULL;
@@ -7958,6 +7983,9 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         rcv_args.cnx_req.new_node_id,
                         rcv_args.cnx_req.try);
 
+                xbt_assert(*task != NULL, "STOP1 !! - task = %p - *task = %p", task, *task);
+                xbt_assert(!strcmp(MSG_task_get_name(*task), "sync"), "STOP2 !!");
+
                 XBT_DEBUG("Node %d: CNX_REQ val_ret = %d - contact = %d",
                         me->self.id,
                         answer.cnx_req.val_ret,
@@ -9239,13 +9267,20 @@ static int proc_handle_task(int argc, char* argv[]) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
-    XBT_INFO("Node %d: in fork process - mailbox = '%s'",
+    XBT_INFO("Node %d: in fork process - mailbox = '%s' - task = %p - *task = %p",
             proc_data->node->self.id,
-            proc_data->proc_mailbox);
+            proc_data->proc_mailbox,
+            proc_data->task,
+            *(proc_data->task));
 
     handle_task(proc_data->node, proc_data->task);
 
-    XBT_VERB("Node %d: fork process dies", proc_data->node->self.id);
+    XBT_VERB("Node %d: fork process dies - task = %p - *task = %p",
+            proc_data->node->self.id,
+            proc_data->task,
+            *(proc_data->task));
+
     MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
+
     return 0;
 }
