@@ -34,7 +34,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
 #define COMM_SIZE 10                        // message size when creating a new task
 #define COMP_SIZE 0                         // compute duration when creating a new task
-#define MAILBOX_NAME_SIZE 15                // name size of a mailbox
+#define MAILBOX_NAME_SIZE 30                // name size of a mailbox
 #define TYPE_NBR 38                         // number of task types
 #define MAX_WAIT_COMPL 3000                 // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 500                // won't wait longer an answer to a GET_REP request
@@ -187,9 +187,9 @@ typedef struct node {
     double          deadline;               // time to leave the DST
     xbt_dynar_t     states;                 // node states dynar
     s_dst_infos_t   dst_infos;              // infos about the DST
-    xbt_dynar_t     async_answers;          // expected async answers dynar
+    //xbt_dynar_t     async_answers;          // expected async answers dynar
     xbt_dynar_t     remain_tasks;           // delayed tasks dynar
-    xbt_dynar_t     sync_answers;           // expected sync answers dynar
+    //xbt_dynar_t     sync_answers;           // expected sync answers dynar
     char            cs_req;                 // Critical Section requested
     float           cs_req_time;            // timestamp when cs_req was set
     int             cs_new_id;              // new node's id that set cs_req
@@ -203,6 +203,8 @@ typedef struct proc_data {
     char proc_mailbox[MAILBOX_NAME_SIZE];
     node_t node;
     msg_task_t  task;
+    xbt_dynar_t async_answers;
+    xbt_dynar_t sync_answers;
 } s_proc_data_t, *proc_data_t;
 
 /**
@@ -1484,7 +1486,8 @@ static void cs_rel(node_t me, int new_node_id) {
 static void rec_async_answer(node_t me, int idx, ans_data_t ans) {
     XBT_IN();
 
-    recp_rec_t *elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    recp_rec_t *elem_ptr = xbt_dynar_get_ptr(proc_data->async_answers, idx);
 
     // mark answer as received
     (*elem_ptr)->recp.id = -1;
@@ -1516,7 +1519,8 @@ static void rec_async_answer(node_t me, int idx, ans_data_t ans) {
 static void rec_sync_answer(node_t me, int idx, ans_data_t ans) {
     XBT_IN();
 
-    recp_rec_t *elem_ptr = xbt_dynar_get_ptr(me->sync_answers, idx);
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    recp_rec_t *elem_ptr = xbt_dynar_get_ptr(proc_data->sync_answers, idx);
 
     xbt_assert((*elem_ptr)->answer_data == NULL,
             "Node %d in rec_sync_answer(): dynar rec %d data not null",
@@ -1545,13 +1549,14 @@ static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_
 
     recp_rec_t *elem_ptr = NULL;
     int idx;
-    int dynar_size = (int) xbt_dynar_length(me->async_answers);
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    int dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
     for (idx = dynar_size - 1; idx >= dynar_size - *ans_cpt; idx--) {
 
         XBT_DEBUG("IDX = %d - ans_cpt = %d - dynar_size = %d", idx, *ans_cpt, dynar_size);
 
-        elem_ptr = xbt_dynar_get_ptr(me->async_answers, idx);
+        elem_ptr = xbt_dynar_get_ptr(proc_data->async_answers, idx);
         if ((*elem_ptr)->recp.id == -1) {
 
             // check if an UPDATE_NOK has been received
@@ -1577,8 +1582,8 @@ static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_
             (*ans_cpt) --;
 
             // delete this entry from expected answers
-            xbt_dynar_remove_at(me->async_answers, idx, NULL);
-            dynar_size = (int) xbt_dynar_length(me->async_answers);
+            xbt_dynar_remove_at(proc_data->async_answers, idx, NULL);
+            dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
         }
     }
 
@@ -1641,7 +1646,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
     // inits
     e_val_ret_t ret = OK;
-    int dynar_size = (int) xbt_dynar_length(me->async_answers);
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    int dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
     XBT_DEBUG("Node %d: in wait_for_completion - async_answers dynar size = %d",
             me->self.id,
@@ -1743,6 +1749,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
             // process received message
             dynar_idx = -1;
+            proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
@@ -1751,7 +1758,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                 /* is it one of the async expected answers ? */
                 dynar_idx = expected_answers_search(me,
-                        me->async_answers,
+                        proc_data->async_answers,
                         ans->type,
                         ans->br_type,
                         ans->sender_id,
@@ -1783,18 +1790,18 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         ans_cpt--;
 
                         // remove this entry from dynar
-                        elem_ptr = xbt_dynar_get_ptr(me->async_answers, dynar_idx);
+                        elem_ptr = xbt_dynar_get_ptr(proc_data->async_answers, dynar_idx);
                         if ((*elem_ptr)->answer_data != NULL) {
 
                             xbt_free((*elem_ptr)->answer_data);
                             (*elem_ptr)->answer_data = NULL;
                         }
 
-                        xbt_dynar_remove_at(me->async_answers,
+                        xbt_dynar_remove_at(proc_data->async_answers,
                                 dynar_idx,
                                 NULL);
 
-                        dynar_size = (int) xbt_dynar_length(me->async_answers);
+                        dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
                     } else {
 
                         /* No, this answer is then expected by one of parent calls:
@@ -1816,7 +1823,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                      * Is it a sync expected one ? */
 
                     dynar_idx = expected_answers_search(me,
-                            me->sync_answers,
+                            proc_data->sync_answers,
                             ans->type,
                             ans->br_type,
                             ans->sender_id,
@@ -1863,7 +1870,31 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 } else {
 
                     // handle the received request
-                    handle_task(me, &task_received);
+                    if (req->type == TASK_CNX_REQ) {
+
+                        proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+
+                        proc_data->node = me;
+                        proc_data->task = task_received;
+                        proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+                        proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+
+                        set_fork_mailbox(me->self.id,
+                                req->args.cnx_req.new_node_id,
+                                "Cnx_req",
+                                proc_data->proc_mailbox);
+
+                        XBT_VERB("Node %d: create fork process", me->self.id);
+                        MSG_process_create(proc_data->proc_mailbox,
+                                proc_handle_task,
+                                proc_data,
+                                MSG_host_self());
+                    } else {
+
+                        handle_task(me, &task_received);
+                    }
+
+                    //handle_task(me, &task_received);
                 }
                 ans = NULL;
                 req = NULL;
@@ -1879,12 +1910,12 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 // async expected answers received meanwhile ?
 
                 XBT_DEBUG("Before check : ans_cpt = %d - dynar_size = %d",
-                        ans_cpt, (int) xbt_dynar_length(me->async_answers));
+                        ans_cpt, (int) xbt_dynar_length(proc_data->async_answers));
 
                 check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
 
                 XBT_DEBUG("After check : ans_cpt = %d - dynar_size = %d",
-                        ans_cpt, (int) xbt_dynar_length(me->async_answers));
+                        ans_cpt, (int) xbt_dynar_length(proc_data->async_answers));
 
                 xbt_assert(ans_cpt >= 0,
                         "Node %d: ack reception error",
@@ -1892,12 +1923,14 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             } // task_received is a request
         } // task reception OK
 
+        /*  TODO: Ne pas oublier
         xbt_assert(ans == NULL && task_received == NULL,
                 "Node %d in wait_for_completion(): ans and task_received"
                 " should be NULL here ! ans = %p - task_received = %p",
                 me->self.id,
                 ans,
                 task_received);
+        */
     } // reception loop
 
     // Error if max_wait reached
@@ -2068,13 +2101,14 @@ static void set_active(node_t me, int new_id) {
     XBT_IN();
 
     s_state_t state = get_state(me);
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
     int idx = -1;
     unsigned int iter = 0;
     recp_rec_t elem;
 
     // don't set active if another one has not been answered yet
-    xbt_dynar_foreach(me->async_answers, iter, elem){
+    xbt_dynar_foreach(proc_data->async_answers, iter, elem){
 
         if (elem->type == TASK_BROADCAST &&
             elem->br_type == TASK_SET_ACTIVE &&
@@ -2360,12 +2394,13 @@ static void run_delayed_tasks(node_t me, char c) {
 
         task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
         req_data = MSG_task_get_data(*task_ptr);
-        XBT_VERB("Node %d: task[%d] = {'%s - %s' from %d}",
+        XBT_VERB("Node %d: task[%d] = {'%s - %s' from %d for new node %d}",
                 me->self.id,
                 k,
                 MSG_task_get_name(*task_ptr),
                 debug_msg[req_data->type],
-                req_data->sender_id);
+                req_data->sender_id,
+                req_data->args.cnx_req.new_node_id);
     }
 
     /* run delayed CNX_GROUPS for new node new_id if current state is 'u'/new_id */
@@ -2471,6 +2506,8 @@ static void run_delayed_tasks(node_t me, char c) {
 
                         proc_data->node = me;
                         proc_data->task = elem;
+                        proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+                        proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
 
                         set_fork_mailbox(me->self.id,
                                 req->args.cnx_req.new_node_id,
@@ -2536,12 +2573,12 @@ static void node_free(node_t me) {
 
     XBT_IN();
 
-    xbt_dynar_free(&(me->async_answers));
     xbt_dynar_free(&(me->remain_tasks));
-    xbt_dynar_free(&(me->sync_answers));
     xbt_dynar_free(&(me->states));
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    xbt_dynar_free(&(proc_data->async_answers));
+    xbt_dynar_free(&(proc_data->sync_answers));
     xbt_free(proc_data);
     proc_data = NULL;
 
@@ -2682,29 +2719,30 @@ static void display_async_answers(node_t me, char log) {
 
     unsigned int cpt = 0;
     recp_rec_t elem = NULL;
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
     switch(log) {
 
         case 'D':
             XBT_DEBUG("Node %d: dynar of %lu expected answers",
                     me->self.id,
-                    xbt_dynar_length(me->async_answers));
+                    xbt_dynar_length(proc_data->async_answers));
             break;
 
         case 'V':
             XBT_VERB("Node %d: dynar of %lu expected answers",
                     me->self.id,
-                    xbt_dynar_length(me->async_answers));
+                    xbt_dynar_length(proc_data->async_answers));
             break;
 
         case 'I':
             XBT_INFO("Node %d: dynar of %lu expected answers",
                     me->self.id,
-                    xbt_dynar_length(me->async_answers));
+                    xbt_dynar_length(proc_data->async_answers));
             break;
     }
 
-    xbt_dynar_foreach(me->async_answers, cpt, elem) {
+    xbt_dynar_foreach(proc_data->async_answers, cpt, elem) {
 
         switch(log) {
 
@@ -2993,7 +3031,8 @@ static msg_error_t send_msg_sync(node_t me,
     // TODO : si c'est pas bon, il faut modifier send_msg_sync pour ajouter new_node_id à ses arguments
     req_elem->new_node_id = req_data->args.get_rep.new_node_id;
 
-    xbt_dynar_push(me->sync_answers, &req_elem);
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    xbt_dynar_push(proc_data->sync_answers, &req_elem);
 
     XBT_DEBUG("Node %d: {type = '%s - %s' - recipient = %d - answer_data = %p}"
             " pushed, dynar length = %lu",
@@ -3002,7 +3041,7 @@ static msg_error_t send_msg_sync(node_t me,
             debug_msg[req_elem->br_type],
             req_elem->recp.id,
             req_elem->answer_data,
-            xbt_dynar_length(me->sync_answers));
+            xbt_dynar_length(proc_data->sync_answers));
 
     // count messages
     nb_messages[req_data->type]++;
@@ -3136,12 +3175,12 @@ static msg_error_t send_msg_sync(node_t me,
                 XBT_VERB("Node %d: back to send_sync(). Answer received"
                         " meanwhile? - dynar length = %lu",
                         me->self.id,
-                        xbt_dynar_length(me->sync_answers));
+                        xbt_dynar_length(proc_data->sync_answers));
 
                 // if it exists, the expected answer is at the top of dynar
                 elem_ptr = xbt_dynar_get_ptr(
-                        me->sync_answers,
-                        xbt_dynar_length(me->sync_answers) - 1);
+                        proc_data->sync_answers,
+                        xbt_dynar_length(proc_data->sync_answers) - 1);
 
                 XBT_DEBUG("Node %d: top dynar : {type: '%s - %s' - recipient: %d"
                         " - data: %p}",
@@ -3157,12 +3196,12 @@ static msg_error_t send_msg_sync(node_t me,
                     *answer_data = (*elem_ptr)->answer_data;
 
                     // pop top record from dynar since it's now useless
-                    xbt_dynar_pop(me->sync_answers, &ans_elem);
+                    xbt_dynar_pop(proc_data->sync_answers, &ans_elem);
                     xbt_free(ans_elem);     //TODO: s'assurer que ça ne libère pas answer_data
 
                     XBT_VERB("Node %d: Yes. dynar length = %lu",
                             me->self.id,
-                            xbt_dynar_length(me->sync_answers));
+                            xbt_dynar_length(proc_data->sync_answers));
 
                     // run delayed tasks
                     run_delayed_tasks(me, '1');
@@ -3172,7 +3211,7 @@ static msg_error_t send_msg_sync(node_t me,
                     // the answer has not been received
                     XBT_VERB("Node %d: No. dynar length = %lu",
                             me->self.id,
-                            xbt_dynar_length(me->sync_answers));
+                            xbt_dynar_length(proc_data->sync_answers));
                 }
             } else {
 
@@ -3181,7 +3220,7 @@ static msg_error_t send_msg_sync(node_t me,
 
                 // look for matching record in dynar
                 dynar_idx = expected_answers_search(me,
-                        me->sync_answers,
+                        proc_data->sync_answers,
                         ans->type,
                         ans->br_type,
                         ans->sender_id,
@@ -3193,7 +3232,7 @@ static msg_error_t send_msg_sync(node_t me,
                         (dynar_idx == -1 ? " not " : " "),
                         dynar_idx);
 
-                if (dynar_idx == (int)xbt_dynar_length(me->sync_answers) - 1) {
+                if (dynar_idx == (int)xbt_dynar_length(proc_data->sync_answers) - 1) {
 
                     // this is the expected answer
                     state = get_state(me);
@@ -3203,7 +3242,7 @@ static msg_error_t send_msg_sync(node_t me,
                             state.active);
 
                     // pop the answer from dynar sync_answers
-                    xbt_dynar_pop(me->sync_answers, &ans_elem);
+                    xbt_dynar_pop(proc_data->sync_answers, &ans_elem);
 
                     // free memory
                     if (ans_elem->answer_data != NULL) {    // NOTE: answer_data devrait toujours être NULL ici
@@ -3217,7 +3256,7 @@ static msg_error_t send_msg_sync(node_t me,
                     XBT_DEBUG("Node %d: answer received. dynar has been poped:"
                             " length = %lu",
                             me->self.id,
-                            xbt_dynar_length(me->sync_answers));
+                            xbt_dynar_length(proc_data->sync_answers));
 
                     // run delayed tasks
                     run_delayed_tasks(me, '2');
@@ -3247,7 +3286,7 @@ static msg_error_t send_msg_sync(node_t me,
 
                         // No. Is it an async expected answer, then ?
                         dynar_idx = expected_answers_search(me,
-                                me->async_answers,
+                                proc_data->async_answers,
                                 ans->type,
                                 ans->br_type,
                                 ans->sender_id,
@@ -3304,14 +3343,14 @@ static msg_error_t send_msg_sync(node_t me,
         XBT_WARN("Node %d: sync timeout",
                 me->self.id);
 
-        if (xbt_dynar_is_empty(me->sync_answers) == 0) {
+        if (xbt_dynar_is_empty(proc_data->sync_answers) == 0) {
 
             // if waiting for GET_REP answer is canceled, then pop sync_answers
-            elem_ptr = xbt_dynar_get_ptr(me->sync_answers,
-                    xbt_dynar_length(me->sync_answers) - 1);
+            elem_ptr = xbt_dynar_get_ptr(proc_data->sync_answers,
+                    xbt_dynar_length(proc_data->sync_answers) - 1);
             if ((*elem_ptr)->type == TASK_GET_REP) {
 
-                xbt_dynar_pop(me->sync_answers, &ans_elem);
+                xbt_dynar_pop(proc_data->sync_answers, &ans_elem);
 
                 if (ans_elem->answer_data != NULL) {
 
@@ -3581,6 +3620,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
     int ans_cpt = nb_bro;
 
     msg_task_t task_sent = NULL;
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
     if (args.broadcast.stage > 0 ||
             (args.broadcast.stage == 0 && args.broadcast.lead_br == 0)) {
@@ -3623,7 +3663,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                         me->self.id,
                         elem->recp.id);
 
-                xbt_dynar_push(me->async_answers, &elem);
+                xbt_dynar_push(proc_data->async_answers, &elem);
             }
         }
     } else {
@@ -3659,7 +3699,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                     me->self.id,
                     elem->recp.id);
 
-            xbt_dynar_push(me->async_answers, &elem);
+            xbt_dynar_push(proc_data->async_answers, &elem);
         }
     }
 
@@ -3764,9 +3804,9 @@ static void init(node_t me) {
     me->states = xbt_dynar_new(sizeof(state_t), &xbt_free_ref);
     set_state(me, me->self.id, 'b');    // building in progress
 
-    me->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+    proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
     me->remain_tasks = xbt_dynar_new(sizeof(msg_task_t), &xbt_free_ref);
-    me->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+    proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
     me->cs_req = 0;
     me->cs_req_time = 0;
     me->cs_new_id = -1;
@@ -4437,6 +4477,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
             recp_rec_t elem = NULL;
             u_req_args_t args;
             msg_error_t res = MSG_OK;
+            proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
             for (i = 0; i < cpy_bro_index; i++) {
 
@@ -4464,7 +4505,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                     elem->recp = cpy_brothers[i];
                     elem->new_node_id = new_node_id;
                     elem->answer_data = NULL;
-                    xbt_dynar_push(me->async_answers, &elem);
+                    xbt_dynar_push(proc_data->async_answers, &elem);
 
                     xbt_assert(elem->recp.id > - 1,
                             "Node %d: #2# recp.id is %d !!",
@@ -5434,6 +5475,7 @@ static void connect_splitted_groups(node_t me,
     int cpt = 0;
     recp_rec_t elem = NULL;
 
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     msg_error_t res;
     u_req_args_t args;
     args.add_pred.stage = stage;
@@ -5486,7 +5528,7 @@ static void connect_splitted_groups(node_t me,
             elem->new_node_id = new_node_id;
             get_mailbox(rep_id, elem->recp.mailbox);
             elem->answer_data = NULL;
-            xbt_dynar_push(me->async_answers, &elem);
+            xbt_dynar_push(proc_data->async_answers, &elem);
 
             xbt_assert(elem->recp.id > - 1,
                     "Node %d: #3# recp.id is %d !!",
@@ -5516,7 +5558,7 @@ static void connect_splitted_groups(node_t me,
             elem->new_node_id = new_node_id;
             get_mailbox(init_rep_id, elem->recp.mailbox);
             elem->answer_data = NULL;
-            xbt_dynar_push(me->async_answers, &elem);
+            xbt_dynar_push(proc_data->async_answers, &elem);
 
             xbt_assert(elem->recp.id > - 1,
                     "Node %d: #4# recp.id is %d !!",
@@ -5557,7 +5599,7 @@ static void connect_splitted_groups(node_t me,
         elem->new_node_id = new_node_id;
         get_mailbox(new_rep_id, elem->recp.mailbox);
         elem->answer_data = NULL;
-        xbt_dynar_push(me->async_answers, &elem);
+        xbt_dynar_push(proc_data->async_answers, &elem);
 
         xbt_assert(elem->recp.id > - 1,
                 "Node %d: #5# recp.id is %d !!",
@@ -5612,6 +5654,7 @@ static void split(node_t me, int stage, int new_node_id) {
     // splitting node isn't available for requests
     set_update(me, new_node_id);
     s_state_t state = get_state(me);
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
     XBT_VERB("Node %d: '%c'/%d - split() ... - new_node = %d",
             me->self.id,
@@ -5694,7 +5737,7 @@ static void split(node_t me, int stage, int new_node_id) {
                 elem->recp = me->brothers[stage][i];
                 elem->new_node_id = new_node_id;
                 elem->answer_data = NULL;
-                xbt_dynar_push(me->async_answers, &elem);
+                xbt_dynar_push(proc_data->async_answers, &elem);
 
                 xbt_assert(elem->recp.id > - 1,
                         "Node %d: #6# recp.id is %d !!",
@@ -5739,7 +5782,7 @@ static void split(node_t me, int stage, int new_node_id) {
                 elem->recp = me->brothers[stage][i];
                 elem->new_node_id = new_node_id;
                 elem->answer_data = NULL;
-                xbt_dynar_push(me->async_answers, &elem);
+                xbt_dynar_push(proc_data->async_answers, &elem);
 
                 xbt_assert(elem->recp.id > - 1,
                         "Node %d: #7# recp.id is %d !!",
@@ -5837,7 +5880,7 @@ static void split(node_t me, int stage, int new_node_id) {
             elem->recp = cpy_preds[i];
             elem->new_node_id = new_node_id;
             elem->answer_data = NULL;
-            xbt_dynar_push(me->async_answers, &elem);
+            xbt_dynar_push(proc_data->async_answers, &elem);
 
             xbt_assert(elem->recp.id > - 1,
                     "Node %d: #8# recp.id is %d !!",
@@ -6254,6 +6297,7 @@ static void leave(node_t me) {
     u_req_args_t args;
     int new_rep_id = 0;
     int cpt = 0;
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
     // prepare the array of all async messages recipients
     recp_rec_t elem = NULL;
@@ -6303,7 +6347,7 @@ static void leave(node_t me) {
                     elem->recp = cpy_preds[stage][pred];
                     elem->new_node_id = me->self.id;
                     elem->answer_data = NULL;
-                    xbt_dynar_push(me->async_answers, &elem);
+                    xbt_dynar_push(proc_data->async_answers, &elem);
 
                     xbt_assert(elem->recp.id > - 1,
                             "Node %d: #9# recp.id is %d !!",
@@ -6355,7 +6399,7 @@ static void leave(node_t me) {
                         elem->recp = cpy_preds[stage][pred];
                         elem->new_node_id = me->self.id;
                         elem->answer_data = NULL;
-                        xbt_dynar_push(me->async_answers, &elem);
+                        xbt_dynar_push(proc_data->async_answers, &elem);
 
                         xbt_assert(elem->recp.id > - 1,
                                 "Node %d: #10# recp.id is %d !!",
@@ -6403,7 +6447,7 @@ static void leave(node_t me) {
                 elem->recp = cpy_brothers[stage][brother];
                 elem->new_node_id = me->self.id;
                 elem->answer_data = NULL;
-                xbt_dynar_push(me->async_answers, &elem);
+                xbt_dynar_push(proc_data->async_answers, &elem);
 
                 xbt_assert(elem->recp.id > - 1,
                         "Node %d: #11# recp.id is %d !!",
@@ -7826,6 +7870,8 @@ int node(int argc, char *argv[]) {
 
                                 proc_data->node = &node;
                                 proc_data->task = task_received;
+                                proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+                                proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
 
                                 set_fork_mailbox(node.self.id,
                                         req->args.cnx_req.new_node_id,
