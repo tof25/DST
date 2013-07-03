@@ -682,6 +682,7 @@ static e_val_ret_t  set_update(node_t me, int new_id);
 static void         set_state(node_t me, int new_id, char active);
 static void         pop_state(node_t me, int new_id, char active);
 static int          check(node_t me);
+static void         call_run_delayed_tasks(node_t me, int new_id, char c);
 static void         run_delayed_tasks(node_t me, char c);
 static void         node_free(node_t me);
 static void         data_ans_free(node_t me, ans_data_t *answer_data);
@@ -825,6 +826,7 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id);
 static int         node(int argc, char *argv[]);
 static e_val_ret_t handle_task(node_t me, msg_task_t* task);
 static int         proc_handle_task(int argc, char *argv[]);
+static int         proc_run_tasks(int argc, char* argv[]);
 
 /*
  ========================== FUNCTIONS DEFINITIONS =============================
@@ -2365,6 +2367,39 @@ static int check(node_t me) {
 }
 
 /**
+ * \brief Create a fork process in charge of launching run_delayed_tasks
+ * \param me the current node
+ * \param new_id new coming node
+ * \param c a letter to indicate the source of the call
+ */
+static void call_run_delayed_tasks(node_t me, int new_id, char c) {
+    XBT_IN();
+
+    XBT_VERB("Node %d: run delayed tasks -'%c'",
+            me->self.id,
+            c);
+
+    proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+    proc_data->node = me;
+    proc_data->task = NULL;
+    proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+    proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+
+    set_fork_mailbox(me->self.id,
+            new_id,
+            "dly_task",
+            proc_data->proc_mailbox);
+
+    XBT_VERB("Node %d: create fork process (run delayed tasks)", me->self.id);
+    MSG_process_create(proc_data->proc_mailbox,
+            proc_run_tasks,
+            proc_data,
+            MSG_host_self());
+
+    XBT_OUT();
+}
+
+/**
  * \brief Run tasks stored for a delayed execution
  * \param me the current node
  */
@@ -2500,6 +2535,7 @@ static void run_delayed_tasks(node_t me, char c) {
                     // store current length
                     mem_nb_elems = nb_elems;
 
+                    /*
                     if (req->type == TASK_CNX_REQ) {
 
                         proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
@@ -2523,8 +2559,9 @@ static void run_delayed_tasks(node_t me, char c) {
 
                         handle_task(me, &elem);
                     }
+                    */
 
-                    //handle_task(me, &elem);
+                    handle_task(me, &elem);
                     req = NULL;
                     state = get_state(me);
 
@@ -3204,7 +3241,8 @@ static msg_error_t send_msg_sync(node_t me,
                             xbt_dynar_length(proc_data->sync_answers));
 
                     // run delayed tasks
-                    run_delayed_tasks(me, '1');
+                    call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id, '1');
+                    //run_delayed_tasks(me, '1');
                     break;
                 } else {
 
@@ -3259,7 +3297,8 @@ static msg_error_t send_msg_sync(node_t me,
                             xbt_dynar_length(proc_data->sync_answers));
 
                     // run delayed tasks
-                    run_delayed_tasks(me, '2');
+                    call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id, '2');
+                    //run_delayed_tasks(me, '2');
                     break;
                 } else {
 
@@ -7762,7 +7801,8 @@ int node(int argc, char *argv[]) {
                 node.dst_infos.add_stage);
 
         // run remaining tasks, if any
-        run_delayed_tasks(&node, '3');
+        call_run_delayed_tasks(&node, node.self.id, '3');
+        //run_delayed_tasks(&node, '3');
 
         // task receive loop
         msg_task_t task_received = NULL;
@@ -7890,7 +7930,9 @@ int node(int argc, char *argv[]) {
                         }
 
                         // run remaining tasks, if any
-                        run_delayed_tasks(&node, '4');
+                        call_run_delayed_tasks(&node, req->args.cnx_req.new_node_id, '4');
+
+                        //run_delayed_tasks(&node, '4');
                     } else {
 
                         // ignore answers, only process requests
@@ -9330,3 +9372,27 @@ static int proc_handle_task(int argc, char* argv[]) {
 
     return 0;
 }
+
+
+/*
+ * \brief Fork process run delayed tasks
+ */
+static int proc_run_tasks(int argc, char* argv[]) {
+
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+
+    XBT_VERB("Node %d: in fork process (run_delayed_tasks) - mailbox = '%s'",
+            proc_data->node->self.id,
+            proc_data->proc_mailbox);
+
+    run_delayed_tasks(proc_data->node, 'F');
+
+    XBT_VERB("Node %d: fork process (run_delayed_tasks) dies",
+            proc_data->node->self.id);
+
+    MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
+
+    return 0;
+
+}
+
