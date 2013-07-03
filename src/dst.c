@@ -2375,26 +2375,32 @@ static int check(node_t me) {
 static void call_run_delayed_tasks(node_t me, int new_id, char c) {
     XBT_IN();
 
-    XBT_VERB("Node %d: run delayed tasks -'%c'",
-            me->self.id,
-            c);
+    s_state_t state = get_state(me);
+    if (state.active == 'a' && xbt_dynar_length(me->remain_tasks) > 0) {
 
-    proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
-    proc_data->node = me;
-    proc_data->task = NULL;
-    proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-    proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+        XBT_VERB("Node %d: '%c'/%d - run delayed tasks -'%c'",
+                me->self.id,
+                state.active,
+                state.new_id,
+                c);
 
-    set_fork_mailbox(me->self.id,
-            new_id,
-            "dly_task",
-            proc_data->proc_mailbox);
+        proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+        proc_data->node = me;
+        proc_data->task = NULL;
+        proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+        proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
 
-    XBT_VERB("Node %d: create fork process (run delayed tasks)", me->self.id);
-    MSG_process_create(proc_data->proc_mailbox,
-            proc_run_tasks,
-            proc_data,
-            MSG_host_self());
+        set_fork_mailbox(me->self.id,
+                new_id,
+                "dly_task",
+                proc_data->proc_mailbox);
+
+        XBT_VERB("Node %d: create fork process (run delayed tasks)", me->self.id);
+        MSG_process_create(proc_data->proc_mailbox,
+                proc_run_tasks,
+                proc_data,
+                MSG_host_self());
+    }
 
     XBT_OUT();
 }
@@ -2497,7 +2503,7 @@ static void run_delayed_tasks(node_t me, char c) {
 
                         nb_cnx_req++;
 
-                        XBT_VERB("Node %d: inside run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                        XBT_DEBUG("Node %d: inside run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                                 me->self.id,
                                 c,
                                 state.active,
@@ -2511,7 +2517,7 @@ static void run_delayed_tasks(node_t me, char c) {
                         continue;
                     }
 
-                    XBT_VERB("Node %d: run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                    XBT_DEBUG("Node %d: run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                             me->self.id,
                             c,
                             state.active,
@@ -2582,6 +2588,7 @@ static void run_delayed_tasks(node_t me, char c) {
                         }
                     }
                 }
+                MSG_process_sleep(0.2);
             } while (nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
         }
 
@@ -3241,7 +3248,7 @@ static msg_error_t send_msg_sync(node_t me,
                             xbt_dynar_length(proc_data->sync_answers));
 
                     // run delayed tasks
-                    call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id, '1');
+                    //call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id, '1');
                     //run_delayed_tasks(me, '1');
                     break;
                 } else {
@@ -3297,7 +3304,7 @@ static msg_error_t send_msg_sync(node_t me,
                             xbt_dynar_length(proc_data->sync_answers));
 
                     // run delayed tasks
-                    call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id, '2');
+                    //call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id, '2');
                     //run_delayed_tasks(me, '2');
                     break;
                 } else {
@@ -7801,7 +7808,7 @@ int node(int argc, char *argv[]) {
                 node.dst_infos.add_stage);
 
         // run remaining tasks, if any
-        call_run_delayed_tasks(&node, node.self.id, '3');
+        //call_run_delayed_tasks(&node, node.self.id, '3');
         //run_delayed_tasks(&node, '3');
 
         // task receive loop
@@ -7833,6 +7840,9 @@ int node(int argc, char *argv[]) {
                     xbt_log_control_set("msg_dst.thres:verbose");
                 }
                 */
+
+                // Run remain tasks if any
+                call_run_delayed_tasks(&node, node.self.id, '4');
 
                 // TODO: remplacer les get_clock() par une variable ?
                 if (MSG_get_clock() >= node.deadline && state.active == 'a' && 1 == 0) {    //TODO : ne pas oublier
@@ -7902,6 +7912,9 @@ int node(int argc, char *argv[]) {
 
                             xbt_dynar_push(node.remain_tasks, &task_received);
                             task_received = NULL;
+
+                            XBT_VERB("Node %d: task %s(%d) pushed", node.self.id, debug_msg[req->type], req->args.cnx_req.new_node_id);
+
                         } else {
 
                             if (req->type == TASK_CNX_REQ) {
@@ -7930,7 +7943,7 @@ int node(int argc, char *argv[]) {
                         }
 
                         // run remaining tasks, if any
-                        call_run_delayed_tasks(&node, req->args.cnx_req.new_node_id, '4');
+                        //call_run_delayed_tasks(&node, node.self.id, '4');
 
                         //run_delayed_tasks(&node, '4');
                     } else {
@@ -8126,7 +8139,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 task_free(task);
             }
 
-            XBT_VERB("Node %d: TASK_CNX_REQ done", me->self.id);
+            XBT_VERB("Node %d: TASK_CNX_REQ done for new node %d", me->self.id, rcv_args.cnx_req.new_node_id);
             display_sc(me, 'V');
 
             //}
@@ -9061,10 +9074,11 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             data_req_free(me, &rcv_req);
             task_free(task);
 
-            XBT_VERB("Node %d: '%c'/%u - TASK_CS_REQ done - val_ret = %s",
+            XBT_VERB("Node %d: '%c'/%u - TASK_CS_REQ done for new node %d - val_ret = %s",
                     me->self.id,
                     state.active,
                     state.new_id,
+                    rcv_args.cs_req.new_node_id,
                     (val_ret == UPDATE_NOK ? "NOK" : "OK"));
             break;
 
