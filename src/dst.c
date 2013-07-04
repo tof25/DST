@@ -2376,31 +2376,28 @@ static void call_run_delayed_tasks(node_t me, int new_id, char c) {
     XBT_IN();
 
     s_state_t state = get_state(me);
-    if (state.active == 'a' && xbt_dynar_length(me->remain_tasks) > 0) {
+    XBT_VERB("Node %d: '%c'/%d - run delayed tasks -'%c'",
+            me->self.id,
+            state.active,
+            state.new_id,
+            c);
 
-        XBT_VERB("Node %d: '%c'/%d - run delayed tasks -'%c'",
-                me->self.id,
-                state.active,
-                state.new_id,
-                c);
+    proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+    proc_data->node = me;
+    proc_data->task = NULL;
+    proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+    proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
 
-        proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
-        proc_data->node = me;
-        proc_data->task = NULL;
-        proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-        proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+    set_fork_mailbox(me->self.id,
+            new_id,
+            "dly_task",
+            proc_data->proc_mailbox);
 
-        set_fork_mailbox(me->self.id,
-                new_id,
-                "dly_task",
-                proc_data->proc_mailbox);
-
-        XBT_VERB("Node %d: create fork process (run delayed tasks)", me->self.id);
-        MSG_process_create(proc_data->proc_mailbox,
-                proc_run_tasks,
-                proc_data,
-                MSG_host_self());
-    }
+    XBT_VERB("Node %d: create fork process (run delayed tasks)", me->self.id);
+    MSG_process_create(proc_data->proc_mailbox,
+            proc_run_tasks,
+            proc_data,
+            MSG_host_self());
 
     XBT_OUT();
 }
@@ -2588,7 +2585,7 @@ static void run_delayed_tasks(node_t me, char c) {
                         }
                     }
                 }
-                MSG_process_sleep(0.2);
+                //MSG_process_sleep(0.2);
             } while (nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
         }
 
@@ -2601,10 +2598,12 @@ static void run_delayed_tasks(node_t me, char c) {
                 xbt_dynar_length(me->remain_tasks));
 
         // one of the delayed tasks may have stored a task itself
+        /*
         if (xbt_dynar_length(me->remain_tasks) > 0) {
 
             run_delayed_tasks(me, 'D');
         }
+        */
     }
     XBT_OUT();
 }
@@ -3893,6 +3892,9 @@ static void init(node_t me) {
 
     // set and store DST infos
     set_n_store_infos(me);
+
+    // create fork process in charge of processing remain tasks
+    call_run_delayed_tasks(me, me->self.id, 'F');
 
     display_preds(me, 'D');
 
@@ -7842,7 +7844,7 @@ int node(int argc, char *argv[]) {
                 */
 
                 // Run remain tasks if any
-                call_run_delayed_tasks(&node, node.self.id, '4');
+                //call_run_delayed_tasks(&node, node.self.id, '4');
 
                 // TODO: remplacer les get_clock() par une variable ?
                 if (MSG_get_clock() >= node.deadline && state.active == 'a' && 1 == 0) {    //TODO : ne pas oublier
@@ -9395,11 +9397,24 @@ static int proc_run_tasks(int argc, char* argv[]) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
-    XBT_VERB("Node %d: in fork process (run_delayed_tasks) - mailbox = '%s'",
+    XBT_DEBUG("Node %d: in fork process (run_delayed_tasks) - mailbox = '%s'",
             proc_data->node->self.id,
             proc_data->proc_mailbox);
 
-    run_delayed_tasks(proc_data->node, 'F');
+    s_state_t state;
+    long clock = 0;
+
+    while (MSG_get_clock() < max_simulation_time) {
+        MSG_process_sleep(50.0);
+        state = get_state(proc_data->node);
+        XBT_DEBUG("Node %d: '%c'/%d in fork process (run_delayed_tasks) - wake",
+                proc_data->node->self.id,
+                state.active,
+                state.new_id);
+        if ((state.active == 'a' || state.active == 'u') && xbt_dynar_length(proc_data->node->remain_tasks) > 0) {
+            run_delayed_tasks(proc_data->node, 'F');
+        }
+    }
 
     XBT_VERB("Node %d: fork process (run_delayed_tasks) dies",
             proc_data->node->self.id);
@@ -9407,6 +9422,5 @@ static int proc_run_tasks(int argc, char* argv[]) {
     MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
 
     return 0;
-
 }
 
