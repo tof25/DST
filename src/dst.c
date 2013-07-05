@@ -8044,6 +8044,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
     u_ans_data_t answer;
     msg_error_t res = MSG_OK;
     int init_idx, idx;
+    int test = 0;
 
     switch (type) {
 
@@ -8082,8 +8083,9 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
         case TASK_CNX_REQ:
             //if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) || (state.active == 'a'))
-            if (state.active != 'l'&& state.active != 'b') {            //TODO : ne pas oublier
 
+            test = (state.active != 'l'&& state.active != 'b' && strstr(MSG_process_get_name(MSG_process_self()), "dly") != NULL);            //TODO : ne pas oublier
+            if (test) {
                 // run task now
                 answer = connection_request(me,
                         rcv_args.cnx_req.new_node_id,
@@ -8109,7 +8111,9 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 }
             }
 
-            if (val_ret == UPDATE_NOK || state.active == 'l' || state.active == 'b') {
+            if (val_ret == UPDATE_NOK || !test) {
+
+                //if (val_ret == UPDATE_NOK || state.active == 'l' || state.active == 'b') {
 
                 /*
                    if (1 == 1) {
