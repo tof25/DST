@@ -2415,12 +2415,14 @@ static void run_delayed_tasks(node_t me, char c) {
     unsigned int nb_elems = xbt_dynar_length(me->remain_tasks);
 
     // display delayed tasks
-    XBT_VERB("Node %d: run %c - '%c'/%d -  remain_tasks length = %u",
+    XBT_VERB("Node %d: start run %c - '%c'/%d -  remain_tasks length = %u",
             me->self.id,
             c,
             state.active,
             state.new_id,
             nb_elems);
+
+    display_sc(me, 'V');
 
     msg_task_t *task_ptr = NULL;
     req_data_t req_data = NULL;
@@ -2514,7 +2516,7 @@ static void run_delayed_tasks(node_t me, char c) {
                         continue;
                     }
 
-                    XBT_DEBUG("Node %d: run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                    XBT_VERB("Node %d: run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                             me->self.id,
                             c,
                             state.active,
@@ -2527,6 +2529,7 @@ static void run_delayed_tasks(node_t me, char c) {
 
                     //xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
                     xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
+                    nb_elems--;
 
                     req = MSG_task_get_data(elem);
 
@@ -2569,6 +2572,7 @@ static void run_delayed_tasks(node_t me, char c) {
                     state = get_state(me);
 
                     //dynar may have been modified by handle_task
+                    /*
                     nb_elems = (int) xbt_dynar_length(me->remain_tasks);
                     if (nb_elems != mem_nb_elems) {
 
@@ -2584,6 +2588,7 @@ static void run_delayed_tasks(node_t me, char c) {
                             nb_cnx_req = nb_elems;
                         }
                     }
+                    */
                 }
                 //MSG_process_sleep(0.2);
             } while (nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
@@ -9405,7 +9410,7 @@ static int proc_run_tasks(int argc, char* argv[]) {
     long clock = 0;
 
     while (MSG_get_clock() < max_simulation_time) {
-        MSG_process_sleep(50.0);
+        MSG_process_sleep(10.0);
         state = get_state(proc_data->node);
         XBT_DEBUG("Node %d: '%c'/%d in fork process (run_delayed_tasks) - wake",
                 proc_data->node->self.id,
