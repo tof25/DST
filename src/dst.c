@@ -688,6 +688,7 @@ static void         node_free(node_t me);
 static void         data_ans_free(node_t me, ans_data_t *answer_data);
 static void         data_req_free(node_t me, req_data_t *req_data);
 static void         elem_free(void* elem_ptr);
+static void         display_remain_tasks(node_t me);
 static void         display_async_answers(node_t me, char log);
 static void         display_states(node_t me, char mode);
 static void         display_sc(node_t me, char mode);
@@ -2426,22 +2427,12 @@ static void run_delayed_tasks(node_t me, char c) {
 
     msg_task_t *task_ptr = NULL;
     req_data_t req_data = NULL;
-    msg_task_t elem;
+    msg_task_t elem, elem_cpy;
     int cpt = 0;
     int k = 0;
+    msg_error_t val_ret = OK;
 
-    for (k = 0; k < nb_elems; k++) {
-
-        task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
-        req_data = MSG_task_get_data(*task_ptr);
-        XBT_VERB("Node %d: task[%d] = {'%s - %s' from %d for new node %d}",
-                me->self.id,
-                k,
-                MSG_task_get_name(*task_ptr),
-                debug_msg[req_data->type],
-                req_data->sender_id,
-                req_data->args.cnx_req.new_node_id);
-    }
+    display_remain_tasks(me);
 
     /* run delayed CNX_GROUPS for new node new_id if current state is 'u'/new_id */
     if (state.active == 'u' &&
@@ -2495,18 +2486,8 @@ static void run_delayed_tasks(node_t me, char c) {
                 for (cpt = 0; cpt < nb_elems && state.active == 'a'; cpt++) {
 
                     if (cpt > 0) {
-                        for (k = 0; k < nb_elems; k++) {
 
-                            task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
-                            req_data = MSG_task_get_data(*task_ptr);
-                            XBT_VERB("Node %d: task[%d] = {'%s - %s' from %d for new node %d}",
-                                    me->self.id,
-                                    k,
-                                    MSG_task_get_name(*task_ptr),
-                                    debug_msg[req_data->type],
-                                    req_data->sender_id,
-                                    req_data->args.cnx_req.new_node_id);
-                        }
+                        display_remain_tasks(me);
                     }
 
                     task_ptr = xbt_dynar_get_ptr(me->remain_tasks, 0);
@@ -2584,15 +2565,31 @@ static void run_delayed_tasks(node_t me, char c) {
                     }
                     */
 
+                    XBT_VERB("AVANT");
+                    display_remain_tasks(me);
+
+                    elem_cpy = MSG_task_create(MSG_task_get_name(elem),
+                            COMP_SIZE,
+                            COMM_SIZE,
+                            MSG_task_get_data(elem));
+
                     xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
-                    if (handle_task(me, &elem) == OK) {
+                    val_ret = handle_task(me, &elem);
+
+                    if (val_ret == OK) {
 
                         XBT_VERB("Node %d: task OK removed", me->self.id);
                     } else {
 
-                        xbt_dynar_push(me->remain_tasks, &elem);
+                        if (val_ret != STORED) {
+
+                            xbt_dynar_push(me->remain_tasks, &elem_cpy);
+                        }
                         XBT_VERB("Node %d: task NOK not removed", me->self.id);
+
                     }
+                    XBT_VERB("APRES");
+                    display_remain_tasks(me);
 
                     req = NULL;
                     state = get_state(me);
@@ -2786,6 +2783,31 @@ static void elem_free(void *elem_ptr) {
    XBT_OUT();
    }
    */
+
+static void display_remain_tasks(node_t me) {
+    XBT_IN();
+
+    int k = 0;
+    msg_task_t *task_ptr = NULL;
+    req_data_t req_data = NULL;
+    unsigned int nb_elems = xbt_dynar_length(me->remain_tasks);
+    XBT_VERB("Node %d: nb_elems = %d", me->self.id, nb_elems);
+
+    for (k = 0; k < nb_elems; k++) {
+
+        task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
+        req_data = MSG_task_get_data(*task_ptr);
+        XBT_VERB("Node %d: task[%d] = {'%s - %s' from %d for new node %d}",
+                me->self.id,
+                k,
+                MSG_task_get_name(*task_ptr),
+                debug_msg[req_data->type],
+                req_data->sender_id,
+                req_data->args.cnx_req.new_node_id);
+    }
+
+    XBT_OUT();
+}
 
 static void display_async_answers(node_t me, char log) {
 
