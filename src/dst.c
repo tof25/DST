@@ -208,6 +208,16 @@ typedef struct proc_data {
 } s_proc_data_t, *proc_data_t;
 
 /**
+ * Array of debug return messages
+ */
+static const char* debug_ret_msg[] = {
+    "OK",
+    "STORED",
+    "UPDATE_OK",
+    "UPDATE_NOK"
+};
+
+/**
  * Array of debug task messages
  */
 static const char* debug_msg[] = {
@@ -2427,8 +2437,9 @@ static void run_delayed_tasks(node_t me, char c) {
 
     msg_task_t *task_ptr = NULL;
     req_data_t req_data = NULL;
-    msg_task_t elem, elem_cpy;
+    msg_task_t elem;
     int cpt = 0;
+    int idx = 0;
     int k = 0;
     msg_error_t val_ret = OK;
 
@@ -2478,8 +2489,8 @@ static void run_delayed_tasks(node_t me, char c) {
             int nb_cnx_req = 0;
             //msg_task_t *task_ptr = NULL;
             //msg_task_t elem2;
+            idx = 0;
             req_data_t req = NULL;
-            //int cpt = 0;
             int mem_nb_elems = 0;
 
             do {
@@ -2490,7 +2501,7 @@ static void run_delayed_tasks(node_t me, char c) {
                         display_remain_tasks(me);
                     }
 
-                    task_ptr = xbt_dynar_get_ptr(me->remain_tasks, 0);
+                    task_ptr = xbt_dynar_get_ptr(me->remain_tasks, idx);
                     req = MSG_task_get_data(*task_ptr);
 
                     // process CNX_REQ tasks after all the others
@@ -2504,7 +2515,7 @@ static void run_delayed_tasks(node_t me, char c) {
                                 state.active,
                                 state.new_id,
                                 cpt,
-                                0,
+                                idx,
                                 MSG_task_get_name(*task_ptr),
                                 debug_msg[req->type],
                                 req->sender_id,
@@ -2519,7 +2530,7 @@ static void run_delayed_tasks(node_t me, char c) {
                             state.active,
                             state.new_id,
                             cpt,
-                            0,
+                            idx,
                             MSG_task_get_name(*task_ptr),
                             debug_msg[req->type],
                             req->sender_id,
@@ -2565,31 +2576,28 @@ static void run_delayed_tasks(node_t me, char c) {
                     }
                     */
 
-                    XBT_VERB("AVANT");
-                    display_remain_tasks(me);
-
-                    elem_cpy = MSG_task_create(MSG_task_get_name(elem),
-                            COMP_SIZE,
-                            COMM_SIZE,
-                            MSG_task_get_data(elem));
-
-                    xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
                     val_ret = handle_task(me, &elem);
 
-                    if (val_ret == OK) {
+                    XBT_VERB("Node %d: back to run_delayed_tasks : val_ret = %s",
+                            me->self.id,
+                            debug_ret_msg[val_ret]);
 
+                    if (val_ret == OK || val_ret == UPDATE_OK) {
+
+                        xbt_dynar_remove_at(me->remain_tasks, idx, &elem);
                         XBT_VERB("Node %d: task OK removed", me->self.id);
                     } else {
 
-                        if (val_ret != STORED) {
+                        if (val_ret == STORED) {
 
-                            xbt_dynar_push(me->remain_tasks, &elem_cpy);
+                            xbt_dynar_remove_at(me->remain_tasks, idx, &elem);
+                        } else {
+
+                            idx++;
                         }
                         XBT_VERB("Node %d: task NOK not removed", me->self.id);
-
+                        break;
                     }
-                    XBT_VERB("APRES");
-                    display_remain_tasks(me);
 
                     req = NULL;
                     state = get_state(me);
@@ -2614,7 +2622,7 @@ static void run_delayed_tasks(node_t me, char c) {
                     */
                 }
                 //MSG_process_sleep(0.2);
-            } while (nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
+            } while (val_ret == OK && nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
         }
 
         state = get_state(me);
@@ -2797,6 +2805,7 @@ static void display_remain_tasks(node_t me) {
 
         task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
         req_data = MSG_task_get_data(*task_ptr);
+
         XBT_VERB("Node %d: task[%d] = {'%s - %s' from %d for new node %d}",
                 me->self.id,
                 k,
@@ -8154,10 +8163,10 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             rcv_req->sender_id,
                             rcv_req->answer_to,
                             answer);
-                }
 
-                data_req_free(me, &rcv_req);
-                task_free(task);
+                    data_req_free(me, &rcv_req);
+                    task_free(task);
+                }
             } else {
 
             //if (val_ret == UPDATE_NOK || !test) {
