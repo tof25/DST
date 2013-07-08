@@ -2489,7 +2489,7 @@ static void run_delayed_tasks(node_t me, char c) {
             int nb_cnx_req = 0;
             //msg_task_t *task_ptr = NULL;
             //msg_task_t elem2;
-            idx = 0;
+            idx = 0;        //TODO : plus utile
             req_data_t req = NULL;
             int mem_nb_elems = 0;
 
