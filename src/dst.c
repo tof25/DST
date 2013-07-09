@@ -2444,11 +2444,11 @@ static void run_delayed_tasks(node_t me, char c) {
     int k = 0;
     msg_error_t val_ret = OK;
 
-    display_remain_tasks(me);
-
     /* run delayed CNX_GROUPS for new node new_id if current state is 'u'/new_id */
     if (state.active == 'u' &&
         xbt_dynar_is_empty(me->remain_tasks) == 0) {
+
+        display_remain_tasks(me);
 
         u_req_args_t req_args;
 
@@ -2470,7 +2470,8 @@ static void run_delayed_tasks(node_t me, char c) {
                             cpt);
 
                     // run CNX_GROUPS
-                    xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
+                    xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
+                    cpt--;
                     handle_task(me, &elem);
                     nb_elems = (int) xbt_dynar_length(me->remain_tasks);
 
@@ -2494,28 +2495,33 @@ static void run_delayed_tasks(node_t me, char c) {
             int mem_nb_elems = 0;
 
             do {
-                for (cpt = 0; cpt < nb_elems && state.active == 'a'; cpt++) {
+                for (idx = 0; idx < nb_elems && state.active == 'a'; ) {
 
-                    if (cpt > 0) {
+                    if (mem_nb_elems > nb_elems) {
 
                         display_remain_tasks(me);
                     }
 
-                    task_ptr = xbt_dynar_get_ptr(me->remain_tasks, 0);
+                    // read head element
+                    task_ptr = xbt_dynar_get_ptr(me->remain_tasks, idx);
                     req = MSG_task_get_data(*task_ptr);
+                    elem = *task_ptr;
+
+                    // store current length
+                    mem_nb_elems = nb_elems;
 
                     // process CNX_REQ tasks after all the others
                     if (req->type == TASK_CNX_REQ && nb_cnx_req < nb_elems) {
 
                         nb_cnx_req++;
+                        idx++;
 
-                        XBT_VERB("Node %d: inside run %c - '%c'/%d - cpt = %d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                        XBT_VERB("Node %d: inside run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                                 me->self.id,
                                 c,
                                 state.active,
                                 state.new_id,
-                                cpt,
-                                0,
+                                idx,
                                 MSG_task_get_name(*task_ptr),
                                 debug_msg[req->type],
                                 req->sender_id,
@@ -2524,59 +2530,20 @@ static void run_delayed_tasks(node_t me, char c) {
                         continue;
                     }
 
-                    XBT_VERB("Node %d: run %c - '%c'/%d - cpt = %d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                    XBT_VERB("Node %d: run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                             me->self.id,
                             c,
                             state.active,
                             state.new_id,
-                            cpt,
-                            0,
+                            idx,
                             MSG_task_get_name(*task_ptr),
                             debug_msg[req->type],
                             req->sender_id,
                             nb_cnx_req);
 
-                    //xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
-                    elem = *task_ptr;
-                    nb_elems--;
-
-                    req = MSG_task_get_data(elem);
-
-                    if (req->type == TASK_CNX_REQ) {
-
-                        nb_cnx_req--;
-                    }
-
-                    // store current length
-                    mem_nb_elems = nb_elems;
-
-                    /*
-                    if (req->type == TASK_CNX_REQ) {
-
-                        proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
-
-                        proc_data->node = me;
-                        proc_data->task = elem;
-                        proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-                        proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-
-                        set_fork_mailbox(me->self.id,
-                                req->args.cnx_req.new_node_id,
-                                "Cnx_req",
-                                proc_data->proc_mailbox);
-
-                        XBT_VERB("Node %d: create fork process", me->self.id);
-                        MSG_process_create(proc_data->proc_mailbox,
-                                proc_handle_task,
-                                proc_data,
-                                MSG_host_self());
-                    } else {
-
-                        handle_task(me, &elem);
-                    }
-                    */
-
+                    // run task
                     val_ret = handle_task(me, &elem);
+                    nb_elems--;
 
                     XBT_VERB("Node %d: back to run_delayed_tasks : val_ret = %s",
                             me->self.id,
@@ -2584,13 +2551,22 @@ static void run_delayed_tasks(node_t me, char c) {
 
                     if (val_ret == OK || val_ret == UPDATE_OK) {
 
-                        xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
+                        // task run sucessfully, remove it from dynar
+                        xbt_dynar_remove_at(me->remain_tasks, idx, &elem);
+
+                        if (req->type == TASK_CNX_REQ) {
+
+                            nb_cnx_req--;
+                        }
+
                         XBT_VERB("Node %d: task OK removed", me->self.id);
                     } else {
 
+                        // if task didn't run sucessfully, don't remove it and stop here
                         if (val_ret == STORED) {
 
-                            xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
+                            // if task has been stored, the current occurence has to be removed
+                            xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
                         }
                         XBT_VERB("Node %d: task NOK not removed", me->self.id);
                         break;
