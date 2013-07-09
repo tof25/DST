@@ -1883,7 +1883,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 } else {
 
                     // handle the received request
-                    if (req->type == TASK_CNX_REQ) {
+                    if (req->type == TASK_CNX_REQ ||
+                        (req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_SPLIT)) {
 
                         proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
 
@@ -1894,7 +1895,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                         set_fork_mailbox(me->self.id,
                                 req->args.cnx_req.new_node_id,
-                                "Cnx_req",
+                                (req->type == TASK_CNX_REQ ? "Cnx_req" : "Split"),
                                 proc_data->proc_mailbox);
 
                         XBT_VERB("Node %d: create fork process", me->self.id);
@@ -2489,7 +2490,6 @@ static void run_delayed_tasks(node_t me, char c) {
             int nb_cnx_req = 0;
             //msg_task_t *task_ptr = NULL;
             //msg_task_t elem2;
-            idx = 0;        //TODO : plus utile
             req_data_t req = NULL;
             int mem_nb_elems = 0;
 
@@ -2501,7 +2501,7 @@ static void run_delayed_tasks(node_t me, char c) {
                         display_remain_tasks(me);
                     }
 
-                    task_ptr = xbt_dynar_get_ptr(me->remain_tasks, idx);
+                    task_ptr = xbt_dynar_get_ptr(me->remain_tasks, 0);
                     req = MSG_task_get_data(*task_ptr);
 
                     // process CNX_REQ tasks after all the others
@@ -2509,13 +2509,13 @@ static void run_delayed_tasks(node_t me, char c) {
 
                         nb_cnx_req++;
 
-                        XBT_DEBUG("Node %d: inside run %c - '%c'/%d - cpt = %d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                        XBT_VERB("Node %d: inside run %c - '%c'/%d - cpt = %d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                                 me->self.id,
                                 c,
                                 state.active,
                                 state.new_id,
                                 cpt,
-                                idx,
+                                0,
                                 MSG_task_get_name(*task_ptr),
                                 debug_msg[req->type],
                                 req->sender_id,
@@ -2530,7 +2530,7 @@ static void run_delayed_tasks(node_t me, char c) {
                             state.active,
                             state.new_id,
                             cpt,
-                            idx,
+                            0,
                             MSG_task_get_name(*task_ptr),
                             debug_msg[req->type],
                             req->sender_id,
@@ -2584,16 +2584,13 @@ static void run_delayed_tasks(node_t me, char c) {
 
                     if (val_ret == OK || val_ret == UPDATE_OK) {
 
-                        xbt_dynar_remove_at(me->remain_tasks, idx, &elem);
+                        xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
                         XBT_VERB("Node %d: task OK removed", me->self.id);
                     } else {
 
                         if (val_ret == STORED) {
 
-                            xbt_dynar_remove_at(me->remain_tasks, idx, &elem);
-                        } else {
-
-                            idx++;
+                            xbt_dynar_remove_at(me->remain_tasks, 0, &elem);
                         }
                         XBT_VERB("Node %d: task NOK not removed", me->self.id);
                         break;
@@ -7981,7 +7978,8 @@ int node(int argc, char *argv[]) {
 
                         } else {
 
-                            if (req->type == TASK_CNX_REQ) {
+                            if (req->type == TASK_CNX_REQ ||
+                                (req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_SPLIT)) {
 
                                 proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
 
@@ -7992,7 +7990,7 @@ int node(int argc, char *argv[]) {
 
                                 set_fork_mailbox(node.self.id,
                                         req->args.cnx_req.new_node_id,
-                                        "Cnx_req",
+                                        (req->type == TASK_CNX_REQ ? "Cnx_req" : "Split"),
                                         proc_data->proc_mailbox);
 
                                 XBT_VERB("Node %d: create fork process", node.self.id);
