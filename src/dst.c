@@ -72,6 +72,7 @@ typedef struct s_dst_info {
     int   node_id;                          // node id
     char  active;                           // node state
     char *routing_table;                    // string representation of a routing table
+    int   attempts;                         // number of attempts to join the dst
     int   nb_messages;                      /* number of messages needed for the
                                                node to join */
     int   add_stage;                        /* boolean: was it necessary to add
@@ -3895,6 +3896,7 @@ static void init(node_t me) {
     me->dst_infos.order = 0;
     me->dst_infos.node_id = me->self.id;
     me->dst_infos.routing_table = NULL;
+    me->dst_infos.attempts = 0;
     me->dst_infos.nb_messages = 0;
     me->dst_infos.add_stage = 0;
     me->dst_infos.nbr_split_stages = 0;
@@ -4281,6 +4283,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
 
         // me is the leader
         int n = 0;
+        me->dst_infos.attempts++;
 
         state = get_state(me);          //TODO : get_state() inutile ?
         XBT_INFO("Node %d: '%c'/%d - I am the leader",
@@ -4526,7 +4529,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                             state.active,
                             state.new_id,
                             new_node_id,
-                            try);
+                            me->dst_infos.attempts);
 
                     answer.cnx_req.new_contact.id = -1;
                 }
@@ -7789,9 +7792,10 @@ int node(int argc, char *argv[]) {
 
             MSG_process_sleep(sleep_time);
 
-            XBT_INFO("Node %d: **** START JOINING DST *** (try number %d)",
+            XBT_INFO("Node %d: **** START JOINING DST *** (attempt number %d)",
                     node.self.id,
-                    tries);
+                    node.dst_infos.attempts);
+
             XBT_INFO("Node %d: Let's join the system ! (via contact %d) -"
                     " deadline = %f",
                     node.self.id,
