@@ -1710,6 +1710,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 state.new_id,
                 ans_cpt);
 
+        display_sc(me, 'V');
+
         xbt_assert(res != MSG_TIMEOUT,
                 "Node %d: receiving TIMEOUT in wait_for_completion",
                 me->self.id);
@@ -1965,6 +1967,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             me->self.id,
             (ret == UPDATE_NOK ? "NOK" : "OK"),
             (ret == UPDATE_NOK ? nok_id : -1));
+
+    display_sc(me, 'V');
 
     XBT_OUT();
     return ret;
@@ -2485,7 +2489,8 @@ static void run_delayed_tasks(node_t me, char c) {
 
     // run delayed tasks
     //if (state.active == 'a' && me->cs_req == 0 &&
-    if (state.active == 'a' && me->cs_req == 0 && xbt_dynar_is_empty(me->remain_tasks) == 0) {
+    //if (state.active == 'a' && me->cs_req == 0 && xbt_dynar_is_empty(me->remain_tasks) == 0) {
+    if (state.active == 'a' && xbt_dynar_is_empty(me->remain_tasks) == 0) {
 
         if (nb_elems > 0) {
 
@@ -2550,9 +2555,10 @@ static void run_delayed_tasks(node_t me, char c) {
                             me->self.id,
                             debug_ret_msg[val_ret]);
 
-                    if (val_ret == OK || val_ret == UPDATE_OK) {
+                    if (val_ret == OK || val_ret == UPDATE_OK ||
+                        (val_ret == UPDATE_NOK && req->sender_id != req->args.cnx_req.new_node_id)) {
 
-                        // task run sucessfully, remove it from dynar
+                        // remove task from dynar
                         xbt_dynar_remove_at(me->remain_tasks, idx, &elem);
 
                         if (req->type == TASK_CNX_REQ) {
@@ -2560,7 +2566,7 @@ static void run_delayed_tasks(node_t me, char c) {
                             nb_cnx_req--;
                         }
 
-                        XBT_VERB("Node %d: task OK removed", me->self.id);
+                        XBT_VERB("Node %d: task removed", me->self.id);
                     } else {
 
                         // if task didn't run sucessfully, don't remove it and stop here
@@ -2569,6 +2575,7 @@ static void run_delayed_tasks(node_t me, char c) {
                             // if task has been stored, the current occurence has to be removed
                             xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
                         }
+
                         XBT_VERB("Node %d: task NOK not removed", me->self.id);
                         break;
                     }
@@ -3821,6 +3828,9 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
     xbt_free(cpy_brothers);
     cpy_brothers = NULL;
+
+    display_sc(me, 'V');
+
     XBT_OUT();
     return ret;
 }
@@ -4521,7 +4531,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
 
                     // cs_req returned NOK
 
-                    me->cs_req = 0;
+                    //me->cs_req = 0;
 
                     state = get_state(me);
                     XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
@@ -4530,6 +4540,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                             state.new_id,
                             new_node_id,
                             me->dst_infos.attempts);
+
+                    display_sc(me, 'V');
 
                     answer.cnx_req.new_contact.id = -1;
                 }
@@ -8133,7 +8145,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         answer.cnx_req.new_contact.id);
 
                 val_ret = answer.cnx_req.val_ret;
-                if (val_ret != UPDATE_NOK) {
+                if (val_ret != UPDATE_NOK ||
+                    (val_ret == UPDATE_NOK && rcv_req->sender_id != rcv_args.cnx_req.new_node_id)) {
 
                     res = send_ans_sync(me,
                             rcv_args.cnx_req.new_node_id,
