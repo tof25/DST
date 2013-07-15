@@ -191,9 +191,11 @@ typedef struct node {
     //xbt_dynar_t     async_answers;          // expected async answers dynar
     xbt_dynar_t     remain_tasks;           // delayed tasks dynar
     //xbt_dynar_t     sync_answers;           // expected sync answers dynar
+    int             prio;                   // priority to get into critical section (the lower the value, the highest priority)
     char            cs_req;                 // Critical Section requested
     float           cs_req_time;            // timestamp when cs_req was set
     int             cs_new_id;              // new node's id that set cs_req
+    int             cs_new_node_prio;       // new node's priority
     float           last_check_time;        // last time when checking if cs_req has to be reset occured
 } s_node_t, *node_t;
 
@@ -279,6 +281,7 @@ typedef struct {
 typedef struct {
 
     int new_node_id;
+    int cs_new_node_prio;
     int try;
 } s_task_cnx_req_t;             // get the DST ready to receive a new node
 
@@ -498,6 +501,7 @@ typedef struct {
 
     int new_node_id;
     int sender_id;
+    int cs_new_node_prio;
 } s_task_cs_req_t;             // ask permission to get into Critical Section
 
 typedef struct {
@@ -713,7 +717,7 @@ static int          state_search(node_t me, char active, int new_id);
 static u_ans_data_t is_brother(node_t me, int id, int new_node_id);
 //static int          dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem);
 //static char         dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem);
-static e_val_ret_t  cs_req(node_t me, int sender_id, int new_node_id);
+static e_val_ret_t  cs_req(node_t me, int sender_id, int new_node_id, int cs_new_node_prio);
 static void         cs_rel(node_t me, int new_node_id);
 static void         rec_async_answer(node_t me, int idx, ans_data_t ans);
 static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
@@ -756,7 +760,7 @@ static void        send_completed(node_t        me,
 static void         init(node_t me);
 static int          join(node_t me, int contact_id, int try);
 static u_ans_data_t get_rep(node_t me, int stage, int new_node_id);
-static u_ans_data_t connection_request(node_t me, int new_node_id, int try);
+static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_node_prio, int try);
 static void         new_brother_received(node_t me, int new_node_id);
 static void         split_request(node_t me, int stage_nbr, int new_node_id);
 static void         add_stage(node_t me);
@@ -1403,9 +1407,10 @@ static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem) {
  * \param me the current node
  * \param sender_id sender node's id
  * \param new_node_id involved new coming node
+ * \param cs_new_node_prio new node's priority
  * \return OK or UPDATE_NOK for permission granted or not
  */
-static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id) {
+static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_node_prio) {
     XBT_IN();
 
     XBT_VERB("Node %d: in cs_req for new node %d from %d",
@@ -1417,19 +1422,24 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id) {
 
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
+    char test = (MSG_get_clock() - me->cs_req_time > 2 * MAX_CS_REQ);
 
     /* to avoid dealocks : if CS has been requested and not answered for long
        ago, cancel this request */
     if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
-        MSG_get_clock() - me->cs_req_time > 2 * MAX_CS_REQ) {
+        cs_new_node_prio < me->cs_new_node_prio && test == 1) {        //TODO: à vérifier
 
         me->cs_req = 0;
 
-        XBT_VERB("Node %d: '%c'/%d cs_req set at clock %f--> reset",
+        XBT_VERB("Node %d: '%c'/%d cs_req set at clock %f--> reset - node %d's priority : %d - node %d's priority : %d",
                 me->self.id,
                 state.active,
                 state.new_id,
-                me->cs_req_time);
+                me->cs_req_time,
+                new_node_id,
+                cs_new_node_prio,
+                me->cs_new_id,
+                me->cs_new_node_prio);
     }
 
     if (me->cs_req == 1) {
@@ -1450,6 +1460,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id) {
             me->cs_req = 1;
             me->cs_new_id = new_node_id;
             me->cs_req_time = MSG_get_clock();
+            me->cs_new_node_prio = cs_new_node_prio;
 
             val_ret = OK;
         } else {
@@ -2935,33 +2946,36 @@ static void  display_sc(node_t me, char mode) {
     s_state_t state = get_state(me);
     switch (mode) {
         case 'V':
-            XBT_VERB("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f",
+            XBT_VERB("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f cs_new_node_prio = %d",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->cs_req,
                     me->cs_new_id,
-                    me->cs_req_time);
+                    me->cs_req_time,
+                    me->cs_new_node_prio);
             break;
 
         case 'I':
-            XBT_INFO("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f",
+            XBT_INFO("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f cs_new_node_prio = %d",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->cs_req,
                     me->cs_new_id,
-                    me->cs_req_time);
+                    me->cs_req_time,
+                    me->cs_new_node_prio);
             break;
 
         case 'D':
-            XBT_DEBUG("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f",
+            XBT_DEBUG("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f cs_new_node_prio = %d",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->cs_req,
                     me->cs_new_id,
-                    me->cs_req_time);
+                    me->cs_req_time,
+                    me->cs_new_node_prio);
             break;
     }
 
@@ -3898,9 +3912,11 @@ static void init(node_t me) {
     proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
     me->remain_tasks = xbt_dynar_new(sizeof(msg_task_t), &xbt_free_ref);
     proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+    me->prio = 0;
     me->cs_req = 0;
     me->cs_req_time = 0;
     me->cs_new_id = -1;
+    me->cs_new_node_prio = 0;
 
     // DST infos initialization
     me->dst_infos.order = 0;
@@ -3974,6 +3990,7 @@ static int join(node_t me, int contact_id, int try) {
     // prepare data to exchange
     u_req_args_t u_req_args;
     u_req_args.cnx_req.new_node_id = me->self.id;
+    u_req_args.cnx_req.cs_new_node_prio = me->prio;
     u_req_args.cnx_req.try = try;
 
     //ans_data_t answer_data = xbt_new0(s_ans_data_t, 1);
@@ -4224,10 +4241,11 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
  *        and insert it.
  * \param me the current node
  * \param new_node_id the involved new coming node
+ * \param cs_new_node_prio new node's priority
  * \param try number of joining attempts
  * \return Answer data containing the contact's routing table
  */
-static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
+static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_node_prio, int try) {
 
     XBT_IN();
 
@@ -4264,6 +4282,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
 
         u_req_args_t args;
         args.cnx_req.new_node_id = new_node_id;
+        args.cnx_req.cs_new_node_prio = cs_new_node_prio;
         args.cnx_req.try = try;
 
         ans_data_t answer_data = NULL;
@@ -4308,7 +4327,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
         display_sc(me, 'D');
 
         /*** Ask for permission to get into the Critical Section ***/
-        val_ret = cs_req(me, me->self.id, new_node_id);
+        val_ret = cs_req(me, me->self.id, new_node_id, cs_new_node_prio);
 
         XBT_VERB("Node %d: back to connection_request()", me->self.id);
 
@@ -4398,6 +4417,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int try) {
                 args.broadcast.args = xbt_new0(u_req_args_t, 1);
                 args.broadcast.args->cs_req.new_node_id = new_node_id;
                 args.broadcast.args->cs_req.sender_id = me->self.id;
+                args.broadcast.args->cs_req.cs_new_node_prio = cs_new_node_prio;
+
                 make_broadcast_task(me, args, &task_sent);
 
                 val_ret = handle_task(me, &task_sent);
@@ -7749,6 +7770,7 @@ int node(int argc, char *argv[]) {
     if (argc == 5) {            // all nodes but first one need to join
 
         double sleep_time = atof(argv[3]);
+        node.prio = atoi(argv[3]);       //TODO : ne pas oublier // sleep time can be used to set priority
         node.deadline = atof(argv[4]);
         int contact_id = atoi(argv[2]);
         u_req_args_t u_req_args;
@@ -8137,6 +8159,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 // run task only if current process is 'run_delayed_tasks'
                 answer = connection_request(me,
                         rcv_args.cnx_req.new_node_id,
+                        rcv_args.cnx_req.cs_new_node_prio,
                         rcv_args.cnx_req.try);
 
                 XBT_DEBUG("Node %d: CNX_REQ val_ret = %d - contact = %d",
@@ -8185,10 +8208,11 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 */
 
                 // ... or store task (CNX_REQ isn't broadcasted)
-                XBT_VERB("Node %d: '%c'/%d -  store CNX_REQ/%d for later execution",
+                XBT_VERB("Node %d: '%c'/%d - new node's priority : %d - store CNX_REQ/%d for later execution",
                         me->self.id,
                         state.active,
                         state.new_id,
+                        rcv_args.cnx_req.cs_new_node_prio,
                         rcv_args.cnx_req.new_node_id);
 
                 xbt_dynar_push(me->remain_tasks, task);
@@ -9111,7 +9135,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
         case TASK_CS_REQ:
             val_ret = cs_req(me,
                     rcv_args.cs_req.sender_id,
-                    rcv_args.cs_req.new_node_id);
+                    rcv_args.cs_req.new_node_id,
+                    rcv_args.cs_req.cs_new_node_prio);
 
             // send the answer back
             state = get_state(me);
