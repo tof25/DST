@@ -4,7 +4,7 @@
 <platform version="3">
 <AS  id="AS0"  routing="Full">
   <cluster id="my_cluster_1" prefix="c-" suffix=".me"
-  		radical="0-99"	power="1000000000"    bw="125000000"     lat="5E-9"
+  		radical="0-99"	power="1000000000"    bw="125000000"     lat="5E-7"
         bb_bw="2250000000" bb_lat="5E-4"/>
 </AS>
 </platform>

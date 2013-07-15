@@ -2795,6 +2795,7 @@ static void display_remain_tasks(node_t me) {
 
     for (k = 0; k < nb_elems; k++) {
 
+        XBT_VERB("me->remain_tasks = %p", me->remain_tasks);    //TODO: ne pas oublier
         task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
         req_data = MSG_task_get_data(*task_ptr);
 
@@ -9488,11 +9489,11 @@ static int proc_run_tasks(int argc, char* argv[]) {
     s_state_t state;
     long clock = 0;
 
-    while (MSG_get_clock() < max_simulation_time) {
+    while (MSG_get_clock() < max_simulation_time-10) {
         XBT_DEBUG("process sleep ...");
 
         MSG_process_sleep(10.0);
-        XBT_VERB("COUCOU 1 node = %p", proc_data->node);
+        //XBT_VERB("COUCOU 1 node = %p", proc_data->node);
         state = get_state(proc_data->node);
 
         XBT_DEBUG("Node %d: '%c'/%d in fork process (run_delayed_tasks) - wake",
