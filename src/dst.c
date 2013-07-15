@@ -9492,6 +9492,7 @@ static int proc_run_tasks(int argc, char* argv[]) {
         XBT_DEBUG("process sleep ...");
 
         MSG_process_sleep(10.0);
+        XBT_VERB("COUCOU 1 node = %p", proc_data->node);
         state = get_state(proc_data->node);
 
         XBT_DEBUG("Node %d: '%c'/%d in fork process (run_delayed_tasks) - wake",
@@ -9504,8 +9505,9 @@ static int proc_run_tasks(int argc, char* argv[]) {
         }
     }
 
-    XBT_VERB("Node %d: fork process (run_delayed_tasks) dies",
-            proc_data->node->self.id);
+    XBT_VERB("Node %d: fork process (run_delayed_tasks) dies node = %p",
+            proc_data->node->self.id,
+            proc_data->node);
 
     MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
 
