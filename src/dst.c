@@ -843,6 +843,7 @@ static int         node(int argc, char *argv[]);
 static e_val_ret_t handle_task(node_t me, msg_task_t* task);
 static int         proc_handle_task(int argc, char *argv[]);
 static int         proc_run_tasks(int argc, char* argv[]);
+static void        proc_data_cleanup(void* arg);
 
 /*
  ========================== FUNCTIONS DEFINITIONS =============================
@@ -1731,6 +1732,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 "Node %d: receiving failure %d in wait_for_completion",
                 me->self.id,
                 res);
+
+        MSG_comm_destroy(comm);
 
         if (res != MSG_OK) {
 
@@ -3164,6 +3167,8 @@ static msg_error_t send_msg_sync(node_t me,
             res,
             recipient_id);
 
+    MSG_comm_destroy(comm);
+
     // NOTE : req_data may be freed by receiver and mustn't be used anymore by
     // the sender
 
@@ -3527,6 +3532,7 @@ static msg_error_t send_msg_async(node_t me,
 
     // create and send task with data
     msg_task_t task_sent = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
+
     //MSG_task_set_name(task_sent, "async");
 
     XBT_VERB("Node %d: Sending async '%s %s' to %d - '%s'",
@@ -3557,6 +3563,8 @@ static msg_error_t send_msg_async(node_t me,
             me->self.id,
             res,
             recipient_id);
+
+    MSG_comm_destroy(comm);
 
     // count messages
     nb_messages[req_data->type]++;
@@ -3636,6 +3644,8 @@ static msg_error_t send_ans_sync(node_t me,
             me->self.id,
             res,
             recipient_id);
+
+    MSG_comm_destroy(comm);
 
     if (res != MSG_OK) {
 
@@ -9469,6 +9479,7 @@ static int proc_handle_task(int argc, char* argv[]) {
             proc_data->node->self.id,
             &proc_task);
 
+    MSG_process_set_data_cleanup(proc_data_cleanup);
     MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
 
     return 0;
@@ -9493,7 +9504,6 @@ static int proc_run_tasks(int argc, char* argv[]) {
         XBT_DEBUG("process sleep ...");
 
         MSG_process_sleep(10.0);
-        //XBT_VERB("COUCOU 1 node = %p", proc_data->node);
         state = get_state(proc_data->node);
 
         XBT_DEBUG("Node %d: '%c'/%d in fork process (run_delayed_tasks) - wake",
@@ -9510,8 +9520,25 @@ static int proc_run_tasks(int argc, char* argv[]) {
             proc_data->node->self.id,
             proc_data->node);
 
+    MSG_process_set_data_cleanup(proc_data_cleanup);
     MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
 
     return 0;
 }
 
+static void proc_data_cleanup(void* arg) {
+    XBT_IN();
+
+    proc_data_t proc_data = (proc_data_t)arg;
+
+    req_data_t req_data = MSG_task_get_data(proc_data->task);
+    data_req_free(proc_data->node, &req_data);
+    task_free(&(proc_data->task));
+
+    xbt_dynar_free(&(proc_data->async_answers));
+    xbt_dynar_free(&(proc_data->sync_answers));
+
+    xbt_free(proc_data);
+
+    XBT_OUT();
+}
