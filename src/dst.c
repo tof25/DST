@@ -9479,7 +9479,7 @@ static int proc_handle_task(int argc, char* argv[]) {
             proc_data->node->self.id,
             &proc_task);
 
-    MSG_process_set_data_cleanup(proc_data_cleanup);
+    MSG_process_set_data_cleanup(NULL);
     MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
 
     return 0;
@@ -9531,14 +9531,17 @@ static void proc_data_cleanup(void* arg) {
 
     proc_data_t proc_data = (proc_data_t)arg;
 
-    req_data_t req_data = MSG_task_get_data(proc_data->task);
-    data_req_free(proc_data->node, &req_data);
-    task_free(&(proc_data->task));
+    if (proc_data->task != NULL){
 
-    xbt_dynar_free(&(proc_data->async_answers));
-    xbt_dynar_free(&(proc_data->sync_answers));
+        req_data_t req_data = MSG_task_get_data(proc_data->task);
+        data_req_free(proc_data->node, &req_data);
+        task_free(&(proc_data->task));
 
-    xbt_free(proc_data);
+        xbt_dynar_free(&(proc_data->async_answers));
+        xbt_dynar_free(&(proc_data->sync_answers));
+
+        xbt_free(proc_data);
+    }
 
     XBT_OUT();
 }
