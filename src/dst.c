@@ -62,6 +62,9 @@ typedef struct f_node {                     // node that failed to join
 
 static int nb_abort = 0;                    // number of join abortions
 static s_f_node_t *failed_nodes = NULL;     // array of nodes that couldn't join the DST
+
+static int compteur[TYPE_NBR] = {0};
+
 //static int *g_cpt = NULL;
 
 /**
@@ -2512,6 +2515,8 @@ static void run_delayed_tasks(node_t me, char c) {
             //msg_task_t *task_ptr = NULL;
             //msg_task_t elem2;
             req_data_t req = NULL;
+            e_task_type_t buf_type = TASK_NULL;
+            char is_contact = 0;
             int mem_nb_elems = 0;
 
             do {
@@ -2561,6 +2566,8 @@ static void run_delayed_tasks(node_t me, char c) {
                             req->sender_id,
                             nb_cnx_req);
 
+                    buf_type = req->type;
+                    is_contact = (req->sender_id == req->args.cnx_req.new_node_id);
                     // run task
                     val_ret = handle_task(me, &elem);
                     nb_elems--;
@@ -2570,12 +2577,12 @@ static void run_delayed_tasks(node_t me, char c) {
                             debug_ret_msg[val_ret]);
 
                     if (val_ret == OK || val_ret == UPDATE_OK ||
-                        (val_ret == UPDATE_NOK && req->sender_id != req->args.cnx_req.new_node_id)) {
+                        (val_ret == UPDATE_NOK && !is_contact)) {
 
                         // remove task from dynar
                         xbt_dynar_remove_at(me->remain_tasks, idx, &elem);
 
-                        if (req->type == TASK_CNX_REQ) {
+                        if (buf_type == TASK_CNX_REQ) {
 
                             nb_cnx_req--;
                         }
@@ -2594,7 +2601,7 @@ static void run_delayed_tasks(node_t me, char c) {
                         break;
                     }
 
-                    req = NULL;
+                    //req = NULL;
                     state = get_state(me);
 
                     //dynar may have been modified by handle_task
@@ -2650,11 +2657,13 @@ static void node_free(node_t me) {
     xbt_dynar_free(&(me->remain_tasks));
     xbt_dynar_free(&(me->states));
 
+    /*
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     xbt_dynar_free(&(proc_data->async_answers));
     xbt_dynar_free(&(proc_data->sync_answers));
     xbt_free(proc_data);
     proc_data = NULL;
+    */
 
     /*
     // will be freed with dst_infos dynar
@@ -4867,6 +4876,7 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         broadcast_args.broadcast.args->split.new_node_id = new_node_id;
         make_broadcast_task(me, broadcast_args, &task_sent);
 
+        compteur[broadcast_args.broadcast.type]++;
         handle_task(me, &task_sent);
 
         xbt_free(broadcast_args.broadcast.args);
@@ -9446,6 +9456,12 @@ int main(int argc, char *argv[]) {
     XBT_INFO("\nSimulation time %lf", xbt_os_timer_elapsed(timer));
     XBT_INFO("Simulated time: %g", MSG_get_clock());
 
+    XBT_INFO("compteur");
+    int z = 0;
+    for (z = 0; z < TYPE_NBR; z++) {
+        XBT_INFO("\tcpt[%s] = %d", debug_msg[z], compteur[z]);
+    }
+
     xbt_os_timer_free(timer);
 
     //MSG_clean();
@@ -9479,7 +9495,7 @@ static int proc_handle_task(int argc, char* argv[]) {
             proc_data->node->self.id,
             &proc_task);
 
-    MSG_process_set_data_cleanup(NULL);
+    MSG_process_set_data_cleanup(proc_data_cleanup);
     MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
 
     return 0;
@@ -9531,17 +9547,19 @@ static void proc_data_cleanup(void* arg) {
 
     proc_data_t proc_data = (proc_data_t)arg;
 
+    /*
     if (proc_data->task != NULL){
 
         req_data_t req_data = MSG_task_get_data(proc_data->task);
         data_req_free(proc_data->node, &req_data);
         task_free(&(proc_data->task));
-
-        xbt_dynar_free(&(proc_data->async_answers));
-        xbt_dynar_free(&(proc_data->sync_answers));
-
-        xbt_free(proc_data);
     }
+    */
+
+    xbt_dynar_free(&(proc_data->async_answers));
+    xbt_dynar_free(&(proc_data->sync_answers));
+
+    xbt_free(proc_data);
 
     XBT_OUT();
 }
