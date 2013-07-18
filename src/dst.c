@@ -1143,9 +1143,11 @@ static void task_free(msg_task_t *task) {
 
     xbt_ex_t ex;
 
+    XBT_VERB("in task_free, task = %p", *task);
+
     if (*task == NULL) {
 
-        XBT_VERB("in task_free, task = %p", *task);
+        //XBT_VERB("in task_free, task = %p", *task);
     } else {
 
         TRY {
@@ -3195,10 +3197,11 @@ static msg_error_t send_msg_sync(node_t me,
 
         // sync reception
         state = get_state(me);
-        XBT_VERB("Node %d: '%c'/%d - Waiting for sync answer ...",
+        XBT_VERB("Node %d: '%c'/%d - Waiting for sync answer ... - task_sent = %p",
                 cpy_req_data->sender_id,
                 state.active,
-                state.new_id);
+                state.new_id,
+                task_sent);
 
         if (cpy_req_data->type == TASK_GET_REP) {
 
@@ -4308,6 +4311,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         ans_data_t answer_data = NULL;
         msg_error_t res;
 
+        //compteur[TASK_CNX_REQ]++;
         res = send_msg_sync(me,
                 TASK_CNX_REQ,
                 me->brothers[0][0].id,
@@ -8118,10 +8122,11 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
     char is_contact = 0;
     char is_leader = 0;
 
-    XBT_VERB("Node %d - '%c'/%d: Handling task '%s - %s' received from node %d - answer to '%s'",
+    XBT_VERB("Node %d - '%c'/%d: Handling task %p '%s - %s' received from node %d - answer to '%s'",
             me->self.id,
             state.active,
             state.new_id,
+            *task,
             MSG_task_get_name(*task),
             debug_msg[type],
             rcv_req->sender_id,
@@ -8203,12 +8208,15 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             rcv_req->answer_to,
                             answer);
 
+if (!is_contact && val_ret == OK) {
+    compteur[TASK_CNX_REQ]++;
+}
                     data_req_free(me, &rcv_req);
                     task_free(task);
                 }
 
-if (is_contact && !is_leader) {
-    compteur[TASK_CNX_REQ]++;
+if (!is_contact && val_ret == OK) {
+    //compteur[TASK_CNX_REQ]++;
     //xbt_assert(val_ret != UPDATE_NOK, "val_ret = %s", debug_ret_msg[val_ret]);
 }
 
@@ -9498,16 +9506,19 @@ static int proc_handle_task(int argc, char* argv[]) {
             COMM_SIZE,
             MSG_task_get_data(proc_data->task));
 
+    //data_req_free(proc_data->node, &req_data);
+    task_free(&proc_data->task);
+
     XBT_INFO("Node %d: in fork process - mailbox = '%s' - task = %p",
             proc_data->node->self.id,
             proc_data->proc_mailbox,
-            &proc_task);
+            proc_task);
 
     handle_task(proc_data->node, &proc_task);
 
     XBT_VERB("Node %d: fork process dies - task = %p",
             proc_data->node->self.id,
-            &proc_task);
+            proc_task);
 
     MSG_process_set_data_cleanup(proc_data_cleanup);
     MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
