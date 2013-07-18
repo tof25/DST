@@ -4876,7 +4876,6 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         broadcast_args.broadcast.args->split.new_node_id = new_node_id;
         make_broadcast_task(me, broadcast_args, &task_sent);
 
-        compteur[broadcast_args.broadcast.type]++;
         handle_task(me, &task_sent);
 
         xbt_free(broadcast_args.broadcast.args);
@@ -8116,6 +8115,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
     s_state_t state = get_state(me);
     req_data_t rcv_req = (req_data_t) MSG_task_get_data(*task);
     e_task_type_t type = rcv_req->type;
+    char is_contact = 0;
+    char is_leader = 0;
 
     XBT_VERB("Node %d - '%c'/%d: Handling task '%s - %s' received from node %d - answer to '%s'",
             me->self.id,
@@ -8177,6 +8178,9 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
             if (strstr(MSG_process_get_name(MSG_process_self()), "dly") != NULL) {
 
+                is_contact = (rcv_req->sender_id == rcv_req->args.cnx_req.new_node_id);
+                is_leader = me->self.id == me->brothers[0][0].id;
+
                 // run task only if current process is 'run_delayed_tasks'
                 answer = connection_request(me,
                         rcv_args.cnx_req.new_node_id,
@@ -8202,6 +8206,12 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     data_req_free(me, &rcv_req);
                     task_free(task);
                 }
+
+if (is_contact && !is_leader) {
+    compteur[TASK_CNX_REQ]++;
+    //xbt_assert(val_ret != UPDATE_NOK, "val_ret = %s", debug_ret_msg[val_ret]);
+}
+
             } else {
 
             //if (val_ret == UPDATE_NOK || !test) {
@@ -9479,6 +9489,10 @@ int main(int argc, char *argv[]) {
 static int proc_handle_task(int argc, char* argv[]) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+
+    req_data_t req_data = MSG_task_get_data(proc_data->task);
+    //compteur[(req_data->type == TASK_BROADCAST ? req_data->args.broadcast.type : req_data->type)]++;
+
     msg_task_t proc_task = MSG_task_create(MSG_task_get_name(proc_data->task),
             COMP_SIZE,
             COMM_SIZE,
@@ -9532,7 +9546,7 @@ static int proc_run_tasks(int argc, char* argv[]) {
         }
     }
 
-    XBT_VERB("Node %d: fork process (run_delayed_tasks) dies node = %p",
+    XBT_INFO("Node %d: fork process (run_delayed_tasks) dies node = %p",
             proc_data->node->self.id,
             proc_data->node);
 
