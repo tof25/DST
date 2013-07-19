@@ -1904,7 +1904,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                     task_received = NULL;
                 } else {
 
-                    // handle the received request
+                    // handle the received request with a fork process ..
                     if (req->type == TASK_CNX_REQ ||
                         (req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_SPLIT)) {
 
@@ -1927,10 +1927,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                                 MSG_host_self());
                     } else {
 
+                        // ... or by itself
                         handle_task(me, &task_received);
                     }
-
-                    //handle_task(me, &task_received);
                 }
                 ans = NULL;
                 req = NULL;
@@ -3376,11 +3375,8 @@ static msg_error_t send_msg_sync(node_t me,
                             " length = %lu",
                             me->self.id,
                             xbt_dynar_length(proc_data->sync_answers));
-
-                    // run delayed tasks
-                    //call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id, '2');
-                    //run_delayed_tasks(me, '2');
                     break;
+
                 } else {
 
                     /* this is not the expected answer.
@@ -4311,7 +4307,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         ans_data_t answer_data = NULL;
         msg_error_t res;
 
-        //compteur[TASK_CNX_REQ]++;
         res = send_msg_sync(me,
                 TASK_CNX_REQ,
                 me->brothers[0][0].id,
@@ -8016,6 +8011,7 @@ int node(int argc, char *argv[]) {
 
                         } else {
 
+                            // handle the received request with a fork process ..
                             if (req->type == TASK_CNX_REQ ||
                                 (req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_SPLIT)) {
 
@@ -8038,14 +8034,10 @@ int node(int argc, char *argv[]) {
                                         MSG_host_self());
                             } else {
 
+                                // ... or by itself
                                 handle_task(&node, &task_received);
                             }
                         }
-
-                        // run remaining tasks, if any
-                        //call_run_delayed_tasks(&node, node.self.id, '4');
-
-                        //run_delayed_tasks(&node, '4');
                     } else {
 
                         // ignore answers, only process requests
@@ -8208,15 +8200,11 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             rcv_req->answer_to,
                             answer);
 
-if (!is_contact && val_ret == OK) {
-    compteur[TASK_CNX_REQ]++;
-}
                     data_req_free(me, &rcv_req);
                     task_free(task);
                 }
 
 if (!is_contact && val_ret == OK) {
-    //compteur[TASK_CNX_REQ]++;
     //xbt_assert(val_ret != UPDATE_NOK, "val_ret = %s", debug_ret_msg[val_ret]);
 }
 
@@ -9474,11 +9462,13 @@ int main(int argc, char *argv[]) {
     XBT_INFO("\nSimulation time %lf", xbt_os_timer_elapsed(timer));
     XBT_INFO("Simulated time: %g", MSG_get_clock());
 
+    /*
     XBT_INFO("compteur");
     int z = 0;
     for (z = 0; z < TYPE_NBR; z++) {
         XBT_INFO("\tcpt[%s] = %d", debug_msg[z], compteur[z]);
     }
+    */
 
     xbt_os_timer_free(timer);
 
@@ -9499,7 +9489,6 @@ static int proc_handle_task(int argc, char* argv[]) {
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
     req_data_t req_data = MSG_task_get_data(proc_data->task);
-    //compteur[(req_data->type == TASK_BROADCAST ? req_data->args.broadcast.type : req_data->type)]++;
 
     msg_task_t proc_task = MSG_task_create(MSG_task_get_name(proc_data->task),
             COMP_SIZE,
@@ -9509,7 +9498,7 @@ static int proc_handle_task(int argc, char* argv[]) {
     //data_req_free(proc_data->node, &req_data);
     task_free(&proc_data->task);
 
-    XBT_INFO("Node %d: in fork process - mailbox = '%s' - task = %p",
+    XBT_VERB("Node %d: in fork process - mailbox = '%s' - task = %p",
             proc_data->node->self.id,
             proc_data->proc_mailbox,
             proc_task);
@@ -9521,14 +9510,14 @@ static int proc_handle_task(int argc, char* argv[]) {
             proc_task);
 
     MSG_process_set_data_cleanup(proc_data_cleanup);
-    MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
+    MSG_process_kill(MSG_process_self());
 
     return 0;
 }
 
 
 /*
- * \brief Fork process run delayed tasks
+ * \brief Fork process to run delayed tasks
  */
 static int proc_run_tasks(int argc, char* argv[]) {
 
@@ -9557,12 +9546,12 @@ static int proc_run_tasks(int argc, char* argv[]) {
         }
     }
 
-    XBT_INFO("Node %d: fork process (run_delayed_tasks) dies node = %p",
+    XBT_DEBUG("Node %d: fork process (run_delayed_tasks) dies node = %p",
             proc_data->node->self.id,
             proc_data->node);
 
     MSG_process_set_data_cleanup(proc_data_cleanup);
-    MSG_process_kill(MSG_process_self());               //TODO : voir pour donner la fonction de libération des data (process_cleanup)
+    MSG_process_kill(MSG_process_self());
 
     return 0;
 }
@@ -9571,15 +9560,6 @@ static void proc_data_cleanup(void* arg) {
     XBT_IN();
 
     proc_data_t proc_data = (proc_data_t)arg;
-
-    /*
-    if (proc_data->task != NULL){
-
-        req_data_t req_data = MSG_task_get_data(proc_data->task);
-        data_req_free(proc_data->node, &req_data);
-        task_free(&(proc_data->task));
-    }
-    */
 
     xbt_dynar_free(&(proc_data->async_answers));
     xbt_dynar_free(&(proc_data->sync_answers));
