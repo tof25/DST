@@ -1428,10 +1428,12 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
 
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
-    char test = (MSG_get_clock() - me->cs_req_time > 2 * MAX_CS_REQ);
+    //char test = (MSG_get_clock() - me->cs_req_time > 2 * MAX_CS_REQ);
+    char test = 1;
 
     /* to avoid dealocks : if CS has been requested and not answered for long
        ago, cancel this request */
+
     if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
         cs_new_node_prio < me->cs_new_node_prio && test == 1) {        //TODO: à vérifier
 
@@ -2539,9 +2541,6 @@ static void run_delayed_tasks(node_t me, char c) {
                     // process CNX_REQ tasks after all the others
                     if (req->type == TASK_CNX_REQ && nb_cnx_req < nb_elems) {
 
-                        nb_cnx_req++;
-                        idx++;
-
                         XBT_VERB("Node %d: inside run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                                 me->self.id,
                                 c,
@@ -2552,6 +2551,9 @@ static void run_delayed_tasks(node_t me, char c) {
                                 debug_msg[req->type],
                                 req->sender_id,
                                 nb_cnx_req);
+
+                        nb_cnx_req++;
+                        idx++;
 
                         continue;
                     }
@@ -2588,18 +2590,28 @@ static void run_delayed_tasks(node_t me, char c) {
                             nb_cnx_req--;
                         }
 
+                        if (val_ret == UPDATE_NOK) {
+
+                            state = get_state(me);
+                            if (state.active == 'a') {
+                                cs_rel(me, me->cs_new_id);
+                            }
+                        }
+
                         XBT_VERB("Node %d: task removed", me->self.id);
                     } else {
 
-                        // if task didn't run sucessfully, don't remove it and stop here
+                        // if task didn't run sucessfully, don't remove it (except if it's been stored) and stop here
                         if (val_ret == STORED) {
 
+                            xbt_assert(1 == 0, "STOP");
                             // if task has been stored, the current occurence has to be removed
                             xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
                         }
 
                         XBT_VERB("Node %d: task NOK not removed", me->self.id);
-                        break;
+                        idx++;
+                        //break;
                     }
 
                     //req = NULL;
@@ -4852,9 +4864,11 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         } while (chk != 0 && nb_loop > 0);
 
         display_rout_table(me, 'V');
+        /*
         xbt_assert(chk == 0,
                 "Node %d consistency check error",
                 me->self.id);
+                */
 
         XBT_VERB("Node %d: Check OK - Split stage %d start",
                 me->self.id,
@@ -8203,11 +8217,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     data_req_free(me, &rcv_req);
                     task_free(task);
                 }
-
-if (!is_contact && val_ret == OK) {
-    //xbt_assert(val_ret != UPDATE_NOK, "val_ret = %s", debug_ret_msg[val_ret]);
-}
-
             } else {
 
             //if (val_ret == UPDATE_NOK || !test) {
