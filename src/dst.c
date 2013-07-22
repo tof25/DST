@@ -1428,8 +1428,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
 
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
-    //char test = (MSG_get_clock() - me->cs_req_time > 2 * MAX_CS_REQ);
-    char test = 1;
+    char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
 
     /* to avoid dealocks : if CS has been requested and not answered for long
        ago, cancel this request */
@@ -2573,17 +2572,19 @@ static void run_delayed_tasks(node_t me, char c) {
                     is_contact = (req->sender_id == req->args.cnx_req.new_node_id);
                     // run task
                     val_ret = handle_task(me, &elem);
-                    nb_elems--;
 
                     XBT_VERB("Node %d: back to run_delayed_tasks : val_ret = %s",
                             me->self.id,
                             debug_ret_msg[val_ret]);
+
+                    if (val_ret == UPDATE_NOK) set_active(me, me->cs_new_id);
 
                     if (val_ret == OK || val_ret == UPDATE_OK ||
                         (val_ret == UPDATE_NOK && !is_contact)) {
 
                         // remove task from dynar
                         xbt_dynar_remove_at(me->remain_tasks, idx, &elem);
+                        nb_elems--;
 
                         if (buf_type == TASK_CNX_REQ) {
 
@@ -2593,25 +2594,25 @@ static void run_delayed_tasks(node_t me, char c) {
                         if (val_ret == UPDATE_NOK) {
 
                             state = get_state(me);
+                            /*
                             if (state.active == 'a') {
                                 cs_rel(me, me->cs_new_id);
                             }
+                            */
                         }
 
                         XBT_VERB("Node %d: task removed", me->self.id);
                     } else {
 
-                        // if task didn't run sucessfully, don't remove it (except if it's been stored) and stop here
-                        if (val_ret == STORED) {
-
-                            xbt_assert(1 == 0, "STOP");
-                            // if task has been stored, the current occurence has to be removed
-                            xbt_dynar_remove_at(me->remain_tasks, cpt, &elem);
-                        }
-
+                        // if task didn't run sucessfully, don't remove it and stop here
                         XBT_VERB("Node %d: task NOK not removed", me->self.id);
+                        /*
+                        if (state.active == 'a') {
+                            cs_rel(me, me->cs_new_id);
+                        }
+                        */
                         idx++;
-                        //break;
+                        break;
                     }
 
                     //req = NULL;
@@ -9538,11 +9539,17 @@ static int proc_run_tasks(int argc, char* argv[]) {
 
     s_state_t state;
     long clock = 0;
+    int min = 10;
+    int max = 30;
+    long sleep_time = 0.0;
+    srand(time(NULL));
 
     while (MSG_get_clock() < max_simulation_time-10) {
         XBT_DEBUG("process sleep ...");
 
-        MSG_process_sleep(10.0);
+        sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
+        MSG_process_sleep(sleep_time);
+
         state = get_state(proc_data->node);
 
         XBT_DEBUG("Node %d: '%c'/%d in fork process (run_delayed_tasks) - wake",
