@@ -328,7 +328,7 @@
     <argument value="8"/>           <!-- my id -->
     <argument value="1"/>           <!-- known id -->
     <argument value="1"/>           <!-- time to sleep before it starts-->
-    <argument value ="6500"/>		<!-- deadline -->
+    <argument value ="20000"/>		<!-- deadline -->
   </process>
 
   <process host="Jacquelin" function="node">
