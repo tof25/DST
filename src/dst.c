@@ -1428,7 +1428,8 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
 
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
-    char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
+    //char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
+    char test = 1;
 
     /* to avoid dealocks : if CS has been requested and not answered for long
        ago, cancel this request */
@@ -2570,6 +2571,7 @@ static void run_delayed_tasks(node_t me, char c) {
 
                     buf_type = req->type;
                     is_contact = (req->sender_id == req->args.cnx_req.new_node_id);
+
                     // run task
                     val_ret = handle_task(me, &elem);
 
@@ -2577,7 +2579,17 @@ static void run_delayed_tasks(node_t me, char c) {
                             me->self.id,
                             debug_ret_msg[val_ret]);
 
-                    if (val_ret == UPDATE_NOK) set_active(me, me->cs_new_id);
+                    //if (val_ret == UPDATE_NOK) set_active(me, me->cs_new_id);
+                    if (val_ret == UPDATE_NOK) {
+
+                        state = get_state(me);
+                        if (state.active == 'a' && me->cs_req == 1 && me->cs_new_id == req->args.cnx_req.new_node_id) {
+                            me->cs_req = 0;
+                            me->cs_req_time = MSG_get_clock();
+                            XBT_VERB("Node %d: cs_req reset", me->self.id);
+                            display_sc(me, 'V');
+                        }
+                    }
 
                     if (val_ret == OK || val_ret == UPDATE_OK ||
                         (val_ret == UPDATE_NOK && !is_contact)) {
@@ -2591,17 +2603,19 @@ static void run_delayed_tasks(node_t me, char c) {
                             nb_cnx_req--;
                         }
 
+                        XBT_VERB("Node %d: task removed", me->self.id);
+
                         if (val_ret == UPDATE_NOK) {
 
-                            state = get_state(me);
                             /*
+                            state = get_state(me);
                             if (state.active == 'a') {
                                 cs_rel(me, me->cs_new_id);
                             }
                             */
+                            break;
                         }
 
-                        XBT_VERB("Node %d: task removed", me->self.id);
                     } else {
 
                         // if task didn't run sucessfully, don't remove it and stop here
@@ -4865,11 +4879,9 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         } while (chk != 0 && nb_loop > 0);
 
         display_rout_table(me, 'V');
-        /*
         xbt_assert(chk == 0,
                 "Node %d consistency check error",
                 me->self.id);
-                */
 
         XBT_VERB("Node %d: Check OK - Split stage %d start",
                 me->self.id,
@@ -8193,11 +8205,24 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 is_contact = (rcv_req->sender_id == rcv_req->args.cnx_req.new_node_id);
                 is_leader = me->self.id == me->brothers[0][0].id;
 
-                // run task only if current process is 'run_delayed_tasks'
-                answer = connection_request(me,
-                        rcv_args.cnx_req.new_node_id,
-                        rcv_args.cnx_req.cs_new_node_prio,
-                        rcv_args.cnx_req.try);
+                if (is_leader && !is_contact && index_bro(me, 0, rcv_req->sender_id) == -1) {
+
+                    /*
+                       if me isn't contact's leader any more, (because it had been splitted meanwhile)
+                       rejects the request
+                     */
+                    answer.cnx_req.val_ret = UPDATE_NOK;
+                    answer.cnx_req.new_contact.id = -1;
+
+                    XBT_VERB("Node %d: isn't leader of %d anymore", me->self.id, rcv_req->sender_id);
+                } else {
+
+                    // run task only if current process is 'run_delayed_tasks'
+                    answer = connection_request(me,
+                            rcv_args.cnx_req.new_node_id,
+                            rcv_args.cnx_req.cs_new_node_prio,
+                            rcv_args.cnx_req.try);
+                }
 
                 XBT_DEBUG("Node %d: CNX_REQ val_ret = %d - contact = %d",
                         me->self.id,
