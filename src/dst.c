@@ -1428,14 +1428,14 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
 
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
-    //char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
-    char test = 1;
+    char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
+    //char test = 1;
 
     /* to avoid dealocks : if CS has been requested and not answered for long
        ago, cancel this request */
 
     if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
-        cs_new_node_prio < me->cs_new_node_prio && test == 1) {        //TODO: à vérifier
+        (cs_new_node_prio < me->cs_new_node_prio || test == 1)) {        //TODO: à vérifier
 
         me->cs_req = 0;
 
@@ -1451,7 +1451,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
     }
 
     if (me->cs_req == 1) {
-        if (me->cs_new_id != new_node_id) {
+        if (me->cs_new_id != new_node_id || state.active != 'a') {
 
             // answer NOK
             val_ret = UPDATE_NOK;
@@ -2313,6 +2313,7 @@ static void set_state(node_t me, int new_id, char active) {
  * \param new_id the new coming node
  * \param active the active state to be poped
  */
+//TODO : changer le nom de cette fonction pour remove_state
 static void pop_state(node_t me, int new_id, char active) {
     XBT_IN();
 
@@ -2323,10 +2324,12 @@ static void pop_state(node_t me, int new_id, char active) {
             state.new_id,
             new_id);
 
-    if (state.active == active && state.new_id == new_id) {
+    int idx = state_search(me, active, new_id);
+
+    if (idx > -1) {
 
         state_t state_ptr = NULL;
-        xbt_dynar_pop(me->states, &state_ptr);
+        xbt_dynar_remove_at(me->states, idx, &state_ptr);
         xbt_free(state_ptr);
         state = get_state(me);
     }
@@ -2520,6 +2523,7 @@ static void run_delayed_tasks(node_t me, char c) {
             req_data_t req = NULL;
             e_task_type_t buf_type = TASK_NULL;
             char is_contact = 0;
+            int buf_new_node_id = -1;
             int mem_nb_elems = 0;
 
             do {
@@ -2571,6 +2575,7 @@ static void run_delayed_tasks(node_t me, char c) {
 
                     buf_type = req->type;
                     is_contact = (req->sender_id == req->args.cnx_req.new_node_id);
+                    buf_new_node_id = req->args.cnx_req.new_node_id;
 
                     // run task
                     val_ret = handle_task(me, &elem);
@@ -2583,7 +2588,7 @@ static void run_delayed_tasks(node_t me, char c) {
                     if (val_ret == UPDATE_NOK) {
 
                         state = get_state(me);
-                        if (state.active == 'a' && me->cs_req == 1 && me->cs_new_id == req->args.cnx_req.new_node_id) {
+                        if (state.active == 'a' && me->cs_req == 1 && me->cs_new_id == buf_new_node_id) {
                             me->cs_req = 0;
                             me->cs_req_time = MSG_get_clock();
                             XBT_VERB("Node %d: cs_req reset", me->self.id);
@@ -2613,7 +2618,8 @@ static void run_delayed_tasks(node_t me, char c) {
                                 cs_rel(me, me->cs_new_id);
                             }
                             */
-                            break;
+                            //TODO : peut-être vaudrait-il mieux trier les files de tâches à lancer
+                            //break;
                         }
 
                     } else {
@@ -2626,7 +2632,8 @@ static void run_delayed_tasks(node_t me, char c) {
                         }
                         */
                         idx++;
-                        break;
+                        //TODO : peut-être vaudrait-il mieux trier les files de tâches à lancer
+                        //break;
                     }
 
                     //req = NULL;
