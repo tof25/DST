@@ -1802,10 +1802,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         ans->new_node_id);
 
                 XBT_VERB("Node %d in wait_for_completion(): matching record%sfound"
-                        " in async answers dynar: idx = %d",
+                        " in async answers dynar: idx = %d - dynar size = %d",
                         me->self.id,
                         (dynar_idx == -1 ? " not " : " "),
-                        dynar_idx);
+                        dynar_idx,
+                        dynar_size);
 
                 if (dynar_idx != -1) {
 
@@ -2334,11 +2335,14 @@ static void pop_state(node_t me, int new_id, char active) {
         state = get_state(me);
     }
 
-    XBT_VERB("Node %d: '%c'/%d for new node %d - end pop_state()",
+    XBT_VERB("Node %d: '%c'/%d for new node %d - end pop_state() with idx = %d",
             me->self.id,
             state.active,
             state.new_id,
-            new_id);
+            new_id,
+            idx);
+
+    display_states(me, 'V');
 
     XBT_OUT();
 }
@@ -3745,6 +3749,10 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
         case TASK_SET_ACTIVE:
             set_update(me, args.broadcast.args->set_active.new_id);
+            break;
+
+        case TASK_POP_STATE:
+            pop_state(me, args.broadcast.args->pop_state.new_node_id, args.broadcast.args->pop_state.active);
             break;
 
         /*
