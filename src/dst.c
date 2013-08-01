@@ -726,6 +726,7 @@ static void         rec_async_answer(node_t me, int idx, ans_data_t ans);
 static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
 static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id);
 static void         check_cs(node_t me, int sender_id);
+static void         launch_fork_process(node_t me, msg_task_t task);
 
 /*
   ======================= COMMUNICATION FUNCTIONS =============================
@@ -1659,6 +1660,71 @@ static void check_cs(node_t me, int sender_id) {
     XBT_OUT();
 }
 
+
+/**
+ * \brief Launch fork processes when needed
+ * \param me the current node
+ * \param task the task to be executed by the process
+ */
+static void launch_fork_process(node_t me, msg_task_t task) {
+
+    XBT_IN();
+    req_data_t req = MSG_task_get_data(task);
+
+    if (req->type == TASK_CNX_REQ ||
+        (req->type == TASK_BROADCAST &&
+         ((req->args.broadcast.type == TASK_SPLIT) || (req->args.broadcast.first_call == 1)))) {
+
+        // handle the received request with a fork process ..
+        char proc_label[10];
+
+        proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+
+        proc_data->node = me;
+        proc_data->task = task;
+        proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+        proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+
+        switch (req->type) {
+            case TASK_CNX_REQ:
+                snprintf(proc_label, 10, "Cnx_req");
+                break;
+
+            case TASK_BROADCAST:
+                switch (req->args.broadcast.type) {
+                    case TASK_SPLIT:
+                        snprintf(proc_label, 10, "Br_Split");
+                        break;
+
+                    case TASK_CS_REQ:
+                        snprintf(proc_label, 10, "Br_Cs_Req");
+                        break;
+
+                    default:
+                        snprintf(proc_label, 10, "Broadcast");
+                        break;
+                }
+        }
+
+        set_fork_mailbox(me->self.id,
+                req->args.cnx_req.new_node_id,
+                proc_label,
+                proc_data->proc_mailbox);
+
+        XBT_VERB("Node %d: create fork process", me->self.id);
+        MSG_process_create(proc_data->proc_mailbox,
+                proc_handle_task,
+                proc_data,
+                MSG_host_self());
+    } else {
+
+        // ... or by itself
+        handle_task(me, &task);
+    }
+
+    XBT_OUT();
+}
+
 /**
  * \brief Wait for the completion of a bunch of async sent tasks
  * \param me the current node
@@ -1901,38 +1967,13 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                   retour de handle_task() ici */
 
                 if (xbt_dynar_is_empty(me->remain_tasks) == 0 &&
-                    req->type == TASK_CNX_REQ) {
+                        req->type == TASK_CNX_REQ) {
 
                     xbt_dynar_push(me->remain_tasks, &task_received);
                     task_received = NULL;
                 } else {
 
-                    // handle the received request with a fork process ..
-                    if (req->type == TASK_CNX_REQ ||
-                        (req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_SPLIT)) {
-
-                        proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
-
-                        proc_data->node = me;
-                        proc_data->task = task_received;
-                        proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-                        proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-
-                        set_fork_mailbox(me->self.id,
-                                req->args.cnx_req.new_node_id,
-                                (req->type == TASK_CNX_REQ ? "Cnx_req" : "Split"),
-                                proc_data->proc_mailbox);
-
-                        XBT_VERB("Node %d: create fork process", me->self.id);
-                        MSG_process_create(proc_data->proc_mailbox,
-                                proc_handle_task,
-                                proc_data,
-                                MSG_host_self());
-                    } else {
-
-                        // ... or by itself
-                        handle_task(me, &task_received);
-                    }
+                    launch_fork_process(me, task_received);
                 }
                 ans = NULL;
                 req = NULL;
@@ -8054,31 +8095,7 @@ int node(int argc, char *argv[]) {
                         } else {
 
                             // handle the received request with a fork process ..
-                            if (req->type == TASK_CNX_REQ ||
-                                (req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_SPLIT)) {
-
-                                proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
-
-                                proc_data->node = &node;
-                                proc_data->task = task_received;
-                                proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-                                proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-
-                                set_fork_mailbox(node.self.id,
-                                        req->args.cnx_req.new_node_id,
-                                        (req->type == TASK_CNX_REQ ? "Cnx_req" : "Split"),
-                                        proc_data->proc_mailbox);
-
-                                XBT_VERB("Node %d: create fork process", node.self.id);
-                                MSG_process_create(proc_data->proc_mailbox,
-                                        proc_handle_task,
-                                        proc_data,
-                                        MSG_host_self());
-                            } else {
-
-                                // ... or by itself
-                                handle_task(&node, &task_received);
-                            }
+                            launch_fork_process(&node, task_received);
                         }
                     } else {
 
@@ -8152,6 +8169,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
     s_state_t state = get_state(me);
     req_data_t rcv_req = (req_data_t) MSG_task_get_data(*task);
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     e_task_type_t type = rcv_req->type;
     char is_contact = 0;
     char is_leader = 0;
@@ -8772,23 +8790,31 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             }
                         }
                         // send an answer back if task hasn't been stored
-                        if (rcv_req->sender_id != me->self.id && val_ret != STORED) {
+                        if (val_ret != STORED) {
 
-                            answer.handle.val_ret = val_ret;
-                            answer.handle.val_ret_id = me->self.id;
-                            answer.handle.br_type = rcv_args.broadcast.type;
+                            if (strcmp(proc_data->proc_mailbox, rcv_req->answer_to) != 0) {
 
-                            res = send_ans_sync(me,
-                                    rcv_args.broadcast.new_node_id,
-                                    type,
-                                    rcv_req->sender_id,
-                                    rcv_req->answer_to,
-                                    answer);
+                                answer.handle.val_ret = val_ret;
+                                answer.handle.val_ret_id = me->self.id;
+                                answer.handle.br_type = rcv_args.broadcast.type;
 
-                            XBT_DEBUG("Node %d: answer '%s' sent to %d",
-                                    me->self.id,
-                                    (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
-                                    rcv_req->sender_id);
+                                res = send_ans_sync(me,
+                                        rcv_args.broadcast.new_node_id,
+                                        type,
+                                        rcv_req->sender_id,
+                                        rcv_req->answer_to,
+                                        answer);
+
+                                XBT_DEBUG("Node %d: answer '%s' sent to %d",
+                                        me->self.id,
+                                        (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
+                                        rcv_req->sender_id);
+                            } else {
+
+                                XBT_VERB("Node %d: No answer after broadcast - answer_to: %s",
+                                        me->self.id,
+                                        rcv_req->answer_to);
+                            }
                         }
 
                         if (val_ret != STORED) {
