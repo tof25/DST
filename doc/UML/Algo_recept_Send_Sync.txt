@@ -1,0 +1,44 @@
+@startuml
+(*top) -->"Wait for sync answer"
+-->"Task Received"
+
+if "" then
+    -->[Request] "Remain_tasks not empty\n&& Task is CNX_REQ ?"
+    if "" then
+        -->[Yes] "Push task on Remain_tasks"
+        --> == REQUEST_PROCESSED ==
+    else
+        -->[No] "Handle request"
+        --> == REQUEST_PROCESSED ==
+    endif
+    == REQUEST_PROCESSED == --> "Answer received meanwhile ?"
+    if "" then
+        -->[Yes] "Get answer data"
+        --> "Pop answer from sync_answers"
+        --> "END"
+    else
+        -->[No] "Wait for sync answer"
+    endif
+
+else
+    -->[Answer] "Is it the expected answer ?"
+    if "" then
+        -->[Yes] "Get answer data"
+    else
+        -->[No] "Other sync expected answer ?"
+        if "" then
+            -->[Yes] "Answer --> sync_answers"
+            --> == ANSWER_PROCESSED ==
+        else
+            -->[No] "Other async expected answer ?"
+            if "" then
+                -->[Yes] "Answer --> async_answers"
+                --> == ANSWER_PROCESSED ==
+            else
+                -->[No] "Answer discarded"
+                --> == ANSWER_PROCESSED ==
+            endif
+    endif
+    == ANSWER_PROCESSED == -->[Answer\nprocessed] "Wait for sync answer"
+endif
+@enduml
