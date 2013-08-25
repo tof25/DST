@@ -1,5 +1,5 @@
 @startuml
-(*top) -->"Wait for sync answer"
+(*top) -->"Wait for task"
 -->"Task Received"
 
 if "" then
@@ -14,31 +14,31 @@ if "" then
     == REQUEST_PROCESSED == --> "Answer received meanwhile ?"
     if "" then
         -->[Yes] "Get answer data"
-        --> "Pop answer from sync_answers"
+        --> "Remove match from <i>sync_answers</i>"
         --> "END"
     else
-        -->[No] "Wait for sync answer"
+        -->[No] "Wait for task"
     endif
 
 else
-    -->[Answer] "Is it the expected answer ?"
+    -->[Answer] "Expected sync answer ?"
     if "" then
         -->[Yes] "Get answer data"
     else
-        -->[No] "Other sync expected answer ?"
+        -->[No] "Other expected sync answer ?"
         if "" then
-            -->[Yes] "Answer --> sync_answers"
+            -->[Yes] "Answer --> <i>sync_answers</i>"
             --> == ANSWER_PROCESSED ==
         else
-            -->[No] "Other async expected answer ?"
+            -->[No] "Async expected answer ?"
             if "" then
-                -->[Yes] "Answer --> async_answers"
+                -->[Yes] "Answer --> <i>async_answers</i>"
                 --> == ANSWER_PROCESSED ==
             else
                 -->[No] "Answer discarded"
                 --> == ANSWER_PROCESSED ==
             endif
     endif
-    == ANSWER_PROCESSED == -->[Answer\nprocessed] "Wait for sync answer"
+    == ANSWER_PROCESSED == -->[Answer\nprocessed] "Wait for task"
 endif
 @enduml

@@ -1910,6 +1910,10 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                         /* No, this answer is then expected by one of parent calls:
                            just record it in the dynar */
+
+                        // TODO : Vérifier si cette branche a une utilité : comment peut-on arriver là si la réponse ne
+                        // trouve pas déjà dans le dynar ?
+
                         rec_async_answer(me, dynar_idx, ans);
                     }
 

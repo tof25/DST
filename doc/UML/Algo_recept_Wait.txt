@@ -1,0 +1,51 @@
+@startuml
+(*top) -->"All answers received ?"
+
+if "" then
+    -->[Yes] "END"
+else
+    -->[No] "Wait for task"
+    --> "Task Received"
+
+    if "" then
+        -->[Request] "Remain_tasks not empty\n&& Task is CNX_REQ ?"
+        if "" then
+            -->[Yes] "Task --> <i>remain_tasks</i>"
+            --> == REQUEST_PROCESSED ==
+        else
+            -->[No] "Handle request (fork)"
+            --> == REQUEST_PROCESSED ==
+        endif
+        == REQUEST_PROCESSED == --> "Answer received meanwhile ?"
+        if "" then
+            -->[Yes] "<i>ans_cpt --</i>"
+        else
+            -->[No] "All answers received ?"
+        endif
+
+    else
+        -->[Answer] "Expected async answer ?"
+        if "" then
+            -->[Yes] "Current expected one ?"
+            if "" then
+                -->[Yes] "<i>ans_cpt --</i>"
+                --> "Remove match from <i>async_answers</i>"
+                --> == ANSWER_PROCESSED ==
+            else
+                -->[No] "Answer --> <i>async_answers</i>"
+                --> "All answers received ?"
+            endif
+        else
+            -right->[No] "Sync expected answer ?"
+            if "" then
+                -->[Yes] "Answer --> <i>sync_answers</i>"
+                --> == ANSWER_PROCESSED ==
+            else
+                    -->[No] "Answer discarded"
+                    --> == ANSWER_PROCESSED ==
+            endif
+        endif
+        == ANSWER_PROCESSED == -->[Answer\nprocessed] "All answers received ?"
+    endif
+endif
+@enduml
