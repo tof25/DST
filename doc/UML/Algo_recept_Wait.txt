@@ -3,6 +3,7 @@
 
 if "" then
     -->[Yes] "END"
+    -->(*)
 else
     -->[No] "Wait for task"
     --> "Task Received"

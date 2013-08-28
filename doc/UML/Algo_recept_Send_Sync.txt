@@ -16,6 +16,7 @@ if "" then
         -->[Yes] "Get answer data"
         --> "Remove match from <i>sync_answers</i>"
         --> "END"
+        -->(*)
     else
         -->[No] "Wait for task"
     endif

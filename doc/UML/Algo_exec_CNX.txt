@@ -1,0 +1,37 @@
+@startuml
+
+(*top) --> "<i>Run_state</i> <-- OK"
+--> "<i>Last_run</i> <-- NOK"
+
+--> "Queue empty ?"
+if "" then
+    -->[Yes] "End time ?"
+    if "" then
+        -->[Yes] "END"
+        -->(*)
+    else
+        -->[No] "Sleep for a while"
+        --> "Queue empty ?"
+    endif
+else
+    -->[No] "<i>Run_state</i> OK ?"
+    if "" then
+        -->[Yes] "<i>Last_run</i> OK ?"
+        if "" then
+            -->[Yes] "Pop top request"
+            --> "<i>Last_run</i> <-- NOK"
+        endif
+        --> "Queue not empty ?"
+        if "" then
+            -->[Yes] "<i>Run_state</i> <-- CNX_req runing"
+            --> "Launch fork process to run top request"
+            --> "Queue empty ?"
+        else
+            -->[No] "Queue empty ?"
+        endif
+    else
+        -->[No] "Queue empty ?"
+    endif
+endif
+
+@enduml
