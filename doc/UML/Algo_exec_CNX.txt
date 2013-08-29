@@ -2,7 +2,7 @@
 
 (*top) --> "<i>Run_state</i> <-- OK" as init1
 --> "<i>Last_return</i> <-- NOK" as init2
---> "<i>cpt</i> <-- 0" as init3
+--> "<i>cpt</i> <-- -1" as init3
 
 --> "Queue empty ?" as q1
 if "" then

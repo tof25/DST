@@ -702,6 +702,7 @@ static void         pop_state(node_t me, int new_id, char active);
 static int          check(node_t me);
 static void         call_run_delayed_tasks(node_t me, int new_id, char c);
 static void         run_delayed_tasks(node_t me, char c);
+static void         run_task_queue(node_t me);
 static void         node_free(node_t me);
 static void         data_ans_free(node_t me, ans_data_t *answer_data);
 static void         data_req_free(node_t me, req_data_t *req_data);
@@ -2487,6 +2488,61 @@ static void call_run_delayed_tasks(node_t me, int new_id, char c) {
             proc_run_tasks,
             proc_data,
             MSG_host_self());
+
+    XBT_OUT();
+}
+
+/**
+ * \brief Run tasks stored in dynar
+ * param me the current node
+ */
+static void run_task_queue(node_t me) {
+    XBT_IN();
+
+    // inits
+    typedef enum {
+        RUNNING,
+        IDLE
+    } e_run_state_t;
+
+    e_run_state_t run_state = IDLE;
+    e_val_ret_t last_ret = UPDATE_NOK;
+    int cpt = -1;
+
+    do {
+        if (xbt_dynar_is_empty(me->remain_tasks) == 0) {
+
+            // something to do
+            if (run_state == IDLE) {
+
+                // no task running
+                if (last_ret == UPDATE_NOK) {
+
+                    // last run was not OK
+                    cpt++;
+                    if (cpt > MAX_CNX) {
+
+                        // too many attemps
+                        XBT_WARN("TOO MANY FAILURES");  // TODO : à préciser
+                        cpt = 0;
+                    }
+                }
+                last_ret = UPDATE_NOK;
+                xbt_dynar_pop(me->remain_tasks, NULL);  //TODO : libérer la mémoire ?
+
+                if (xbt_dynar_is_empty(me->remain_tasks) == 1) {
+
+                    // dynar is empty
+                    MSG_process_sleep(12.0);
+                    continue;
+                }
+
+                // run top request
+                run_state = RUNNING;
+                //TODO : crée fork qui exécute CNX_REQ
+            }
+        }
+    } while ();
 
     XBT_OUT();
 }
