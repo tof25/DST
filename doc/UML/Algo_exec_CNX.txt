@@ -2,6 +2,7 @@
 
 (*top) --> "<i>Run_state</i> <-- OK" as init1
 --> "<i>Last_return</i> <-- NOK" as init2
+--> "<i>cpt</i> <-- 0" as init3
 
 --> "Queue empty ?" as q1
 if "" then
@@ -18,7 +19,7 @@ else
     if "" then
         -->[Yes] "<i>Last_return</i> OK ?"
         if "" then
-            -->[Yes] "<i>Last_return</i> <-- NOK"
+            -->[Yes] "<i>Last_return</i> <-- NOK" as run2
             --> "Pop top request"
             --> "Queue empty ?" as q2
             if "" then
@@ -29,7 +30,15 @@ else
                 --> s1
             endif
         else
-            -->[No] run1
+            -->[No] "<i>cpt</i>++"
+            --> "<i>cpt</i> > MAX"
+            if "" then
+                -->[Yes] "Display Warning"
+                --> "<i>cpt</i> <-- 0"
+                --> run2
+            else
+                -->[No] run1
+            endif
         endif
     else
         -->[No] s1
