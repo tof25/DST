@@ -1,36 +1,38 @@
 @startuml
 
-(*top) --> "<i>Run_state</i> <-- OK"
---> "<i>Last_run</i> <-- NOK"
+(*top) --> "<i>Run_state</i> <-- OK" as init1
+--> "<i>Last_return</i> <-- NOK" as init2
 
---> "Queue empty ?"
+--> "Queue empty ?" as q1
 if "" then
     -->[Yes] "End time ?"
     if "" then
         -->[Yes] "END"
         -->(*)
     else
-        -->[No] "Sleep for a while"
-        --> "Queue empty ?"
+        -->[No] "Sleep for a while" as s1
+        --> q1
     endif
 else
     -->[No] "<i>Run_state</i> OK ?"
     if "" then
-        -->[Yes] "<i>Last_run</i> OK ?"
+        -->[Yes] "<i>Last_return</i> OK ?"
         if "" then
-            -->[Yes] "Pop top request"
-            --> "<i>Last_run</i> <-- NOK"
-        endif
-        --> "Queue not empty ?"
-        if "" then
-            -->[Yes] "<i>Run_state</i> <-- CNX_req runing"
-            --> "Launch fork process to run top request"
-            --> "Queue empty ?"
+            -->[Yes] "<i>Last_return</i> <-- NOK"
+            --> "Pop top request"
+            --> "Queue empty ?" as q2
+            if "" then
+                -->[Yes] s1
+            else
+                -->[No] "<i>Run_state</i> <-- CNX_req runing" as run1
+                --> "Launch fork process to run top request"
+                --> s1
+            endif
         else
-            -->[No] "Queue empty ?"
+            -->[No] run1
         endif
     else
-        -->[No] "Queue empty ?"
+        -->[No] s1
     endif
 endif
 
