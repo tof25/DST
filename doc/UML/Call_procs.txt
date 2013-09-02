@@ -1,0 +1,15 @@
+@startuml
+
+(*top) --> "init()"
+note left: proc root
+--> "call_run_delayed_tasks()"
+--> "process_create(<b><color:red>proc_run_tasks</color></b>)"
+-right-> "run_tasks_queue()"
+note right: proc dly_task
+--> "launch_fork_process()"
+--> "process_create(<b><color:red>proc_handle_task</color></b>)"
+-right-> "handle_task()"
+note right: proc Cnx_req
+--> (*)
+
+@enduml
