@@ -1729,15 +1729,18 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                 proc_label,
                 proc_data->proc_mailbox);
 
-        XBT_VERB("Node %d: create fork process (%s), mailbox = %s",
+        XBT_VERB("Node %d: create fork process (%s), task = %p, mailbox = %s",
                 me->self.id,
                 proc_label,
+                task,
                 proc_data->proc_mailbox);
 
         MSG_process_create(proc_data->proc_mailbox,
                 proc_handle_task,
                 proc_data,
                 MSG_host_self());
+
+        XBT_VERB("Node %d: process created", me->self.id);
     } else {
 
         // ... or by itself
@@ -3021,6 +3024,9 @@ static void display_remain_tasks(node_t me) {
         XBT_VERB("me->remain_tasks = %p", me->remain_tasks);    //TODO: ne pas oublier
 
         task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
+
+        XBT_VERB("*task_ptr = %p - name = %p/%s", *task_ptr, MSG_task_get_name(*task_ptr), MSG_task_get_name(*task_ptr));
+
         req_data = MSG_task_get_data(*task_ptr);
 
         if (MSG_task_get_name(*task_ptr) == NULL) {
@@ -3028,8 +3034,9 @@ static void display_remain_tasks(node_t me) {
             XBT_VERB("Node %d: task[%d] = NULL", me->self.id, k);
         } else {
 
-            XBT_VERB("Node %d: task[%d] = {'%s - %s' from %d for new node %d}",
+            XBT_VERB("Node %d: %p: task[%d] = {'%s - %s' from %d for new node %d}",
                     me->self.id,
+                    *task_ptr,
                     k,
                     MSG_task_get_name(*task_ptr),
                     debug_msg[req_data->type],
@@ -8206,6 +8213,7 @@ int node(int argc, char *argv[]) {
 
                 // some task has been received
 
+                XBT_DEBUG("some task has been received");
                 res = MSG_comm_get_status(node.comm_received);
 
                 MSG_comm_destroy(node.comm_received);
@@ -9707,18 +9715,22 @@ static int proc_handle_task(int argc, char* argv[]) {
 
     req_data_t req_data = MSG_task_get_data(proc_data->task);
 
+    /*
     msg_task_t proc_task = MSG_task_create(MSG_task_get_name(proc_data->task),
             COMP_SIZE,
             COMM_SIZE,
             MSG_task_get_data(proc_data->task));
+    */
 
-    //data_req_free(proc_data->node, &req_data);
-    task_free(&proc_data->task);
+    msg_task_t proc_task = proc_data->task;
 
-    XBT_VERB("Node %d: in fork process - mailbox = '%s' - task = %p",
+    XBT_VERB("Node %d: in fork process - mailbox = '%s' - task = %p - %p",
             proc_data->node->self.id,
             proc_data->proc_mailbox,
+            proc_data->task,
             proc_task);
+
+    //task_free(&proc_data->task);
 
     proc_data->node->run_task.run_state = RUNNING;
     proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task);
