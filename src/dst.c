@@ -217,6 +217,7 @@ typedef struct node {
     int             cs_new_id;              // new node's id that set cs_req
     int             cs_new_node_prio;       // new node's priority
     float           last_check_time;        // last time when checking if cs_req has to be reset occured
+    s_run_task_t    run_task;               // current running task state (delayed tasks)
 } s_node_t, *node_t;
 
 /**
@@ -226,7 +227,6 @@ typedef struct proc_data {
     char         proc_mailbox[MAILBOX_NAME_SIZE];
     node_t       node;
     msg_task_t   task;
-    s_run_task_t run_task;
     xbt_dynar_t  async_answers;
     xbt_dynar_t  sync_answers;
 } s_proc_data_t, *proc_data_t;
@@ -1689,7 +1689,12 @@ static void launch_fork_process(node_t me, msg_task_t task) {
 
     XBT_IN();
     req_data_t req = MSG_task_get_data(task);
+
     proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+    proc_data->node = me;
+    proc_data->task = task;
+    proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+    proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
 
     if (req->type == TASK_CNX_REQ ||
         (req->type == TASK_BROADCAST &&
@@ -1697,11 +1702,6 @@ static void launch_fork_process(node_t me, msg_task_t task) {
 
         // handle the received request with a fork process ..
         char proc_label[10];
-
-        proc_data->node = me;
-        proc_data->task = task;
-        proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-        proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
 
         switch (req->type) {
             case TASK_CNX_REQ:
@@ -1729,7 +1729,11 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                 proc_label,
                 proc_data->proc_mailbox);
 
-        XBT_VERB("Node %d: create fork process", me->self.id);
+        XBT_VERB("Node %d: create fork process (%s), mailbox = %s",
+                me->self.id,
+                proc_label,
+                proc_data->proc_mailbox);
+
         MSG_process_create(proc_data->proc_mailbox,
                 proc_handle_task,
                 proc_data,
@@ -1737,9 +1741,9 @@ static void launch_fork_process(node_t me, msg_task_t task) {
     } else {
 
         // ... or by itself
-        proc_data->run_task.run_state = RUNNING;
-        proc_data->run_task.last_ret = handle_task(me, &task);
-        proc_data->run_task.run_state = IDLE;
+        proc_data->node->run_task.run_state = RUNNING;
+        proc_data->node->run_task.last_ret = handle_task(me, &task);
+        proc_data->node->run_task.run_state = IDLE;
     }
 
     XBT_OUT();
@@ -2524,6 +2528,8 @@ static void run_tasks_queue(node_t me) {
     msg_task_t *task_ptr = NULL;
     req_data_t req_data = NULL;
     s_state_t state;
+    me->run_task.run_state = IDLE;
+    me->run_task.last_ret = UPDATE_NOK;
 
     do {
 
@@ -2570,7 +2576,10 @@ static void run_tasks_queue(node_t me) {
                 // pop dynar if last run is OK or too many attemps
                 if ((me->run_task.last_ret == UPDATE_NOK && cpt > MAX_CNX) || (me->run_task.last_ret != UPDATE_NOK)) {
 
-                    XBT_VERB("Node %d: pop request", me->self.id);
+                    XBT_VERB("Node %d: pop request - run_state = %d - last_ret = %d",
+                            me->self.id,
+                            me->run_task.run_state,
+                            me->run_task.last_ret);
 
                     me->run_task.last_ret = UPDATE_NOK;
                     xbt_dynar_pop(me->remain_tasks, NULL);  //TODO : pas de libération - handle_task doit l'avoir fait
@@ -2584,7 +2593,6 @@ static void run_tasks_queue(node_t me) {
 
                     XBT_VERB("Node %d: run top request", me->self.id);
 
-                    me->run_task.run_state = RUNNING;
                     task_ptr = xbt_dynar_get_ptr(me->remain_tasks, xbt_dynar_length(me->remain_tasks) - 1);
 
                     xbt_assert(task_ptr != NULL && *task_ptr != NULL, "Node %d: task_ptr shouldn't be NULL here (2)!", me->self.id);
@@ -3011,19 +3019,26 @@ static void display_remain_tasks(node_t me) {
     for (k = 0; k < nb_elems; k++) {
 
         XBT_VERB("me->remain_tasks = %p", me->remain_tasks);    //TODO: ne pas oublier
+
         task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
         req_data = MSG_task_get_data(*task_ptr);
 
-        XBT_VERB("Node %d: task[%d] = {'%s - %s' from %d for new node %d}",
-                me->self.id,
-                k,
-                MSG_task_get_name(*task_ptr),
-                debug_msg[req_data->type],
-                req_data->sender_id,
-                req_data->args.cnx_req.new_node_id);
+        if (MSG_task_get_name(*task_ptr) == NULL) {
+
+            XBT_VERB("Node %d: task[%d] = NULL", me->self.id, k);
+        } else {
+
+            XBT_VERB("Node %d: task[%d] = {'%s - %s' from %d for new node %d}",
+                    me->self.id,
+                    k,
+                    MSG_task_get_name(*task_ptr),
+                    debug_msg[req_data->type],
+                    req_data->sender_id,
+                    req_data->args.cnx_req.new_node_id);
+        }
     }
 
-    XBT_OUT();
+        XBT_OUT();
 }
 
 static void display_async_answers(node_t me, char log) {
@@ -8207,8 +8222,12 @@ int node(int argc, char *argv[]) {
                     if (strcmp(MSG_task_get_name(task_received), "ans") != 0) {
 
                         // Received request
+                        /*
                         if (xbt_dynar_is_empty(node.remain_tasks) == 0 &&      //TODO : peut-être inutile avec forks
                                 req->type == TASK_CNX_REQ) {
+                            */
+
+                        if (req->type == TASK_CNX_REQ) {
 
                             xbt_dynar_push(node.remain_tasks, &task_received);
                             task_received = NULL;
@@ -8356,7 +8375,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             //if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) || (state.active == 'a'))
             //test = (state.active != 'l'&& state.active != 'b' && strstr(MSG_process_get_name(MSG_process_self()), "dly") != NULL);            //TODO : ne pas oublier
 
-            if (strstr(MSG_process_get_name(MSG_process_self()), "dly") != NULL) {
+            if (strstr(MSG_process_get_name(MSG_process_self()), "Cnx") != NULL) {
 
                 is_contact = (rcv_req->sender_id == rcv_req->args.cnx_req.new_node_id);
                 is_leader = me->self.id == me->brothers[0][0].id;
@@ -8373,7 +8392,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     XBT_VERB("Node %d: isn't leader of %d anymore", me->self.id, rcv_req->sender_id);
                 } else {
 
-                    // run task only if current process is 'run_delayed_tasks'
+                    // run task only if current process is 'Cnx_req'
                     answer = connection_request(me,
                             rcv_args.cnx_req.new_node_id,
                             rcv_args.cnx_req.cs_new_node_prio,
@@ -9701,9 +9720,9 @@ static int proc_handle_task(int argc, char* argv[]) {
             proc_data->proc_mailbox,
             proc_task);
 
-    proc_data->run_task.run_state = RUNNING;
-    proc_data->last_ret = handle_task(proc_data->node, &proc_task);
-    proc_data->run_task.run_state = IDLE;
+    proc_data->node->run_task.run_state = RUNNING;
+    proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task);
+    proc_data->node->run_task.run_state = IDLE;
 
     XBT_VERB("Node %d: fork process dies - task = %p",
             proc_data->node->self.id,
