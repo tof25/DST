@@ -1172,7 +1172,9 @@ static void task_free(msg_task_t *task) {
 
         TRY {
             XBT_DEBUG("Destroy task");
+            XBT_VERB("Before destruction : *task = %p - name = %p/'%s'", *task, MSG_task_get_name(*task),MSG_task_get_name(*task));
             MSG_task_destroy(*task);
+            XBT_VERB("After destruction : *task = %p - name = %p/'%s'", *task, MSG_task_get_name(*task),MSG_task_get_name(*task));
             *task = NULL;
             XBT_DEBUG("Task destroyed");
         }
@@ -8423,8 +8425,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             rcv_req->answer_to,
                             answer);
 
-                    data_req_free(me, &rcv_req);
-                    task_free(task);
+                    //data_req_free(me, &rcv_req);
+                    //task_free(task);              //TODO : ne pas oublier (libérer dans run_tasks_queue ?)
                 }
             } else {
 
@@ -9497,6 +9499,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             me->self.id,
             (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"));
 
+    /*
     if (val_ret == OK) {
 
         xbt_assert(*task == NULL,
@@ -9504,6 +9507,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 me->self.id,
                 debug_msg[type]);
     }
+    */
 
     XBT_OUT();
     return val_ret;
@@ -9736,7 +9740,7 @@ static int proc_handle_task(int argc, char* argv[]) {
     proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task);
     proc_data->node->run_task.run_state = IDLE;
 
-    XBT_VERB("Node %d: fork process dies - task = %p",
+    XBT_VERB("Node %d: fork process dies (proc_handle_task) - task = %p",
             proc_data->node->self.id,
             proc_task);
 
