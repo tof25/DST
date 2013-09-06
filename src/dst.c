@@ -150,7 +150,8 @@ typedef enum {
     OK,                     // no problem
     STORED,                 // task stored
     UPDATE_OK,              // set_update ok
-    UPDATE_NOK              // set_update not ok
+    UPDATE_NOK,             // set_update not ok
+    FAILED                  // task failed
 } e_val_ret_t;
 
 /**
@@ -232,13 +233,22 @@ typedef struct proc_data {
 } s_proc_data_t, *proc_data_t;
 
 /**
+ * Array of debug run state messages
+ */
+static const char* debug_run_msg[] = {
+    "RUNNING",
+    "IDLE"
+};
+
+/**
  * Array of debug return messages
  */
 static const char* debug_ret_msg[] = {
     "OK",
     "STORED",
     "UPDATE_OK",
-    "UPDATE_NOK"
+    "UPDATE_NOK",
+    "FAILED"
 };
 
 /**
@@ -2539,12 +2549,12 @@ static void run_tasks_queue(node_t me) {
     do {
 
         state = get_state(me);
-        XBT_VERB("Node %d: '%c'/%d - in run_task_queue() - run_state = %d - last_ret = %d",
+        XBT_VERB("Node %d: '%c'/%d - in run_task_queue() - run_state = %s - last_ret = %s",
                 me->self.id,
                 state.active,
                 state.new_id,
-                me->run_task.run_state,
-                me->run_task.last_ret);
+                debug_run_msg[me->run_task.run_state],
+                debug_ret_msg[me->run_task.last_ret]);
 
         display_remain_tasks(me);
 
@@ -2553,7 +2563,13 @@ static void run_tasks_queue(node_t me) {
             // something to do
             if (me->run_task.run_state == IDLE) {
 
-                XBT_VERB("Node %d: something to do", me->self.id);
+                if (me->run_task.last_ret == OK) {
+
+                    XBT_VERB("Node %d: task done - may be shifted", me->self.id);
+                } else {
+
+                    XBT_VERB("Node %d: something to do", me->self.id);
+                }
 
                 // no task running
                 if (me->run_task.last_ret == UPDATE_NOK) {
@@ -2578,16 +2594,16 @@ static void run_tasks_queue(node_t me) {
                     }
                 }
 
-                // pop dynar if last run is OK or too many attemps
+                // shift dynar if last run is OK or too many attemps
                 if ((me->run_task.last_ret == UPDATE_NOK && cpt > MAX_CNX) || (me->run_task.last_ret != UPDATE_NOK)) {
 
-                    XBT_VERB("Node %d: pop request - run_state = %d - last_ret = %d",
+                    XBT_VERB("Node %d: shift request - run_state = %s - last_ret = %s",
                             me->self.id,
-                            me->run_task.run_state,
-                            me->run_task.last_ret);
+                            debug_run_msg[me->run_task.run_state],
+                            debug_ret_msg[me->run_task.last_ret]);
 
                     me->run_task.last_ret = UPDATE_NOK;
-                    xbt_dynar_pop(me->remain_tasks, NULL);  //TODO : pas de libération - handle_task doit l'avoir fait
+                    xbt_dynar_shift(me->remain_tasks, NULL);  //TODO : mettre en place une libération mémoire vu que handle_task ne le fait plus
                     if (cpt >= MAX_CNX) { cpt = 0; }
                 }
 
@@ -2596,9 +2612,10 @@ static void run_tasks_queue(node_t me) {
 
                     // run top request
 
-                    XBT_VERB("Node %d: run top request", me->self.id);
+                    XBT_VERB("Node %d: run first request", me->self.id);
 
-                    task_ptr = xbt_dynar_get_ptr(me->remain_tasks, xbt_dynar_length(me->remain_tasks) - 1);
+                    //task_ptr = xbt_dynar_get_ptr(me->remain_tasks, xbt_dynar_length(me->remain_tasks) - 1);
+                    task_ptr = xbt_dynar_get_ptr(me->remain_tasks, 0);
 
                     xbt_assert(task_ptr != NULL && *task_ptr != NULL, "Node %d: task_ptr shouldn't be NULL here (2)!", me->self.id);
 
@@ -8151,7 +8168,7 @@ int node(int argc, char *argv[]) {
                 XBT_VERB("Node %d: Waiting for a task...", node.self.id);
             }
 
-            XBT_DEBUG("Node %d: comm test", node.self.id);
+            //XBT_DEBUG("Node %d: comm test", node.self.id);
 
             if (!MSG_comm_test(node.comm_received)) {
 
@@ -8396,7 +8413,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                        if me isn't contact's leader any more, (because it had been splitted meanwhile)
                        rejects the request
                      */
-                    answer.cnx_req.val_ret = UPDATE_NOK;
+                    //answer.cnx_req.val_ret = UPDATE_NOK;
+                    answer.cnx_req.val_ret = FAILED;
                     answer.cnx_req.new_contact.id = -1;
 
                     XBT_VERB("Node %d: isn't leader of %d anymore", me->self.id, rcv_req->sender_id);
@@ -8409,14 +8427,14 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             rcv_args.cnx_req.try);
                 }
 
-                XBT_DEBUG("Node %d: CNX_REQ val_ret = %d - contact = %d",
+                XBT_DEBUG("Node %d: CNX_REQ val_ret = %s - contact = %d",
                         me->self.id,
-                        answer.cnx_req.val_ret,
+                        debug_ret_msg[answer.cnx_req.val_ret],
                         answer.cnx_req.new_contact.id);
 
                 val_ret = answer.cnx_req.val_ret;
-                if (val_ret != UPDATE_NOK ||
-                    (val_ret == UPDATE_NOK && rcv_req->sender_id != rcv_args.cnx_req.new_node_id)) {
+                if (val_ret != FAILED && val_ret != UPDATE_NOK ||
+                    ((val_ret == FAILED || val_ret == UPDATE_NOK) && rcv_req->sender_id != rcv_args.cnx_req.new_node_id)) {
 
                     res = send_ans_sync(me,
                             rcv_args.cnx_req.new_node_id,
@@ -8471,7 +8489,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             XBT_VERB("Node %d: TASK_CNX_REQ done for new node %d - val_ret = %s",
                     me->self.id,
                     rcv_args.cnx_req.new_node_id,
-                    (val_ret == STORED ? " STORED" : (val_ret == UPDATE_NOK ? " NOK" : "OK")));
+                    debug_ret_msg[val_ret]);
 
             display_sc(me, 'V');
 
