@@ -4964,7 +4964,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             me->self.id,
             state.active,
             state.new_id,
-            (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
+            debug_ret_msg[val_ret],
             answer.cnx_req.new_contact.id);
 
     XBT_DEBUG("Node %d: answer.cnx_req.add_stage = %d",
@@ -8413,8 +8413,13 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                        if me isn't contact's leader any more, (because it had been splitted meanwhile)
                        rejects the request
                      */
-                    //answer.cnx_req.val_ret = UPDATE_NOK;
-                    answer.cnx_req.val_ret = FAILED;
+                    if (is_contact) {
+
+                        answer.cnx_req.val_ret = UPDATE_NOK;
+                    } else {
+
+                        answer.cnx_req.val_ret = FAILED;
+                    }
                     answer.cnx_req.new_contact.id = -1;
 
                     XBT_VERB("Node %d: isn't leader of %d anymore", me->self.id, rcv_req->sender_id);
@@ -9515,7 +9520,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
     XBT_DEBUG("Node %d end of handle_task(): val_ret = '%s'",
             me->self.id,
-            (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"));
+            debug_ret_msg[val_ret]);
 
     /*
     if (val_ret == OK) {
