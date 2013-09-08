@@ -1756,9 +1756,25 @@ static void launch_fork_process(node_t me, msg_task_t task) {
     } else {
 
         // ... or by itself
-        proc_data->node->run_task.run_state = RUNNING;
-        proc_data->node->run_task.last_ret = handle_task(me, &task);
-        proc_data->node->run_task.run_state = IDLE;
+        //proc_data->node->run_task.run_state = RUNNING;
+
+        /*
+        XBT_VERB("Node %d: set run_state = {%s - %s}",
+                me->self.id,
+                debug_run_msg[proc_data->node->run_task.run_state],
+                debug_ret_msg[proc_data->node->run_task.last_ret]);
+        */
+
+        //proc_data->node->run_task.last_ret = handle_task(me, &task);
+        handle_task(me, &task);
+        //proc_data->node->run_task.run_state = IDLE;
+
+        /*
+        XBT_VERB("Node %d: set run_state = {%s - %s}",
+                me->self.id,
+                debug_run_msg[proc_data->node->run_task.run_state],
+                debug_ret_msg[proc_data->node->run_task.last_ret]);
+        */
     }
 
     XBT_OUT();
@@ -2546,6 +2562,11 @@ static void run_tasks_queue(node_t me) {
     me->run_task.run_state = IDLE;
     me->run_task.last_ret = UPDATE_NOK;
 
+    XBT_VERB("Node %d: set run_state = {%s - %s}",
+            me->self.id,
+            debug_run_msg[me->run_task.run_state],
+            debug_ret_msg[me->run_task.last_ret]);
+
     do {
 
         state = get_state(me);
@@ -2603,6 +2624,12 @@ static void run_tasks_queue(node_t me) {
                             debug_ret_msg[me->run_task.last_ret]);
 
                     me->run_task.last_ret = UPDATE_NOK;
+
+                    XBT_VERB("Node %d: set run_state = {%s - %s}",
+                            me->self.id,
+                            debug_run_msg[me->run_task.run_state],
+                            debug_ret_msg[me->run_task.last_ret]);
+
                     xbt_dynar_shift(me->remain_tasks, NULL);  //TODO : mettre en place une libération mémoire vu que handle_task ne le fait plus
                     if (cpt >= MAX_CNX) { cpt = 0; }
                 }
@@ -8437,7 +8464,20 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         debug_ret_msg[answer.cnx_req.val_ret],
                         answer.cnx_req.new_contact.id);
 
-                val_ret = answer.cnx_req.val_ret;
+                // In case of failure, let task in queue (to repeat it) only if me is new node's contact
+                if (answer.cnx_req.val_ret == FAILED || answer.cnx_req.val_ret == UPDATE_NOK) {
+
+                    val_ret = (is_contact ? UPDATE_NOK : FAILED);
+                } else {
+
+                    val_ret = answer.cnx_req.val_ret;
+                }
+
+                XBT_DEBUG("Node %d: new CNX_REQ val_ret : %s - is_contact : %d",
+                        me->self.id,
+                        debug_ret_msg[val_ret],
+                        is_contact);
+
                 if (val_ret != FAILED && val_ret != UPDATE_NOK ||
                     ((val_ret == FAILED || val_ret == UPDATE_NOK) && rcv_req->sender_id != rcv_args.cnx_req.new_node_id)) {
 
@@ -9759,9 +9799,26 @@ static int proc_handle_task(int argc, char* argv[]) {
 
     //task_free(&proc_data->task);
 
-    proc_data->node->run_task.run_state = RUNNING;
-    proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task);
-    proc_data->node->run_task.run_state = IDLE;
+    if (req_data->type == TASK_CNX_REQ) {
+
+        proc_data->node->run_task.run_state = RUNNING;
+
+        XBT_VERB("Node %d: set run_state = {%s - %s}",
+                proc_data->node->self.id,
+                debug_run_msg[proc_data->node->run_task.run_state],
+                debug_ret_msg[proc_data->node->run_task.last_ret]);
+
+        proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task);
+        proc_data->node->run_task.run_state = IDLE;
+
+        XBT_VERB("Node %d: set run_state = {%s - %s}",
+                proc_data->node->self.id,
+                debug_run_msg[proc_data->node->run_task.run_state],
+                debug_ret_msg[proc_data->node->run_task.last_ret]);
+    } else {
+
+        handle_task(proc_data->node, &proc_task);
+    }
 
     XBT_VERB("Node %d: fork process dies (proc_handle_task) - task = %p",
             proc_data->node->self.id,
