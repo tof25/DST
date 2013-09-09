@@ -9844,6 +9844,8 @@ static int proc_run_tasks(int argc, char* argv[]) {
 
     run_tasks_queue(proc_data->node);
 
+    xbt_assert(proc_data != NULL, "proc_data = NULL !!");
+
     XBT_VERB("Node %d: fork process (run_tasks_queue) dies node = %p",
             proc_data->node->self.id,
             proc_data->node);
@@ -9911,6 +9913,7 @@ static void proc_data_cleanup(void* arg) {
     xbt_dynar_free(&(proc_data->sync_answers));
 
     xbt_free(proc_data);
+    proc_data = NULL;
 
     XBT_OUT();
 }
