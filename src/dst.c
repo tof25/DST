@@ -1756,25 +1756,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
     } else {
 
         // ... or by itself
-        //proc_data->node->run_task.run_state = RUNNING;
-
-        /*
-        XBT_VERB("Node %d: set run_state = {%s - %s}",
-                me->self.id,
-                debug_run_msg[proc_data->node->run_task.run_state],
-                debug_ret_msg[proc_data->node->run_task.last_ret]);
-        */
-
-        //proc_data->node->run_task.last_ret = handle_task(me, &task);
         handle_task(me, &task);
-        //proc_data->node->run_task.run_state = IDLE;
-
-        /*
-        XBT_VERB("Node %d: set run_state = {%s - %s}",
-                me->self.id,
-                debug_run_msg[proc_data->node->run_task.run_state],
-                debug_ret_msg[proc_data->node->run_task.last_ret]);
-        */
     }
 
     XBT_OUT();
@@ -2025,11 +2007,19 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 /*NOTE: il ne semble pas nécessaire de récupérer la valeur de
                   retour de handle_task() ici */
 
-                if (xbt_dynar_is_empty(me->remain_tasks) == 0 &&
-                        req->type == TASK_CNX_REQ) {
+                //if (xbt_dynar_is_empty(me->remain_tasks) == 0 &&
+
+                // push the received CNX_REQ task onto the dynar ...
+                if (req->type == TASK_CNX_REQ) {
 
                     xbt_dynar_push(me->remain_tasks, &task_received);
                     task_received = NULL;
+
+                    XBT_VERB("Node %d: task %s(%d) pushed",
+                            me->self.id,
+                            debug_msg[req->type],
+                            req->args.cnx_req.new_node_id);
+
                 } else {
 
                     launch_fork_process(me, task_received);
@@ -2570,7 +2560,7 @@ static void run_tasks_queue(node_t me) {
     do {
 
         state = get_state(me);
-        XBT_VERB("Node %d: '%c'/%d - in run_task_queue() - run_state = %s - last_ret = %s",
+        XBT_VERB("Node %d: '%c'/%d - in run_tasks_queue() - run_state = %s - last_ret = %s",
                 me->self.id,
                 state.active,
                 state.new_id,
@@ -8281,16 +8271,20 @@ int node(int argc, char *argv[]) {
                                 req->type == TASK_CNX_REQ) {
                             */
 
+                        // push the received CNX_REQ task onto the dynar ...
                         if (req->type == TASK_CNX_REQ) {
 
                             xbt_dynar_push(node.remain_tasks, &task_received);
                             task_received = NULL;
 
-                            XBT_VERB("Node %d: task %s(%d) pushed", node.self.id, debug_msg[req->type], req->args.cnx_req.new_node_id);
+                            XBT_VERB("Node %d: task %s(%d) pushed",
+                                    node.self.id,
+                                    debug_msg[req->type],
+                                    req->args.cnx_req.new_node_id);
 
                         } else {
 
-                            // handle the received request with a fork process ..
+                            // ... otherwise, handle it with a fork process
                             launch_fork_process(&node, task_received);
                         }
                     } else {
@@ -9846,9 +9840,12 @@ static int proc_run_tasks(int argc, char* argv[]) {
 
     xbt_assert(proc_data != NULL, "proc_data = NULL !!");
 
-    XBT_VERB("Node %d: fork process (run_tasks_queue) dies node = %p",
+    /*
+    XBT_VERB("Node %d: fork process (run_tasks_queue) dies node = %p",      //TODO : chercher pouquoi node a été libéré avant cet appel (pas node_free, semble-t-il)
+
             proc_data->node->self.id,
             proc_data->node);
+            */
 
     MSG_process_set_data_cleanup(proc_data_cleanup);
     MSG_process_kill(MSG_process_self());
