@@ -1173,7 +1173,7 @@ static void task_free(msg_task_t *task) {
 
     xbt_ex_t ex;
 
-    XBT_VERB("in task_free, task = %p", *task);
+    XBT_DEBUG("in task_free, task = %p", *task);
 
     if (*task == NULL) {
 
@@ -1182,10 +1182,14 @@ static void task_free(msg_task_t *task) {
 
         TRY {
             XBT_DEBUG("Destroy task");
-            XBT_VERB("Before destruction : *task = %p - name = %p/'%s'", *task, MSG_task_get_name(*task),MSG_task_get_name(*task));
+            XBT_DEBUG("Before destruction : *task = %p - name = %p/'%s'", *task, MSG_task_get_name(*task),MSG_task_get_name(*task));
+
             MSG_task_destroy(*task);
-            XBT_VERB("After destruction : *task = %p - name = %p/'%s'", *task, MSG_task_get_name(*task),MSG_task_get_name(*task));
+
+            XBT_DEBUG("After destruction : *task = %p - name = %p/'%s'", *task, MSG_task_get_name(*task),MSG_task_get_name(*task));
+
             *task = NULL;
+
             XBT_DEBUG("Task destroyed");
         }
         CATCH(ex) {
@@ -3053,24 +3057,24 @@ static void display_remain_tasks(node_t me) {
     msg_task_t *task_ptr = NULL;
     req_data_t req_data = NULL;
     unsigned int nb_elems = xbt_dynar_length(me->remain_tasks);
-    XBT_VERB("Node %d: nb_elems = %d", me->self.id, nb_elems);
+    XBT_VERB("Node %d: *==== Tasks Queue ====*\nnb_elems = %d", me->self.id, nb_elems);
 
     for (k = 0; k < nb_elems; k++) {
 
-        XBT_VERB("me->remain_tasks = %p", me->remain_tasks);    //TODO: ne pas oublier
+        XBT_DEBUG("me->remain_tasks = %p", me->remain_tasks);    //TODO: ne pas oublier
 
         task_ptr = xbt_dynar_get_ptr(me->remain_tasks, k);
 
-        XBT_VERB("*task_ptr = %p - name = %p/%s", *task_ptr, MSG_task_get_name(*task_ptr), MSG_task_get_name(*task_ptr));
+        XBT_DEBUG("*task_ptr = %p - name = %p/%s", *task_ptr, MSG_task_get_name(*task_ptr), MSG_task_get_name(*task_ptr));
 
         req_data = MSG_task_get_data(*task_ptr);
 
         if (MSG_task_get_name(*task_ptr) == NULL) {
 
-            XBT_VERB("Node %d: task[%d] = NULL", me->self.id, k);
+            XBT_VERB("Node %d: \ttask[%d] = NULL", me->self.id, k);
         } else {
 
-            XBT_VERB("Node %d: %p: task[%d] = {'%s - %s' from %d for new node %d}",
+            XBT_VERB("Node %d: \t%p: task[%d] = {'%s - %s' from %d for new node %d}",
                     me->self.id,
                     *task_ptr,
                     k,
@@ -3080,8 +3084,9 @@ static void display_remain_tasks(node_t me) {
                     req_data->args.cnx_req.new_node_id);
         }
     }
+    XBT_VERB("Node %d: *==== End Tasks Queue ====*", me->self.id);
 
-        XBT_OUT();
+    XBT_OUT();
 }
 
 static void display_async_answers(node_t me, char log) {
