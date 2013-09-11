@@ -41,7 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 100                      // max time between cs_req and matching set_update
-#define MAX_CNX 100                         // max number of attemps to run CNX_REQ
+#define MAX_CNX 3000                        // max number of attemps to run CNX_REQ
 
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
@@ -2556,7 +2556,7 @@ static void run_tasks_queue(node_t me) {
     me->run_task.run_state = IDLE;
     me->run_task.last_ret = UPDATE_NOK;
     e_run_state_t prev_state = RUNNING;
-    int max = 34.3;
+    int max = 4.3;
     int min = 1.2;
     double sleep_time = 0;
 
