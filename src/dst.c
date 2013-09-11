@@ -3071,7 +3071,7 @@ static void display_remain_tasks(node_t me) {
     msg_task_t *task_ptr = NULL;
     req_data_t req_data = NULL;
     unsigned int nb_elems = xbt_dynar_length(me->remain_tasks);
-    XBT_VERB("Node %d: *==== Tasks Queue ====*\nnb_elems = %d", me->self.id, nb_elems);
+    XBT_VERB("Node %d: *==== Tasks Queue ====*\tnb_elems = %d", me->self.id, nb_elems);
 
     for (k = 0; k < nb_elems; k++) {
 
