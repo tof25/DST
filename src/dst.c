@@ -2555,6 +2555,10 @@ static void run_tasks_queue(node_t me) {
     s_state_t state;
     me->run_task.run_state = IDLE;
     me->run_task.last_ret = UPDATE_NOK;
+    e_run_state_t prev_state = RUNNING;
+    int max = 34.3;
+    int min = 1.2;
+    double sleep_time = 0;
 
     XBT_VERB("Node %d: set run_state = {%s - %s}",
             me->self.id,
@@ -2564,14 +2568,21 @@ static void run_tasks_queue(node_t me) {
     do {
 
         state = get_state(me);
-        XBT_VERB("Node %d: '%c'/%d - in run_tasks_queue() - run_state = %s - last_ret = %s",
-                me->self.id,
-                state.active,
-                state.new_id,
-                debug_run_msg[me->run_task.run_state],
-                debug_ret_msg[me->run_task.last_ret]);
+        if (state.active != 'b') {
 
-        display_remain_tasks(me);
+            if (me->run_task.run_state != prev_state) {
+
+                prev_state = me->run_task.run_state;
+                XBT_VERB("Node %d: '%c'/%d - in run_tasks_queue() - run_state = %s - last_ret = %s",
+                        me->self.id,
+                        state.active,
+                        state.new_id,
+                        debug_run_msg[me->run_task.run_state],
+                        debug_ret_msg[me->run_task.last_ret]);
+
+                display_remain_tasks(me);
+            }
+        }
 
         if (xbt_dynar_is_empty(me->remain_tasks) == 0 && state.active == 'a') {
 
@@ -2580,7 +2591,7 @@ static void run_tasks_queue(node_t me) {
 
                 if (me->run_task.last_ret == OK) {
 
-                    XBT_VERB("Node %d: task done - may be shifted", me->self.id);
+                    XBT_VERB("Node %d: task done - may be shifted out", me->self.id);
                 } else {
 
                     XBT_VERB("Node %d: something to do", me->self.id);
@@ -2655,7 +2666,10 @@ static void run_tasks_queue(node_t me) {
         }
 
         // wait a while
-        MSG_process_sleep(12.2);
+        srand(time(NULL));
+        sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
+
+        MSG_process_sleep(sleep_time);
     } while (MSG_get_clock() < max_simulation_time);
 
     XBT_OUT();
@@ -9025,7 +9039,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                         rcv_req->sender_id);
                             } else {
 
-                                XBT_VERB("Node %d: No answer after broadcast - answer_to: %s",
+                                XBT_DEBUG("Node %d: No answer after broadcast - answer_to: %s",
                                         me->self.id,
                                         rcv_req->answer_to);
                             }
