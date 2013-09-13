@@ -40,7 +40,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_WAIT_GET_REP 500                // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
-#define MAX_CS_REQ 100                      // max time between cs_req and matching set_update
+#define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
 #define MAX_CNX 3000                        // max number of attemps to run CNX_REQ
 
 static const int a = 2;                     /* min number of brothers in a node
