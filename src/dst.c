@@ -2641,7 +2641,13 @@ static void run_tasks_queue(node_t me) {
                             debug_run_msg[me->run_task.run_state],
                             debug_ret_msg[me->run_task.last_ret]);
 
-                    xbt_dynar_shift(me->tasks_queue, NULL);  //TODO : mettre en place une libération mémoire vu que handle_task ne le fait plus
+                    task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);   //TODO : faire une autre fonction de libération que xbt_free_ref ?
+                    req_data = MSG_task_get_data(*task_ptr);
+                    data_req_free(me, &req_data);
+                    task_free(task_ptr);
+
+                    xbt_dynar_shift(me->tasks_queue, NULL);
+
                     if (cpt >= MAX_CNX) { cpt = 0; }
                 }
 
@@ -8856,6 +8862,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         //TODO : est-ce que ça a vraiment un intérêt de déléguer la diffusion au leader ?
                         if (rcv_args.broadcast.first_call == 1) {
 
+                            compteur[rcv_args.broadcast.type]++;
+
                             if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
 
                                 XBT_VERB("Node %d: Run broadcast of Set Update for new_id = %d - state.new_id = %d",
@@ -9783,13 +9791,14 @@ int main(int argc, char *argv[]) {
     XBT_INFO("\nSimulation time %lf", xbt_os_timer_elapsed(timer));
     XBT_INFO("Simulated time: %g", MSG_get_clock());
 
-    /*
     XBT_INFO("compteur");
     int z = 0;
     for (z = 0; z < TYPE_NBR; z++) {
-        XBT_INFO("\tcpt[%s] = %d", debug_msg[z], compteur[z]);
+        if (compteur[z] > 0) {
+
+                XBT_INFO("\tcpt[%s] = %d", debug_msg[z], compteur[z]);
+        }
     }
-    */
 
     xbt_os_timer_free(timer);
 
