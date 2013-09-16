@@ -1825,40 +1825,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
         //res = MSG_task_receive(&task_received, me->self.mailbox);
         //comm = MSG_task_irecv(&task_received, me->self.mailbox);
-        if (task_received != NULL) {                                    //TODO : ne pas oublier d'enlever
 
-            ans = MSG_task_get_data(task_received);
-            req_data_t req = (req_data_t)ans;
-            if (!strcmp(MSG_task_get_name(task_received), "ans")) {
-
-                // answer
-                XBT_INFO("Node %d: Received message : '%s - %s %s'"
-                        " from %d to %d -> %s",
-                        me->self.id,
-                        MSG_task_get_name(task_received),
-                        debug_msg[ans->type],
-                        debug_msg[ans->br_type],
-                        ans->sender_id,
-                        ans->recipient_id,
-                        ans->sent_to);
-            } else {
-
-                // request
-                XBT_INFO("Node %d: Received message  : '%s - %s %s'"
-                        " from %d to %d -> %s",
-                        me->self.id,
-                        MSG_task_get_name(task_received),
-                        debug_msg[req->type],
-                        debug_msg[(req->type == TASK_BROADCAST ?
-                            req->args.broadcast.type : TASK_NULL)],
-                        req->sender_id,
-                        req->recipient_id,
-                        req->sent_to);
-            }
-        }
-
-        xbt_assert(task_received == NULL, "STOP - ");
-
+        task_received = NULL;
         comm = MSG_task_irecv(&task_received, proc_mailbox);
 
         res = MSG_comm_wait(comm, -1);
