@@ -1706,17 +1706,17 @@ static void launch_fork_process(node_t me, msg_task_t task) {
     XBT_IN();
     req_data_t req = MSG_task_get_data(task);
 
-    proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
-    proc_data->node = me;
-    proc_data->task = task;
-    proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-    proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
-
     if (req->type == TASK_CNX_REQ ||
         (req->type == TASK_BROADCAST &&
          ((req->args.broadcast.type == TASK_SPLIT) || (req->args.broadcast.first_call == 1)))) {
 
         // handle the received request with a fork process ..
+        proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+        proc_data->node = me;
+        proc_data->task = task;
+        proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+        proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
+
         char proc_label[10];
 
         switch (req->type) {
