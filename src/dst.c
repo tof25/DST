@@ -4164,9 +4164,11 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             XBT_VERB("Node %d: DON'T run TASK_CLEAN_STAGE - source_id = %d",
                     me->self.id,
                     args.broadcast.source_id);
+            task_free(&task_sent);
         }
     } else {
         XBT_VERB("Node %d: STOP BROADCAST", me->self.id);
+        task_free(&task_sent);
     }
 
     xbt_free(cpy_brothers);
