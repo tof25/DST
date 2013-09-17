@@ -4052,6 +4052,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
     msg_task_t task_sent = NULL;
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    req_data_t req_data = NULL;
 
     if (args.broadcast.stage > 0 ||
             (args.broadcast.stage == 0 && args.broadcast.lead_br == 0)) {
@@ -4164,10 +4165,22 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             XBT_VERB("Node %d: DON'T run TASK_CLEAN_STAGE - source_id = %d",
                     me->self.id,
                     args.broadcast.source_id);
+
+            if (task_sent != NULL) {
+
+                req_data = MSG_task_get_data(task_sent);
+                data_req_free(me, &req_data);
+            }
             task_free(&task_sent);
         }
     } else {
         XBT_VERB("Node %d: STOP BROADCAST", me->self.id);
+
+        if (task_sent != NULL) {
+
+            req_data = MSG_task_get_data(task_sent);
+            data_req_free(me, &req_data);
+        }
         task_free(&task_sent);
     }
 
