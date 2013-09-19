@@ -3831,6 +3831,11 @@ static msg_error_t send_msg_async(node_t me,
 
     XBT_IN();
 
+    e_task_type_t mem_type = type;
+    e_task_type_t mem_br_type = 0;
+    if (mem_type == TASK_BROADCAST) { mem_br_type = args.broadcast.type; }
+
+
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
 
     // init request data
@@ -3861,11 +3866,11 @@ static msg_error_t send_msg_async(node_t me,
     msg_comm_t comm = MSG_task_isend(task_sent, req_data->sent_to);
 
     msg_error_t res = MSG_OK;
-    /*  TODO : ne pas oublier
+    //  TODO : ne pas oublier
         XBT_DEBUG("Node %d: send async wait ...", me->self.id);
         res = MSG_comm_wait(comm, -1);
         XBT_DEBUG("Node %d: send async wait ok", me->self.id);
-    */
+    //
 
     xbt_assert(res != MSG_TIMEOUT,
             "Node %d: sending TIMEOUT in send_msg_async to %d",
@@ -3881,10 +3886,13 @@ static msg_error_t send_msg_async(node_t me,
     MSG_comm_destroy(comm);
 
     // count messages
-    nb_messages[req_data->type]++;
-    if (req_data->type == TASK_BROADCAST) {
+    xbt_assert(mem_type < TYPE_NBR , "send_msg_async : STOP !! - type = %d", mem_type);
+    xbt_assert(mem_br_type < TYPE_NBR , "send_msg_async : STOP !! - br_type = %d", mem_br_type);
 
-        nb_br_messages[req_data->args.broadcast.type]++;
+    nb_messages[mem_type]++;
+    if (mem_type == TASK_BROADCAST) {
+
+        nb_br_messages[mem_br_type]++;
     }
 
     XBT_OUT();
