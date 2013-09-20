@@ -3402,6 +3402,9 @@ static msg_error_t send_msg_sync(node_t me,
 
     XBT_IN();
 
+    int mem_type = 0;
+    e_val_ret_t ret = 0;
+
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
     req_data_t cpy_req_data = xbt_new0(s_req_data_t, 1);
 
@@ -3585,7 +3588,61 @@ static msg_error_t send_msg_sync(node_t me,
                 } else {
 
                     // handle this received request
-                    handle_task(me, &task_received);
+                    if (req->type == TASK_BROADCAST) {
+                        compteur[req->args.broadcast.type]++;
+                    }
+
+                    switch (mem_type) {
+                        case TASK_GET_REP:
+                        handle_task(me, &task_received);
+
+                        break;
+
+                        case TASK_NEW_BROTHER_RCV:
+                        handle_task(me, &task_received);
+
+                        break;
+
+                        case TASK_CNX_GROUPS:
+                        handle_task(me, &task_received);
+
+                        break;
+
+                        case TASK_NB_PRED:
+                        handle_task(me, &task_received);
+
+                        break;
+
+                        case TASK_ADD_PRED:
+                        handle_task(me, &task_received);
+
+                        break;
+
+                        case TASK_DEL_PRED:
+                        handle_task(me, &task_received);
+
+                        break;
+
+                        case TASK_BROADCAST:
+                        handle_task(me, &task_received);
+
+                        break;
+
+                        case TASK_SET_STATE:
+                        handle_task(me, &task_received);
+
+                        break;
+
+                        case TASK_END_GET_REP:
+                        handle_task(me, &task_received);
+
+                        break;
+
+                        case TASK_CHECK_CS:
+                        handle_task(me, &task_received);
+
+                        break;
+                    }
                 }
                 ans = NULL;
                 req = NULL;
@@ -8890,8 +8947,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         /* start call: forward broadcast to the leader ? */
                         //TODO : est-ce que ça a vraiment un intérêt de déléguer la diffusion au leader ?
                         if (rcv_args.broadcast.first_call == 1) {
-
-                            compteur[rcv_args.broadcast.type]++;
 
                             if (rcv_args.broadcast.type == TASK_SET_UPDATE) {
 

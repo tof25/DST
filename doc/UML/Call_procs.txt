@@ -2,14 +2,29 @@
 
 (*top) --> "init()"
 note left: proc root
---> "call_run_delayed_tasks()"
+--> "call_run_tasks_queue()"
 --> "process_create(<b><color:red>proc_run_tasks</color></b>)"
--right-> "run_tasks_queue()"
-note right: proc dly_task
+--> == FORK ==
+--> "run_tasks_queue()"
+note right: proc tasks_queue
+--> "run_delayed_tasks()"
 --> "launch_fork_process()"
---> "process_create(<b><color:red>proc_handle_task</color></b>)"
--right-> "handle_task()"
-note right: proc Cnx_req
+if "Cnx_Req ?" then
+    -->[No] "handle_task()" as h1
+    --> == SUITE ==
+else
+    -right->[Yes] "process_create(<b><color:red>proc_handle_task</color></b>)"
+    -right-> "handle_task()"
+    note right: proc Cnx_req
+    --> "kill process" as k1
+    -left-> == SUITE ==
+endif
+
+== FORK == --> "Suite"
+--> "Suite"
 --> (*)
+
+== SUITE == --> "kill process"
+
 
 @enduml
