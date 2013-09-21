@@ -2687,6 +2687,12 @@ static void run_tasks_queue(node_t me) {
         MSG_process_sleep(sleep_time);
     } while (MSG_get_clock() < max_simulation_time);
 
+    if (xbt_dynar_is_empty(me->delayed_tasks) == 0) {
+
+        XBT_WARN("Node %d: delayed_tasks is not EMTPY !!", me->self.id);
+        display_delayed_tasks(me);
+    }
+
     XBT_OUT();
 }
 
@@ -2871,11 +2877,6 @@ static void run_delayed_tasks(node_t me, char c) {
 
                         // if task didn't run sucessfully, don't remove it and stop here
                         XBT_VERB("Node %d: task[%d] NOK not removed", me->self.id, idx);
-                        /*
-                        if (state.active == 'a') {
-                            cs_rel(me, me->cs_new_id);
-                        }
-                        */
                         idx++;
                         //TODO : peut-être vaudrait-il mieux trier les files de tâches à lancer
                         //break;
@@ -3588,6 +3589,7 @@ static msg_error_t send_msg_sync(node_t me,
                 } else {
 
                     // handle this received request
+                    mem_type = req->type;
                     if (req->type == TASK_BROADCAST) {
                         compteur[req->args.broadcast.type]++;
                     }
@@ -3624,7 +3626,26 @@ static msg_error_t send_msg_sync(node_t me,
                         break;
 
                         case TASK_BROADCAST:
-                        handle_task(me, &task_received);
+                        switch(req->args.broadcast.type) {
+                            case TASK_SPLIT:
+                                ret = handle_task(me, &task_received);
+                                if (ret == STORED) {
+                                    XBT_INFO("BR_SPLIT STORED !!");
+                                }
+                                break;
+
+                            case TASK_SET_ACTIVE:
+                                handle_task(me, &task_received);
+                                break;
+
+                            case TASK_SET_UPDATE:
+                                handle_task(me, &task_received);
+                                break;
+
+                            case TASK_CS_REQ:
+                                handle_task(me, &task_received);
+                                break;
+                        }
 
                         break;
 
@@ -9114,6 +9135,9 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
                                         xbt_dynar_push(me->delayed_tasks, task);
                                         *task = NULL;     //TODO : utile ?
+
+                                        data_req_free(me, &req_data);
+                                        task_free(&br_task);
                                     } else {
 
                                         task_free(task);
