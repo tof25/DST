@@ -2617,15 +2617,15 @@ static void run_tasks_queue(node_t me) {
                         xbt_assert(task_ptr != NULL && *task_ptr != NULL, "Node %d: task_ptr shouldn't be NULL here (1)!", me->self.id);
                         req_data = MSG_task_get_data(*task_ptr);
 
-                        xbt_assert(cpt < MAX_CNX,
-                                "Node %d: Too many attemps for task {'%s - %s' from %d for new node %d}",
-                                me->self.id,
-                                MSG_task_get_name(*task_ptr),
-                                debug_msg[req_data->type],
-                                req_data->sender_id,
-                                req_data->args.cnx_req.new_node_id);
+                        if (cpt >= MAX_CNX) {
 
-                        // TODO : avertir émetteur de CNX_REQ ?
+                            XBT_WARN("Node %d: Too many attemps for task {'%s - %s' from %d for new node %d}",
+                                    me->self.id,
+                                    MSG_task_get_name(*task_ptr),
+                                    debug_msg[req_data->type],
+                                    req_data->sender_id,
+                                    req_data->args.cnx_req.new_node_id);
+                        }
                     }
                 }
 
@@ -2644,14 +2644,32 @@ static void run_tasks_queue(node_t me) {
                             debug_run_msg[me->run_task.run_state],
                             debug_ret_msg[me->run_task.last_ret]);
 
-                    task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);   //TODO : faire une autre fonction de libération que xbt_free_ref ?
-                    req_data = MSG_task_get_data(*task_ptr);
-                    data_req_free(me, &req_data);
-                    task_free(task_ptr);
+                    task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
+                    if (cpt < MAX_CNX) {
 
+                        //TODO : faire une autre fonction de libération que xbt_free_ref ?
+                        req_data = MSG_task_get_data(*task_ptr);
+                        data_req_free(me, &req_data);
+                        task_free(task_ptr);
+
+                    } else {
+
+                        // If too many attemps, remove request from head, then put it back on tail
+                        xbt_dynar_push(me->tasks_queue, task_ptr);
+                        cpt = 0;
+
+                        XBT_VERB("Node %d: '%c'/%d - after head/tail swap - run_state = %s - last_ret = %s",
+                                me->self.id,
+                                state.active,
+                                state.new_id,
+                                debug_run_msg[me->run_task.run_state],
+                                debug_ret_msg[me->run_task.last_ret]);
+
+                        display_tasks_queue(me);
+                    }
                     xbt_dynar_shift(me->tasks_queue, NULL);
 
-                    if (cpt >= MAX_CNX) { cpt = 0; }
+                    //if (cpt >= MAX_CNX) { cpt = 0; }
                 }
 
                 state = get_state(me);
