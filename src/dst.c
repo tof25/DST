@@ -41,7 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 3000                        // max number of attemps to run CNX_REQ
+#define MAX_CNX 300                         // max number of attemps to run CNX_REQ
 
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
@@ -2553,6 +2553,7 @@ static void run_tasks_queue(node_t me) {
     // inits
     int cpt = -1;
     msg_task_t elem = NULL;
+    msg_task_t cur_task = NULL;
     msg_task_t *task_ptr = NULL;
     req_data_t req_data = NULL;
     s_state_t state;
@@ -2630,7 +2631,7 @@ static void run_tasks_queue(node_t me) {
                 }
 
                 // shift dynar if last run is OK or too many attemps
-                if ((me->run_task.last_ret == UPDATE_NOK && cpt > MAX_CNX) || (me->run_task.last_ret != UPDATE_NOK)) {
+                if ((me->run_task.last_ret == UPDATE_NOK && cpt >= MAX_CNX) || (me->run_task.last_ret != UPDATE_NOK)) {
 
                     XBT_VERB("Node %d: shift request - run_state = %s - last_ret = %s",
                             me->self.id,
@@ -2645,20 +2646,20 @@ static void run_tasks_queue(node_t me) {
                             debug_ret_msg[me->run_task.last_ret]);
 
                     task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
+
                     if (cpt < MAX_CNX) {
 
-                        //TODO : faire une autre fonction de libération que xbt_free_ref ?
                         req_data = MSG_task_get_data(*task_ptr);
                         data_req_free(me, &req_data);
                         task_free(task_ptr);
-
                     } else {
 
-                        // If too many attemps, remove request from head, then put it back on tail
-                        xbt_dynar_push(me->tasks_queue, task_ptr);
+                        // If too many attemps, push request on tail, before head is removed
+                        cur_task = MSG_task_create(MSG_task_get_name(*task_ptr), COMP_SIZE, COMM_SIZE, MSG_task_get_data(*task_ptr));
+                        xbt_dynar_push(me->tasks_queue, &cur_task);
                         cpt = 0;
 
-                        XBT_VERB("Node %d: '%c'/%d - after head/tail swap - run_state = %s - last_ret = %s",
+                        XBT_VERB("Node %d: '%c'/%d - after head->tail - run_state = %s - last_ret = %s",
                                 me->self.id,
                                 state.active,
                                 state.new_id,
@@ -2667,6 +2668,7 @@ static void run_tasks_queue(node_t me) {
 
                         display_tasks_queue(me);
                     }
+
                     xbt_dynar_shift(me->tasks_queue, NULL);
 
                     //if (cpt >= MAX_CNX) { cpt = 0; }
