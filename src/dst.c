@@ -6125,7 +6125,7 @@ static void connect_splitted_groups(node_t me,
             new_node_id);
 
     display_rout_table(me, 'V');
-    display_preds(me, 'D');
+    display_preds(me, 'V');
     XBT_OUT();
 }
 
@@ -6333,10 +6333,16 @@ static void split(node_t me, int stage, int new_node_id) {
     for (i = 0; i < cpy_pred_index ; i++) {
 
         cpy_preds[i] = me->preds[stage + 1][i];
+        XBT_VERB("cpy_preds[%d] = %d", i, cpy_preds[i].id);
     }
 
     for (i = 0; i < cpy_pred_index; i++) {
+    //for (i = 0; i < me->pred_index[stage + 1]; i++)
+
+        if (me->pred_index[stage + 1] > cpy_pred_index) { XBT_WARN("Node %d: predecessor(s) have been added", me->self.id); }
+
         if (cpy_preds[i].id == me->self.id) {
+        //if (me->preds[stage + 1][i].id == me->self.id)
 
             // local call (no answer is expected)
             ans_cpt--;
@@ -6354,12 +6360,14 @@ static void split(node_t me, int stage, int new_node_id) {
             res = send_msg_async(me,
                     TASK_CNX_GROUPS,
                     cpy_preds[i].id,
+                    //me->preds[stage + 1][i].id,
                     args);
 
             xbt_assert(res == MSG_OK, "Node %d: Failed to send '%s' to %d",
                     me->self.id,
                     debug_msg[TASK_CNX_GROUPS],
                     cpy_preds[i].id);
+                    //me->preds[stage + 1][i].id);
 
 
             elem = xbt_new0(s_recp_rec_t, 1);
@@ -6367,6 +6375,7 @@ static void split(node_t me, int stage, int new_node_id) {
             elem->type = TASK_CNX_GROUPS;
             elem->br_type = TASK_NULL;
             elem->recp = cpy_preds[i];
+            //elem->recp = me->preds[stage + 1][i];
             elem->new_node_id = new_node_id;
             elem->answer_data = NULL;
             xbt_dynar_push(proc_data->async_answers, &elem);

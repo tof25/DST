@@ -4,7 +4,9 @@ Problème de consistency check avec 1000 noeuds (lattence importante) entre 815 
 8894.022554 -> 861 exécute connect_plitted_groups suite à Split S0 pour new_node 342 via 76
                A ce moment, 174 n'est pas encore prédécesseur de 861 en S1 et 861 est en 'p'/174
 
-8895.330060 -> 861 reçoit et exécute ADD_PRED de 174 : 174 doit donc être prédécesseur de 861 en S1 mais pas sûr
+8895.330060 -> 861 reçoit et exécute ADD_PRED de 174 : 174 doit donc être prédécesseur de 861 en S1
+               *** Voir le contexte d'envoi de ADD_PRED par 174 : est-ce lors
+               d'un connect_splitted_groups ? ***
 
 8896.745069 -> 861 arrive à la fin de connect_splitted_groups et envoie CNX_GROUPS aux prédécesseurs de S1 : 815 et 69.
                Pourquoi 174 n'y est pas ??
