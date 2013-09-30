@@ -1738,6 +1738,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                         snprintf(proc_label, 10, "Broadcast");
                         break;
                 }
+                break;
         }
 
         set_fork_mailbox(me->self.id,
@@ -2560,8 +2561,8 @@ static void run_tasks_queue(node_t me) {
     me->run_task.run_state = IDLE;
     me->run_task.last_ret = UPDATE_NOK;
     e_run_state_t prev_state = RUNNING;
-    int max = 4.3;
-    int min = 1.2;
+    float max = 4.3;
+    float min = 1.2;
     double sleep_time = 0;
 
     XBT_VERB("Node %d: set run_state = {%s - %s}",
@@ -2741,7 +2742,7 @@ static void run_delayed_tasks(node_t me, char c) {
     int cpt = 0;
     int idx = 0;
     int k = 0;
-    msg_error_t val_ret = OK;
+    e_val_ret_t val_ret = OK;
 
     /* run delayed CNX_GROUPS for new node new_id if current state is 'u'/new_id */
     if (state.active == 'u' && xbt_dynar_is_empty(me->delayed_tasks) == 0) {
@@ -3966,12 +3967,21 @@ static msg_error_t send_ans_sync(node_t me,
     msg_comm_t comm = NULL;
 
     // async send
-    comm = MSG_task_isend(task_sent, ans_data->sent_to);
-
-    msg_error_t res = MSG_comm_wait(comm, -1);
 
     //MSG_task_isend(task_sent, ans_data->sent_to);
     //MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
+
+    comm = MSG_task_isend(task_sent, ans_data->sent_to);
+    //msg_error_t res = MSG_comm_wait(comm, -1);
+
+    while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {       //TODO : à commenter et vérifier
+
+        MSG_process_sleep(1.0);
+    }
+    msg_error_t res = MSG_OK;
+    if (comm != NULL) {
+        res = MSG_comm_get_status(comm);
+    }
 
     xbt_assert(res != MSG_TIMEOUT,
             "Node %d: sending TIMEOUT in send_ans_sync to %d",
@@ -3985,6 +3995,7 @@ static msg_error_t send_ans_sync(node_t me,
             recipient_id);
 
     MSG_comm_destroy(comm);
+    comm = NULL;
 
     if (res != MSG_OK) {
 
@@ -6336,13 +6347,13 @@ static void split(node_t me, int stage, int new_node_id) {
         XBT_VERB("cpy_preds[%d] = %d", i, cpy_preds[i].id);
     }
 
-    for (i = 0; i < cpy_pred_index; i++) {
-    //for (i = 0; i < me->pred_index[stage + 1]; i++)
+    //for (i = 0; i < cpy_pred_index; i++) {
+    for (i = 0; i < me->pred_index[stage + 1]; i++) {
 
         if (me->pred_index[stage + 1] > cpy_pred_index) { XBT_WARN("Node %d: predecessor(s) have been added", me->self.id); }
 
-        if (cpy_preds[i].id == me->self.id) {
-        //if (me->preds[stage + 1][i].id == me->self.id)
+        //if (cpy_preds[i].id == me->self.id) {
+        if (me->preds[stage + 1][i].id == me->self.id) {
 
             // local call (no answer is expected)
             ans_cpt--;
@@ -6359,23 +6370,23 @@ static void split(node_t me, int stage, int new_node_id) {
             // remote call
             res = send_msg_async(me,
                     TASK_CNX_GROUPS,
-                    cpy_preds[i].id,
-                    //me->preds[stage + 1][i].id,
+                    //cpy_preds[i].id,
+                    me->preds[stage + 1][i].id,
                     args);
 
             xbt_assert(res == MSG_OK, "Node %d: Failed to send '%s' to %d",
                     me->self.id,
                     debug_msg[TASK_CNX_GROUPS],
-                    cpy_preds[i].id);
-                    //me->preds[stage + 1][i].id);
+                    //cpy_preds[i].id);
+                    me->preds[stage + 1][i].id);
 
 
             elem = xbt_new0(s_recp_rec_t, 1);
 
             elem->type = TASK_CNX_GROUPS;
             elem->br_type = TASK_NULL;
-            elem->recp = cpy_preds[i];
-            //elem->recp = me->preds[stage + 1][i];
+            //elem->recp = cpy_preds[i];
+            elem->recp = me->preds[stage + 1][i];
             elem->new_node_id = new_node_id;
             elem->answer_data = NULL;
             xbt_dynar_push(proc_data->async_answers, &elem);
@@ -8568,7 +8579,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         debug_ret_msg[val_ret],
                         is_contact);
 
-                if (val_ret != FAILED && val_ret != UPDATE_NOK ||
+                if ((val_ret != FAILED && val_ret != UPDATE_NOK) ||
                     ((val_ret == FAILED || val_ret == UPDATE_NOK) && rcv_req->sender_id != rcv_args.cnx_req.new_node_id)) {
 
                     res = send_ans_sync(me,
