@@ -1621,6 +1621,13 @@ static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     int dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
+    // ans_cpt musn't be greater than dynar
+    xbt_assert(*ans_cpt <= dynar_size,
+            "Node %d: in check_async_nok() - ans_cpt = %d - dynar_size = %d",
+            me->self.id,
+            *ans_cpt,
+            dynar_size);
+
     for (idx = dynar_size - 1; idx >= dynar_size - *ans_cpt; idx--) {
 
         XBT_DEBUG("IDX = %d - ans_cpt = %d - dynar_size = %d", idx, *ans_cpt, dynar_size);
@@ -6347,13 +6354,30 @@ static void split(node_t me, int stage, int new_node_id) {
         XBT_VERB("cpy_preds[%d] = %d", i, cpy_preds[i].id);
     }
 
-    //for (i = 0; i < cpy_pred_index; i++) {
-    for (i = 0; i < me->pred_index[stage + 1]; i++) {
+    int j = 0;
+    int k = 0;
+    for (i = 0; i < cpy_pred_index; i++) {
+    //for (i = 0; i < me->pred_index[stage + 1]; i++)
 
-        if (me->pred_index[stage + 1] > cpy_pred_index) { XBT_WARN("Node %d: predecessor(s) have been added", me->self.id); }
+        // check if a new pred has been added meanwhile
+        for (j = 0; j < me->pred_index[stage + 1]; j++) {
 
-        //if (cpy_preds[i].id == me->self.id) {
-        if (me->preds[stage + 1][i].id == me->self.id) {
+            for (k = 0; k < cpy_pred_index; k++) {
+
+                if (me->preds[stage + 1][j].id == cpy_preds[k].id) break;
+            }
+
+            // if pred not found in cpy_preds, adds it
+            if (k == cpy_pred_index) {
+
+                cpy_preds = realloc(cpy_preds, (cpy_pred_index + 1) * sizeof(s_node_rep_t));
+                cpy_preds[cpy_pred_index] = me->preds[stage + 1][j];
+                cpy_pred_index++;
+            }
+        }
+
+        if (cpy_preds[i].id == me->self.id) {
+        //if (me->preds[stage + 1][i].id == me->self.id)
 
             // local call (no answer is expected)
             ans_cpt--;
@@ -6370,27 +6394,28 @@ static void split(node_t me, int stage, int new_node_id) {
             // remote call
             res = send_msg_async(me,
                     TASK_CNX_GROUPS,
-                    //cpy_preds[i].id,
-                    me->preds[stage + 1][i].id,
+                    cpy_preds[i].id,
+                    //me->preds[stage + 1][i].id,
                     args);
 
             xbt_assert(res == MSG_OK, "Node %d: Failed to send '%s' to %d",
                     me->self.id,
                     debug_msg[TASK_CNX_GROUPS],
-                    //cpy_preds[i].id);
-                    me->preds[stage + 1][i].id);
+                    cpy_preds[i].id);
+                    //me->preds[stage + 1][i].id);
 
 
             elem = xbt_new0(s_recp_rec_t, 1);
 
             elem->type = TASK_CNX_GROUPS;
             elem->br_type = TASK_NULL;
-            //elem->recp = cpy_preds[i];
-            elem->recp = me->preds[stage + 1][i];
+            elem->recp = cpy_preds[i];
+            //elem->recp = me->preds[stage + 1][i];
             elem->new_node_id = new_node_id;
             elem->answer_data = NULL;
             xbt_dynar_push(proc_data->async_answers, &elem);
 
+            // elem->recp has to exist
             xbt_assert(elem->recp.id > - 1,
                     "Node %d: #8# recp.id is %d !!",
                     me->self.id,
