@@ -6354,74 +6354,109 @@ static void split(node_t me, int stage, int new_node_id) {
         XBT_VERB("cpy_preds[%d] = %d", i, cpy_preds[i].id);
     }
 
+    int cpy_pred_index2 = 0;
+    node_rep_t cpy_preds2 = NULL;
+    int cpt_loop = 1;
     int j = 0;
     int k = 0;
-    for (i = 0; i < cpy_pred_index; i++) {
-    //for (i = 0; i < me->pred_index[stage + 1]; i++)
+    do {
+        for (i = 0; i < cpy_pred_index; i++) {
+            //for (i = 0; i < me->pred_index[stage + 1]; i++)
 
-        // check if a new pred has been added meanwhile
-        for (j = 0; j < me->pred_index[stage + 1]; j++) {
 
-            for (k = 0; k < cpy_pred_index; k++) {
+            if (cpy_preds[i].id == me->self.id) {
+                //if (me->preds[stage + 1][i].id == me->self.id)
 
-                if (me->preds[stage + 1][j].id == cpy_preds[k].id) break;
-            }
+                // local call (no answer is expected)
+                ans_cpt--;
 
-            // if pred not found in cpy_preds, adds it
-            if (k == cpy_pred_index) {
+                connect_splitted_groups(me,
+                        args.cnx_groups.stage,
+                        args.cnx_groups.pos_init,
+                        args.cnx_groups.pos_new,
+                        args.cnx_groups.init_rep_id,
+                        args.cnx_groups.new_rep_id,
+                        args.cnx_groups.new_node_id);
+            } else {
 
-                cpy_preds = realloc(cpy_preds, (cpy_pred_index + 1) * sizeof(s_node_rep_t));
-                cpy_preds[cpy_pred_index] = me->preds[stage + 1][j];
-                cpy_pred_index++;
+                // remote call
+                res = send_msg_async(me,
+                        TASK_CNX_GROUPS,
+                        cpy_preds[i].id,
+                        //me->preds[stage + 1][i].id,
+                        args);
+
+                xbt_assert(res == MSG_OK, "Node %d: Failed to send '%s' to %d",
+                        me->self.id,
+                        debug_msg[TASK_CNX_GROUPS],
+                        cpy_preds[i].id);
+                //me->preds[stage + 1][i].id);
+
+
+                elem = xbt_new0(s_recp_rec_t, 1);
+
+                elem->type = TASK_CNX_GROUPS;
+                elem->br_type = TASK_NULL;
+                elem->recp = cpy_preds[i];
+                //elem->recp = me->preds[stage + 1][i];
+                elem->new_node_id = new_node_id;
+                elem->answer_data = NULL;
+                xbt_dynar_push(proc_data->async_answers, &elem);
+
+                // elem->recp has to exist
+                xbt_assert(elem->recp.id > - 1,
+                        "Node %d: #8# recp.id is %d !!",
+                        me->self.id,
+                        elem->recp.id);
             }
         }
 
-        if (cpy_preds[i].id == me->self.id) {
-        //if (me->preds[stage + 1][i].id == me->self.id)
-
-            // local call (no answer is expected)
-            ans_cpt--;
-
-            connect_splitted_groups(me,
-                    args.cnx_groups.stage,
-                    args.cnx_groups.pos_init,
-                    args.cnx_groups.pos_new,
-                    args.cnx_groups.init_rep_id,
-                    args.cnx_groups.new_rep_id,
-                    args.cnx_groups.new_node_id);
-        } else {
-
-            // remote call
-            res = send_msg_async(me,
-                    TASK_CNX_GROUPS,
-                    cpy_preds[i].id,
-                    //me->preds[stage + 1][i].id,
-                    args);
-
-            xbt_assert(res == MSG_OK, "Node %d: Failed to send '%s' to %d",
-                    me->self.id,
-                    debug_msg[TASK_CNX_GROUPS],
-                    cpy_preds[i].id);
-                    //me->preds[stage + 1][i].id);
-
-
-            elem = xbt_new0(s_recp_rec_t, 1);
-
-            elem->type = TASK_CNX_GROUPS;
-            elem->br_type = TASK_NULL;
-            elem->recp = cpy_preds[i];
-            //elem->recp = me->preds[stage + 1][i];
-            elem->new_node_id = new_node_id;
-            elem->answer_data = NULL;
-            xbt_dynar_push(proc_data->async_answers, &elem);
-
-            // elem->recp has to exist
-            xbt_assert(elem->recp.id > - 1,
-                    "Node %d: #8# recp.id is %d !!",
-                    me->self.id,
-                    elem->recp.id);
+        for (i = 0; i < cpy_pred_index; i++) {
+            XBT_VERB("Node %d: before : cpy_preds[%d] = %d", me->self.id, i, cpy_preds[i].id);
         }
-    }
+
+        // do only once
+        if (cpt_loop > 0) {
+
+            cpt_loop--;
+            // check if a new pred has been added meanwhile
+            cpy_pred_index2 = 0;
+            cpy_preds2 = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
+
+            // build an array of new preds
+            for (j = 0; j < me->pred_index[stage + 1]; j++) {
+
+                for (k = 0; k < cpy_pred_index; k++) {
+
+                    if ((me->preds[stage + 1][j].id == cpy_preds[k].id) ||
+                            (me->preds[stage + 1][j].id == me->self.id)) {
+
+                        break;
+                    }
+                }
+
+                // if pred not found in cpy_preds, adds it
+                if (k == cpy_pred_index) {
+
+                    cpy_preds2[cpy_pred_index2] = me->preds[stage + 1][j];
+                    cpy_pred_index2++;
+                }
+            }
+
+            // new pred(s) have been found : copy them to cpy_preds
+            if (cpy_pred_index2 > 0) {
+
+                cpy_pred_index = cpy_pred_index2;
+                cpy_preds = realloc(cpy_preds, cpy_pred_index * sizeof(s_node_rep_t));
+                for (i = 0; i < cpy_pred_index; i++) {
+
+                    cpy_preds[i] = cpy_preds2[i];
+                    XBT_VERB("Node %d: after : cpy_preds[%d] = %d", me->self.id, i, cpy_preds[i].id);
+                }
+                xbt_free(cpy_preds2);
+            }
+        }
+    } while(cpy_pred_index2 > 0 && cpt_loop < 0);
 
     // synchro (3)
     if (ans_cpt > 0) {
