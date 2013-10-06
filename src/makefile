@@ -31,4 +31,6 @@ LIBS =
 .PHONY : clean
 clean:
 	rm -f $(BIN_FILES) *.o *~
-.SUFFIXES:
+
+.SUFFIXES :
+.PRECIOUS : %.o

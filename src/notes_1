@@ -18,3 +18,22 @@ Dans split(), on travaille sur une copie des prédécesseurs (voir lignes 6333 -
 arrivé pendant le connect_splitted_groups local (ligne 6344) et n'est donc pas pris en compte dans la boucle.
 
 Modifier split() en conséquence.
+
+________________________________________________________________________________________________________________________
+
+Etude des problèmes de TIMEOUT dans les communications
+******************************************************
+
+39851.011043 -> Node 42 a reçu tous ses NUM_PRED et répond au GET_REP reçu de 893
+
+39858.594533 -> Node 893 renonce à recevoir sa réponse parce que son timeout est atteint.
+                La demande GET_REP a été envoyée en 38981.053815 (soit 877,540718 plus tôt - MAX_WAIT_GET_REP est à 500)
+
+39859.011043 -> 42 tombe en timeout
+                max_wait n'a pas été atteint puisque 42 attend depuis 8 clocks
+                => c'est le timeout de 893 qui provoque celui de 42
+
+Comment distinguer un timeout comme celui-là (il faut alors répeter la demande) de celui qui serait causé par la mort du
+process récepteur ? (il faut alors abandonner)
+On peut penser que si max_wait est atteint, on n'a pas le timeout et il faut arrêter. Mais en cas de timeout, il faut
+recommencer. Voir s'il faut borner le nombre de nouvelles tentatives.
