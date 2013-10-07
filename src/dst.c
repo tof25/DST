@@ -47,7 +47,7 @@ static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     /* max number of brothers in a node
                                                (must be twice a) */
-static int timeout = 3000;                  // timeout for communications
+static int COMM_TIMEOUT = 1000;             // timeout for communications
 static double max_simulation_time = 10500;  // max default simulation time
 static xbt_dynar_t infos_dst;               // to store all global DST infos
 static int nb_messages[TYPE_NBR] = {0};     /* total number of messages exchanged
@@ -3887,45 +3887,67 @@ static msg_error_t send_msg_async(node_t me,
     // create mailboxes
     get_mailbox(req_data->recipient_id, req_data->sent_to);
     get_proc_mailbox(req_data->answer_to);
-    //get_mailbox(req_data->sender_id, req_data->answer_to);
 
     // create and send task with data
     msg_task_t task_sent = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
 
-    //MSG_task_set_name(task_sent, "async");
-
     XBT_VERB("Node %d: Sending async '%s %s' to %d - '%s'",
             req_data->sender_id,
             debug_msg[req_data->type],
-            debug_msg[(req_data->type == TASK_BROADCAST ?
-                            req_data->args.broadcast.type : TASK_NULL)],
+            debug_msg[(req_data->type == TASK_BROADCAST ? req_data->args.broadcast.type : TASK_NULL)],
             req_data->recipient_id,
             req_data->sent_to);
 
-    // best effort send
-    msg_comm_t comm = MSG_task_isend(task_sent, req_data->sent_to);
-
+    float max_wait = MSG_get_clock() + COMM_TIMEOUT;
+    msg_comm_t comm = NULL;
     msg_error_t res = MSG_OK;
-    //  TODO : ne pas oublier
-        XBT_DEBUG("Node %d: send async wait ...", me->self.id);
-        res = MSG_comm_wait(comm, -1);
-        XBT_DEBUG("Node %d: send async wait ok", me->self.id);
-    //
+    int max_loops = 10;
+    int loop_cpt = 0;
 
-    xbt_assert(res != MSG_TIMEOUT,
-            "Node %d: sending TIMEOUT in send_msg_async() to %d (line %d)",
+    // send request
+    do {
+
+        // async send
+        comm = MSG_task_isend(task_sent, req_data->sent_to);
+
+        // max_wait is used in case of receiver process is shutdown
+        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {       //TODO : à commenter et vérifier
+
+            MSG_process_sleep(0.9);
+        }
+        if (MSG_get_clock() > max_wait || comm == NULL) {
+
+            res = MSG_TRANSFER_FAILURE;
+        } else {
+
+            res = MSG_comm_get_status(comm);
+        }
+
+        // only loop_cpt attemps are allowed
+        if (res == MSG_TIMEOUT) loop_cpt++;
+
+    } while (res == MSG_TIMEOUT && loop_cpt < max_loops);
+
+
+    xbt_assert(loop_cpt < max_loops,
+            "Node %d: [: %d] too many sending TIMEOUT in send_msg_async() to %d - '%s' - max_wait = %f - loop_cpt = %d",
             me->self.id,
+            __LINE__,
             recipient_id,
-            __LINE__);
+            req_data->sent_to,
+            max_wait,
+            loop_cpt);
 
-    xbt_assert(res == MSG_OK,
-            "Node %d: sending failure '%s' in send_msg_async() to %d (line %d)",
+    xbt_assert(res == MSG_OK, "Node %d: [: %d] sending failure '%s' in send_msg_async() to %d - '%s' - max_wait = %f",
             me->self.id,
+            __LINE__,
             debug_res_msg[res],
             recipient_id,
-            __LINE__);
+            req_data->sent_to,
+            max_wait);
 
     MSG_comm_destroy(comm);
+    comm = NULL;
 
     // count messages
     xbt_assert(mem_type < TYPE_NBR , "send_msg_async : STOP !! - type = %d", mem_type);
@@ -3984,7 +4006,7 @@ static msg_error_t send_ans_sync(node_t me,
             ans_data->recipient_id,
             ans_data->sent_to);
 
-    float max_wait = MSG_get_clock() + timeout;
+    float max_wait = MSG_get_clock() + COMM_TIMEOUT;
     msg_comm_t comm = NULL;
     msg_error_t res = MSG_OK;
     int max_loops = 10;
