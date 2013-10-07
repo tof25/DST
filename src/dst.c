@@ -36,7 +36,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define COMP_SIZE 0                         // compute duration when creating a new task
 #define MAILBOX_NAME_SIZE 30                // name size of a mailbox
 #define TYPE_NBR 38                         // number of task types
-#define MAX_WAIT_COMPL 10000                // won't wait longer for broadcast completion
+#define MAX_WAIT_COMPL 20000                // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 500                // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
@@ -47,7 +47,7 @@ static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     /* max number of brothers in a node
                                                (must be twice a) */
-static int COMM_TIMEOUT = 1000;             // timeout for communications
+static int COMM_TIMEOUT = 3000;             // timeout for communications
 static double max_simulation_time = 10500;  // max default simulation time
 static xbt_dynar_t infos_dst;               // to store all global DST infos
 static int nb_messages[TYPE_NBR] = {0};     /* total number of messages exchanged
