@@ -3442,9 +3442,6 @@ static msg_error_t send_msg_sync(node_t me,
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
     req_data_t cpy_req_data = xbt_new0(s_req_data_t, 1);
 
-    //XBT_DEBUG("Start send_msg_sync - req_data = %p", req_data);
-    //XBT_DEBUG("Start send_msg_sync - cpy_req_data = %p", cpy_req_data);
-
     // init request datas
     req_data->type = type;
     req_data->sender_id = me->self.id;
@@ -3454,7 +3451,6 @@ static msg_error_t send_msg_sync(node_t me,
     // create mailboxes
     get_mailbox(req_data->recipient_id, req_data->sent_to);
     get_proc_mailbox(req_data->answer_to);
-    //get_mailbox(req_data->sender_id, req_data->answer_to);
 
     // req_data may be altered during loops
     *cpy_req_data = *req_data;
@@ -3465,40 +3461,89 @@ static msg_error_t send_msg_sync(node_t me,
     XBT_VERB("Node %d: Sending sync request '%s %s' to %d for new node %d",
             req_data->sender_id,
             debug_msg[req_data->type],
-            debug_msg[(req_data->type == TASK_BROADCAST ?
-                req_data->args.broadcast.type : TASK_NULL)],
+            debug_msg[(req_data->type == TASK_BROADCAST ? req_data->args.broadcast.type : TASK_NULL)],
             req_data->recipient_id,
             req_data->args.get_rep.new_node_id);
 
-    // async send
-    msg_comm_t comm = MSG_task_isend(task_sent, req_data->sent_to);
-
-    // push onto sync_answers dynar
-    recp_rec_t req_elem = xbt_new0(s_recp_rec_t, 1);
+    float max_wait = MSG_get_clock() + COMM_TIMEOUT;
+    msg_comm_t comm = NULL;
+    msg_error_t res = MSG_OK;
+    int max_loops = 10;
+    int loop_cpt = 0;
+    proc_data_t proc_data = NULL;
+    recp_rec_t req_elem = NULL;
     recp_rec_t ans_elem = NULL;
     recp_rec_t *elem_ptr = NULL;
 
-    req_elem->type = type;
-    req_elem->recp.id = recipient_id;
-    get_mailbox(recipient_id, req_elem->recp.mailbox);
-    req_elem->br_type = (type == TASK_BROADCAST ? args.broadcast.type : TASK_NULL);
-    req_elem->answer_data = NULL;
 
-    // every request data's first field is new_node_id - so get_rep is OK
-    // TODO : si c'est pas bon, il faut modifier send_msg_sync pour ajouter new_node_id à ses arguments
-    req_elem->new_node_id = req_data->args.get_rep.new_node_id;
+    // send request
+    do {
 
-    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
-    xbt_dynar_push(proc_data->sync_answers, &req_elem);
+        // async send
+        comm = MSG_task_isend(task_sent, req_data->sent_to);
 
-    XBT_DEBUG("Node %d: {type = '%s - %s' - recipient = %d - answer_data = %p}"
-            " pushed, dynar length = %lu",
+        // push onto sync_answers dynar
+        req_elem = xbt_new0(s_recp_rec_t, 1);
+        req_elem->type = type;
+        req_elem->recp.id = recipient_id;
+        get_mailbox(recipient_id, req_elem->recp.mailbox);
+        req_elem->br_type = (type == TASK_BROADCAST ? args.broadcast.type : TASK_NULL);
+        req_elem->answer_data = NULL;
+
+        // every request data's first field is new_node_id - so get_rep is OK
+        // TODO : si c'est pas bon, il faut modifier send_msg_sync pour ajouter new_node_id à ses arguments
+        req_elem->new_node_id = req_data->args.get_rep.new_node_id;
+
+        proc_data = MSG_process_get_data(MSG_process_self());
+        xbt_dynar_push(proc_data->sync_answers, &req_elem);
+
+        XBT_DEBUG("Node %d: {type = '%s - %s' - recipient = %d - answer_data = %p}"
+                " pushed, dynar length = %lu",
+                me->self.id,
+                debug_msg[req_elem->type],
+                debug_msg[req_elem->br_type],
+                req_elem->recp.id,
+                req_elem->answer_data,
+                xbt_dynar_length(proc_data->sync_answers));
+
+        // max_wait is used in case of receiver process is shutdown
+        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {       //TODO : à commenter et vérifier
+
+            MSG_process_sleep(1.2);
+        }
+        if (MSG_get_clock() > max_wait || comm == NULL) {
+
+            res = MSG_TRANSFER_FAILURE;
+        } else {
+
+            res = MSG_comm_get_status(comm);
+        }
+
+        // only loop_cpt attemps are allowed
+        if (res == MSG_TIMEOUT) loop_cpt++;
+
+    } while (res == MSG_TIMEOUT && loop_cpt < max_loops);
+
+
+    xbt_assert(loop_cpt < max_loops,
+            "Node %d: [: %d] too many sending TIMEOUT in send_msg_sync() to %d - '%s' - max_wait = %f - loop_cpt = %d",
             me->self.id,
-            debug_msg[req_elem->type],
-            debug_msg[req_elem->br_type],
-            req_elem->recp.id,
-            req_elem->answer_data,
-            xbt_dynar_length(proc_data->sync_answers));
+            __LINE__,
+            recipient_id,
+            req_data->sent_to,
+            max_wait,
+            loop_cpt);
+
+    xbt_assert(res == MSG_OK, "Node %d: [: %d] sending failure '%s' in send_msg_sync() to %d - '%s' - max_wait = %f",
+            me->self.id,
+            __LINE__,
+            debug_res_msg[res],
+            recipient_id,
+            req_data->sent_to,
+            max_wait);
+
+    MSG_comm_destroy(comm);
+    comm = NULL;
 
     // count messages
     nb_messages[req_data->type]++;
@@ -3507,22 +3552,6 @@ static msg_error_t send_msg_sync(node_t me,
         nb_br_messages[req_data->args.broadcast.type]++;
     }
 
-    msg_error_t res = MSG_comm_wait(comm, -1);
-
-    xbt_assert(res != MSG_TIMEOUT,
-            "Node %d: sending TIMEOUT in send_msg_sync() to %d (line %d)",
-            me->self.id,
-            recipient_id,
-            __LINE__);
-
-    xbt_assert(res == MSG_OK,
-            "Node %d: sending failure %s in send_msg_sync() to %d (line %d)",
-            me->self.id,
-            debug_res_msg[res],
-            recipient_id,
-            __LINE__);
-
-    MSG_comm_destroy(comm);
 
     // NOTE : req_data may be freed by receiver and mustn't be used anymore by
     // the sender
