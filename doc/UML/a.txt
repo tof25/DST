@@ -1,0 +1,63 @@
+@startuml 
+title DST - Arrivée d'un noeud
+participant surf
+activate Maestro
+group sub-scheduling round
+Maestro -> Process_A: resume
+note left: starting subscheduling round
+deactivate Maestro
+activate Process_A
+Process_A -> Process_A: computation
+Process_A -> Maestro: yield (in send)
+note left: suspend Process_A_test
+deactivate Process_A
+activate Maestro
+Maestro -> Process_B: resume
+deactivate Maestro
+activate Process_B
+Process_B -> Process_B: computation
+Process_B -> Maestro: yield(in get_PID)
+note left: suspend Porcess_B
+deactivate Process_B
+activate Maestro
+Maestro -> Process_C: resume
+deactivate Maestro
+activate Process_C
+Process_C -> Process_C: computation
+Process_C -> Maestro: yield(in recv)
+note left: suspend Process_C
+deactivate Process_C
+activate Maestro
+group prepare simcall
+Maestro -> Maestro: process pre_send
+Maestro -> Maestro: process_pre_getPID
+note left: we answer directly to process
+Maestro -> Maestro: process_pre_recv
+note left: end of pre execution
+end
+end
+group sub-scheduling round
+Maestro -> Process_B: resume
+deactivate Maestro
+activate Process_B
+note left: Starting new subscheduling round with survivor
+Process_B -> Process_B: computation
+Process_B -> Maestro: yield(in send)
+deactivate Process_B
+activate Maestro
+group prepare simcall
+Maestro -> Maestro: process_pre_send
+end
+end
+Maestro -> surf:solve
+note right: no more process to run start solving
+deactivate Maestro
+activate surf
+surf->surf: solving constraint
+note left: passing through solver
+surf-> Maestro
+deactivate surf
+activate Maestro
+
+
+@enduml
