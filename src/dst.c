@@ -1764,8 +1764,9 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                 proc_label,
                 proc_data->proc_mailbox);
 
-        XBT_VERB("Node %d: create fork process (%s), task = %p, mailbox = %s",
+        XBT_VERB("Node %d: [%d] create fork process (%s), task = %p, mailbox = %s",
                 me->self.id,
+                __LINE__,
                 proc_label,
                 task,
                 proc_data->proc_mailbox);
@@ -2584,8 +2585,9 @@ static void run_tasks_queue(node_t me) {
     float min = 1.2;
     double sleep_time = 0;
 
-    XBT_VERB("Node %d: set run_state = {%s - %s}",
+    XBT_VERB("Node %d: [%d] set run_state = {%s - %s}",
             me->self.id,
+            __LINE__,
             debug_run_msg[me->run_task.run_state],
             debug_ret_msg[me->run_task.last_ret]);
 
@@ -2597,8 +2599,9 @@ static void run_tasks_queue(node_t me) {
             if (me->run_task.run_state != prev_state) {
 
                 prev_state = me->run_task.run_state;
-                XBT_VERB("Node %d: '%c'/%d - in run_tasks_queue() - run_state = %s - last_ret = %s",
+                XBT_VERB("Node %d: [%d] '%c'/%d - in run_tasks_queue() - run_state = %s - last_ret = %s",
                         me->self.id,
+                        __LINE__,
                         state.active,
                         state.new_id,
                         debug_run_msg[me->run_task.run_state],
@@ -10027,20 +10030,13 @@ int main(int argc, char *argv[]) {
 static int proc_handle_task(int argc, char* argv[]) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    req_data_t  req_data  = MSG_task_get_data(proc_data->task);
 
-    req_data_t req_data = MSG_task_get_data(proc_data->task);
+    msg_task_t  proc_task = proc_data->task;
 
-    /*
-    msg_task_t proc_task = MSG_task_create(MSG_task_get_name(proc_data->task),
-            COMP_SIZE,
-            COMM_SIZE,
-            MSG_task_get_data(proc_data->task));
-    */
-
-    msg_task_t proc_task = proc_data->task;
-
-    XBT_VERB("Node %d: in fork process - mailbox = '%s' - task = %p - %p",
+    XBT_VERB("Node %d: [%d] in fork process - mailbox = '%s' - task = %p - %p",
             proc_data->node->self.id,
+            __LINE__,
             proc_data->proc_mailbox,
             proc_data->task,
             proc_task);
@@ -10051,16 +10047,18 @@ static int proc_handle_task(int argc, char* argv[]) {
 
         proc_data->node->run_task.run_state = RUNNING;
 
-        XBT_VERB("Node %d: set run_state = {%s - %s}",
+        XBT_VERB("Node %d: [%d] set run_state = {%s - %s}",
                 proc_data->node->self.id,
+                __LINE__,
                 debug_run_msg[proc_data->node->run_task.run_state],
                 debug_ret_msg[proc_data->node->run_task.last_ret]);
 
         proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task);
         proc_data->node->run_task.run_state = IDLE;
 
-        XBT_VERB("Node %d: set run_state = {%s - %s}",
+        XBT_VERB("Node %d: [%d] set run_state = {%s - %s}",
                 proc_data->node->self.id,
+                __LINE__,
                 debug_run_msg[proc_data->node->run_task.run_state],
                 debug_ret_msg[proc_data->node->run_task.last_ret]);
     } else {
@@ -10068,8 +10066,9 @@ static int proc_handle_task(int argc, char* argv[]) {
         handle_task(proc_data->node, &proc_task);
     }
 
-    XBT_VERB("Node %d: fork process dies (proc_handle_task) - task = %p",
+    XBT_VERB("Node %d: [%d] fork process dies (proc_handle_task) - task = %p",
             proc_data->node->self.id,
+            __LINE__,
             proc_task);
 
     MSG_process_set_data_cleanup(proc_data_cleanup);
