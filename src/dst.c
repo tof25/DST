@@ -2,7 +2,7 @@
  *  Git branch : SUD
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/06/06
+ *  Written by Christophe Enderlin on 2013/10/11
  *
  */
 
@@ -218,6 +218,7 @@ typedef struct node {
     int             cs_new_node_prio;       // new node's priority
     float           last_check_time;        // last time when checking if cs_req has to be reset occured
     s_run_task_t    run_task;               // current running task state (delayed tasks)
+    s_run_task_t    other_task_state;       // other task state
 } s_node_t, *node_t;
 
 /**
