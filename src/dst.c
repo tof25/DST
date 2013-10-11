@@ -209,7 +209,7 @@ typedef struct node {
     double          deadline;               // time to leave the DST
     xbt_dynar_t     states;                 // node states dynar
     s_dst_infos_t   dst_infos;              // infos about the DST
-    xbt_dynar_t     tasks_queue;           // delayed tasks dynar
+    xbt_dynar_t     tasks_queue;            // delayed tasks dynar
     xbt_dynar_t     delayed_tasks;          // delayed tasks dynar
     int             prio;                   // priority to get into critical section (the lower the value, the highest priority)
     char            cs_req;                 // Critical Section requested
@@ -1726,8 +1726,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
     req_data_t req = MSG_task_get_data(task);
 
     if (req->type == TASK_CNX_REQ ||
-        (req->type == TASK_BROADCAST &&
-         ((req->args.broadcast.type == TASK_SPLIT) || (req->args.broadcast.first_call == 1)))) {
+        (req->type == TASK_BROADCAST && (req->args.broadcast.type == TASK_SPLIT || req->args.broadcast.type == TASK_CS_REQ))) {
 
         // handle the received request with a fork process ..
         proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
@@ -1781,6 +1780,8 @@ static void launch_fork_process(node_t me, msg_task_t task) {
     } else {
 
         // ... or by itself
+        xbt_assert(!(req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_CS_REQ),
+                "[%d] STOP !! - task %s", __LINE__, debug_msg[req->args.broadcast.type]);
         handle_task(me, &task);
     }
 
@@ -3550,10 +3551,10 @@ static msg_error_t send_msg_sync(node_t me,
     comm = NULL;
 
     // count messages
-    nb_messages[req_data->type]++;
-    if (req_data->type == TASK_BROADCAST) {
+    nb_messages[cpy_req_data->type]++;
+    if (cpy_req_data->type == TASK_BROADCAST) {
 
-        nb_br_messages[req_data->args.broadcast.type]++;
+        nb_br_messages[cpy_req_data->args.broadcast.type]++;
     }
 
 
@@ -6499,7 +6500,7 @@ static void split(node_t me, int stage, int new_node_id) {
         }
 
         for (i = 0; i < cpy_pred_index; i++) {
-            XBT_VERB("Node %d: before : cpy_preds[%d] = %d", me->self.id, i, cpy_preds[i].id);
+            XBT_DEBUG("Node %d: before : cpy_preds[%d] = %d", me->self.id, i, cpy_preds[i].id);
         }
 
         // do only once
