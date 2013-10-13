@@ -1467,8 +1467,10 @@ static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem) {
 static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_node_prio) {
     XBT_IN();
 
-    XBT_VERB("Node %d: in cs_req for new node %d from %d",
+    XBT_VERB("Node %d: [%s:%d] new node %d from %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             new_node_id,
             sender_id);
 
@@ -1764,7 +1766,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                 proc_label,
                 proc_data->proc_mailbox);
 
-        XBT_VERB("Node %d: [%d] create fork process (%s), task = %p, mailbox = %s",
+        XBT_VERB("Node %d: [:%d] create fork process (%s), task = %p, mailbox = %s",
                 me->self.id,
                 __LINE__,
                 proc_label,
@@ -1781,7 +1783,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
 
         // ... or by itself
         xbt_assert(!(req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_CS_REQ),
-                "[%d] STOP !! - task %s", __LINE__, debug_msg[req->args.broadcast.type]);
+                "[:%d] STOP !! - task %s", __LINE__, debug_msg[req->args.broadcast.type]);
         handle_task(me, &task);
     }
 
@@ -2095,7 +2097,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
         display_async_answers(me, 'I');
     }
-    xbt_assert(ans_cpt == 0, "Node %d: [%d] Wait error - cpt = %d",
+    xbt_assert(ans_cpt == 0, "Node %d: [:%d] Wait error - cpt = %d",
             me->self.id,
             __LINE__,
             ans_cpt);
@@ -2587,7 +2589,7 @@ static void run_tasks_queue(node_t me) {
     float min = 1.2;
     double sleep_time = 0;
 
-    XBT_VERB("Node %d: [%d] set run_state = {%s - %s}",
+    XBT_VERB("Node %d: [:%d] set run_state = {%s - %s}",
             me->self.id,
             __LINE__,
             debug_run_msg[me->run_task.run_state],
@@ -2601,7 +2603,7 @@ static void run_tasks_queue(node_t me) {
             if (me->run_task.run_state != prev_state) {
 
                 prev_state = me->run_task.run_state;
-                XBT_VERB("Node %d: [%d] '%c'/%d - in run_tasks_queue() - run_state = %s - last_ret = %s",
+                XBT_VERB("Node %d: [:%d] '%c'/%d - in run_tasks_queue() - run_state = %s - last_ret = %s",
                         me->self.id,
                         __LINE__,
                         state.active,
@@ -4190,8 +4192,10 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
         for (brother = 0; brother < nb_bro; brother++) {
 
-            XBT_VERB("Node %d: In broadcast: brother = %d, Broadcast stage = %d",
+            XBT_VERB("Node %d: [%s:%d] brother = %d, stage = %d",
                     me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
                     cpy_brothers[brother].id,
                     args.broadcast.stage);
 
@@ -4726,8 +4730,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
     XBT_IN();
 
     s_state_t state = get_state(me);
-    XBT_VERB("Node %d: '%c'/%d - connection_request() ... - new_node = %d",
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d - new_node = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             state.active,
             state.new_id,
             new_node_id);
@@ -4805,7 +4811,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         /*** Ask for permission to get into the Critical Section ***/
         val_ret = cs_req(me, me->self.id, new_node_id, cs_new_node_prio);
 
-        XBT_VERB("Node %d: back to connection_request()", me->self.id);
+        XBT_VERB("Node %d: back to %s", me->self.id, __FUNCTION__);
 
         /*
            if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||
@@ -4816,8 +4822,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         if (val_ret == UPDATE_NOK) {
 
             // if current node isn't available, reject request
-            XBT_VERB("Node %d: '%c'/%d - in connection_request() - not available",
+            XBT_VERB("Node %d: [%s:%d] '%c'/%d - not available",
                     me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
                     state.active,
                     state.new_id);
 
@@ -4827,8 +4835,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
             //val_ret = OK;
 
-            XBT_VERB("Node %d: '%c'/%d - in connection_request() - available",
+            XBT_VERB("Node %d: [%s:%d] '%c'/%d - available",
                     me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
                     state.active,
                     state.new_id);
 
@@ -8619,15 +8629,18 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
     char is_contact = 0;
     char is_leader = 0;
 
-    XBT_VERB("Node %d - '%c'/%d: Handling task %p '%s - %s' received from node %d - answer to '%s'",
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d: Handling task '%s - %s' received from node %d - answer to '%s'",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             state.active,
             state.new_id,
-            *task,
             MSG_task_get_name(*task),
             debug_msg[type],
             rcv_req->sender_id,
             rcv_req->answer_to);
+
+    XBT_DEBUG("task : %p", *task);
 
     u_req_args_t rcv_args;
     if (rcv_req != NULL) {
@@ -9251,8 +9264,10 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                     }
                                 }
 
-                                XBT_VERB("Node %d: End of run broadcasted task - '%s'",
+                                XBT_VERB("Node %d: [%s:%d] End of run broadcasted task - '%s'",
                                         me->self.id,
+                                        __FUNCTION__,
+                                        __LINE__,
                                         debug_msg[rcv_args.broadcast.type]);
                             }
                         }
@@ -10036,12 +10051,18 @@ static int proc_handle_task(int argc, char* argv[]) {
 
     msg_task_t  proc_task = proc_data->task;
 
-    XBT_VERB("Node %d: [%d] in fork process - mailbox = '%s' - task = %p - %p",
+    XBT_VERB("Node %d: [%s:%d]",
             proc_data->node->self.id,
+            __FUNCTION__,
+            __LINE__);
+
+    XBT_DEBUG("[:%d] in %s - mailbox = '%s' - task = %p - %p",
             __LINE__,
+            __FUNCTION__,
             proc_data->proc_mailbox,
             proc_data->task,
             proc_task);
+
 
     //task_free(&proc_data->task);
 
@@ -10049,8 +10070,9 @@ static int proc_handle_task(int argc, char* argv[]) {
 
         proc_data->node->run_task.run_state = RUNNING;
 
-        XBT_VERB("Node %d: [%d] set run_state = {%s - %s}",
+        XBT_VERB("Node %d: [%s:%d] set run_state = {%s - %s}",
                 proc_data->node->self.id,
+                __FUNCTION__,
                 __LINE__,
                 debug_run_msg[proc_data->node->run_task.run_state],
                 debug_ret_msg[proc_data->node->run_task.last_ret]);
@@ -10058,8 +10080,9 @@ static int proc_handle_task(int argc, char* argv[]) {
         proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task);
         proc_data->node->run_task.run_state = IDLE;
 
-        XBT_VERB("Node %d: [%d] set run_state = {%s - %s}",
+        XBT_VERB("Node %d: [%s:%d] set run_state = {%s - %s}",
                 proc_data->node->self.id,
+                __FUNCTION__,
                 __LINE__,
                 debug_run_msg[proc_data->node->run_task.run_state],
                 debug_ret_msg[proc_data->node->run_task.last_ret]);
@@ -10068,10 +10091,12 @@ static int proc_handle_task(int argc, char* argv[]) {
         handle_task(proc_data->node, &proc_task);
     }
 
-    XBT_VERB("Node %d: [%d] fork process dies (proc_handle_task) - task = %p",
+    XBT_VERB("Node %d: [%s:%d] fork process dies",
             proc_data->node->self.id,
-            __LINE__,
-            proc_task);
+            __FUNCTION__,
+            __LINE__);
+
+    XBT_DEBUG("task = %p", proc_task);
 
     MSG_process_set_data_cleanup(proc_data_cleanup);
     MSG_process_kill(MSG_process_self());
@@ -10087,8 +10112,10 @@ static int proc_handle_task(int argc, char* argv[]) {
 static int proc_run_tasks(int argc, char* argv[]) {
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
-    XBT_VERB("Node %d: in fork process (run_tasks_queue) - mailbox = '%s'",
+    XBT_VERB("Node %d: [%s:%d] mailbox = '%s'",
             proc_data->node->self.id,
+            __FUNCTION__,
+            __LINE__,
             proc_data->proc_mailbox);
 
     run_tasks_queue(proc_data->node);
