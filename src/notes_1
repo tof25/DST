@@ -37,3 +37,20 @@ Comment distinguer un timeout comme celui-là (il faut alors répeter la demande
 process récepteur ? (il faut alors abandonner)
 On peut penser que si max_wait est atteint, on n'a pas le timeout et il faut arrêter. Mais en cas de timeout, il faut
 recommencer. Voir s'il faut borner le nombre de nouvelles tentatives.
+
+________________________________________________________________________________________________________________________
+
+Problèmes d'incohérence
+************************
+
+293 et 495 sont frères dans leurs deux tables (cohérence)
+
+2179.078377 -> 495 reçoit la table de 293 pour rejoindre l'arbre : 2 membres à l'étage 2
+
+2180.760944 -> 293 lance connect_splitted_groups reçu de 752 (pour 719) (752-Br_Split-719)
+
+2183.460944 -> 293 a terminé connect_splitted_groups et comporte 3 membres à l'étage 1
+
+2221.567449 -> 495 termine load_balance et rejoint l'arbre : 2 membre à l'étage 2
+
+POURQUOI LA DIFFUSION DE 752 N'A PAS ATTEINT 495 ??

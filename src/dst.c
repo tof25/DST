@@ -6267,9 +6267,13 @@ static void split(node_t me, int stage, int new_node_id) {
             state.new_id,
             new_node_id);
 
-    XBT_VERB("Node %d: In split - splitting stage %d", me->self.id, stage);
+    XBT_VERB("Node %d: [%s:%d] splitting stage %d",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            stage);
 
-    XBT_DEBUG("Node %d routing table before split", me->self.id);
+    XBT_DEBUG("Node %d: [%s:%d] routing table before split", me->self.id, __FUNCTION__, __LINE__);
     display_rout_table(me, 'V');
     display_preds(me, 'D');
 
