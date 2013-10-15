@@ -6553,7 +6553,12 @@ static void split(node_t me, int stage, int new_node_id) {
                 for (i = 0; i < cpy_pred_index; i++) {
 
                     cpy_preds[i] = cpy_preds2[i];
-                    XBT_VERB("Node %d: after : cpy_preds[%d] = %d", me->self.id, i, cpy_preds[i].id);
+                    XBT_VERB("Node %d: [%s:%d] after : cpy_preds[%d] = %d",
+                            me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
+                            i,
+                            cpy_preds[i].id);
                 }
                 xbt_free(cpy_preds2);
             }

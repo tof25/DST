@@ -49,8 +49,10 @@ Problèmes d'incohérence
 
 2180.760944 -> 293 lance connect_splitted_groups reçu de 752 (pour 719) (752-Br_Split-719)
 
+2181.473954 -> cpy_preds[0] reçoit 495 mais TROP TARD ??
+
 2183.460944 -> 293 a terminé connect_splitted_groups et comporte 3 membres à l'étage 1
 
 2221.567449 -> 495 termine load_balance et rejoint l'arbre : 2 membre à l'étage 2
 
-POURQUOI LA DIFFUSION DE 752 N'A PAS ATTEINT 495 ??
+POURQUOI LA DIFFUSION DE 752 N'A PAS ATTEINT 495 ?? voir 2181.473954
