@@ -6559,11 +6559,19 @@ static void split(node_t me, int stage, int new_node_id) {
                             __LINE__,
                             i,
                             cpy_preds[i].id);
+
+                    xbt_assert(cpy_pred_index2 == 0 || cpt_loop != 0,
+                            "Node %d: [%s:%d] Loop Error !! cpt_loop = %d - cpy_pred_index2 = %d",
+                            me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
+                            cpt_loop,
+                            cpy_pred_index2);
                 }
                 xbt_free(cpy_preds2);
             }
         }
-    } while(cpy_pred_index2 > 0 && cpt_loop < 0);
+    } while(cpy_pred_index2 > 0 && cpt_loop >= 0);
 
     // synchro (3)
     if (ans_cpt > 0) {
