@@ -3927,8 +3927,10 @@ static msg_error_t send_msg_async(node_t me,
     // create and send task with data
     msg_task_t task_sent = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
 
-    XBT_VERB("Node %d: Sending async '%s %s' to %d - '%s'",
+    XBT_VERB("Node %d: [%s:%d] Sending async '%s %s' to %d - '%s'",
             req_data->sender_id,
+            __FUNCTION__,
+            __LINE__,
             debug_msg[req_data->type],
             debug_msg[(req_data->type == TASK_BROADCAST ? req_data->args.broadcast.type : TASK_NULL)],
             req_data->recipient_id,
@@ -4082,12 +4084,13 @@ static msg_error_t send_ans_sync(node_t me,
             max_wait,
             loop_cpt);
 
-    xbt_assert(res == MSG_OK, "Node %d: [: %d] sending failure '%s' in send_ans_sync() to %d - '%s' - max_wait = %f",
+    xbt_assert(res == MSG_OK, "Node %d: [: %d] sending failure '%s' in send_ans_sync() to %d - '%s' - COMM_TIMEOUT = %d - max_wait = %f",
             me->self.id,
             __LINE__,
             debug_res_msg[res],
             recipient_id,
             recipient_mailbox,
+            COMM_TIMEOUT,
             max_wait);
 
     MSG_comm_destroy(comm);
@@ -6520,8 +6523,8 @@ static void split(node_t me, int stage, int new_node_id) {
         // do only once
         if (cpt_loop > 0) {
 
-            cpt_loop--;
             // check if a new pred has been added meanwhile
+            cpt_loop--;
             cpy_pred_index2 = 0;
             cpy_preds2 = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
 
@@ -6559,19 +6562,11 @@ static void split(node_t me, int stage, int new_node_id) {
                             __LINE__,
                             i,
                             cpy_preds[i].id);
-
-                    xbt_assert(cpy_pred_index2 == 0 || cpt_loop != 0,
-                            "Node %d: [%s:%d] Loop Error !! cpt_loop = %d - cpy_pred_index2 = %d",
-                            me->self.id,
-                            __FUNCTION__,
-                            __LINE__,
-                            cpt_loop,
-                            cpy_pred_index2);
                 }
                 xbt_free(cpy_preds2);
             }
         }
-    } while(cpy_pred_index2 > 0 && cpt_loop >= 0);
+    } while(cpy_pred_index2 > 0 && cpt_loop > 0);
 
     // synchro (3)
     if (ans_cpt > 0) {
