@@ -6453,9 +6453,12 @@ static void split(node_t me, int stage, int new_node_id) {
     // works on a copy of upper stage preds
     int cpy_pred_index = me->pred_index[stage + 1];
     node_rep_t cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
+    int hist_cpy_pred_index = me->pred_index[stage + 1];
+    node_rep_t hist_cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
     for (i = 0; i < cpy_pred_index ; i++) {
 
         cpy_preds[i] = me->preds[stage + 1][i];
+        hist_cpy_preds[i] = me->preds[stage + 1][i];
         XBT_VERB("cpy_preds[%d] = %d", i, cpy_preds[i].id);
     }
 
@@ -6465,6 +6468,9 @@ static void split(node_t me, int stage, int new_node_id) {
     int j = 0;
     int k = 0;
     do {
+        cpy_pred_index2 = 0;
+
+        // send CNX_GROUPS to each stage+1 pred
         for (i = 0; i < cpy_pred_index; i++) {
             //for (i = 0; i < me->pred_index[stage + 1]; i++)
 
@@ -6516,16 +6522,15 @@ static void split(node_t me, int stage, int new_node_id) {
             }
         }
 
+        // display all preds that have been contacted
         for (i = 0; i < cpy_pred_index; i++) {
-            XBT_DEBUG("Node %d: before : cpy_preds[%d] = %d", me->self.id, i, cpy_preds[i].id);
+            XBT_INFO("Node %d: before : cpy_preds[%d] = %d", me->self.id, i, cpy_preds[i].id);
         }
 
-        // do only once
+        // Check if new preds have been added meanwhile
         if (cpt_loop > 0) {
 
-            // check if a new pred has been added meanwhile
             cpt_loop--;
-            cpy_pred_index2 = 0;
             cpy_preds2 = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
 
             // build an array of new preds
@@ -6553,10 +6558,13 @@ static void split(node_t me, int stage, int new_node_id) {
 
                 cpy_pred_index = cpy_pred_index2;
                 cpy_preds = realloc(cpy_preds, cpy_pred_index * sizeof(s_node_rep_t));
+
+                hist_cpy_pred_index += cpy_pred_index2;
+                hist_cpy_preds = realloc(hist_cpy_preds,
                 for (i = 0; i < cpy_pred_index; i++) {
 
                     cpy_preds[i] = cpy_preds2[i];
-                    XBT_VERB("Node %d: [%s:%d] after : cpy_preds[%d] = %d",
+                    XBT_INFO("Node %d: [%s:%d] after : cpy_preds[%d] = %d",
                             me->self.id,
                             __FUNCTION__,
                             __LINE__,
