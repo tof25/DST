@@ -4084,7 +4084,7 @@ static msg_error_t send_ans_sync(node_t me,
             max_wait,
             loop_cpt);
 
-    xbt_assert(res == MSG_OK, "Node %d: [: %d] sending failure '%s' in send_ans_sync() to %d - '%s' - COMM_TIMEOUT = %d - max_wait = %f",
+    xbt_assert(res == MSG_OK || res == MSG_TRANSFER_FAILURE, "Node %d: [: %d] sending failure '%s' in send_ans_sync() to %d - '%s' - COMM_TIMEOUT = %d - max_wait = %f",
             me->self.id,
             __LINE__,
             debug_res_msg[res],
@@ -4117,10 +4117,12 @@ static msg_error_t send_ans_sync(node_t me,
         }
     }
 
+    /*
     xbt_assert(res == MSG_OK, "Node %d: Failed to answer to '%s' from %d",
             me->self.id,
             debug_msg[type],
             recipient_id);
+    */
 
     nb_messages[type]++;
     if (type == TASK_BROADCAST) {
@@ -5152,6 +5154,12 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     state.new_id,
                     new_node_id);
 
+            // everything's ok, add new node as a pred for me at every stage (see also start of load balance)
+            for (i = 0; i < me->height; i++) {
+
+                add_pred(me, i, new_node_id);
+            }
+
             /* set every member to 'p' to show that their preds table is about
                to change (when adding the new coming node in it) */
 
@@ -5412,7 +5420,7 @@ static void add_pred(node_t me, int stage, int id) {
     XBT_IN();
 
     s_state_t state = get_state(me);
-    XBT_DEBUG("Node %d: '%c'/%d - add_pred() ...",
+    XBT_VERB("Node %d: '%c'/%d - add_pred() ...",
             me->self.id,
             state.active,
             state.new_id);
@@ -6453,8 +6461,10 @@ static void split(node_t me, int stage, int new_node_id) {
     // works on a copy of upper stage preds
     int cpy_pred_index = me->pred_index[stage + 1];
     node_rep_t cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
+
     int hist_cpy_pred_index = me->pred_index[stage + 1];
     node_rep_t hist_cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
+
     for (i = 0; i < cpy_pred_index ; i++) {
 
         cpy_preds[i] = me->preds[stage + 1][i];
@@ -6464,7 +6474,7 @@ static void split(node_t me, int stage, int new_node_id) {
 
     int cpy_pred_index2 = 0;
     node_rep_t cpy_preds2 = NULL;
-    int cpt_loop = 1;
+    int cpt_loop = 0;
     int j = 0;
     int k = 0;
     do {
@@ -6524,7 +6534,13 @@ static void split(node_t me, int stage, int new_node_id) {
 
         // display all preds that have been contacted
         for (i = 0; i < cpy_pred_index; i++) {
-            XBT_INFO("Node %d: before : cpy_preds[%d] = %d", me->self.id, i, cpy_preds[i].id);
+            XBT_INFO("Node %d: [%s:%d] before : cpy_preds[%d] = %d - loop = %d",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    i,
+                    cpy_preds[i].id,
+                    cpt_loop);
         }
 
         // Check if new preds have been added meanwhile
@@ -6536,9 +6552,9 @@ static void split(node_t me, int stage, int new_node_id) {
             // build an array of new preds
             for (j = 0; j < me->pred_index[stage + 1]; j++) {
 
-                for (k = 0; k < cpy_pred_index; k++) {
+                for (k = 0; k < hist_cpy_pred_index; k++) {
 
-                    if ((me->preds[stage + 1][j].id == cpy_preds[k].id) ||
+                    if ((me->preds[stage + 1][j].id == hist_cpy_preds[k].id) ||
                             (me->preds[stage + 1][j].id == me->self.id)) {
 
                         break;
@@ -6546,7 +6562,7 @@ static void split(node_t me, int stage, int new_node_id) {
                 }
 
                 // if pred not found in cpy_preds, adds it
-                if (k == cpy_pred_index) {
+                if (k == hist_cpy_pred_index) {
 
                     cpy_preds2[cpy_pred_index2] = me->preds[stage + 1][j];
                     cpy_pred_index2++;
@@ -6556,24 +6572,42 @@ static void split(node_t me, int stage, int new_node_id) {
             // new pred(s) have been found : copy them to cpy_preds
             if (cpy_pred_index2 > 0) {
 
+                xbt_free(cpy_preds);
                 cpy_pred_index = cpy_pred_index2;
-                cpy_preds = realloc(cpy_preds, cpy_pred_index * sizeof(s_node_rep_t));
+                cpy_preds = xbt_new0(s_node_rep_t, cpy_pred_index);
 
-                hist_cpy_pred_index += cpy_pred_index2;
-                hist_cpy_preds = realloc(hist_cpy_preds,
+                // hist_cpy_preds contains all preds that have be sent CNX_GROUPS
+                hist_cpy_preds = realloc(hist_cpy_preds, (hist_cpy_pred_index + cpy_pred_index2) * sizeof(s_node_rep_t));
+
                 for (i = 0; i < cpy_pred_index; i++) {
 
                     cpy_preds[i] = cpy_preds2[i];
-                    XBT_INFO("Node %d: [%s:%d] after : cpy_preds[%d] = %d",
+
+                    hist_cpy_preds[hist_cpy_pred_index] = cpy_preds2[i];
+                    hist_cpy_pred_index++;
+
+                    XBT_INFO("Node %d: [%s:%d] after : cpy_preds[%d] = %d - loop = %d",
                             me->self.id,
                             __FUNCTION__,
                             __LINE__,
                             i,
-                            cpy_preds[i].id);
+                            cpy_preds[i].id,
+                            cpt_loop);
                 }
                 xbt_free(cpy_preds2);
             }
         }
+
+        /*
+        xbt_assert(cpy_pred_index2 == 0 || cpt_loop != 0,
+                "Node %d: [%s:%d] loop ERROR ! - cpy_pred_index2 = %d - loop = %d",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                cpy_pred_index2,
+                cpt_loop);
+                */
+
     } while(cpy_pred_index2 > 0 && cpt_loop > 0);
 
     // synchro (3)
@@ -6592,6 +6626,7 @@ static void split(node_t me, int stage, int new_node_id) {
     }
     */
     xbt_free(cpy_preds);
+    xbt_free(hist_cpy_preds);
     XBT_OUT();
 }
 
@@ -8112,6 +8147,15 @@ static void load_balance(node_t me, int contact_id) {
 
                 me->brothers[i][j] = me->self;
                 add_pred(me, i, me->self.id);
+
+                u_req_args.del_pred.stage = i;
+                u_req_args.del_pred.pred2del_id = me->self.id;
+                u_req_args.del_pred.new_node_id = me->self.id;
+
+                res = send_msg_async(me,
+                        TASK_DEL_PRED,
+                        contact_id,
+                        u_req_args);
 
                 XBT_DEBUG("Node %d: contact %d replaced by me",
                         me->self.id,
@@ -9842,7 +9886,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
         // set and store DST infos
         set_n_store_infos(me);
 
-        display_preds(me, 'D');
+        display_preds(me, 'V');
     }
 
     XBT_DEBUG("Node %d end of handle_task(): val_ret = '%s'",
