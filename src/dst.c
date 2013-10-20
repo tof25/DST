@@ -5154,11 +5154,13 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     state.new_id,
                     new_node_id);
 
+            /*
             // everything's ok, add new node as a pred for me at every stage (see also start of load balance)
             for (i = 0; i < me->height; i++) {
 
                 add_pred(me, i, new_node_id);
             }
+            */
 
             /* set every member to 'p' to show that their preds table is about
                to change (when adding the new coming node in it) */
@@ -5181,6 +5183,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                         /* current node doesn't have to change its state. It'll
                            be replaced by the new node in the transmitted table */
+                        //set_state(me, new_node_id, 'p');
                     }
                 }
             }
@@ -6458,6 +6461,16 @@ static void split(node_t me, int stage, int new_node_id) {
     args.cnx_groups.new_rep_id = new_rep_id;
     args.cnx_groups.new_node_id = new_node_id;
 
+    // for local call
+    /*
+    req_data_t req_data = xbt_new0(s_req_data_t, 1);
+    req_data->type = TASK_CNX_GROUPS;
+    req_data->sender_id = me->self.id;
+    req_data->recipient_id = me->self.id;
+    req_data->args = args;
+    msg_task_t local_task = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
+    */
+
     // works on a copy of upper stage preds
     int cpy_pred_index = me->pred_index[stage + 1];
     node_rep_t cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
@@ -6491,6 +6504,7 @@ static void split(node_t me, int stage, int new_node_id) {
                 // local call (no answer is expected)
                 ans_cpt--;
 
+                /*
                 connect_splitted_groups(me,
                         args.cnx_groups.stage,
                         args.cnx_groups.pos_init,
@@ -6498,6 +6512,8 @@ static void split(node_t me, int stage, int new_node_id) {
                         args.cnx_groups.init_rep_id,
                         args.cnx_groups.new_rep_id,
                         args.cnx_groups.new_node_id);
+                        */
+                //handle_task(me, &local_task);
             } else {
 
                 // remote call
@@ -6534,7 +6550,7 @@ static void split(node_t me, int stage, int new_node_id) {
 
         // display all preds that have been contacted
         for (i = 0; i < cpy_pred_index; i++) {
-            XBT_INFO("Node %d: [%s:%d] before : cpy_preds[%d] = %d - loop = %d",
+            XBT_DEBUG("Node %d: [%s:%d] before : cpy_preds[%d] = %d - loop = %d",
                     me->self.id,
                     __FUNCTION__,
                     __LINE__,
@@ -6586,7 +6602,7 @@ static void split(node_t me, int stage, int new_node_id) {
                     hist_cpy_preds[hist_cpy_pred_index] = cpy_preds2[i];
                     hist_cpy_pred_index++;
 
-                    XBT_INFO("Node %d: [%s:%d] after : cpy_preds[%d] = %d - loop = %d",
+                    XBT_DEBUG("Node %d: [%s:%d] after : cpy_preds[%d] = %d - loop = %d",
                             me->self.id,
                             __FUNCTION__,
                             __LINE__,
@@ -6617,14 +6633,30 @@ static void split(node_t me, int stage, int new_node_id) {
         wait_for_completion(me, ans_cpt, new_node_id);
     }
 
-    // restore state    //TODO: non !! Trop tôt. Laisser faire la diffusion de set active
-    /*
-    idx = state_search(me, 'u', new_node_id);
-    if (idx > -1) {
+    // wait until state is not 'p' anymore to launch local call of connect_splitted_groups
+    do {
+        state = get_state(me);
+        if (state.active == 'p') {
 
-        xbt_dynar_remove_at(me->states, idx, NULL);
-    }
-    */
+            MSG_process_sleep(0.1);
+        }
+    } while (state.active == 'p');
+
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d - local call of connect_splitted_groups",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            state.active,
+            state.new_id);
+
+    connect_splitted_groups(me,
+            args.cnx_groups.stage,
+            args.cnx_groups.pos_init,
+            args.cnx_groups.pos_new,
+            args.cnx_groups.init_rep_id,
+            args.cnx_groups.new_rep_id,
+            args.cnx_groups.new_node_id);
+
     xbt_free(cpy_preds);
     xbt_free(hist_cpy_preds);
     XBT_OUT();
@@ -8148,6 +8180,7 @@ static void load_balance(node_t me, int contact_id) {
                 me->brothers[i][j] = me->self;
                 add_pred(me, i, me->self.id);
 
+                /*
                 u_req_args.del_pred.stage = i;
                 u_req_args.del_pred.pred2del_id = me->self.id;
                 u_req_args.del_pred.new_node_id = me->self.id;
@@ -8156,6 +8189,7 @@ static void load_balance(node_t me, int contact_id) {
                         TASK_DEL_PRED,
                         contact_id,
                         u_req_args);
+                        */
 
                 XBT_DEBUG("Node %d: contact %d replaced by me",
                         me->self.id,

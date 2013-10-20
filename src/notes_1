@@ -43,13 +43,15 @@ ________________________________________________________________________________
 Problèmes d'incohérence
 ************************
 
+495 est le nouveau noeud, 293 est son contact.
+
 293 et 495 sont frères dans leurs deux tables (cohérence)
 
 2179.078377 -> 495 reçoit la table de 293 pour rejoindre l'arbre : 2 membres à l'étage 2
 
 2180.760944 -> 293 lance connect_splitted_groups reçu de 752 (pour 719) (752-Br_Split-719)
 
-2181.473954 -> cpy_preds[0] reçoit 495 mais TROP TARD ??
+2181.473954 -> 293 : cpy_preds[0] reçoit 495 mais TROP TARD ??
 
 2183.460944 -> 293 a terminé connect_splitted_groups et comporte 3 membres à l'étage 1
 
