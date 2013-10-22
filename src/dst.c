@@ -34,7 +34,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
 #define COMM_SIZE 10                        // message size when creating a new task
 #define COMP_SIZE 0                         // compute duration when creating a new task
-#define MAILBOX_NAME_SIZE 30                // name size of a mailbox
+#define MAILBOX_NAME_SIZE 50                // name size of a mailbox
 #define TYPE_NBR 38                         // number of task types
 #define MAX_WAIT_COMPL 20000                // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 500                // won't wait longer an answer to a GET_REP request
@@ -1159,6 +1159,15 @@ static void get_proc_mailbox(char* proc_mailbox) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     snprintf(proc_mailbox, MAILBOX_NAME_SIZE, "%s", proc_data->proc_mailbox);
+}
+
+static void setId_proc_mailbox(void) {
+
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    char str_ID[MAILBOX_NAME_SIZE];
+
+    snprintf(str_ID, MAILBOX_NAME_SIZE, "{%d}", MSG_process_get_PID(MSG_process_self()));
+    strcat(proc_data->proc_mailbox, str_ID);
 }
 
 /**
@@ -3533,16 +3542,18 @@ static msg_error_t send_msg_sync(node_t me,
 
 
     xbt_assert(loop_cpt < max_loops,
-            "Node %d: [: %d] too many sending TIMEOUT in send_msg_sync() to %d - '%s' - max_wait = %f - loop_cpt = %d",
+            "Node %d: [%s:%d] too many sending TIMEOUT in send_msg_sync() to %d - '%s' - max_wait = %f - loop_cpt = %d",
             me->self.id,
+            __FUNCTION__,
             __LINE__,
             recipient_id,
             req_data->sent_to,
             max_wait,
             loop_cpt);
 
-    xbt_assert(res == MSG_OK, "Node %d: [: %d] sending failure '%s' in send_msg_sync() to %d - '%s' - max_wait = %f",
+    xbt_assert(res == MSG_OK, "Node %d: [%s:%d] sending failure '%s' in send_msg_sync() to %d - '%s' - max_wait = %f",
             me->self.id,
+            __FUNCTION__,
             __LINE__,
             debug_res_msg[res],
             recipient_id,
