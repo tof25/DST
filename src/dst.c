@@ -8915,18 +8915,32 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_NEW_BROTHER_RCV:
-            new_brother_received(me, rcv_args.new_brother_rcv.new_node_id);
-            res = send_ans_sync(me,
-                    rcv_args.new_brother_rcv.new_node_id,
-                    type,
-                    rcv_req->sender_id,
-                    rcv_req->answer_to,
-                    answer);          //TODO : answer n'est pas initialisé
+            if (state.active == 'l' || state.active == 'u') {
 
-            data_req_free(me, &rcv_req);
-            task_free(task);
+                // store task
+                XBT_VERB("Node %d - active = '%c': store task for later"
+                        " execution",
+                        me->self.id,
+                        state.active);
 
-            XBT_VERB("Node %d: TASK_NEW_BROTHER_RCV done", me->self.id);
+                xbt_dynar_push(me->delayed_tasks, task);
+                *task = NULL;
+                val_ret = STORED;
+            } else {
+
+                new_brother_received(me, rcv_args.new_brother_rcv.new_node_id);
+                res = send_ans_sync(me,
+                        rcv_args.new_brother_rcv.new_node_id,
+                        type,
+                        rcv_req->sender_id,
+                        rcv_req->answer_to,
+                        answer);          //TODO : answer n'est pas initialisé
+
+                data_req_free(me, &rcv_req);
+                task_free(task);
+
+                XBT_VERB("Node %d: TASK_NEW_BROTHER_RCV done", me->self.id);
+            }
             break;
 
         case TASK_SPLIT_REQ:
