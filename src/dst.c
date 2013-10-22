@@ -1140,7 +1140,7 @@ static void display_rout_table(node_t me, char log) {
 }
 
 /**
- * \brief gets the mailbox name of a node
+ * \brief Gets the mailbox name of a node
  * \param node_id node id
  * \param mailbox pointer to where the mailbox name should be written
  * i      (there must be enough space)
@@ -1151,7 +1151,7 @@ static void get_mailbox(int node_id, char* mailbox) {
 }
 
 /**
- * \brief gets the mailbox name of current process
+ * \brief Gets the mailbox name of current process
  * \param proc_mailbox pointer to where the mailbox name should be written
  *        (there must be enough space)
  */
@@ -1161,6 +1161,9 @@ static void get_proc_mailbox(char* proc_mailbox) {
     snprintf(proc_mailbox, MAILBOX_NAME_SIZE, "%s", proc_data->proc_mailbox);
 }
 
+/**
+ * \brief Add process ID to the mailbox name to make the process unique
+ */
 static void setId_proc_mailbox(void) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
@@ -10155,15 +10158,17 @@ int main(int argc, char *argv[]) {
  */
 static int proc_handle_task(int argc, char* argv[]) {
 
+    setId_proc_mailbox();
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     req_data_t  req_data  = MSG_task_get_data(proc_data->task);
 
     msg_task_t  proc_task = proc_data->task;
 
-    XBT_VERB("Node %d: [%s:%d]",
+    XBT_VERB("Node %d: [%s:%d] proc_mailbox = %s",
             proc_data->node->self.id,
             __FUNCTION__,
-            __LINE__);
+            __LINE__,
+            proc_data->proc_mailbox);
 
     XBT_DEBUG("[:%d] in %s - mailbox = '%s' - task = %p - %p",
             __LINE__,
@@ -10219,6 +10224,8 @@ static int proc_handle_task(int argc, char* argv[]) {
  * param me the current node
  */
 static int proc_run_tasks(int argc, char* argv[]) {
+
+    setId_proc_mailbox();
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
     XBT_VERB("Node %d: [%s:%d] mailbox = '%s'",
