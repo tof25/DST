@@ -9024,7 +9024,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_SPLIT:
-            if (state.active == 'b' || state.active == 'l') {
+            if (state.active == 'b' || state.active == 'l' || state.active == 'g') {
 
                 // store broadcasted task
                 val_ret = STORED;
