@@ -58,3 +58,43 @@ Problèmes d'incohérence
 2221.567449 -> 495 termine load_balance et rejoint l'arbre : 2 membre à l'étage 2
 
 POURQUOI LA DIFFUSION DE 752 N'A PAS ATTEINT 495 ?? voir 2181.473954
+
+________________________________________________________________________________________________________________________
+
+Autre problème d'incohérence
+*****************************
+
+37058.717246 -> 343 est inséré, reçoit la table de son contact 1962 et commence Load_Balance
+             -> 343 envoie Add_Pred à 3150
+
+37071.756249 -> 3150 reçoit et exécute cet Add_Pred
+
+37126.217246 -> 343 envoie Get_Rep à 3150
+
+37288.564161 -> 3150 split S0 pour accueuillir 2768
+
+37530.755314 -> 3150 et 1957 ne sont plus frères
+
+                ... puis 3150 est remplacé par 1957 lors de load_balance de 343 :
+
+37369.172770 -> 343 reçoit la réponse (1957) Get_Rep de 3150 et envoie Del_Pred à 3150
+
+37382.672770 -> 343 envoie Add_Pred à 1957
+
+37398.156260 -> 3150 reçoit et exécute Del_Pred de 343
+
+37408.472741 -> 1957 reçoit et exécute cet Add_Pred
+
+37530.755314 -> 2768 est inséré par le leader 3150 : 3150 envoie Cnx_Groups à tous ses prédécesseurs de S1 mais 343 n'y est donc plus
+
+37597.939758 -> 1962 reçoit Cnx_Groups de 3150 qui insère 2768 => ajoute un 4e membre à l'étage 1
+
+38103.256263 -> 343 a terminé Load_Balance
+             ==> il a 3 membres à l'étage 1 contre 4 pour 1962
+
+
+CONCLUSION : 3150 exécute Get_Rep avant qu'il soit splitté et répond 1957 à 343 alors que 1957 ne sera plus frère de 3150 après le split.
+*****************************************************************************************************************************************
+
+REMARQUES : l'état 'p' ne semble pas dépilé par le bon Add_Pred
+            END_GET_REP trop tôt et pas du bon noeud ?

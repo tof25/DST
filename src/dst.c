@@ -4688,7 +4688,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
     u_req_args.nb_pred.new_node_id = new_node_id;
 
     int f;
-    for (f = 0; f < me->bro_index[0]; f++) {
+    for (f = 0; f < me->bro_index[0]; f+=2) {       // take only brothers that will stay in case of SPLIT
 
         if (me->brothers[0][f].id == me->self.id) {
 
@@ -5486,7 +5486,9 @@ static void add_pred(node_t me, int stage, int id) {
 
     //TODO: afficher les états ici avant le pop
     state = get_state(me);
-    if (state.active == 'p' && me->self.id != state.new_id) {
+
+    // only an add_pred sent by new coming node will pop out current state
+    if (state.active == 'p' && me->self.id != state.new_id) { //&& state.new_id == id) {
 
         state_t state_ptr = NULL;
         xbt_dynar_pop(me->states, &state_ptr);
