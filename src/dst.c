@@ -5488,7 +5488,7 @@ static void add_pred(node_t me, int stage, int id) {
     state = get_state(me);
 
     // only an add_pred sent by new coming node will pop out current state
-    if (state.active == 'p' && me->self.id != state.new_id) { //&& state.new_id == id) {
+    if (state.active == 'p' && me->self.id != state.new_id) { // && state.new_id == id) {
 
         state_t state_ptr = NULL;
         xbt_dynar_pop(me->states, &state_ptr);
