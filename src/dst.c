@@ -1737,6 +1737,7 @@ static void check_cs(node_t me, int sender_id) {
 static void launch_fork_process(node_t me, msg_task_t task) {
 
     XBT_IN();
+    e_val_ret_t val_ret = OK;
     req_data_t req = MSG_task_get_data(task);
 
     if (req->type == TASK_CNX_REQ ||
@@ -1764,6 +1765,10 @@ static void launch_fork_process(node_t me, msg_task_t task) {
 
                     case TASK_CS_REQ:
                         snprintf(proc_label, 10, "Br_Cs_Req");
+                        val_ret = cs_req(me,
+                                req->args.broadcast.args->cs_req.sender_id,
+                                req->args.broadcast.args->cs_req.new_node_id,
+                                req->args.broadcast.args->cs_req.cs_new_node_prio);
                         break;
 
                     default:
@@ -1773,24 +1778,63 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                 break;
         }
 
-        set_fork_mailbox(me->self.id,
-                req->args.cnx_req.new_node_id,
-                proc_label,
-                proc_data->proc_mailbox);
+        if (val_ret == OK) {
 
-        XBT_VERB("Node %d: [:%d] create fork process (%s), task = %p, mailbox = %s",
-                me->self.id,
-                __LINE__,
-                proc_label,
-                task,
-                proc_data->proc_mailbox);
+            set_fork_mailbox(me->self.id,
+                    req->args.cnx_req.new_node_id,
+                    proc_label,
+                    proc_data->proc_mailbox);
 
-        MSG_process_create(proc_data->proc_mailbox,
-                proc_handle_task,
-                proc_data,
-                MSG_host_self());
+            XBT_VERB("Node %d: [%s:%d] create fork process (%s), task = %p, mailbox = %s",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    proc_label,
+                    task,
+                    proc_data->proc_mailbox);
 
-        XBT_VERB("Node %d: process created", me->self.id);
+            MSG_process_create(proc_data->proc_mailbox,
+                    proc_handle_task,
+                    proc_data,
+                    MSG_host_self());
+
+            XBT_VERB("Node %d: process created", me->self.id);
+        } else {
+
+            XBT_VERB("Node %d: [%s:%d] not available - process not created",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__);
+
+            if (strcmp(proc_data->proc_mailbox, req->answer_to) != 0) {
+
+                u_ans_data_t answer;
+                answer.handle.val_ret = val_ret;
+                answer.handle.val_ret_id = me->self.id;
+                answer.handle.br_type = req->args.broadcast.type;
+
+                msg_error_t res = send_ans_sync(me,
+                        req->args.broadcast.new_node_id,
+                        req->type,
+                        req->sender_id,
+                        req->answer_to,
+                        answer);
+
+                XBT_VERB("Node %d: [%s:%d] answer '%s' sent to %s",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        debug_ret_msg[val_ret],
+                        req->answer_to);
+            } else {
+
+                XBT_VERB("Node %d: [%s:%d] No answer after broadcast - answer_to: %s",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        req->answer_to);
+            }
+        }
     } else {
 
         // ... or by itself
@@ -2337,6 +2381,7 @@ static e_val_ret_t set_update(node_t me, int new_id) {
     display_states(me, 'V');
 
     // test = 1 is this set_update is the one that's expected
+    // TODO : si test = 0, il faudrait lancer cs_req pour éventuellement forcer le passage si plus prioritaire
     if (((me->cs_req == 1 && me->cs_new_id == new_id) || (me->cs_req == 0)) &&
         ((state.active == 'a') || (state.active == 'u' && state.new_id == new_id))) {
 
@@ -2346,8 +2391,10 @@ static e_val_ret_t set_update(node_t me, int new_id) {
         test = 0;
     }
 
-    XBT_VERB("Node %d: '%c'/%d - in set_update() : test = %d - new_id = %d",
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d - test = %d - new_id = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             state.active,
             state.new_id,
             test,
@@ -4164,7 +4211,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
     switch(args.broadcast.type) {
 
         case TASK_SET_UPDATE:
-            set_update(me, args.broadcast.args->set_update.new_id);
+            set_update(me, args.broadcast.args->set_update.new_id); //TODO: ne pas poursuivre si ret = NOK
             break;
 
         case TASK_SET_ACTIVE:
@@ -10186,13 +10233,12 @@ static int proc_handle_task(int argc, char* argv[]) {
             __LINE__,
             proc_data->proc_mailbox);
 
-    XBT_DEBUG("[:%d] in %s - mailbox = '%s' - task = %p - %p",
-            __LINE__,
+    XBT_DEBUG("[%s:%d] - mailbox = '%s' - task = %p - %p",
             __FUNCTION__,
+            __LINE__,
             proc_data->proc_mailbox,
             proc_data->task,
             proc_task);
-
 
     //task_free(&proc_data->task);
 
