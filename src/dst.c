@@ -2386,7 +2386,7 @@ static e_val_ret_t set_update(node_t me, int new_id, int new_node_prio) {
     do {
         nb_loops--;
 
-        // test = 1 is this set_update is the one that's expected
+        // test = 1 if this set_update is the one that's expected
         if (((me->cs_req == 1 && me->cs_new_id == new_id) || (me->cs_req == 0)) &&
                 ((state.active == 'a') || (state.active == 'u' && state.new_id == new_id))) {
 
@@ -2396,7 +2396,7 @@ static e_val_ret_t set_update(node_t me, int new_id, int new_node_prio) {
             test = 0;
         }
 
-        // TODO : si test = 0, il faudrait lancer cs_req pour éventuellement forcer le passage si plus prioritaire
+        // if test = 0, check priority
         if (new_node_prio > -1 && test == 0 && nb_loops > 0){
 
             cs_req(me, me->self.id, new_id, new_node_prio);
@@ -8314,15 +8314,7 @@ static void load_balance(node_t me, int contact_id) {
                     /* tells the new rep he's got a new predecessor: me */
                     if (new_nodes[idx].id != me->brothers[i][j].id) {
 
-                        u_req_args.del_pred.stage = i;
-                        u_req_args.del_pred.pred2del_id = me->self.id;
-                        u_req_args.del_pred.new_node_id = me->self.id;
-
-                        res = send_msg_async(me,
-                                TASK_DEL_PRED,
-                                me->brothers[i][j].id,
-                                u_req_args);
-
+                        // important : add_pred before del_pred so that me is always the predecessor of a node
                         u_req_args.add_pred.stage = i;
                         u_req_args.add_pred.new_pred_id = me->self.id;
                         u_req_args.add_pred.new_node_id = me->self.id;
@@ -8333,6 +8325,15 @@ static void load_balance(node_t me, int contact_id) {
                                 new_nodes[idx].id,
                                 u_req_args,
                                 &answer_data);
+
+                        u_req_args.del_pred.stage = i;
+                        u_req_args.del_pred.pred2del_id = me->self.id;
+                        u_req_args.del_pred.new_node_id = me->self.id;
+
+                        res = send_msg_async(me,
+                                TASK_DEL_PRED,
+                                me->brothers[i][j].id,
+                                u_req_args);
 
                         // add pred failure
                         xbt_assert(res == MSG_OK,
