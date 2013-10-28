@@ -456,6 +456,7 @@ typedef struct {
 typedef struct {
 
     int new_id;
+    int new_node_prio;
 } s_task_set_update_t;          // set node state as 'u' (update)
 
 typedef struct {
@@ -735,7 +736,7 @@ static void         make_copy_preds(node_t me,
 static void         make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task);
 static s_state_t    get_state(node_t me);
 static void         set_active(node_t me, int new_id);
-static e_val_ret_t  set_update(node_t me, int new_id);
+static e_val_ret_t  set_update(node_t me, int new_id, int new_node_prio);
 static void         set_state(node_t me, int new_id, char active);
 static void         pop_state(node_t me, int new_id, char active);
 static int          check(node_t me);
@@ -1494,7 +1495,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
     //char test = 1;
 
     /* to avoid dealocks : if CS has been requested and not answered for long
-       ago, cancel this request */
+       ago, or if new node's priority is lower, cancel this request */
 
     if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
         (cs_new_node_prio < me->cs_new_node_prio || test == 1)) {        //TODO: à vérifier
@@ -2365,31 +2366,42 @@ static void set_active(node_t me, int new_id) {
  * \brief Set current node state as 'update'
  * \param me the current node
  * \param new_id id of the new coming node that triggered this state change
- * \return A value indicating if set_update succeded or has to be stored
+ * \param new_node_prio new node's priority (ignored if -1)
+ * \return A value indicating if set_update succeded or not
  */
 
-static e_val_ret_t set_update(node_t me, int new_id) {
+static e_val_ret_t set_update(node_t me, int new_id, int new_node_prio) {
 
     XBT_IN();
 
     s_state_t state = get_state(me);
     e_val_ret_t val_ret;
     char test = 0;
+    int nb_loops = 2;
 
-    XBT_VERB("Node %d: in set_update()", me->self.id);
+    XBT_VERB("Node %d: [%s:%d]", me->self.id, __FUNCTION__, __LINE__);
     display_sc(me, 'V');
     display_states(me, 'V');
 
-    // test = 1 is this set_update is the one that's expected
-    // TODO : si test = 0, il faudrait lancer cs_req pour éventuellement forcer le passage si plus prioritaire
-    if (((me->cs_req == 1 && me->cs_new_id == new_id) || (me->cs_req == 0)) &&
-        ((state.active == 'a') || (state.active == 'u' && state.new_id == new_id))) {
+    do {
+        nb_loops--;
 
-        test = 1;
-    } else {
+        // test = 1 is this set_update is the one that's expected
+        if (((me->cs_req == 1 && me->cs_new_id == new_id) || (me->cs_req == 0)) &&
+                ((state.active == 'a') || (state.active == 'u' && state.new_id == new_id))) {
 
-        test = 0;
-    }
+            test = 1;
+        } else {
+
+            test = 0;
+        }
+
+        // TODO : si test = 0, il faudrait lancer cs_req pour éventuellement forcer le passage si plus prioritaire
+        if (new_node_prio > -1 && test == 0 && nb_loops > 0){
+
+            cs_req(me, me->self.id, new_id, new_node_prio);
+        }
+    } while (new_node_prio > -1 && test == 0 && nb_loops > 0);
 
     XBT_VERB("Node %d: [%s:%d] '%c'/%d - test = %d - new_id = %d",
             me->self.id,
@@ -4211,11 +4223,11 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
     switch(args.broadcast.type) {
 
         case TASK_SET_UPDATE:
-            set_update(me, args.broadcast.args->set_update.new_id); //TODO: ne pas poursuivre si ret = NOK
+            set_update(me, args.broadcast.args->set_update.new_id, args.broadcast.args->set_update.new_node_prio); //TODO: ne pas poursuivre si ret = NOK
             break;
 
         case TASK_SET_ACTIVE:
-            set_update(me, args.broadcast.args->set_active.new_id);
+            set_update(me, args.broadcast.args->set_active.new_id, -1);  //TODO: ne pas oublier
             break;
 
         case TASK_POP_STATE:
@@ -5002,6 +5014,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                     args.broadcast.args = xbt_new0(u_req_args_t, 1);
                     args.broadcast.args->set_update.new_id = new_node_id;
+                    args.broadcast.args->set_update.new_node_prio = cs_new_node_prio;
                     make_broadcast_task(me, args, &task_sent);
 
                     val_ret = handle_task(me, &task_sent);
@@ -5124,7 +5137,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         // insert new node if request has not been rejected
         if (val_ret != UPDATE_NOK) {
 
-            set_update(me, new_node_id);    // stay at 'u' until the end
+            set_update(me, new_node_id, cs_new_node_prio);    // stay at 'u' until the end
 
             state = get_state(me);
             XBT_INFO("Node %d: '%c'/%d - **** INSERTING NODE %d ... ****",
@@ -5298,7 +5311,7 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
 
     /* current node is being updated (normaly already at 'u' by broadcast from
        connection_request(), but can be stored and delayed) */
-    set_update(me, new_node_id);
+    set_update(me, new_node_id, -1);
 
     s_state_t state = get_state(me);
     XBT_VERB("Node %d: '%c'/%d - split_request() ... - new_node = %d",
@@ -6124,7 +6137,7 @@ static void connect_splitted_groups(node_t me,
 
     /* current node is being updated (normaly already at 'u' by broadcast from
        connection_request(), but can be stored and delayed) */
-    set_update(me, new_node_id);   //TODO!! : à vérifier
+    set_update(me, new_node_id, -1);   //TODO!! : à vérifier
 
     s_state_t state = get_state(me);
     XBT_VERB("Node %d: '%c'/%d - connect_splitted_groups() ... - new_node = %d",
@@ -6334,7 +6347,7 @@ static void split(node_t me, int stage, int new_node_id) {
     XBT_IN();
 
     // splitting node isn't available for requests
-    set_update(me, new_node_id);
+    set_update(me, new_node_id, -1);
     s_state_t state = get_state(me);
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
@@ -9652,7 +9665,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_SET_UPDATE:
-            val_ret = set_update(me, rcv_args.set_update.new_id);
+            val_ret = set_update(me, rcv_args.set_update.new_id, rcv_args.set_update.new_node_prio);
 
             // send the answer back
             if (rcv_req->sender_id != me->self.id) {
