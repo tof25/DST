@@ -4724,7 +4724,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
     }
 
     // push state 'g' if current node is active
-    if (state.active == 'a') {
+    if (state.active == 'a' || state.active == 'p') {
 
         set_state(me, new_node_id, 'g');
     }
@@ -4789,6 +4789,33 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
 
         data_ans_free(me, &rcv_ans_data);
     }
+
+    // remove 'g' state
+    int idx = state_search(me, 'g', new_node_id);
+    if (idx > -1) {
+
+        XBT_DEBUG("Node %d: [%s:%d] idx = %d",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                idx);
+
+        xbt_dynar_remove_at(me->states, idx, NULL);
+    }
+
+    XBT_VERB("Node %d: [%s:%d] remove 'g' state for new_id %d",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            new_node_id);
+
+    display_states(me, 'V');
+
+    xbt_assert(xbt_dynar_length(me->states) > 0,
+            "Node %d: (in %s:%d) dynar states is empty !",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__);
 
     XBT_OUT();
     return answer;
@@ -5544,9 +5571,31 @@ static void add_pred(node_t me, int stage, int id) {
     /* if current state is 'p', then it's an add_pred coming from load_balance() :
        just pops out this state */
 
-    //TODO: afficher les états ici avant le pop
+    //TODO: afficher les états ici avant le remove
     state = get_state(me);
 
+    // remove 'p' state
+    int idx = state_search(me, 'p', id);
+    if (idx > -1) {
+
+        XBT_DEBUG("Node %d: [%s:%d] idx = %d",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                idx);
+
+        xbt_dynar_remove_at(me->states, idx, NULL);
+    }
+
+    XBT_VERB("Node %d: [%s:%d] remove 'p' state for new_id %d",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            id);
+
+    display_states(me, 'V');
+
+    /*
     // only an add_pred sent by new coming node will pop out current state
     if (state.active == 'p' && me->self.id != state.new_id) { // && state.new_id == id) {
 
@@ -5563,6 +5612,7 @@ static void add_pred(node_t me, int stage, int id) {
                 new_state.active,
                 new_state.new_id);
     }
+    */
 
     XBT_OUT();
 }
@@ -8326,6 +8376,14 @@ static void load_balance(node_t me, int contact_id) {
                                 u_req_args,
                                 &answer_data);
 
+                        // add pred failure
+                        xbt_assert(res == MSG_OK,
+                                "Node %d: failed to add me as a new predecessor for"
+                                " stage %d to node %d",
+                                me->self.id,
+                                i,
+                                new_nodes[idx].id);
+
                         u_req_args.del_pred.stage = i;
                         u_req_args.del_pred.pred2del_id = me->self.id;
                         u_req_args.del_pred.new_node_id = me->self.id;
@@ -8334,14 +8392,6 @@ static void load_balance(node_t me, int contact_id) {
                                 TASK_DEL_PRED,
                                 me->brothers[i][j].id,
                                 u_req_args);
-
-                        // add pred failure
-                        xbt_assert(res == MSG_OK,
-                                "Node %d: failed to add me as a new predecessor for"
-                                " stage %d to node %d",
-                                me->self.id,
-                                i,
-                                new_nodes[idx].id);
 
                         data_ans_free(me, &answer_data);
                     }
@@ -8386,6 +8436,7 @@ static void load_balance(node_t me, int contact_id) {
     }                   // next stage
 
     // remove 'g' state of asked nodes
+    /*
     for (i = 0; i < k; i++) {
 
         u_req_args.end_get_rep.new_node_id = me->self.id;
@@ -8401,6 +8452,7 @@ static void load_balance(node_t me, int contact_id) {
                 me->self.id,
                 get_rep_nodes[i]);
     }
+    */
 
     xbt_free(get_rep_nodes);
 
@@ -9956,7 +10008,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             display_states(me, 'V');
 
             xbt_assert(xbt_dynar_length(me->states) > 0,
-                    "Node %d: (in get_rep) dynar states is empty !",
+                    "Node %d: (in END_GET_REP) dynar states is empty !",
                     me->self.id);
 
             /*
