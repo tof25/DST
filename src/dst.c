@@ -2340,8 +2340,10 @@ static void set_active(node_t me, int new_id) {
     // get current state
     if (idx == -1  &&
         ((state.active == 'u' && (state.new_id == new_id || state.new_id == -1)) ||
-             (state.active == 'l' && state.new_id == new_id) ||
-             (state.active != 'u' && state.active != 'l'))) {
+             //(state.active == 'l' && state.new_id == new_id) ||
+             (state_search(me, 'l', new_id) > -1) ||
+             //(state.active != 'u' && state.active != 'l'))) {
+             (state.active != 'u' && state_search(me, 'l', -1) == -1))) {
 
         xbt_dynar_reset(me->states);
         set_state(me, new_id, 'a');
@@ -2412,7 +2414,8 @@ static e_val_ret_t set_update(node_t me, int new_id, int new_node_prio) {
             test,
             new_id);
 
-    if (test || (state.active == 'g')) {
+    //if (test || (state.active == 'g')) {
+    if (test || (state_search(me, 'g', -1) > -1)) {
 
         // push new state 'u'
         set_state(me, new_id, 'u');
@@ -2421,7 +2424,8 @@ static e_val_ret_t set_update(node_t me, int new_id, int new_node_prio) {
 
         if (state.active != 'a') {
 
-            if (state.active == 'l') {
+            //if (state.active == 'l') {
+            if (state_search(me, 'l', -1) > -1) {
 
                 val_ret = UPDATE_OK;
             } else {
@@ -2464,22 +2468,28 @@ static void set_state(node_t me, int new_id, char active) {
     //XBT_IN();
 
     /*
-       XBT_DEBUG("Node %d: (before set) Dynar states length: %u",
-       me->self.id,
-       xbt_dynar_length(me->states));
-       */
+    if (state.active != active || state.new_id != new_id) {
+    */
 
     s_state_t state = get_state(me);
-    if (state.active != active || state.new_id != new_id) {
+    if (state_search(me, active, new_id) == -1) {
 
         state_t state_ptr = xbt_new0(s_state_t, 1);
         state_ptr->active = active;
         state_ptr->new_id = new_id;
-        xbt_dynar_push(me->states, &state_ptr);
+        if (state.active == 'a' || active == 'u' || active == 'b') {
+
+            xbt_dynar_push(me->states, &state_ptr);
+        } else {
+
+            xbt_dynar_unshift(me->states, &state_ptr);
+        }
     } else {
 
-        XBT_VERB("Node %d: Current state already set. '%c'/%d",
+        XBT_VERB("Node %d: [%s:%d] Current state already set. '%c'/%d",
                 me->self.id,
+                __FUNCTION__,
+                __LINE__,
                 active,
                 new_id);
     }
@@ -2490,12 +2500,6 @@ static void set_state(node_t me, int new_id, char active) {
             state.active,
             state.new_id,
             new_id);
-
-    /*
-       XBT_DEBUG("Node %d: (after set) Dynar states length: %u",
-       me->self.id,
-       xbt_dynar_length(me->states));
-       */
 
     //XBT_OUT();
 }
@@ -4717,14 +4721,15 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
 
     /* don't run get_rep if current node is being updated
        don't allow cascading calls (get_rep interrupted by get_rep) */
-    if (state.active == 'u' || state.active == 'g') {
+    //if (state.active == 'u' || state.active == 'g') {
+    if (state.active == 'u' || state_search(me, 'g', -1) > -1) {
 
         XBT_OUT();
         return answer;
     }
 
     // push state 'g' if current node is active
-    if (state.active == 'a' || state.active == 'p') {
+    if (state.active == 'a' || state.active == 'p') {       //TODO : à vérifier
 
         set_state(me, new_node_id, 'g');
     }
@@ -5358,8 +5363,6 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
     int chk = 0;
     int nb_loop = 0;
 
-    //if (1 == 0) {
-    //if (me->brothers[stage][0].id != me->self.id) {
     if (me->brothers[0][0].id != me->self.id) {
 
         // me isn't the leader: transfer the split request to the leader
@@ -6760,14 +6763,16 @@ static void split(node_t me, int stage, int new_node_id) {
     }
 
     // wait until state is not 'p' anymore to launch local call of connect_splitted_groups
+    int found = -1;
     do {
-        state = get_state(me);
-        if (state.active == 'p') {
+        found = state_search(me, 'p', -1);
+        if (found > -1) {
 
             MSG_process_sleep(0.1);
         }
-    } while (state.active == 'p');
+    } while (found > -1);
 
+    state = get_state(me);
     XBT_VERB("Node %d: [%s:%d] '%c'/%d - local call of connect_splitted_groups",
             me->self.id,
             __FUNCTION__,
@@ -9030,7 +9035,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_NEW_BROTHER_RCV:
-            if (state.active == 'l' || state.active == 'u') {
+            //if (state.active == 'l' || state.active == 'u') {
+            if (state.active == 'u' || state_search(me, 'l', -1) > -1) {
 
                 // store task
                 XBT_VERB("Node %d - active = '%c': store task for later"
@@ -9102,9 +9108,14 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
         case TASK_CNX_GROUPS:
 
-            if (state.active == 'b' ||
-                    state.active == 'l' ||
-                    state.active == 'p') {
+            if (state_search(me, 'u', rcv_args.cnx_groups.new_node_id) == -1 &&
+                (state.active == 'b' ||
+                 state_search(me, 'l', -1) > -1 ||
+                 state_search(me, 'p', -1) > -1)) {
+
+            /*
+            if (state.active == 'b' || state.active == 'l' || state.active == 'p') {
+            */
 
                 // store task (CNX_GROUPS isn't broadcasted)
                 XBT_VERB("Node %d - active = '%c': store task for later execution",
@@ -9139,7 +9150,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_SPLIT:
-            if (state.active == 'b' || state.active == 'l' || state.active == 'g') {
+            //if (state.active == 'b' || state.active == 'l' || state.active == 'g') {
+            if (state.active == 'b' || state_search(me, 'l', -1) > -1 || state_search(me, 'g', -1) > -1) {
 
                 // store broadcasted task
                 val_ret = STORED;
