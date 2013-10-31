@@ -6384,7 +6384,7 @@ static void connect_splitted_groups(node_t me,
             new_node_id);
 
     display_rout_table(me, 'V');
-    display_preds(me, 'V');
+    display_preds(me, 'D');
     XBT_OUT();
 }
 
@@ -6579,7 +6579,7 @@ static void split(node_t me, int stage, int new_node_id) {
     // set and store DST infos
     set_n_store_infos(me);
 
-    display_preds(me, 'V');
+    display_preds(me, 'D');
 
     // tells every upper stage pred it's got a new member
     int ans_cpt = me->pred_index[stage + 1];
@@ -9151,7 +9151,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
         case TASK_SPLIT:
             //if (state.active == 'b' || state.active == 'l' || state.active == 'g') {
-            if (state.active == 'b' || state_search(me, 'l', -1) > -1 || state_search(me, 'g', -1) > -1) {
+            if (state_search(me, 'u', rcv_args.cnx_groups.new_node_id) == -1 &&
+                    (state.active == 'b' || state_search(me, 'l', -1) > -1 || state_search(me, 'g', -1) > -1)) {
 
                 // store broadcasted task
                 val_ret = STORED;
@@ -10075,7 +10076,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
         // set and store DST infos
         set_n_store_infos(me);
 
-        display_preds(me, 'V');
+        display_preds(me, 'D');
     }
 
     XBT_DEBUG("Node %d end of handle_task(): val_ret = '%s'",
