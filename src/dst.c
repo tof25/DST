@@ -1815,6 +1815,9 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                     __FUNCTION__,
                     __LINE__);
 
+            task_free(&task);
+            xbt_dynar_free(&(proc_data->async_answers));
+            xbt_dynar_free(&(proc_data->sync_answers));
             xbt_free(proc_data);
 
             // FOR DEBUGGING
