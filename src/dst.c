@@ -67,7 +67,7 @@ static s_f_node_t *failed_nodes = NULL;     // array of nodes that couldn't join
 static int compteur[TYPE_NBR] = {0};
 static int compt_proc = 0;
 static int compt_proc_rest = 0;
-static int cpt_loop[100] = {0};
+static int cpt_loop_proc[100] = {0};
 
 //static int *g_cpt = NULL;
 
@@ -1749,6 +1749,11 @@ static void launch_fork_process(node_t me, msg_task_t task) {
 
         // handle the received request with a fork process ..
         proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
+
+        // FOR DEBUGGING
+        compt_proc_rest++;
+        compt_proc++;
+
         proc_data->node = me;
         proc_data->task = task;
         proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
@@ -1797,10 +1802,6 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                     task,
                     proc_data->proc_mailbox);
 
-            // for debugging
-            compt_proc_rest++;
-            compt_proc++;
-
             MSG_process_create(proc_data->proc_mailbox,
                     proc_handle_task,
                     proc_data,
@@ -1813,6 +1814,11 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                     me->self.id,
                     __FUNCTION__,
                     __LINE__);
+
+            xbt_free(proc_data);
+
+            // FOR DEBUGGING
+            compt_proc_rest--;
 
             if (strcmp(proc_data->proc_mailbox, req->answer_to) != 0) {
 
@@ -2632,6 +2638,12 @@ static void call_run_tasks_queue(node_t me, int new_id, char c) {
 
     proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
     proc_data->node = me;
+
+        /* FOR DEBUGGING
+        compt_proc_rest++;
+        compt_proc++;
+        */
+
     proc_data->task = NULL;
     proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
     proc_data->sync_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
@@ -2642,10 +2654,6 @@ static void call_run_tasks_queue(node_t me, int new_id, char c) {
             proc_data->proc_mailbox);
 
     XBT_VERB("Node %d: create fork process (run_tasks_queue)", me->self.id);
-
-    // for debugging
-    compt_proc++;
-    compt_proc_rest++;
 
     MSG_process_create(proc_data->proc_mailbox,
             proc_run_tasks,
@@ -4472,11 +4480,17 @@ static void init(node_t me) {
     // set process data
     proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
 
+        /* FOR DEBUGGING
+        compt_proc_rest++;
+        compt_proc++;
+        */
+
     get_mailbox(me->self.id, proc_data->proc_mailbox);
     proc_data->node = NULL;
     proc_data->task = NULL;
 
     MSG_process_set_data(MSG_process_self(), proc_data);
+    MSG_process_set_data_cleanup(proc_data_cleanup);
 
     // set current state
     me->states = xbt_dynar_new(sizeof(state_t), &xbt_free_ref);
@@ -10457,15 +10471,16 @@ static int proc_run_tasks(int argc, char* argv[]) {
 static void proc_data_cleanup(void* arg) {
     XBT_IN();
 
-    // for debugging
-    compt_proc_rest--;
-
     proc_data_t proc_data = (proc_data_t)arg;
 
     xbt_dynar_free(&(proc_data->async_answers));
     xbt_dynar_free(&(proc_data->sync_answers));
 
     xbt_free(proc_data);
+
+    // FOR DEBUGGING
+    compt_proc_rest--;
+
     arg = NULL;
 
     XBT_OUT();
