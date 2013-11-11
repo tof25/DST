@@ -1750,10 +1750,6 @@ static void launch_fork_process(node_t me, msg_task_t task) {
         // handle the received request with a fork process ..
         proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
 
-        // FOR DEBUGGING
-        compt_proc_rest++;
-        compt_proc++;
-
         proc_data->node = me;
         proc_data->task = task;
         proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
@@ -1849,9 +1845,6 @@ static void launch_fork_process(node_t me, msg_task_t task) {
             xbt_dynar_free(&(proc_data->async_answers));
             xbt_dynar_free(&(proc_data->sync_answers));
             xbt_free(proc_data);
-
-            // FOR DEBUGGING
-            compt_proc_rest--;
 
         }
     } else {
@@ -2643,11 +2636,6 @@ static void call_run_tasks_queue(node_t me, int new_id, char c) {
 
     proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
     proc_data->node = me;
-
-        /* FOR DEBUGGING
-        compt_proc_rest++;
-        compt_proc++;
-        */
 
     proc_data->task = NULL;
     proc_data->async_answers = xbt_dynar_new(sizeof(recp_rec_t), &xbt_free_ref);
@@ -4013,7 +4001,6 @@ static msg_error_t send_msg_async(node_t me,
     e_task_type_t mem_br_type = 0;
     if (mem_type == TASK_BROADCAST) { mem_br_type = args.broadcast.type; }
 
-
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
 
     // init request data
@@ -4484,11 +4471,6 @@ static void init(node_t me) {
 
     // set process data
     proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
-
-        /* FOR DEBUGGING
-        compt_proc_rest++;
-        compt_proc++;
-        */
 
     get_mailbox(me->self.id, proc_data->proc_mailbox);
     proc_data->node = NULL;
@@ -10483,9 +10465,6 @@ static void proc_data_cleanup(void* arg) {
     xbt_dynar_free(&(proc_data->sync_answers));
 
     xbt_free(proc_data);
-
-    // FOR DEBUGGING
-    compt_proc_rest--;
 
     arg = NULL;
 
