@@ -1815,14 +1815,6 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                     __FUNCTION__,
                     __LINE__);
 
-            task_free(&task);
-            xbt_dynar_free(&(proc_data->async_answers));
-            xbt_dynar_free(&(proc_data->sync_answers));
-            xbt_free(proc_data);
-
-            // FOR DEBUGGING
-            compt_proc_rest--;
-
             if (strcmp(proc_data->proc_mailbox, req->answer_to) != 0) {
 
                 u_ans_data_t answer;
@@ -1851,6 +1843,16 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                         __LINE__,
                         req->answer_to);
             }
+
+            // free unused memory
+            task_free(&(proc_data->task));
+            xbt_dynar_free(&(proc_data->async_answers));
+            xbt_dynar_free(&(proc_data->sync_answers));
+            xbt_free(proc_data);
+
+            // FOR DEBUGGING
+            compt_proc_rest--;
+
         }
     } else {
 
@@ -9146,6 +9148,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             if (state.active == 'b' || state.active == 'l' || state.active == 'p') {
             */
 
+                display_states(me, 'V');
                 // store task (CNX_GROUPS isn't broadcasted)
                 XBT_VERB("Node %d - active = '%c': store task for later execution",
                         me->self.id,
