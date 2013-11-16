@@ -2271,7 +2271,10 @@ static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) 
 
     XBT_IN();
 
+    //compteur[args.broadcast.type]++;
+
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
+    XBT_VERB("Node %d: REQ_DATA = %p", me->self.id, req_data);
     req_data->type = TASK_BROADCAST;
     req_data->sender_id = me->self.id;
     req_data->recipient_id = me->self.id;
@@ -3140,9 +3143,10 @@ static void data_req_free(node_t me, req_data_t *req_data) {
 
     if (*req_data != NULL) {
 
-        XBT_DEBUG("Node %d: free data '%s' from %d to %d",
+        XBT_DEBUG("Node %d: free data '%s' - %p - from %d to %d",
                 me->self.id,
                 debug_msg[(*req_data)->type],
+                *req_data,
                 (*req_data)->sender_id,
                 (*req_data)->recipient_id);
 
@@ -4302,6 +4306,8 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
             } else {
 
+                //compteur[args.broadcast.type]++;
+
                 // remote call
                 msg_error_t res = send_msg_async(me,
                         TASK_BROADCAST,
@@ -4337,6 +4343,9 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         } else {
 
             ans_cpt = 1;
+
+            //compteur[args.broadcast.type]++;
+
             // remote call
             msg_error_t res = send_msg_async(me,
                     TASK_BROADCAST,
@@ -4379,6 +4388,9 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             // return NOK if any of both answers is NOK
             if (task_sent != NULL) {
 
+                req_data = MSG_task_get_data(task_sent);
+                //compteur[req_data->args.broadcast.type]--;
+
                 local_ret = handle_task(me, &task_sent);
                 if (local_ret == UPDATE_NOK || ret == UPDATE_NOK) {
 
@@ -4408,6 +4420,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         if (task_sent != NULL) {
 
             req_data = MSG_task_get_data(task_sent);
+            //compteur[req_data->args.broadcast.type]--;
             data_req_free(me, &req_data);
         }
         task_free(&task_sent);
@@ -9569,6 +9582,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
                         if (val_ret != STORED) {
 
+                            //compteur[rcv_args.broadcast.type]--;
                             data_req_free(me, &rcv_req);
                         }
                         // TODO : voir si cette libération ne pose pas de
