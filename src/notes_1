@@ -98,3 +98,20 @@ CONCLUSION : 3150 exécute Get_Rep avant qu'il soit splitté et répond 1957 à 
 
 REMARQUES : l'état 'p' ne semble pas dépilé par le bon Add_Pred
             END_GET_REP trop tôt et pas du bon noeud ?
+
+________________________________________________________________________________________________________________________
+
+Autre cas d'incohérence
+************************
+
++-----------------------+    +-----------------+    +-----------+
+| 961 | 842 | 272 | 824 |    |   6 | 658 | 884 |    | 177 | 819 |
++-----------------------+    +-----------------+    +-----------+
+
+Arrivée de 696 via 961 ==> split des 4 membres
+884 est en load_balance à ce moment, il remplace 961 par 272 à l'étage 1
+
+Lors du split de 272, 884 n'est pas encore son précédesseur ==> il ne reçoit pas connect_splitted_groups
+Lors du split de 961, 884 n'est plus son prédécesseur ==> il ne reçoit pas connect_splitted_groups
+
+Ni 961 ni 272 ne peuvent savoir que 884 est en 'l' ...
