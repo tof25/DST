@@ -108,10 +108,31 @@ Autre cas d'incohérence
 | 961 | 842 | 272 | 824 |    |   6 | 658 | 884 |    | 177 | 819 |
 +-----------------------+    +-----------------+    +-----------+
 
+884 est arrivé par 6
 Arrivée de 696 via 961 ==> split des 4 membres
 884 est en load_balance à ce moment, il remplace 961 par 272 à l'étage 1
 
 Lors du split de 272, 884 n'est pas encore son précédesseur ==> il ne reçoit pas connect_splitted_groups
 Lors du split de 961, 884 n'est plus son prédécesseur ==> il ne reçoit pas connect_splitted_groups
 
-Ni 961 ni 272 ne peuvent savoir que 884 est en 'l' ...
+6 envoie des SET_STATE 'p' à toute sa table (sauf étage 0)
+
+8487.864    -> 961 passe à 'p'/884
+
+8491.897    ->                      884 envoie des ADD_PRED à toute sa table reçue de 6 avant load_balance()
+
+8493.264    -> 961 add_pred 884
+            -> 961 plus 'p'/884
+8499.097    ->                      884 envoie GET_REP à 961
+8501.264    -> 961 start GET_REP
+8508.988    ->                                                      272 fini SPLIT et diffuse CNX_GR
+                                                                        884 n'est pas encore pred
+8509.264    -> 961 envoie réponse GET_REP à 884
+8509.271    ->                      884 reçoit réponse GET_REP de 961
+                                    884 envoie ADD_PRED à 272
+8510.175    ->                                                      272 add_pred 884
+8516.264    -> 961 del_pred 884
+8517.090    -> 961 fini SPLIT et
+                   diffuse CNX_GR
+                   884 n'est plus pred de 961
+
