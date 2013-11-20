@@ -4760,8 +4760,13 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
         set_state(me, new_node_id, 'g');
     }
 
-    XBT_VERB("Node %d: '%c'/%d - get_rep() ... - new_node = %d",
+    // set self state to 'p' right now in case me would be chosen
+    set_state(me, new_node_id, 'p');
+
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d - new_node = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             state.active,
             state.new_id,
             new_node_id);
@@ -4778,7 +4783,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
     u_req_args.nb_pred.new_node_id = new_node_id;
 
     int f;
-    for (f = 0; f < me->bro_index[0]; f+=2) {       // take only brothers that will stay in case of SPLIT
+    for (f = 0; f < me->bro_index[0]; f+=2) {       // take only brothers that will stay for sure (in case of SPLIT)
 
         if (me->brothers[0][f].id == me->self.id) {
 
@@ -4832,13 +4837,13 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
                 idx);
 
         xbt_dynar_remove_at(me->states, idx, NULL);
-    }
 
-    XBT_VERB("Node %d: [%s:%d] remove 'g' state for new_id %d",
-            me->self.id,
-            __FUNCTION__,
-            __LINE__,
-            new_node_id);
+        XBT_VERB("Node %d: [%s:%d] 'g' state removed for new_id %d",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                new_node_id);
+    }
 
     display_states(me, 'V');
 
@@ -5614,13 +5619,13 @@ static void add_pred(node_t me, int stage, int id) {
                 idx);
 
         xbt_dynar_remove_at(me->states, idx, NULL);
-    }
 
-    XBT_VERB("Node %d: [%s:%d] remove 'p' state for new_id %d",
-            me->self.id,
-            __FUNCTION__,
-            __LINE__,
-            id);
+        XBT_VERB("Node %d: [%s:%d] 'p' state removed for new_id %d",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                id);
+    }
 
     display_states(me, 'V');
 

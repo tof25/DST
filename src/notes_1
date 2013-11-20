@@ -108,7 +108,7 @@ Autre cas d'incohérence
 | 961 | 842 | 272 | 824 |    |   6 | 658 | 884 |    | 177 | 819 |
 +-----------------------+    +-----------------+    +-----------+
 
-884 est arrivé par 6
+884 fini d'arriver par 6
 Arrivée de 696 via 961 ==> split des 4 membres
 884 est en load_balance à ce moment, il remplace 961 par 272 à l'étage 1
 
@@ -125,7 +125,7 @@ Lors du split de 961, 884 n'est plus son prédécesseur ==> il ne reçoit pas co
             -> 961 plus 'p'/884
 8499.097    ->                      884 envoie GET_REP à 961
 8501.264    -> 961 start GET_REP
-8508.988    ->                                                      272 fini SPLIT et diffuse CNX_GR
+8508.988    ->                                                      272 fini SPLIT et diffuse CNX_GROUPS aux preds
                                                                         884 n'est pas encore pred
 8509.264    -> 961 envoie réponse GET_REP à 884
 8509.271    ->                      884 reçoit réponse GET_REP de 961
