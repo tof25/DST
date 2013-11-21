@@ -4826,6 +4826,28 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
         data_ans_free(me, &rcv_ans_data);
     }
 
+    // if me is kept, then remove 'p' states of even brothers
+    if (me->brothers[0][f].id == me->self.id) {
+
+        XBT_VERB("Node %d: [%s:%d] me is kept as representative => remove brothers' 'p' state",
+                me->self.id,
+                __FUNCTION__
+                __LINE__);
+
+        u_req_args.remove_state.new_id = new_node_id;
+        u_req_args.remove_state.state = 'p';
+
+        for (f = 0; f < me->bro_index[0]; f += 2) {
+            if (me->brothers[0][f].id != me->self.id) {
+
+                res = send_msg_async(me,
+                        TASK_REMOVE_STATE,
+                        me->brothers[0][f].id,
+                        u_req_args);
+            }
+        }
+    }
+
     // remove 'g' state
     int idx = state_search(me, 'g', new_node_id);
     if (idx > -1) {
@@ -9796,8 +9818,10 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_SET_STATE:
-            XBT_DEBUG("Node %d: before TASK_SET_STATE - active = '%c'/%u",
+            XBT_DEBUG("Node %d: [%s:%d] before TASK_SET_STATE - active = '%c'/%u",
                     me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
                     state.active,
                     state.new_id);
             display_states(me, 'D');
@@ -9806,9 +9830,45 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     rcv_args.set_state.new_id,
                     rcv_args.set_state.state);
 
+            /* if this task has not been sent by a brother, transmit it to brothers
+               (only even ones, a.k.a those which could replace the sender during get_rep() ) */
+            answer = is_brother(me, rcv_req->sender_id, rcv_args.set_state.new_id);
+            if (answer.is_brother.rep == - 1) {
+
+                XBT_VERB("Node %d: [%s:%d] TASK_SET_STATE NOT sent by brother => transmit to even brothers",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
+
+                u_req_args_t u_req_args;
+                u_req_args.set_state.new_id = rcv_args.set_state.new_id;
+                u_req_args.set_state.state = 'p';
+
+                int bro = 0;
+
+                for (bro = 0; bro < me->bro_index[0]; bro += 2) {
+
+                    if (me->brothers[0][bro].id != rcv_req->sender_id) {
+
+                        res = send_msg_async(me,
+                                TASK_SET_STATE,
+                                me->brothers[0][bro].id,
+                                u_req_args);
+                    }
+                }
+            } else {
+
+                XBT_VERB("Node %d: [%s:%d] TASK_SET_STATE sent by brother => don't transmit to even brothers",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
+            }
+
             state = get_state(me);
-            XBT_VERB("Node %d: TASK_SET_STATE done - active = '%c'/%u",
+            XBT_VERB("Node %d: [%s:%d] TASK_SET_STATE done - active = '%c'/%u",
                     me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
                     state.active,
                     state.new_id);
             display_states(me, 'V');

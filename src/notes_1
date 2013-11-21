@@ -108,9 +108,21 @@ Autre cas d'incohérence
 | 961 | 842 | 272 | 824 |    |   6 | 658 | 884 |    | 177 | 819 |
 +-----------------------+    +-----------------+    +-----------+
 
-884 fini d'arriver par 6
+884 fini d'arriver par 6 et il reçoit sa table :
++-----------------------+
+|   6 | 658 |     |     |
++-----------------------+
+| 961 |   6 | 177 |     |
++-----------------------+
+|   6 |   2 |   0 |     |
++-----------------------+
+| 641 | 293 |   6 |     |
++-----------------------+
+| 752 |   6 | 501 |     |
++-----------------------+
+
 Arrivée de 696 via 961 ==> split des 4 membres
-884 est en load_balance à ce moment, il remplace 961 par 272 à l'étage 1
+884 est en load_balance à ce moment, il est en train de remplacer 961 par 272 à l'étage 1
 
 Lors du split de 272, 884 n'est pas encore son précédesseur ==> il ne reçoit pas connect_splitted_groups
 Lors du split de 961, 884 n'est plus son prédécesseur ==> il ne reçoit pas connect_splitted_groups
@@ -136,3 +148,22 @@ Lors du split de 961, 884 n'est plus son prédécesseur ==> il ne reçoit pas co
                    diffuse CNX_GR
                    884 n'est plus pred de 961
 
+-------------------------------------------------
+Suggestion de solution:
+***********************
+
+Règle : chaque noeud de la table fournie au nouvel entrant, ainsi que chacun de ses frères pairs,  doit être à 'p' tant qu'il n'a pas ce nouvel entrant comme prédécesseur
+
+--> 6 envoie des SET_STATE 'p'/884 à toute sa table
+--> chacun des receveurs transmet SET_STATE 'p'/884 à ses frères pairs (ceux qui seront contactés par GET_REP)
+--> 884 envoie des ADD_PRED ==> ces membres ont un prédécesseur et ne sont plus à 'p'
+--> 884 envoie des GET_REP :
+    * si ces membres sont conservés, 961 envoie des RESET_STATE 'p'/884 aux frères pairs avant de quitter GET_REP
+    * si ces membres sont remplacés, c'est le ADD_PRED envoyé par 884 qui ôte 'p'/884
+
+
+RESTE A FAIRE :
+    -> Créer tâche TASK_REMOVE_STATE
+    -> Créer structure de requête
+    -> Ecrire la fonction associée
+    -> Ecrire son appel dans handle_task
