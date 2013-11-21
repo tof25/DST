@@ -35,7 +35,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define COMM_SIZE 10                        // message size when creating a new task
 #define COMP_SIZE 0                         // compute duration when creating a new task
 #define MAILBOX_NAME_SIZE 50                // name size of a mailbox
-#define TYPE_NBR 38                         // number of task types
+#define TYPE_NBR 39                         // number of task types
 #define MAX_WAIT_COMPL 20000                // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 500                // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 250                        // number of joining attempts
@@ -143,7 +143,8 @@ typedef enum {
     TASK_END_GET_REP,       // remove 'g' state after load balance
     TASK_POP_STATE,         // pops given state from states dynar (if found on top)
     TASK_CS_REL,            // reset cs_req flag
-    TASK_CHECK_CS           // send back a CS_REL if not 'b' neither 'n'
+    TASK_CHECK_CS,          // send back a CS_REL if not 'b' neither 'n'
+    TASK_REMOVE_STATE       // remove given state from states dynar
 } e_task_type_t;
 
 /**
@@ -308,7 +309,8 @@ static const char* debug_msg[] = {
     "End Get Rep",
     "Pop State",
     "Critical Section Released",
-    "Check CS"
+    "Check CS",
+    "Remove State"
 };
 
 /*
@@ -568,6 +570,12 @@ typedef struct {
     int new_node_id;
 } s_task_check_cs_t;           // send back a CS_REL if not 'b' neither 'n'
 
+typedef struct {
+    int new_node_id;
+    char state;
+} s_task_remove_state_t;       // remove given state from states dynar
+
+
 /**
  * Generic request args
  */
@@ -609,6 +617,7 @@ union req_args {
     s_task_pop_state_t          pop_state;
     s_task_cs_rel_t             cs_rel;
     s_task_check_cs_t           check_cs;
+    s_task_remove_state_t       remove_state;
 };
 
 /**
@@ -772,6 +781,7 @@ static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
 static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id);
 static void         check_cs(node_t me, int sender_id);
 static void         launch_fork_process(node_t me, msg_task_t task);
+static void         remove_state(node_t me, char state, int new_node_id);
 
 /*
   ======================= COMMUNICATION FUNCTIONS =============================
@@ -1361,6 +1371,14 @@ static int state_search(node_t me, char active, int new_id) {
     XBT_IN(" *** param: active = %c - new_id = %d ***",
             active, new_id);
 
+    /*
+    xbt_assert(new_id >= 0, "Node %d: [%s:%d] new_id = %d !!", 
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            new_id);
+    */
+
     int pos = -1;
     unsigned int iter = 0;
     state_t elem = NULL;
@@ -1390,7 +1408,7 @@ static int state_search(node_t me, char active, int new_id) {
         }
     }
 
-    XBT_DEBUG("Node %d: pos = %u", me->self.id, pos);
+    XBT_DEBUG("Node %d: pos = %d", me->self.id, pos);
     XBT_OUT();
 
     return pos;
@@ -1853,6 +1871,49 @@ static void launch_fork_process(node_t me, msg_task_t task) {
         xbt_assert(!(req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_CS_REQ),
                 "[:%d] STOP !! - task %s", __LINE__, debug_msg[req->args.broadcast.type]);
         handle_task(me, &task);
+    }
+
+    XBT_OUT();
+}
+
+/**
+ * \brief Remove given state from states dynar
+ * \param me the current node
+ * \param state the state to remove
+ * \param new_node_id new node id associated to the state
+ */
+// TODO : idem pop state ??
+
+static void remove_state(node_t me, char state, int new_node_id) {
+    XBT_IN();
+
+    int idx = state_search(me, state, new_node_id);
+    if (idx > -1) {
+
+        XBT_DEBUG("Node %d: [%s:%d] idx = %d",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                idx);
+
+        state_t state_ptr = NULL;
+        xbt_dynar_remove_at(me->states, idx, &state_ptr);
+        xbt_free(state_ptr);
+
+        XBT_VERB("Node %d: [%s:%d] '%c'/%d state removed",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                state,
+                new_node_id);
+    } else {
+
+        XBT_DEBUG("Node %d: [%s:%d] '%c'/%d state not found",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                state,
+                new_node_id);
     }
 
     XBT_OUT();
@@ -4740,7 +4801,9 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
     XBT_IN();
 
     u_ans_data_t answer;
+    u_req_args_t u_req_args;
     answer.get_rep.new_rep = me->self;
+    int f;
 
     // get current state
     s_state_t state = get_state(me);
@@ -4749,6 +4812,25 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
        don't allow cascading calls (get_rep interrupted by get_rep) */
     //if (state.active == 'u' || state.active == 'g') {
     if (state.active == 'u' || state_search(me, 'g', -1) > -1) {
+
+        XBT_VERB("Node %d: [%s:%d] don't run get_rep => remove brothers' 'p' state",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
+
+        u_req_args.remove_state.new_node_id = new_node_id;
+        u_req_args.remove_state.state = 'p';
+        msg_error_t res = MSG_OK;
+
+        for (f = 0; f < me->bro_index[0]; f += 2) {
+            if (me->brothers[0][f].id != me->self.id) {
+
+                res = send_msg_async(me,
+                        TASK_REMOVE_STATE,
+                        me->brothers[0][f].id,
+                        u_req_args);
+            }
+        }
 
         XBT_OUT();
         return answer;
@@ -4778,11 +4860,9 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
 
     ans_data_t rcv_ans_data = NULL;
 
-    u_req_args_t u_req_args;
     u_req_args.nb_pred.stage = stage;
     u_req_args.nb_pred.new_node_id = new_node_id;
 
-    int f;
     for (f = 0; f < me->bro_index[0]; f+=2) {       // take only brothers that will stay for sure (in case of SPLIT)
 
         if (me->brothers[0][f].id == me->self.id) {
@@ -4827,15 +4907,16 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
     }
 
     // if me is kept, then remove 'p' states of even brothers
-    if (me->brothers[0][f].id == me->self.id) {
+    if (answer.get_rep.new_rep.id == me->self.id) {
 
         XBT_VERB("Node %d: [%s:%d] me is kept as representative => remove brothers' 'p' state",
                 me->self.id,
-                __FUNCTION__
+                __FUNCTION__,
                 __LINE__);
 
-        u_req_args.remove_state.new_id = new_node_id;
+        u_req_args.remove_state.new_node_id = new_node_id;
         u_req_args.remove_state.state = 'p';
+        msg_error_t res = MSG_OK;
 
         for (f = 0; f < me->bro_index[0]; f += 2) {
             if (me->brothers[0][f].id != me->self.id) {
@@ -4848,7 +4929,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
         }
     }
 
-    // remove 'g' state
+    // remove 'g' state   // TODO : utiliser la fonction remove_state()
     int idx = state_search(me, 'g', new_node_id);
     if (idx > -1) {
 
@@ -6817,9 +6898,19 @@ static void split(node_t me, int stage, int new_node_id) {
 
     // wait until state is not 'p' anymore to launch local call of connect_splitted_groups
     int found = -1;
+    int lc = 0;
     do {
-        found = state_search(me, 'p', -1);
+        found = state_search(me, 'p', new_node_id);
         if (found > -1) {
+
+            lc++;
+            if (lc == 10) {
+                lc = 0;
+                XBT_VERB("Node %d: [%s:%d] state 'p' still found",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
+            }
 
             MSG_process_sleep(0.1);
         }
@@ -9164,7 +9255,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             if (state_search(me, 'u', rcv_args.cnx_groups.new_node_id) == -1 &&
                 (state.active == 'b' ||
                  state_search(me, 'l', -1) > -1 ||
-                 state_search(me, 'p', -1) > -1)) {
+                 state_search(me, 'p', rcv_args.cnx_groups.new_node_id) > -1)) {
 
             /*
             if (state.active == 'b' || state.active == 'l' || state.active == 'p') {
@@ -9848,7 +9939,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
                 for (bro = 0; bro < me->bro_index[0]; bro += 2) {
 
-                    if (me->brothers[0][bro].id != rcv_req->sender_id) {
+                    if (me->brothers[0][bro].id != rcv_req->sender_id &&
+                        me->brothers[0][bro].id != me->self.id) {
 
                         res = send_msg_async(me,
                                 TASK_SET_STATE,
@@ -10159,6 +10251,15 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             task_free(task);
 
             XBT_VERB("Node %d: TASK_CHECK_CS done", me->self.id);
+            break;
+
+        case TASK_REMOVE_STATE:
+            remove_state(me, rcv_args.remove_state.state, rcv_args.remove_state.new_node_id);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
+            XBT_VERB("Node %d: TASK_REMOVE_STATE done", me->self.id);
             break;
     }
 

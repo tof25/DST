@@ -163,7 +163,7 @@ Règle : chaque noeud de la table fournie au nouvel entrant, ainsi que chacun de
 
 
 RESTE A FAIRE :
-    -> Créer tâche TASK_REMOVE_STATE
+    -> Créer tâche TASK_REMOVE_STATE  |  Non, TASK_POP_STATE doit faire pareil
     -> Créer structure de requête
     -> Ecrire la fonction associée
     -> Ecrire son appel dans handle_task
