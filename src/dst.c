@@ -8368,11 +8368,15 @@ static void load_balance(node_t me, int contact_id) {
                     u_req_args.get_rep.stage = i;
                     u_req_args.get_rep.new_node_id = me->self.id;
 
+                    /* TODO : ne pas oublier
                     res = send_msg_sync(me,
                             TASK_GET_REP,
                             me->brothers[i][j].id,
                             u_req_args,
                             &answer_data);
+                    */
+
+                    res = MSG_OK;
 
                     // memorize recipient
                     get_rep_nodes[k] = me->brothers[i][j].id;
@@ -8383,9 +8387,9 @@ static void load_balance(node_t me, int contact_id) {
                     if (res != MSG_OK || answer_data == NULL) {
 
                         // get_rep failure
-                        XBT_WARN("Node %d: failed to get a new representative for"
-                                " stage %d, brother %d. Nevermind",
-                                me->self.id, i, me->brothers[i][j].id);
+                        XBT_DEBUG("Node %d: failed to get a new representative for"
+                                  " stage %d, brother %d. Nevermind",
+                                  me->self.id, i, me->brothers[i][j].id);
 
                         // if current rep doesn't answer, keep it
                         new_nodes[idx] = me->brothers[i][j];
