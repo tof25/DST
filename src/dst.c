@@ -47,7 +47,7 @@ static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     /* max number of brothers in a node
                                                (must be twice a) */
-static int COMM_TIMEOUT = 3000;             // timeout for communications
+static int COMM_TIMEOUT = 10000;            // timeout for communications
 static double max_simulation_time = 10500;  // max default simulation time
 static xbt_dynar_t infos_dst;               // to store all global DST infos
 static int nb_messages[TYPE_NBR] = {0};     /* total number of messages exchanged
@@ -1913,7 +1913,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 proc_mailbox,
                 ans_cpt);
 
-        display_async_answers(me, 'V');
+        display_async_answers(me, 'D');
 
         //res = MSG_task_receive(&task_received, me->self.mailbox);
         //comm = MSG_task_irecv(&task_received, me->self.mailbox);
@@ -1934,13 +1934,17 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
         display_sc(me, 'V');
 
         xbt_assert(res != MSG_TIMEOUT,
-                "Node %d: receiving TIMEOUT in wait_for_completion",
-                me->self.id);
+                "Node %d: [%s:%d] receiving TIMEOUT in wait_for_completion",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
 
         xbt_assert(res == MSG_OK,
-                "Node %d: receiving failure %d in wait_for_completion",
+                "Node %d: [%s:%d] receiving failure %s in wait_for_completion",
                 me->self.id,
-                res);
+                __FUNCTION__,
+                __LINE__,
+                debug_res_msg[res]);
 
         MSG_comm_destroy(comm);
 
@@ -2274,7 +2278,13 @@ static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) 
     //compteur[args.broadcast.type]++;
 
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
-    XBT_VERB("Node %d: REQ_DATA = %p", me->self.id, req_data);
+
+    XBT_DEBUG("Node %d: [%s:%d] REQ_DATA = %p",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            req_data);
+
     req_data->type = TASK_BROADCAST;
     req_data->sender_id = me->self.id;
     req_data->recipient_id = me->self.id;
@@ -4049,6 +4059,13 @@ static msg_error_t send_msg_async(node_t me,
         if (MSG_get_clock() > max_wait || comm == NULL) {
 
             res = MSG_TRANSFER_FAILURE;
+            xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    max_wait,
+                    MSG_get_clock(),
+                    comm);
         } else {
 
             res = MSG_comm_get_status(comm);
@@ -4061,16 +4078,19 @@ static msg_error_t send_msg_async(node_t me,
 
 
     xbt_assert(loop_cpt < max_loops,
-            "Node %d: [: %d] too many sending TIMEOUT in send_msg_async() to %d - '%s' - max_wait = %f - loop_cpt = %d",
+            "Node %d: [%s:%d] too many sending TIMEOUT in send_msg_async() to %d - '%s' - max_wait = %f - loop_cpt = %d",
             me->self.id,
+            __FUNCTION__,
             __LINE__,
             recipient_id,
             req_data->sent_to,
             max_wait,
             loop_cpt);
 
-    xbt_assert(res == MSG_OK, "Node %d: [: %d] sending failure '%s' in send_msg_async() to %d - '%s' - max_wait = %f",
+    xbt_assert(res == MSG_OK,
+            "Node %d: [%s:%d] Sending error '%s' to %d - '%s' - max_wait = %f",
             me->self.id,
+            __FUNCTION__,
             __LINE__,
             debug_res_msg[res],
             recipient_id,
@@ -4158,6 +4178,13 @@ static msg_error_t send_ans_sync(node_t me,
         if (MSG_get_clock() > max_wait || comm == NULL) {
 
             res = MSG_TRANSFER_FAILURE;
+            xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    max_wait,
+                    MSG_get_clock(),
+                    comm);
         } else {
 
             res = MSG_comm_get_status(comm);
@@ -4453,7 +4480,7 @@ static void send_completed(node_t me, e_task_type_t type, int recipient_id, char
 
     send_ans_sync(me, new_node_id, type, recipient_id, recipient_mailbox, answer);
 
-    XBT_VERB("Node %d: '%s Completed' message sent to %d",
+    XBT_DEBUG("Node %d: '%s Completed' message sent to %d",
             me->self.id,
             debug_msg[type],
             recipient_id);
@@ -9175,6 +9202,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 // send a 'completed task' message back
                 if (rcv_req->sender_id != me->self.id) {
 
+                    XBT_VERB("Node %d: [%s:%d] send ack", me->self.id, __FUNCTION__, __LINE__);
                     send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.cnx_groups.new_node_id);
                 }
 
