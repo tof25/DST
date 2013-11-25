@@ -4087,15 +4087,17 @@ static msg_error_t send_msg_async(node_t me,
             max_wait,
             loop_cpt);
 
-    xbt_assert(res == MSG_OK,
-            "Node %d: [%s:%d] Sending error '%s' to %d - '%s' - max_wait = %f",
-            me->self.id,
-            __FUNCTION__,
-            __LINE__,
-            debug_res_msg[res],
-            recipient_id,
-            req_data->sent_to,
-            max_wait);
+    if (res != MSG_OK) {
+
+        XBT_WARN("Node %d: [%s:%d] Sending error '%s' to %d - '%s' - max_wait = %f",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                debug_res_msg[res],
+                recipient_id,
+                req_data->sent_to,
+                max_wait);
+    }
 
     MSG_comm_destroy(comm);
     comm = NULL;
