@@ -1,5 +1,5 @@
 @startuml 
-title Process calls sequence\n
+title Process calls sequence \n
 
 note left of Main_Proc: init()
 activate Main_Proc #LightSteelBlue
