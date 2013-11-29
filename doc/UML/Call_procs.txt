@@ -22,9 +22,18 @@ loop For the whole simulation time
     Tasks_Queue -> Tasks_Queue: run_delayed_tasks
     activate Tasks_Queue #Gold
 
-    Tasks_Queue -> Tasks_Queue: handle_task
-    activate Tasks_Queue #Blue
-    deactivate Tasks_Queue
+    loop State 'u' : expected CNX_GROUPS only
+        Tasks_Queue -> Tasks_Queue: handle_task 
+        activate Tasks_Queue #Blue
+        deactivate Tasks_Queue
+    end
+
+    loop State 'a' : other tasks
+        Tasks_Queue -> Tasks_Queue: handle_task 
+        activate Tasks_Queue #Blue
+        deactivate Tasks_Queue
+    end
+
     deactivate Tasks_Queue
 
     Tasks_Queue -> Tasks_Queue: launch_fork_process
