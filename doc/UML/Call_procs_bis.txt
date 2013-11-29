@@ -1,21 +1,66 @@
 @startuml 
 title Process calls sequence\n
 
-note left of Master_Proc: init()
-activate Master_Proc
-Master_Proc->Master_Proc: call_run_tasks_queue
-activate Master_Proc
-Master_Proc->Proc_tasks_queue: process create
-note right of Proc_tasks_queue: proc_run_tasks()
-activate Proc_tasks_queue
-Proc_tasks_queue ->Proc_tasks_queue: run_tasks_queue
-activate Proc_tasks_queue
-Proc_tasks_queue ->Proc_tasks_queue: run_delayed_tasks
-activate Proc_tasks_queue
-Proc_tasks_queue ->Proc_tasks_queue: handle_task
-activate Proc_tasks_queue
-deactivate Proc_tasks_queue
-Proc_tasks_queue ->Proc_tasks_queue: launch_fork_process
-activate Proc_tasks_queue
-deactivate Master_Proc
+note left of Main_Proc: init()
+activate Main_Proc #LightSteelBlue
+
+Main_Proc -> Main_Proc: call_run_tasks_queue
+activate Main_Proc #YellowGreen
+
+create Tasks_Queue
+Main_Proc -> Tasks_Queue: create
+
+note left of Tasks_Queue: proc_run_tasks()
+activate Tasks_Queue #LightSteelBlue
+
+Tasks_Queue -> Tasks_Queue: run_tasks_queue
+activate Tasks_Queue #YellowGreen
+
+loop For the whole simulation time
+|||
+
+    Tasks_Queue -> Tasks_Queue: run_delayed_tasks
+    activate Tasks_Queue #Gold
+
+    Tasks_Queue -> Tasks_Queue: handle_task
+    activate Tasks_Queue #Blue
+    deactivate Tasks_Queue
+    deactivate Tasks_Queue
+
+    Tasks_Queue -> Tasks_Queue: launch_fork_process
+
+    activate Tasks_Queue #MistyRose
+
+    alt task CNX_REQ || BR_SPLIT || BR_CS_REQ
+    |||
+
+        create Handle_Task
+            Tasks_Queue -> Handle_Task: create
+
+            note right of Handle_Task: proc_handle_task()
+            activate Handle_Task #Orange
+
+            Handle_Task -> Handle_Task: handle_task
+            activate Handle_Task #LightSteelBlue
+            deactivate Handle_Task
+        destroy Handle_Task
+
+    else other tasks
+
+        Tasks_Queue -> Tasks_Queue: handle_task()
+        activate Tasks_Queue #Blue
+        deactivate Tasks_Queue
+    end
+
+    Tasks_Queue -> Tasks_Queue
+    deactivate Tasks_Queue
+end
+Tasks_Queue -> Tasks_Queue
+deactivate Tasks_Queue
+
+'Tasks_Queue -> Tasks_Queue
+destroy Tasks_Queue
+
+deactivate Main_Proc
+deactivate Main_Proc
 @enduml
