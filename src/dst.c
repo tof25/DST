@@ -2941,8 +2941,10 @@ static void run_delayed_tasks(node_t me, char c) {
                     // process CNX_REQ tasks after all the others             //TODO : normalement, il ne devrait plus y avoir de CNX_REQ dans ce dynar. A vérifier
                     if (req->type == TASK_CNX_REQ && nb_cnx_req < nb_elems) {
 
-                        XBT_VERB("Node %d: inside run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                        XBT_VERB("Node %d: [%s:%d] inside run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
                                 me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
                                 c,
                                 state.active,
                                 state.new_id,
