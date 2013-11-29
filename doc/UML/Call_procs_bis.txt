@@ -1,0 +1,21 @@
+@startuml 
+title Process calls sequence\n
+
+note left of Master_Proc: init()
+activate Master_Proc
+Master_Proc->Master_Proc: call_run_tasks_queue
+activate Master_Proc
+Master_Proc->Proc_tasks_queue: process create
+note right of Proc_tasks_queue: proc_run_tasks()
+activate Proc_tasks_queue
+Proc_tasks_queue ->Proc_tasks_queue: run_tasks_queue
+activate Proc_tasks_queue
+Proc_tasks_queue ->Proc_tasks_queue: run_delayed_tasks
+activate Proc_tasks_queue
+Proc_tasks_queue ->Proc_tasks_queue: handle_task
+activate Proc_tasks_queue
+deactivate Proc_tasks_queue
+Proc_tasks_queue ->Proc_tasks_queue: launch_fork_process
+activate Proc_tasks_queue
+deactivate Master_Proc
+@enduml
