@@ -4,10 +4,10 @@
 note left: proc root
 --> "call_run_tasks_queue()"
 --> "process_create(<b><color:red>proc_run_tasks</color></b>)"
---> == FORK ==
---> "run_tasks_queue()"
+-right-> "run_tasks_queue()"
 note right: proc tasks_queue
 --> "run_delayed_tasks()"
+--> "handle_task()" as h0
 --> "launch_fork_process()"
 if "Cnx_Req ?" then
     -->[No] "handle_task()" as h1
@@ -19,10 +19,6 @@ else
     --> "kill process" as k1
     -left-> == SUITE ==
 endif
-
-== FORK == --> "Suite"
---> "Suite"
---> (*)
 
 == SUITE == --> "kill process"
 

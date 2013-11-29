@@ -2,7 +2,7 @@
  *  Git branch : SUD
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/10/11
+ *  Written by Christophe Enderlin on 2013/11/29
  *
  */
 
@@ -10,10 +10,9 @@
  *       gérer tous les timeout des comm_wait() */
 
 
-/* TODO: voir si tout est OK pour les timers */
-
-/* TODO: il reste des problèmes de gestion mémoire. On les voit apparaître vers
- *       b >= 66 */
+/* TODO: voir si tout est OK pour les timers (peut-on remplacer des
+ * MSG_get_clock() par des clock ?)
+ */
 
 //#define MSG_USE_DEPRECATED
 #include <stdio.h>                          // printf and friends
@@ -141,7 +140,7 @@ typedef enum {
     TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join too much
     TASK_CS_REQ,            // ask for permission to get into Critical Section (splitted area)
     TASK_END_GET_REP,       // remove 'g' state after load balance
-    TASK_POP_STATE,         // pops given state from states dynar (if found on top)
+    TASK_REMOVE_STATE,      // remove given state from states dynar
     TASK_CS_REL,            // reset cs_req flag
     TASK_CHECK_CS           // send back a CS_REL if not 'b' neither 'n'
 } e_task_type_t;
@@ -558,7 +557,7 @@ typedef struct {
 typedef struct {
     int new_node_id;
     char active;
-} s_task_pop_state_t;          // pops given state if found on top of states dynar
+} s_task_remove_state_t;       // remove given state from states dynar
 
 typedef struct {
     int new_node_id;
@@ -606,7 +605,7 @@ union req_args {
     s_task_get_new_contact_t    get_new_contact;
     s_task_cs_req_t             cs_req;
     s_task_end_get_rep_t        end_get_rep;
-    s_task_pop_state_t          pop_state;
+    s_task_remove_state_t       remove_state;
     s_task_cs_rel_t             cs_rel;
     s_task_check_cs_t           check_cs;
 };
@@ -741,7 +740,7 @@ static s_state_t    get_state(node_t me);
 static void         set_active(node_t me, int new_id);
 static e_val_ret_t  set_update(node_t me, int new_id, int new_node_prio);
 static void         set_state(node_t me, int new_id, char active);
-static void         pop_state(node_t me, int new_id, char active);
+static void         remove_state(node_t me, int new_id, char active);
 static int          check(node_t me);
 static void         call_run_tasks_queue(node_t me, int new_id, char c);
 static void         run_delayed_tasks(node_t me, char c);
@@ -2529,18 +2528,16 @@ static void set_state(node_t me, int new_id, char active) {
 }
 
 /**
- * \brief pops given state from states dynar (in case of set_update broadcast failed)
- *        if it's on the top of it
+ * \brief remove given state from states dynar (in case of set_update broadcast failed, for instance))
  * \param me the current node
  * \param new_id the new coming node
  * \param active the active state to be poped
  */
-//TODO : changer le nom de cette fonction pour remove_state
-static void pop_state(node_t me, int new_id, char active) {
+static void remove_state(node_t me, int new_id, char active) {
     XBT_IN();
 
     s_state_t state = get_state(me);
-    XBT_VERB("Node %d: '%c'/%d for new node %d - start pop_state()",
+    XBT_VERB("Node %d: '%c'/%d for new node %d - start remove_state()",
             me->self.id,
             state.active,
             state.new_id,
@@ -2556,7 +2553,7 @@ static void pop_state(node_t me, int new_id, char active) {
         state = get_state(me);
     }
 
-    XBT_VERB("Node %d: '%c'/%d for new node %d - end pop_state() with idx = %d",
+    XBT_VERB("Node %d: '%c'/%d for new node %d - end remove_state() with idx = %d",
             me->self.id,
             state.active,
             state.new_id,
@@ -2704,8 +2701,9 @@ static void run_tasks_queue(node_t me) {
             if (me->run_task.run_state != prev_state) {
 
                 prev_state = me->run_task.run_state;
-                XBT_VERB("Node %d: [:%d] '%c'/%d - in run_tasks_queue() - run_state = %s - last_ret = %s",
+                XBT_VERB("Node %d: [%s:%d] '%c'/%d - run_state = %s - last_ret = %s",
                         me->self.id,
+                        __FUNCTION__,
                         __LINE__,
                         state.active,
                         state.new_id,
@@ -2853,8 +2851,10 @@ static void run_delayed_tasks(node_t me, char c) {
     // display delayed tasks
     if (nb_elems > 0 && state.active == 'a') {
 
-        XBT_VERB("Node %d: start run %c - '%c'/%d -  delayed_tasks length = %u",
+        XBT_VERB("Node %d: [%s:%d] start run %c - '%c'/%d -  delayed_tasks length = %u",
                 me->self.id,
+                __FUNCTION__,
+                __LINE__,
                 c,
                 state.active,
                 state.new_id,
@@ -2888,8 +2888,10 @@ static void run_delayed_tasks(node_t me, char c) {
                 req_args = req_data->args;
                 if (req_args.cnx_groups.new_node_id == state.new_id) {
 
-                    XBT_INFO("Node %d: run %c - '%c'/%d - run CNX_GROUPS (task[%d])",
+                    XBT_INFO("Node %d: [%s:%d] run %c - '%c'/%d - run CNX_GROUPS (task[%d])",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
                             c,
                             state.active,
                             state.new_id,
@@ -3615,14 +3617,26 @@ static msg_error_t send_msg_sync(node_t me,
                 req_elem->answer_data,
                 xbt_dynar_length(proc_data->sync_answers));
 
-        // max_wait is used in case of receiver process is shutdown
-        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {       //TODO : à commenter et vérifier
+        /* max_wait has to be used in case of receiver process is down.
+         * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
+         * nothing happens if receiver process is down.
+         * // TODO : à vérifier
+         * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
+         */
+        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
             MSG_process_sleep(1.2);
         }
         if (MSG_get_clock() > max_wait || comm == NULL) {
 
             res = MSG_TRANSFER_FAILURE;
+            xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    max_wait,
+                    MSG_get_clock(),
+                    comm);
         } else {
 
             res = MSG_comm_get_status(comm);
@@ -4051,8 +4065,13 @@ static msg_error_t send_msg_async(node_t me,
         // async send
         comm = MSG_task_isend(task_sent, req_data->sent_to);
 
-        // max_wait is used in case of receiver process is shutdown
-        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {       //TODO : à commenter et vérifier
+        /* max_wait has to be used in case of receiver process is down.
+         * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
+         * nothing happens if receiver process is down.
+         * // TODO : à vérifier
+         * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
+         */
+        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
             MSG_process_sleep(0.9);
         }
@@ -4171,8 +4190,13 @@ static msg_error_t send_ans_sync(node_t me,
         // async send
         comm = MSG_task_isend(task_sent, ans_data->sent_to);
 
-        // max_wait is used in case of receiver process is shutdown
-        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {       //TODO : à commenter et vérifier
+        /* max_wait has to be used in case of receiver process is down.
+         * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
+         * nothing happens if receiver process is down.
+         * // TODO : à vérifier
+         * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
+         */
+        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
             MSG_process_sleep(1.0);
         }
@@ -4279,8 +4303,8 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             set_update(me, args.broadcast.args->set_active.new_id, -1);  //TODO: ne pas oublier
             break;
 
-        case TASK_POP_STATE:
-            pop_state(me, args.broadcast.args->pop_state.new_node_id, args.broadcast.args->pop_state.active);
+        case TASK_REMOVE_STATE:
+            remove_state(me, args.broadcast.args->remove_state.new_node_id, args.broadcast.args->remove_state.active);
             break;
 
         /*
@@ -4500,9 +4524,6 @@ static void init(node_t me) {
     XBT_INFO("Node %d: init() ...", me->self.id);
     int i;
 
-    //xbt_assert(1 == 0, "sizeof(u_ans_data_t) = %ld", sizeof(u_ans_data_t));
-    //xbt_assert(1 == 0, "sizeof(u_req_args_t) = %ld", sizeof(u_req_args_t));
-
     me->height = 1;
     me->comm_received = NULL;
     me->last_check_time = 0;
@@ -4582,8 +4603,6 @@ static void init(node_t me) {
             me->self.id,
             me->self.mailbox,
             ((proc_data_t)MSG_process_get_data(MSG_process_self()))->proc_mailbox);
-
-    //xbt_assert(me->self.id == 42, "STOP");
 
     XBT_OUT();
 }
@@ -5129,7 +5148,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         XBT_VERB("Node %d: Set_Update failed : reset all concerned leaders",
                                 me->self.id);
 
-                        args.broadcast.type = TASK_POP_STATE;
+                        args.broadcast.type = TASK_REMOVE_STATE;
 
                         /* broadcast starts one level higher than highest splitted stage
                            because of connect_splitted_groups */
@@ -5146,8 +5165,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         args.broadcast.lead_br = 1;     // broadcast only to leaders
 
                         args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                        args.broadcast.args->pop_state.new_node_id = new_node_id;
-                        args.broadcast.args->pop_state.active = 'u';
+                        args.broadcast.args->remove_state.new_node_id = new_node_id;
+                        args.broadcast.args->remove_state.active = 'u';
                         make_broadcast_task(me, args, &task_sent);
 
                         handle_task(me, &task_sent);
@@ -9342,7 +9361,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT &&
                       rcv_args.broadcast.type != TASK_CS_REQ &&
-                      rcv_args.broadcast.type != TASK_POP_STATE
+                      rcv_args.broadcast.type != TASK_REMOVE_STATE
                      )
                     )) {
 
@@ -10108,13 +10127,13 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             XBT_VERB("Node %d: TASK_END_GET_REP done", me->self.id);
             break;
 
-        case TASK_POP_STATE:
-            pop_state(me, rcv_args.pop_state.new_node_id, rcv_args.pop_state.active);
+        case TASK_REMOVE_STATE:
+            remove_state(me, rcv_args.remove_state.new_node_id, rcv_args.remove_state.active);
 
             data_req_free(me, &rcv_req);
             task_free(task);
 
-            XBT_VERB("Node %d: TASK_POP_STATE done", me->self.id);
+            XBT_VERB("Node %d: TASK_REMOVE_STATE done", me->self.id);
             break;
 
         case TASK_CS_REL:
