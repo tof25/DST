@@ -2696,10 +2696,15 @@ static void run_tasks_queue(node_t me) {
 
         state = get_state(me);
 
+        // run delayed tasks, if any
+        if (xbt_dynar_is_empty(me->delayed_tasks) == 0) {
+
+            run_delayed_tasks(me, 'F');
+        }
+
         // display tasks queue once
         if (state.active != 'b') {
-
-            if (me->run_task.run_state != prev_state) {
+            //if (me->run_task.run_state != prev_state) {
 
                 prev_state = me->run_task.run_state;
                 XBT_VERB("Node %d: [%s:%d] '%c'/%d - run_state = %s - last_ret = %s",
@@ -2712,13 +2717,7 @@ static void run_tasks_queue(node_t me) {
                         debug_ret_msg[me->run_task.last_ret]);
 
                 display_tasks_queue(me);
-            }
-        }
-
-        // run delayed tasks, if any
-        if (xbt_dynar_is_empty(me->delayed_tasks) == 0) {
-
-            run_delayed_tasks(me, 'F');
+            //}
         }
 
         if (xbt_dynar_is_empty(me->tasks_queue) == 0 && state.active == 'a') {
@@ -2742,6 +2741,8 @@ static void run_tasks_queue(node_t me) {
                     if (cpt >= MAX_CNX) {
 
                         // too many attemps
+                        task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
+
                         xbt_assert(task_ptr != NULL && *task_ptr != NULL,
                                 "Node %d: [%s:%d] task_ptr shouldn't be NULL here (1) !",
                                 me->self.id,
@@ -2750,56 +2751,69 @@ static void run_tasks_queue(node_t me) {
 
                         req_data = MSG_task_get_data(*task_ptr);
 
-                        XBT_WARN("Node %d: Too many attemps for task {'%s - %s' from %d for new node %d}",
+                        XBT_WARN("Node %d: [%s:%d] Too many attemps (%d) for task {'%s - %s' from %d for new node %d}",
                                 me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
+                                cpt,
                                 MSG_task_get_name(*task_ptr),
                                 debug_msg[req_data->type],
                                 req_data->sender_id,
                                 req_data->args.cnx_req.new_node_id);
+
+                        // push head request on tail before removing it
+                        cur_task = MSG_task_create(MSG_task_get_name(*task_ptr), COMP_SIZE, COMM_SIZE, MSG_task_get_data(*task_ptr));
+                        xbt_dynar_push(me->tasks_queue, &cur_task);
+
+                        // shift queue to remove head task
+                        //data_req_free(me, &req_data);
+                        //task_free(task_ptr);
+
+                        state = get_state(me);
+                        XBT_VERB("Node %d: [%s:%d] '%c'/%d - last %d attempts weren't OK : rotate queue"
+                                " - run_state = %s - last_ret = %s - task_ptr = %p - req_data = %p",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
+                                state.active,
+                                state.new_id,
+                                cpt,
+                                debug_run_msg[me->run_task.run_state],
+                                debug_ret_msg[me->run_task.last_ret],
+                                task_ptr,
+                                req_data);
+
+                        xbt_dynar_shift(me->tasks_queue, NULL);
+
+                        display_tasks_queue(me);
+
+                        cpt = 0;
                     }
-                }
+                } else {
 
-                // shift dynar if last run is OK or too many attemps
-                me->run_task.last_ret = UPDATE_NOK;
-                task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
+                    // last run was OK
+                    me->run_task.last_ret = UPDATE_NOK;
 
-                if (cpt < MAX_CNX) {
-
+                    // shift queue to remove head task
+                    task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
                     req_data = MSG_task_get_data(*task_ptr);
                     data_req_free(me, &req_data);
                     task_free(task_ptr);
-                } else {
 
-                    // If too many attemps, push head request on tail before it is removed
-                    cur_task = MSG_task_create(MSG_task_get_name(*task_ptr), COMP_SIZE, COMM_SIZE, MSG_task_get_data(*task_ptr));
-                    xbt_dynar_push(me->tasks_queue, &cur_task);
-                    cpt = 0;
-
-                    XBT_VERB("Node %d: [%s:%d] '%c'/%d - after head->tail - run_state = %s - last_ret = %s",
+                    XBT_VERB("Node %d: last run was OK : shift queue - run_state = %s - last_ret = %s",
                             me->self.id,
-                            __FUNCTION__,
-                            __LINE__,
-                            state.active,
-                            state.new_id,
                             debug_run_msg[me->run_task.run_state],
                             debug_ret_msg[me->run_task.last_ret]);
 
-                    display_tasks_queue(me);
+                    xbt_dynar_shift(me->tasks_queue, NULL);
                 }
-
-                XBT_VERB("Node %d: shift request - run_state = %s - last_ret = %s",
-                        me->self.id,
-                        debug_run_msg[me->run_task.run_state],
-                        debug_ret_msg[me->run_task.last_ret]);
-
-                xbt_dynar_shift(me->tasks_queue, NULL);
 
                 state = get_state(me);
                 if (xbt_dynar_is_empty(me->tasks_queue) == 0 && state.active == 'a') {
 
                     // run top request
 
-                    XBT_VERB("Node %d: run first request", me->self.id);
+                    XBT_VERB("Node %d: run head request", me->self.id);
 
                     //task_ptr = xbt_dynar_get_ptr(me->tasks_queue, xbt_dynar_length(me->tasks_queue) - 1);
                     task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
