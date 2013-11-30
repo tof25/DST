@@ -21,32 +21,28 @@ else
     if "" then
         -->[Yes] "<i>Last_return</i> OK ?"
         if "" then
-            -->[Yes] "<i>Last_return</i> <-- NOK" as run2
-            --> "<i>cpt</i> >= MAX_CNX ?" as cond1
-            if "" then
-                -->[No] "Shift Queue (remove head)" as sq1
-            else
-                -->[Yes] push head task (current task) on tail
-                --> "<i>cpt</i> <-- 0"
-                --> sq1
-            endif
+            -->[Yes] "<i>Last_return</i> <-- NOK"
+            --> "Shift Queue (remove head)" as q3
             --> "Queue not empty  &&\n<i>state</i> = 'a' ?" as q2
-            if "" then
-                -->[No] s1
-            else
-                -->[Yes] "Launch fork process to run head request"
-                --> "<i>Run_state</i> <-- RUNNING" as run1
-                --> s1
-            endif
         else
-            -->[No] "<i>cpt</i>++"
-            --> "<i>cpt</i> >= MAX_CNX ?" as cond2
+            -->[No] "<i>cpt</i> ++"
+            --> "<i>cpt</i> >= <i>MAX_CNX</i> ?"
             if "" then
                 -->[Yes] "Display Warning"
-                --> run2
+                --> push head task (current task) on tail
+                --> "<i>cpt</i> <-- 0"
+                --> "Shift Queue (remove head)" as q4
+                --> q2
             else
-                -->[No] run2
+                -->[No] q2
             endif
+        endif
+        if "" then
+            -->[No] s1
+        else
+            -->[Yes] "Launch fork process to run head request"
+            --> "<i>Run_state</i> <-- RUNNING" as run1
+            --> s1
         endif
     else
         -->[No] s1
