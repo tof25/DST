@@ -3,9 +3,9 @@
 (*top) --> "<i>Run_state</i> <-- IDLE" as init1
 --> "<i>Last_return</i> <-- NOK" as init2
 --> "<i>prev_state</i> <-- RUNNING" as init4
---> "<i>cpt</i> <-- -1" as init3
+--> "<i>cpt</i> <--  -1" as init3
 
---> "Run Delayed Tasks"
+--> "<b>Run Delayed Tasks</b>"
 --> "Tasks Queue empty ?" as q1
 
 if "" then
@@ -34,7 +34,7 @@ else
             endif
         else
             -->[No] "<i>cpt</i>++"
-            --> "<i>cpt</i> > MAX ?"
+            --> "<i>cpt</i> >= MAX_CNX ?"
             if "" then
                 -->[Yes] "Display Warning"
                 --> "<i>cpt</i> <-- 0"
