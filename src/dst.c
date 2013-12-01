@@ -6688,6 +6688,16 @@ static void split(node_t me, int stage, int new_node_id) {
     int hist_cpy_pred_index = me->pred_index[stage + 1];
     node_rep_t hist_cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
 
+    // wait until state is not 'p' anymore to launch calls of connect_splitted_groups
+    int found = -1;
+    do {
+        found = state_search(me, 'p', -1);
+        if (found > -1) {
+
+            MSG_process_sleep(0.1);
+        }
+    } while (found > -1);
+
     for (i = 0; i < cpy_pred_index ; i++) {
 
         cpy_preds[i] = me->preds[stage + 1][i];
@@ -6844,7 +6854,7 @@ static void split(node_t me, int stage, int new_node_id) {
     }
 
     // wait until state is not 'p' anymore to launch local call of connect_splitted_groups
-    int found = -1;
+    found = -1;
     do {
         found = state_search(me, 'p', -1);
         if (found > -1) {
