@@ -136,3 +136,27 @@ Lors du split de 961, 884 n'est plus son prédécesseur ==> il ne reçoit pas co
                    diffuse CNX_GR
                    884 n'est plus pred de 961
 
+
+________________________________________________________________________________________________________________________
+
+Autre cas d'incohérence
+************************
+
++------+------+------+------+    +------+------+------+
+| 2425 | 2166 | 2101 | 1294 |    |  808 | 2915 | 1135 |
++------+------+------+------+    +------+------+------+
+                                                             +------+------+------+
+1135 vient d'arriver via 808 : sa table de routage est :     |  808 | 2915 | 1135 |
+                                                             +------+------+------+
+                                                             | 2166 |  808 |      |
+                                                             +------+------+------+
+                                                             | .................. |
+Arrivée de 3290 via 2425 => split
+
++------+------+    +------+------+------+    +------+------+
+| 2425 | 2101 |    |  808 | 2915 | 1135 |    | 2166 | 1294 |
++------+------+    +------+------+------+    +------+------+
+
+Lors du Br_Split, 2166 exécute Split (et connect_splitted_groups). Il est à 'p'/1135 ce qui devrait lui permettre d'attendre que 1135 soit prédécesseur à
+l'étage 1. Mais une fois fait, 1135 ne figure toujours pas dans les
+destinataires des CNX_GROUPS. La copie des prédécesseurs est faite trop tôt.

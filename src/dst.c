@@ -6681,13 +6681,6 @@ static void split(node_t me, int stage, int new_node_id) {
     msg_task_t local_task = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
     */
 
-    // works on a copy of upper stage preds
-    int cpy_pred_index = me->pred_index[stage + 1];
-    node_rep_t cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
-
-    int hist_cpy_pred_index = me->pred_index[stage + 1];
-    node_rep_t hist_cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
-
     // wait until state is not 'p' anymore to launch calls of connect_splitted_groups
     int found = -1;
     do {
@@ -6697,6 +6690,15 @@ static void split(node_t me, int stage, int new_node_id) {
             MSG_process_sleep(0.1);
         }
     } while (found > -1);
+
+    XBT_VERB("Node %d: [%s:%d] state 'p' not found", me->self.id, __FUNCTION__, __LINE__);
+
+    // works on a copy of upper stage preds
+    int cpy_pred_index = me->pred_index[stage + 1];
+    node_rep_t cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
+
+    int hist_cpy_pred_index = me->pred_index[stage + 1];
+    node_rep_t hist_cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
 
     for (i = 0; i < cpy_pred_index ; i++) {
 
