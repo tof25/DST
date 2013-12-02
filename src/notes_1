@@ -158,5 +158,5 @@ Arrivée de 3290 via 2425 => split
 +------+------+    +------+------+------+    +------+------+
 
 Lors du Br_Split, 2166 exécute Split (et connect_splitted_groups). Il est à 'p'/1135 ce qui devrait lui permettre d'attendre que 1135 soit prédécesseur à
-l'étage 1. Mais une fois fait, 1135 ne figure toujours pas dans les
-destinataires des CNX_GROUPS. La copie des prédécesseurs est faite trop tôt.
+l'étage 1. Mais une fois fait, 1135 ne figure toujours pas dans les destinataires des CNX_GROUPS. cpy_pred_index est écrit trop tôt (avant que 'p'
+ait été ôté)

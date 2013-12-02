@@ -1,8 +1,7 @@
 /*
- *  Git branch : SUD
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/11/29
+ *  Written by Christophe Enderlin on 2013/12/02
  *
  */
 
