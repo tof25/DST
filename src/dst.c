@@ -2740,18 +2740,20 @@ static void run_tasks_queue(node_t me) {
                     if (cpt >= MAX_CNX) {
 
                         // too many attemps
-                        xbt_assert(task_ptr != NULL && *task_ptr != NULL, "Node %d: task_ptr shouldn't be NULL here (1)!", me->self.id);
+                        xbt_assert(task_ptr != NULL && *task_ptr != NULL,
+                                "Node %d: [%s:%d] task_ptr shouldn't be NULL here (1) !",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__);
+
                         req_data = MSG_task_get_data(*task_ptr);
 
-                        if (cpt >= MAX_CNX) {
-
-                            XBT_WARN("Node %d: Too many attemps for task {'%s - %s' from %d for new node %d}",
-                                    me->self.id,
-                                    MSG_task_get_name(*task_ptr),
-                                    debug_msg[req_data->type],
-                                    req_data->sender_id,
-                                    req_data->args.cnx_req.new_node_id);
-                        }
+                        XBT_WARN("Node %d: Too many attemps for task {'%s - %s' from %d for new node %d}",
+                                me->self.id,
+                                MSG_task_get_name(*task_ptr),
+                                debug_msg[req_data->type],
+                                req_data->sender_id,
+                                req_data->args.cnx_req.new_node_id);
                     }
                 }
 
@@ -2784,8 +2786,10 @@ static void run_tasks_queue(node_t me) {
                         xbt_dynar_push(me->tasks_queue, &cur_task);
                         cpt = 0;
 
-                        XBT_VERB("Node %d: '%c'/%d - after head->tail - run_state = %s - last_ret = %s",
+                        XBT_VERB("Node %d: [%s:%d] '%c'/%d - after head->tail - run_state = %s - last_ret = %s",
                                 me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
                                 state.active,
                                 state.new_id,
                                 debug_run_msg[me->run_task.run_state],

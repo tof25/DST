@@ -6,7 +6,7 @@
 --> "<i>cpt</i> <--  -1" as init3
 
 --> "<b>Run Delayed Tasks</b>"
---> "Tasks Queue empty ?" as q1
+--> "Tasks Queue empty &&\nactive = <i>'a'</i> ?" as q1
 
 if "" then
     -->[Yes] "End time ?"
