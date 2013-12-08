@@ -1,8 +1,7 @@
 /*
- *  Git branch : SUD
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/11/29
+ *  Written by Christophe Enderlin on 2013/12/02
  *
  */
 
@@ -2741,18 +2740,20 @@ static void run_tasks_queue(node_t me) {
                     if (cpt >= MAX_CNX) {
 
                         // too many attemps
-                        xbt_assert(task_ptr != NULL && *task_ptr != NULL, "Node %d: task_ptr shouldn't be NULL here (1)!", me->self.id);
+                        xbt_assert(task_ptr != NULL && *task_ptr != NULL,
+                                "Node %d: [%s:%d] task_ptr shouldn't be NULL here (1) !",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__);
+
                         req_data = MSG_task_get_data(*task_ptr);
 
-                        if (cpt >= MAX_CNX) {
-
-                            XBT_WARN("Node %d: Too many attemps for task {'%s - %s' from %d for new node %d}",
-                                    me->self.id,
-                                    MSG_task_get_name(*task_ptr),
-                                    debug_msg[req_data->type],
-                                    req_data->sender_id,
-                                    req_data->args.cnx_req.new_node_id);
-                        }
+                        XBT_WARN("Node %d: Too many attemps for task {'%s - %s' from %d for new node %d}",
+                                me->self.id,
+                                MSG_task_get_name(*task_ptr),
+                                debug_msg[req_data->type],
+                                req_data->sender_id,
+                                req_data->args.cnx_req.new_node_id);
                     }
                 }
 
@@ -2785,8 +2786,10 @@ static void run_tasks_queue(node_t me) {
                         xbt_dynar_push(me->tasks_queue, &cur_task);
                         cpt = 0;
 
-                        XBT_VERB("Node %d: '%c'/%d - after head->tail - run_state = %s - last_ret = %s",
+                        XBT_VERB("Node %d: [%s:%d] '%c'/%d - after head->tail - run_state = %s - last_ret = %s",
                                 me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
                                 state.active,
                                 state.new_id,
                                 debug_run_msg[me->run_task.run_state],
@@ -6681,13 +6684,6 @@ static void split(node_t me, int stage, int new_node_id) {
     msg_task_t local_task = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
     */
 
-    // works on a copy of upper stage preds
-    int cpy_pred_index = me->pred_index[stage + 1];
-    node_rep_t cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
-
-    int hist_cpy_pred_index = me->pred_index[stage + 1];
-    node_rep_t hist_cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
-
     // wait until state is not 'p' anymore to launch calls of connect_splitted_groups
     int found = -1;
     do {
@@ -6697,6 +6693,15 @@ static void split(node_t me, int stage, int new_node_id) {
             MSG_process_sleep(0.1);
         }
     } while (found > -1);
+
+    XBT_VERB("Node %d: [%s:%d] state 'p' not found", me->self.id, __FUNCTION__, __LINE__);
+
+    // works on a copy of upper stage preds
+    int cpy_pred_index = me->pred_index[stage + 1];
+    node_rep_t cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
+
+    int hist_cpy_pred_index = me->pred_index[stage + 1];
+    node_rep_t hist_cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
 
     for (i = 0; i < cpy_pred_index ; i++) {
 
