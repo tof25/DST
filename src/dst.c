@@ -46,7 +46,7 @@ static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     /* max number of brothers in a node
                                                (must be twice a) */
-static int COMM_TIMEOUT = 10000;            // timeout for communications
+static int COMM_TIMEOUT = 50000;            // timeout for communications
 static double max_simulation_time = 10500;  // max default simulation time
 static xbt_dynar_t infos_dst;               // to store all global DST infos
 static int nb_messages[TYPE_NBR] = {0};     /* total number of messages exchanged
