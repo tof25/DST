@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/12/02
+ *  Written by Christophe Enderlin on 2013/12/08
  *
  */
 
@@ -2695,6 +2695,8 @@ static void run_tasks_queue(node_t me) {
     do {
 
         state = get_state(me);
+
+        // display tasks queue once
         if (state.active != 'b') {
 
             if (me->run_task.run_state != prev_state) {
@@ -2758,50 +2760,39 @@ static void run_tasks_queue(node_t me) {
                 }
 
                 // shift dynar if last run is OK or too many attemps
-                if ((me->run_task.last_ret == UPDATE_NOK && cpt >= MAX_CNX) || (me->run_task.last_ret != UPDATE_NOK)) {
+                me->run_task.last_ret = UPDATE_NOK;
+                task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
 
-                    XBT_VERB("Node %d: shift request - run_state = %s - last_ret = %s",
+                if (cpt < MAX_CNX) {
+
+                    req_data = MSG_task_get_data(*task_ptr);
+                    data_req_free(me, &req_data);
+                    task_free(task_ptr);
+                } else {
+
+                    // If too many attemps, push head request on tail before it is removed
+                    cur_task = MSG_task_create(MSG_task_get_name(*task_ptr), COMP_SIZE, COMM_SIZE, MSG_task_get_data(*task_ptr));
+                    xbt_dynar_push(me->tasks_queue, &cur_task);
+                    cpt = 0;
+
+                    XBT_VERB("Node %d: [%s:%d] '%c'/%d - after head->tail - run_state = %s - last_ret = %s",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
+                            state.active,
+                            state.new_id,
                             debug_run_msg[me->run_task.run_state],
                             debug_ret_msg[me->run_task.last_ret]);
 
-                    me->run_task.last_ret = UPDATE_NOK;
-
-                    XBT_VERB("Node %d: set run_state = {%s - %s}",
-                            me->self.id,
-                            debug_run_msg[me->run_task.run_state],
-                            debug_ret_msg[me->run_task.last_ret]);
-
-                    task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
-
-                    if (cpt < MAX_CNX) {
-
-                        req_data = MSG_task_get_data(*task_ptr);
-                        data_req_free(me, &req_data);
-                        task_free(task_ptr);
-                    } else {
-
-                        // If too many attemps, push request on tail, before head is removed
-                        cur_task = MSG_task_create(MSG_task_get_name(*task_ptr), COMP_SIZE, COMM_SIZE, MSG_task_get_data(*task_ptr));
-                        xbt_dynar_push(me->tasks_queue, &cur_task);
-                        cpt = 0;
-
-                        XBT_VERB("Node %d: [%s:%d] '%c'/%d - after head->tail - run_state = %s - last_ret = %s",
-                                me->self.id,
-                                __FUNCTION__,
-                                __LINE__,
-                                state.active,
-                                state.new_id,
-                                debug_run_msg[me->run_task.run_state],
-                                debug_ret_msg[me->run_task.last_ret]);
-
-                        display_tasks_queue(me);
-                    }
-
-                    xbt_dynar_shift(me->tasks_queue, NULL);
-
-                    //if (cpt >= MAX_CNX) { cpt = 0; }
+                    display_tasks_queue(me);
                 }
+
+                XBT_VERB("Node %d: shift request - run_state = %s - last_ret = %s",
+                        me->self.id,
+                        debug_run_msg[me->run_task.run_state],
+                        debug_ret_msg[me->run_task.last_ret]);
+
+                xbt_dynar_shift(me->tasks_queue, NULL);
 
                 state = get_state(me);
                 if (xbt_dynar_is_empty(me->tasks_queue) == 0 && state.active == 'a') {
@@ -2813,7 +2804,11 @@ static void run_tasks_queue(node_t me) {
                     //task_ptr = xbt_dynar_get_ptr(me->tasks_queue, xbt_dynar_length(me->tasks_queue) - 1);
                     task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
 
-                    xbt_assert(task_ptr != NULL && *task_ptr != NULL, "Node %d: task_ptr shouldn't be NULL here (2)!", me->self.id);
+                    xbt_assert(task_ptr != NULL && *task_ptr != NULL,
+                            "Node %d: [%s:%d] task_ptr shouldn't be NULL here (2)!",
+                            me->self.id,
+                            __FUNCTION__,
+                            __LINE__);
 
                     req_data = MSG_task_get_data(*task_ptr);
 

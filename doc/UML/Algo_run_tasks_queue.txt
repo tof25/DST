@@ -2,14 +2,13 @@
 
 (*top) --> "<i>Run_state</i> <-- IDLE" as init1
 --> "<i>Last_return</i> <-- NOK" as init2
---> "<i>prev_state</i> <-- RUNNING" as init4
 --> "<i>cpt</i> <--  -1" as init3
 
---> "<b>Run Delayed Tasks</b>"
---> "Tasks Queue empty &&\nactive = <i>'a'</i> ?" as q1
+--> "<b>Run Delayed Tasks</b>\n(if any)" as q1
+--> "Tasks Queue not empty  &&\n<i>active</i> = 'a' ?"
 
 if "" then
-    -->[Yes] "End time ?"
+    -->[No] "End time ?"
     if "" then
         -->[Yes] "END"
         -->(*)
@@ -18,29 +17,35 @@ if "" then
         --> q1
     endif
 else
-    -->[No] "<i>Run_state</i> IDLE ?"
+    -->[Yes] "<i>Run_state</i> IDLE ?"
     if "" then
         -->[Yes] "<i>Last_return</i> OK ?"
         if "" then
             -->[Yes] "<i>Last_return</i> <-- NOK" as run2
-            --> "Pop top request"
-            --> "Queue empty ?" as q2
+            --> "<i>cpt</i> >= MAX_CNX ?" as cond1
             if "" then
-                -->[Yes] s1
+                -->[No] "Shift Queue (remove head)" as sq1
             else
-                -->[No] "<i>Run_state</i> <-- CNX_req runing" as run1
-                --> "Launch fork process to run top request"
+                -->[Yes] push head task (current task) on tail
+                --> "<i>cpt</i> <-- 0"
+                --> sq1
+            endif
+            --> "Queue not empty  &&\n<i>state</i> = 'a' ?" as q2
+            if "" then
+                -->[No] s1
+            else
+                -->[Yes] "Launch fork process to run head request"
+                --> "<i>Run_state</i> <-- RUNNING" as run1
                 --> s1
             endif
         else
             -->[No] "<i>cpt</i>++"
-            --> "<i>cpt</i> >= MAX_CNX ?"
+            --> "<i>cpt</i> >= MAX_CNX ?" as cond2
             if "" then
                 -->[Yes] "Display Warning"
-                --> "<i>cpt</i> <-- 0"
                 --> run2
             else
-                -->[No] run1
+                -->[No] run2
             endif
         endif
     else
