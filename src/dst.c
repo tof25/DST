@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/12/08
+ *  Written by Christophe Enderlin on 2013/12/09
  *
  */
 
@@ -2704,7 +2704,7 @@ static void run_tasks_queue(node_t me) {
 
         // display tasks queue once
         if (state.active != 'b') {
-            //if (me->run_task.run_state != prev_state) {
+            if (me->run_task.run_state != prev_state) {
 
                 prev_state = me->run_task.run_state;
                 XBT_VERB("Node %d: [%s:%d] '%c'/%d - run_state = %s - last_ret = %s",
@@ -2717,7 +2717,7 @@ static void run_tasks_queue(node_t me) {
                         debug_ret_msg[me->run_task.last_ret]);
 
                 display_tasks_queue(me);
-            //}
+            }
         }
 
         if (xbt_dynar_is_empty(me->tasks_queue) == 0 && state.active == 'a') {
