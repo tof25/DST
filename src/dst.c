@@ -2780,7 +2780,7 @@ static void run_tasks_queue(node_t me) {
                                 cpt,
                                 debug_run_msg[me->run_task.run_state],
                                 debug_ret_msg[me->run_task.last_ret],
-                                task_ptr,
+                                *task_ptr,
                                 req_data);
 
                         xbt_dynar_shift(me->tasks_queue, NULL);
