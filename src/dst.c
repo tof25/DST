@@ -2767,11 +2767,11 @@ static void run_tasks_queue(node_t me) {
 
                         // shift queue to remove head task
                         //data_req_free(me, &req_data);
-                        //task_free(task_ptr);
+                        task_free(task_ptr);
 
                         state = get_state(me);
                         XBT_VERB("Node %d: [%s:%d] '%c'/%d - last %d attempts weren't OK : rotate queue"
-                                " - run_state = %s - last_ret = %s - task_ptr = %p - req_data = %p",
+                                " - run_state = %s - last_ret = %s",
                                 me->self.id,
                                 __FUNCTION__,
                                 __LINE__,
@@ -2779,9 +2779,7 @@ static void run_tasks_queue(node_t me) {
                                 state.new_id,
                                 cpt,
                                 debug_run_msg[me->run_task.run_state],
-                                debug_ret_msg[me->run_task.last_ret],
-                                *task_ptr,
-                                req_data);
+                                debug_ret_msg[me->run_task.last_ret]);
 
                         xbt_dynar_shift(me->tasks_queue, NULL);
 
