@@ -2667,6 +2667,7 @@ static void call_run_tasks_queue(node_t me, int new_id, char c) {
 
 /**
  * \brief Run tasks stored in tasks_queue dynar
+ *        Only CNX_REQ requests are stored in this dynar
  * param me the current node
  */
 static void run_tasks_queue(node_t me) {
@@ -2767,7 +2768,7 @@ static void run_tasks_queue(node_t me) {
 
                         // shift queue to remove head task
                         //data_req_free(me, &req_data);
-                        task_free(task_ptr);
+                        //task_free(task_ptr);                  // TODO : revoir cette libération qui pose problème
 
                         state = get_state(me);
                         XBT_VERB("Node %d: [%s:%d] '%c'/%d - last %d attempts weren't OK : rotate queue"
@@ -8859,7 +8860,7 @@ int node(int argc, char *argv[]) {
                 MSG_comm_destroy(node.comm_received);
                 node.comm_received = NULL;
 
-                XBT_VERB("Node %d: Task received", node.self.id);
+                XBT_VERB("Node %d: Task received", node.self.id);       //TODO : ajouter l'id de l'émetteur du message
                 display_sc(&node, 'V');
 
                 if (res == MSG_OK) {
@@ -9005,7 +9006,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         me->self.id,
                         state.active);
 
-                xbt_dynar_push(me->tasks_queue, task);
+                xbt_dynar_push(me->delayed_tasks, task);
+                //xbt_dynar_push(me->tasks_queue, task);
                 *task = NULL;
                 val_ret = STORED;
             } else {
