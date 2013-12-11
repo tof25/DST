@@ -8,13 +8,13 @@
 --> "Tasks Queue not empty  &&\n<i>active</i> = 'a' ?"
 
 if "" then
-    -->[No] "End time ?"
+    -->[No] "Sleep for a while" as s1
+    --> "End time ?"
     if "" then
         -->[Yes] "END"
         -->(*)
     else
-        -->[No] "Sleep for a while" as s1
-        --> q1
+        -->[No] q1
     endif
 else
     -->[Yes] "<i>Run_state</i> IDLE ?"
