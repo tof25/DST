@@ -19,13 +19,14 @@ if "" then
 else
     -->[Yes] "<i>Run_state</i> IDLE ?"
     if "" then
-        -->[Yes] "<i>Last_return</i> OK ?"
+        -->[Yes] "<i>Last_return</i> = UPDATE_NOK ?"
+        note right : if FAILED, remove head task also\n(not the leader)
         if "" then
-            -->[Yes] "<i>Last_return</i> <-- NOK"
+            -->[No] "<i>Last_return</i> <-- NOK"
             --> "Shift Queue (remove head)" as q3
             --> "Queue not empty  &&\n<i>state</i> = 'a' ?" as q2
         else
-            -->[No] "<i>cpt</i> ++"
+            -->[Yes] "<i>cpt</i> ++"
             --> "<i>cpt</i> >= <i>MAX_CNX</i> ?"
             if "" then
                 -->[Yes] "Display Warning"
