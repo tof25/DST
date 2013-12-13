@@ -210,7 +210,7 @@ typedef struct node {
     double          deadline;               // time to leave the DST
     xbt_dynar_t     states;                 // node states dynar
     s_dst_infos_t   dst_infos;              // infos about the DST
-    xbt_dynar_t     tasks_queue;            // delayed tasks dynar
+    xbt_dynar_t     tasks_queue;            // CNX_REQ tasks queue
     xbt_dynar_t     delayed_tasks;          // delayed tasks dynar
     int             prio;                   // priority to get into critical section (the lower the value, the highest priority)
     char            cs_req;                 // Critical Section requested
@@ -749,6 +749,7 @@ static void         data_ans_free(node_t me, ans_data_t *answer_data);
 static void         data_req_free(node_t me, req_data_t *req_data);
 static void         elem_free(void* elem_ptr);
 static void         display_tasks_queue(node_t me);
+static void         sort_tasks_queue(node_t me);
 static void         display_delayed_tasks(node_t me);
 static void         display_async_answers(node_t me, char log);
 static void         display_states(node_t me, char mode);
@@ -2799,12 +2800,14 @@ static void run_tasks_queue(node_t me) {
                     data_req_free(me, &req_data);
                     task_free(task_ptr);
 
+                    //TODO : on n'est pas forcément OK ici, on peut aussi être FAILED
                     XBT_VERB("Node %d: last run was OK : shift queue - run_state = %s - last_ret = %s",
                             me->self.id,
                             debug_run_msg[me->run_task.run_state],
                             debug_ret_msg[me->run_task.last_ret]);
 
                     xbt_dynar_shift(me->tasks_queue, NULL);
+                    sort_tasks_queue(me);
                 }
 
                 state = get_state(me);
@@ -3235,17 +3238,74 @@ static void display_tasks_queue(node_t me) {
             XBT_VERB("Node %d: \ttask[%d] = NULL", me->self.id, k);
         } else {
 
-            XBT_VERB("Node %d: \t%p: task[%d] = {'%s - %s' from %d for new node %d}",
+            XBT_VERB("Node %d: \t%p: task[%d] = {'%s - %s' from %d for new node %d} - prio = %d",
                     me->self.id,
                     *task_ptr,
                     k,
                     MSG_task_get_name(*task_ptr),
                     debug_msg[req_data->type],
                     req_data->sender_id,
-                    req_data->args.cnx_req.new_node_id);
+                    req_data->args.cnx_req.new_node_id,
+                    (req_data->type == TASK_CNX_REQ ? req_data->args.cnx_req.cs_new_node_prio : -100));
         }
     }
     XBT_VERB("Node %d: *==== End Tasks Queue ====*", me->self.id);
+
+    XBT_OUT();
+}
+
+static int compar_fn(void *arg1, void *arg2) {
+    XBT_IN();
+
+    msg_task_t *task1 = (msg_task_t*)arg1;
+    msg_task_t *task2 = (msg_task_t*)arg2;
+
+    xbt_assert(task1 != NULL && *task1 != NULL,
+            "[%s:%d] task1 should not be NULL !!",
+            __FUNCTION__,
+            __LINE__);
+
+    xbt_assert(task2 != NULL && *task2 != NULL,
+            "[%s:%d] task2 should not be NULL !!",
+            __FUNCTION__,
+            __LINE__);
+
+    req_data_t req_data1 = MSG_task_get_data(*task1);
+    req_data_t req_data2 = MSG_task_get_data(*task2);
+
+    xbt_assert(req_data1->type == TASK_CNX_REQ && req_data2->type == TASK_CNX_REQ,
+            "[%s:%d] task should be CNX_REQ !! - task_1 = %s - task 2 = %s",
+            __FUNCTION__,
+            __LINE__,
+            debug_msg[req_data1->type],
+            debug_msg[req_data2->type]);
+
+    return (req_data1->args.cnx_req.cs_new_node_prio > req_data2->args.cnx_req.cs_new_node_prio);
+
+    XBT_OUT();
+}
+
+/**
+ * \brief Sort tasks queue according to new nodes' priority
+ */
+static void sort_tasks_queue(node_t me) {
+    XBT_IN();
+
+    if (xbt_dynar_length(me->tasks_queue) > 1) {
+
+        XBT_VERB("Node %d: [%s:%d] sort tasks queue",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
+
+        XBT_DEBUG("Node %d: before sort", me->self.id);
+        //display_tasks_queue(me);
+
+        xbt_dynar_sort(me->tasks_queue, compar_fn);
+
+        XBT_DEBUG("Node %d: after sort", me->self.id);
+        //display_tasks_queue(me);
+    }
 
     XBT_OUT();
 }
