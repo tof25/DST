@@ -39,7 +39,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 300                         // max number of attemps to run CNX_REQ
+#define MAX_CNX 10000                         // max number of attemps to run CNX_REQ
 
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
@@ -2742,6 +2742,7 @@ static void run_tasks_queue(node_t me) {
                     cpt++;
                     if (cpt >= MAX_CNX) {
 
+                        // TODO : plus utile depuis le tri de la file d'attente ?
                         // too many attemps
                         task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
 
@@ -2801,10 +2802,10 @@ static void run_tasks_queue(node_t me) {
                     task_free(task_ptr);
 
                     //TODO : on n'est pas forcément OK ici, on peut aussi être FAILED
-                    XBT_VERB("Node %d: last run was OK : shift queue - run_state = %s - last_ret = %s",
+                    XBT_VERB("Node %d: last run was '%s' : shift queue - run_state = %s",
                             me->self.id,
-                            debug_run_msg[me->run_task.run_state],
-                            debug_ret_msg[me->run_task.last_ret]);
+                            debug_ret_msg[me->run_task.last_ret],
+                            debug_run_msg[me->run_task.run_state]);
 
                     xbt_dynar_shift(me->tasks_queue, NULL);
                     sort_tasks_queue(me);

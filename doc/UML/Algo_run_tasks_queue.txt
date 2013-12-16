@@ -24,6 +24,7 @@ else
         if "" then
             -->[No] "<i>Last_return</i> <-- NOK"
             --> "Shift Queue (remove head)" as q3
+            --> "Sort Queue by priority order"
             --> "Queue not empty  &&\n<i>state</i> = 'a' ?" as q2
         else
             -->[Yes] "<i>cpt</i> ++"
