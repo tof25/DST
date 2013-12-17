@@ -39,7 +39,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 10000                         // max number of attemps to run CNX_REQ
+#define MAX_CNX 1000                        // max number of attemps to run CNX_REQ (just to display a warning)
 
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
@@ -2764,6 +2764,9 @@ static void run_tasks_queue(node_t me) {
                                 req_data->sender_id,
                                 req_data->args.cnx_req.new_node_id);
 
+                        /*
+                         NOTE : cette partie n'est plus utile depuis qu'on trie la file d'attente
+
                         // push head request on tail before removing it
                         cur_task = MSG_task_create(MSG_task_get_name(*task_ptr), COMP_SIZE, COMM_SIZE, MSG_task_get_data(*task_ptr));
                         xbt_dynar_push(me->tasks_queue, &cur_task);
@@ -2787,6 +2790,7 @@ static void run_tasks_queue(node_t me) {
                         xbt_dynar_shift(me->tasks_queue, NULL);
 
                         display_tasks_queue(me);
+                        */
 
                         cpt = 0;
                     }
@@ -10316,6 +10320,8 @@ int main(int argc, char *argv[]) {
     const char* platform_file = argv[1];
     const char* deployment_file = argv[2];
     if (argc == 4) max_simulation_time = atoi(argv[3]);
+
+    //XBT_VERB("Nb_lignes = %d", system("cat deployment_file_100.xml | wc -l"));
 
     //MSG_set_channel_number(0);         //TODO: je n'ai pas compris l'utilité de set_channel_number
     MSG_create_environment(platform_file);

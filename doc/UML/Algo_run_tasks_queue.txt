@@ -1,7 +1,15 @@
 @startuml
 
 (*top) --> "<i>Run_state</i> <-- IDLE" as init1
---> "<i>Last_return</i> <-- NOK" as init2
+--> "<i>Last_return</i> <-- UPDATE_NOK" as init2
+note left
+    Possible values:
+    - OK
+    - STORED
+    - UPDATE_OK
+    - UPDATE_NOK
+    - FAILED
+end note
 --> "<i>cpt</i> <--  -1" as init3
 
 --> "<b>Run Delayed Tasks</b>\n(if any)" as q1
@@ -31,9 +39,7 @@ else
             --> "<i>cpt</i> >= <i>MAX_CNX</i> ?"
             if "" then
                 -->[Yes] "Display Warning"
-                --> push head task (current task) on tail
                 --> "<i>cpt</i> <-- 0"
-                --> "Shift Queue (remove head)" as q4
                 --> q2
             else
                 -->[No] q2
