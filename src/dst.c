@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/12/09
+ *  Written by Christophe Enderlin on 2013/12/19
  *
  */
 
@@ -645,6 +645,7 @@ typedef struct {
     // for DST infos
     int add_stage;
     int nbr_split_stages;
+    int try;
 } s_task_ans_cnx_req_t;
 
 typedef struct {
@@ -749,6 +750,7 @@ static void         data_ans_free(node_t me, ans_data_t *answer_data);
 static void         data_req_free(node_t me, req_data_t *req_data);
 static void         elem_free(void* elem_ptr);
 static void         display_tasks_queue(node_t me);
+static int          compar_fn(const void *arg1, const void *arg2);
 static void         sort_tasks_queue(node_t me);
 static void         display_delayed_tasks(node_t me);
 static void         display_async_answers(node_t me, char log);
@@ -2840,6 +2842,7 @@ static void run_tasks_queue(node_t me) {
                             req_data->sender_id,
                             req_data->args.cnx_req.new_node_id);
 
+                    req_data->args.cnx_req.try++;
                     launch_fork_process(me, *task_ptr);
                 }
             }
@@ -3259,7 +3262,13 @@ static void display_tasks_queue(node_t me) {
     XBT_OUT();
 }
 
-static int compar_fn(void *arg1, void *arg2) {
+/*
+ * \brief Comparison function used to sort dynar
+ * \param arg1 first element
+ * \param arg2 second element
+ * \return int value
+ */
+static int compar_fn(const void *arg1, const void *arg2) {
     XBT_IN();
 
     msg_task_t *task1 = (msg_task_t*)arg1;
@@ -4705,7 +4714,8 @@ static int join(node_t me, int contact_id, int try) {
     u_req_args_t u_req_args;
     u_req_args.cnx_req.new_node_id = me->self.id;
     u_req_args.cnx_req.cs_new_node_prio = me->prio;
-    u_req_args.cnx_req.try = try;
+    //u_req_args.cnx_req.try = try;
+    u_req_args.cnx_req.try = 0;
 
     //ans_data_t answer_data = xbt_new0(s_ans_data_t, 1);
     ans_data_t answer_data = NULL;
@@ -4733,11 +4743,15 @@ static int join(node_t me, int contact_id, int try) {
     /* get task answer data: new contact and its routing table */
 
     state = get_state(me);
-    XBT_INFO("Node %d: '%c'/%d - **** GETTING INFOS FROM ITS NEW CONTACT %d ... ****",
+    XBT_INFO("Node %d: '%c'/%d - **** GETTING INFOS FROM ITS NEW CONTACT %d (needed %d attempts) ... ****",
             me->self.id,
             state.active,
             state.new_id,
-            answer_data->answer.cnx_req.new_contact.id);
+            answer_data->answer.cnx_req.new_contact.id,
+            answer_data->answer.cnx_req.try);
+
+    // records number of attempts
+    me->dst_infos.attempts = answer_data->answer.cnx_req.try;
 
     // discard the current tables
     int stage;
@@ -5061,7 +5075,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
         // me is the leader
         int n = 0;
-        me->dst_infos.attempts++;
 
         state = get_state(me);          //TODO : get_state() inutile ?
         XBT_INFO("Node %d: '%c'/%d - I am the leader",
@@ -5314,7 +5327,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                             state.active,
                             state.new_id,
                             new_node_id,
-                            me->dst_infos.attempts);
+                            try);
 
                     display_sc(me, 'V');
 
@@ -5406,6 +5419,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             answer.cnx_req.height = me->height;
             state = get_state(me);
             answer.cnx_req.contact_state = state;
+            answer.cnx_req.try = try;
 
             // now, me can be active
             set_active(me, new_node_id);
@@ -8715,8 +8729,10 @@ int node(int argc, char *argv[]) {
     node.self.id = atoi(argv[1]);
 
     int join_success = 1;       // success by default
+    /*
     int tries = 0;
     int tries_mem = TRY_STEP;
+    */
 
     init(&node);
 
@@ -8733,9 +8749,10 @@ int node(int argc, char *argv[]) {
 
         do {
 
-            tries++;
+            //tries++;
 
             // sleep before starting to join
+            /*
             if (tries > 1) {
 
                 // TODO: faire des essais avec différentes bornes
@@ -8772,6 +8789,7 @@ int node(int argc, char *argv[]) {
                     }
                 }
             }
+            */
 
             XBT_INFO("Node %d: Let's sleep during %f",
                     node.self.id,
@@ -8791,7 +8809,8 @@ int node(int argc, char *argv[]) {
                     node.deadline);
 
             // set the dst infos for the current node
-            if (tries == 1) {
+            //if (tries == 1) {
+            if (node.dst_infos.order == 0) {
 
                 // only one order number per node
                 node.dst_infos.order = order++;
@@ -8803,18 +8822,20 @@ int node(int argc, char *argv[]) {
                     node.dst_infos.order,
                     node.dst_infos.nb_messages);
 
-            join_success = join(&node, contact_id, tries);
+            //TODO : 3e argument probablement inutile
+            //join_success = join(&node, contact_id, tries);
+            join_success = join(&node, contact_id, 0);
 
             if (!join_success) {
 
-                XBT_INFO("Node %d: Join failure ! - tries = %d",
-                        node.self.id,
-                        tries);
+                //XBT_INFO("Node %d: Join failure ! - tries = %d", node.self.id, tries);
+                XBT_INFO("Node %d: Join failure !", node.self.id);
             } else {
 
                 //xbt_assert(node.self.id != 1521, "Node %d", node.self.id);
             }
-        } while (!join_success && tries < MAX_JOIN);
+        //} while (!join_success && tries < MAX_JOIN);
+        } while (!join_success);
     } else {
 
         // first node
@@ -10369,12 +10390,13 @@ int main(int argc, char *argv[]) {
                 }
 
                 XBT_INFO("[Node %d]: \n%s\nNeeded to split %d stages\nNeeded"
-                        " %d messages to join\n%s\n",
+                        " %d messages to join\nNeeded %d attempts to join\n%s\n",
                         elem->node_id,
                         (elem->add_stage == 0 ? "Didn't add any stage" :
                          "Added a stage"),
                         elem->nbr_split_stages,
                         elem->nb_messages,
+                        elem->attempts,
                         elem->routing_table);
             } else {
 
