@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/12/19
+ *  Written by Christophe Enderlin on 2013/12/20
  *
  */
 
@@ -39,7 +39,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 1000                        // max number of attemps to run CNX_REQ (just to display a warning)
+#define MAX_CNX 1000                        // max number of attempts to run CNX_REQ (just to display a warning)
 
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
@@ -48,10 +48,8 @@ static const int b = 4;                     /* max number of brothers in a node
 static int COMM_TIMEOUT = 50000;            // timeout for communications
 static double max_simulation_time = 10500;  // max default simulation time
 static xbt_dynar_t infos_dst;               // to store all global DST infos
-static int nb_messages[TYPE_NBR] = {0};     /* total number of messages exchanged
-                                               for each task type */
-static int nb_br_messages[TYPE_NBR] = {0};  /* total number of broadcasted
-                                               messages exchanged for each task type */
+static int nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type
+static int nb_br_messages[100000][TYPE_NBR] = {0};  // total number of broadcasted messages exchanged for each task type
 static int order = 0;                       // order number of nodes arrival
 
 typedef struct f_node {                     // node that failed to join
@@ -808,7 +806,7 @@ static void        send_completed(node_t        me,
 */
 
 static void         init(node_t me);
-static int          join(node_t me, int contact_id, int try);
+static int          join(node_t me, int contact_id);
 static u_ans_data_t get_rep(node_t me, int stage, int new_node_id);
 static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_node_prio, int try);
 static void         new_brother_received(node_t me, int new_node_id);
@@ -2843,7 +2841,7 @@ static void run_tasks_queue(node_t me) {
                             req_data->sender_id,
                             req_data->args.cnx_req.new_node_id);
 
-                    // increment number of attempts if me is leader
+                    // increment number of attempts only if me is leader
                     is_leader = me->self.id == me->brothers[0][0].id;
                     if (is_leader == 1) {
 
@@ -3765,10 +3763,10 @@ static msg_error_t send_msg_sync(node_t me,
     comm = NULL;
 
     // count messages
-    nb_messages[cpy_req_data->type]++;
+    nb_messages[req_data->args.get_rep.new_node_id][cpy_req_data->type]++;
     if (cpy_req_data->type == TASK_BROADCAST) {
 
-        nb_br_messages[cpy_req_data->args.broadcast.type]++;
+        nb_br_messages[req_data->args.get_rep.new_node_id][cpy_req_data->args.broadcast.type]++;
     }
 
 
@@ -4219,10 +4217,10 @@ static msg_error_t send_msg_async(node_t me,
     xbt_assert(mem_type < TYPE_NBR , "send_msg_async : STOP !! - type = %d", mem_type);
     xbt_assert(mem_br_type < TYPE_NBR , "send_msg_async : STOP !! - br_type = %d", mem_br_type);
 
-    nb_messages[mem_type]++;
+    nb_messages[req_data->args.get_rep.new_node_id][mem_type]++;
     if (mem_type == TASK_BROADCAST) {
 
-        nb_br_messages[mem_br_type]++;
+        nb_br_messages[req_data->args.get_rep.new_node_id][mem_br_type]++;
     }
 
     XBT_OUT();
@@ -4353,7 +4351,7 @@ static msg_error_t send_ans_sync(node_t me,
             XBT_VERB("Node %d: Sender Timeout", me->self.id);
         } else {
 
-            nb_messages[type]++;
+            nb_messages[new_node_id][type]++;
         }
     }
 
@@ -4364,10 +4362,10 @@ static msg_error_t send_ans_sync(node_t me,
             recipient_id);
     */
 
-    nb_messages[type]++;
+    nb_messages[new_node_id][type]++;
     if (type == TASK_BROADCAST) {
 
-        nb_br_messages[br_type]++;
+        nb_br_messages[new_node_id][br_type]++;
     }
 
     XBT_OUT();
@@ -4705,10 +4703,9 @@ static void init(node_t me) {
  * \brief This function lets a new node join the DST
  * \param me the new node
  * \param contact_id the node 'me' can contact to get into the DST
- * \param try number of joining attempt
  * \return 1 if join succeeded, 0 otherwise
  */
-static int join(node_t me, int contact_id, int try) {
+static int join(node_t me, int contact_id) {
 
     XBT_IN();
     s_state_t state = get_state(me);
@@ -8831,7 +8828,7 @@ int node(int argc, char *argv[]) {
 
             //TODO : 3e argument probablement inutile
             //join_success = join(&node, contact_id, tries);
-            join_success = join(&node, contact_id, 0);
+            join_success = join(&node, contact_id);
 
             if (!join_success) {
 
@@ -10516,7 +10513,7 @@ static int proc_handle_task(int argc, char* argv[]) {
 
     msg_task_t  proc_task = proc_data->task;
 
-    XBT_VERB("Node %d: [%s:%d] Start proc_handle_task - proc_mailbox = %s - nb attempts = %d",
+    XBT_VERB("Node %d: [%s:%d] Start proc_handle_task - proc_mailbox = %s - Attempt number %d",
             proc_data->node->self.id,
             __FUNCTION__,
             __LINE__,
