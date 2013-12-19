@@ -2678,6 +2678,7 @@ static void run_tasks_queue(node_t me) {
 
     // inits
     int cpt = -1;
+    char is_leader = 0;
     msg_task_t elem = NULL;
     msg_task_t cur_task = NULL;
     msg_task_t *task_ptr = NULL;
@@ -2745,7 +2746,7 @@ static void run_tasks_queue(node_t me) {
                     if (cpt >= MAX_CNX) {
 
                         // TODO : plus utile depuis le tri de la file d'attente ?
-                        // too many attemps
+                        // too many attempts
                         task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
 
                         xbt_assert(task_ptr != NULL && *task_ptr != NULL,
@@ -2842,7 +2843,13 @@ static void run_tasks_queue(node_t me) {
                             req_data->sender_id,
                             req_data->args.cnx_req.new_node_id);
 
-                    req_data->args.cnx_req.try++;
+                    // increment number of attempts if me is leader
+                    is_leader = me->self.id == me->brothers[0][0].id;
+                    if (is_leader == 1) {
+
+                        req_data->args.cnx_req.try++;
+                    }
+
                     launch_fork_process(me, *task_ptr);
                 }
             }
@@ -4647,7 +4654,7 @@ static void init(node_t me) {
     me->dst_infos.order = 0;
     me->dst_infos.node_id = me->self.id;
     me->dst_infos.routing_table = NULL;
-    me->dst_infos.attempts = 0;
+    me->dst_infos.attempts = 1;
     me->dst_infos.nb_messages = 0;
     me->dst_infos.add_stage = 0;
     me->dst_infos.nbr_split_stages = 0;
@@ -10390,7 +10397,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 XBT_INFO("[Node %d]: \n%s\nNeeded to split %d stages\nNeeded"
-                        " %d messages to join\nNeeded %d attempts to join\n%s\n",
+                        " %d messages to join\nNeeded %d attempt(s) to join\n%s\n",
                         elem->node_id,
                         (elem->add_stage == 0 ? "Didn't add any stage" :
                          "Added a stage"),
@@ -10509,11 +10516,12 @@ static int proc_handle_task(int argc, char* argv[]) {
 
     msg_task_t  proc_task = proc_data->task;
 
-    XBT_VERB("Node %d: [%s:%d] proc_mailbox = %s",
+    XBT_VERB("Node %d: [%s:%d] Start proc_handle_task - proc_mailbox = %s - nb attempts = %d",
             proc_data->node->self.id,
             __FUNCTION__,
             __LINE__,
-            proc_data->proc_mailbox);
+            proc_data->proc_mailbox,
+            (req_data->type == TASK_CNX_REQ ? req_data->args.cnx_req.try : -1));
 
     XBT_DEBUG("[%s:%d] - mailbox = '%s' - task = %p - %p",
             __FUNCTION__,
