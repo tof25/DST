@@ -449,17 +449,17 @@ typedef struct {
 
 typedef struct {
 
-    int new_id;
+    int new_node_id;
 } s_task_set_active_t;          // set node state as 'a' (active)
 
 typedef struct {
 
-    int new_id;
+    int new_node_id;
     int new_node_prio;
 } s_task_set_update_t;          // set node state as 'u' (update)
 
 typedef struct {
-    int new_id;
+    int new_node_id;
     char state;
 } s_task_set_state_t;           // set node state as given state
 
@@ -480,6 +480,7 @@ typedef struct {
 
 typedef struct {
 
+    int new_node_id;
     int stage;
     int start;
     int end;
@@ -726,7 +727,7 @@ static void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
 static int          index_pred(node_t me, int stage, int id);
 static e_val_ret_t  wait_for_completion(node_t me, int ans_cpt, int new_node_id);
-static int          tot_msg_number(void);
+static int          tot_msg_number(int id);
 static void         make_copy_brothers(node_t me,
                                        s_node_rep_t ***cpy_brothers,
                                        int **cpy_bro_index);
@@ -1715,7 +1716,7 @@ static void check_cs(node_t me, int sender_id) {
             // send a cs_rel if active
             u_req_args_t args;
             //args.cs_rel.new_node_id = me->self.id;
-            args.set_active.new_id = me->self.id;
+            args.set_active.new_node_id = me->self.id;
 
             msg_error_t res = send_msg_async(me,
                     //TASK_CS_REL,
@@ -2189,15 +2190,16 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 }
 
 /**
- * \brief Returns the total number of messages exchanged so far
+ * \brief Returns the total number of messages exchanged for a given node
+ * \param id the node for which messages will be counted
  * \return The total number of messages
  */
-static int tot_msg_number(void) {
+static int tot_msg_number(int id) {
 
     int i, tot = 0;
 
     for (i = 0; i < TYPE_NBR; i++) {
-        tot += nb_messages[i];
+        tot += nb_messages[id][i];
     }
     return tot;
 }
@@ -4117,6 +4119,9 @@ static msg_error_t send_msg_async(node_t me,
 
     XBT_IN();
 
+    // memorize new node id
+    int new_node_id = args.get_rep.new_node_id;
+
     e_task_type_t mem_type = type;
     e_task_type_t mem_br_type = 0;
     if (mem_type == TASK_BROADCAST) { mem_br_type = args.broadcast.type; }
@@ -4185,7 +4190,7 @@ static msg_error_t send_msg_async(node_t me,
         // only loop_cpt attemps are allowed
         if (res == MSG_TIMEOUT) loop_cpt++;
 
-    } while (res == MSG_TIMEOUT && loop_cpt < max_loops);
+    } while (res == MSG_TIMEOUT && loop_cpt < max_loops);    //TODO : task_sent est-elle à refaire après une tentative ?
 
 
     xbt_assert(loop_cpt < max_loops,
@@ -4217,7 +4222,7 @@ static msg_error_t send_msg_async(node_t me,
     xbt_assert(mem_type < TYPE_NBR , "send_msg_async : STOP !! - type = %d", mem_type);
     xbt_assert(mem_br_type < TYPE_NBR , "send_msg_async : STOP !! - br_type = %d", mem_br_type);
 
-    nb_messages[req_data->args.get_rep.new_node_id][mem_type]++;
+    nb_messages[new_node_id][mem_type]++;
     if (mem_type == TASK_BROADCAST) {
 
         nb_br_messages[req_data->args.get_rep.new_node_id][mem_br_type]++;
@@ -4388,11 +4393,11 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
     switch(args.broadcast.type) {
 
         case TASK_SET_UPDATE:
-            set_update(me, args.broadcast.args->set_update.new_id, args.broadcast.args->set_update.new_node_prio); //TODO: ne pas poursuivre si ret = NOK
+            set_update(me, args.broadcast.args->set_update.new_node_id, args.broadcast.args->set_update.new_node_prio); //TODO: ne pas poursuivre si ret = NOK
             break;
 
         case TASK_SET_ACTIVE:
-            set_update(me, args.broadcast.args->set_active.new_id, -1);  //TODO: ne pas oublier
+            set_update(me, args.broadcast.args->set_active.new_node_id, -1);  //TODO: ne pas oublier
             break;
 
         case TASK_REMOVE_STATE:
@@ -4858,7 +4863,8 @@ static int join(node_t me, int contact_id) {
             state.active,
             state.new_id);
 
-    me->dst_infos.nb_messages = tot_msg_number() - me->dst_infos.nb_messages + 1;
+    //me->dst_infos.nb_messages = tot_msg_number() - me->dst_infos.nb_messages + 1;
+    me->dst_infos.nb_messages = tot_msg_number(me->self.id);
     XBT_VERB("Node %d: nb_msg = %d", me->self.id, me->dst_infos.nb_messages);
 
     display_rout_table(me, 'V');
@@ -5219,7 +5225,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     args.broadcast.lead_br = 1;     // broadcast only to leaders
 
                     args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                    args.broadcast.args->set_update.new_id = new_node_id;
+                    args.broadcast.args->set_update.new_node_id = new_node_id;
                     args.broadcast.args->set_update.new_node_prio = cs_new_node_prio;
                     make_broadcast_task(me, args, &task_sent);
 
@@ -5304,7 +5310,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         args.broadcast.lead_br = 0;             //TODO !! test passer à 1
 
                         args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                        args.broadcast.args->set_active.new_id = new_node_id;
+                        args.broadcast.args->set_active.new_node_id = new_node_id;
                         make_broadcast_task(me, args, &task_sent);
 
                         handle_task(me, &task_sent);
@@ -5447,7 +5453,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                to change (when adding the new coming node in it) */
 
             u_req_args_t u_req_args;
-            u_req_args.set_state.new_id = new_node_id;
+            u_req_args.set_state.new_node_id = new_node_id;
             u_req_args.set_state.state = 'p';
 
             for (i = 1; i < me->height; i++) {    // not needed for stage 0
@@ -8819,7 +8825,7 @@ int node(int argc, char *argv[]) {
                 // only one order number per node
                 node.dst_infos.order = order++;
             }
-            node.dst_infos.nb_messages = tot_msg_number();
+            node.dst_infos.nb_messages = tot_msg_number(node.self.id);
 
             XBT_VERB("Node %d: order = %d, nb_msg = %d",
                     node.self.id,
@@ -9472,7 +9478,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     (state.active == 'u' &&
                      (
                       !(rcv_args.broadcast.type == TASK_SET_UPDATE &&
-                        rcv_args.broadcast.args->set_update.new_id == state.new_id) &&
+                        rcv_args.broadcast.args->set_update.new_node_id == state.new_id) &&
                       rcv_args.broadcast.type != TASK_SET_ACTIVE &&
                       rcv_args.broadcast.type != TASK_ADD_STAGE &&
                       rcv_args.broadcast.type != TASK_SPLIT &&
@@ -9490,8 +9496,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                     debug_msg[rcv_args.broadcast.type],
                                     state.new_id,
                                     (rcv_args.broadcast.type == TASK_SET_UPDATE ?
-                                     rcv_args.broadcast.args->set_update.new_id :
-                                     rcv_args.broadcast.args->set_active.new_id));
+                                     rcv_args.broadcast.args->set_update.new_node_id :
+                                     rcv_args.broadcast.args->set_active.new_node_id));
 
                             /* if set_update is refused, tell the caller.
                                if set_active is refused, nevermind, it'll work another
@@ -9548,7 +9554,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
                                 XBT_VERB("Node %d: Run broadcast of Set Update for new_id = %d - state.new_id = %d",
                                         me->self.id,
-                                        rcv_args.broadcast.args->set_update.new_id,
+                                        rcv_args.broadcast.args->set_update.new_node_id,
                                         state.new_id);
                             }
 
@@ -9918,12 +9924,12 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_SET_ACTIVE:
-            set_active(me, rcv_args.set_active.new_id);
+            set_active(me, rcv_args.set_active.new_node_id);
 
             // send a 'completed task' message back
             if (rcv_req->sender_id != me->self.id) {
 
-                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.set_active.new_id);
+                send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.set_active.new_node_id);
             }
 
             data_req_free(me, &rcv_req);
@@ -9933,7 +9939,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_SET_UPDATE:
-            val_ret = set_update(me, rcv_args.set_update.new_id, rcv_args.set_update.new_node_prio);
+            val_ret = set_update(me, rcv_args.set_update.new_node_id, rcv_args.set_update.new_node_prio);
 
             // send the answer back
             if (rcv_req->sender_id != me->self.id) {
@@ -9946,7 +9952,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 answer.handle.val_ret_id = me->self.id;
 
                 res = send_ans_sync(me,
-                        rcv_args.set_update.new_id,
+                        rcv_args.set_update.new_node_id,
                         type,
                         rcv_req->sender_id,
                         rcv_req->answer_to,
@@ -9972,7 +9978,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             display_states(me, 'D');
 
             set_state(me,
-                    rcv_args.set_state.new_id,
+                    rcv_args.set_state.new_node_id,
                     rcv_args.set_state.state);
 
             state = get_state(me);
@@ -10377,6 +10383,8 @@ int main(int argc, char *argv[]) {
 
     dst_infos_t elem;
     int tot_msg_nodes = 0;
+    int nb_msg[TYPE_NBR] = {0};
+    int nb_br_msg[TYPE_NBR] = {0};
     int max_msg_nodes = -1;
     int max_node;
 
@@ -10384,6 +10392,14 @@ int main(int argc, char *argv[]) {
         if (elem != NULL) {
 
             nb_nodes_tot++;
+
+            // sum messages counters
+            for (i = 0; i < TYPE_NBR; i++) {
+
+                nb_msg[i] += nb_messages[elem->node_id][i];
+                nb_br_msg[i] += nb_br_messages[elem->node_id][i];
+            }
+
             if (elem->active == 'a') {
 
                 nb_nodes++;
@@ -10433,12 +10449,12 @@ int main(int argc, char *argv[]) {
     XBT_INFO("Number of elements in infos_dst = %d", cpt);
     XBT_INFO("Messages needed for %d active nodes / %d total nodes ( sent - broadcasted )",
             nb_nodes,
-            nb_nodes_tot);
+            nb_nodes_tot);      //TODO : nb_nodes_tot contient certainement la même valeur que cpt
     for (i = 0; i < TYPE_NBR; i++) {
         XBT_INFO("\t['%25s': %6d - %3d]",
                 debug_msg[i],
-                nb_messages[i],
-                nb_br_messages[i]);
+                nb_msg[i],
+                nb_br_msg[i]);
     }
 
     if (nb_nodes != nb_nodes_tot) {
@@ -10463,7 +10479,7 @@ int main(int argc, char *argv[]) {
        xbt_free(g_cpt);
     */
 
-    XBT_INFO("Total number of messages: %d\n", tot_msg_number());
+    XBT_INFO("Total number of messages: %d\n", tot_msg_nodes);
     XBT_INFO("Max messages needed by node %d: %d\n",
             max_node,
             max_msg_nodes);
