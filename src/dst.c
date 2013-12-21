@@ -45,12 +45,14 @@ static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     /* max number of brothers in a node
                                                (must be twice a) */
-static int COMM_TIMEOUT = 50000;            // timeout for communications
-static double max_simulation_time = 10500;  // max default simulation time
-static xbt_dynar_t infos_dst;               // to store all global DST infos
-static int nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type
-static int nb_br_messages[100000][TYPE_NBR] = {0};  // total number of broadcasted messages exchanged for each task type
-static int order = 0;                       // order number of nodes arrival
+static int         COMM_TIMEOUT = 50000;                    // timeout for communications
+static double      max_simulation_time = 10500;             // max default simulation time              //TODO : plus utile ?
+static xbt_dynar_t infos_dst;                               // to store all global DST infos
+static int         nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type
+static int         nb_br_messages[100000][TYPE_NBR] = {0};  // total number of broadcasted messages exchanged for each task type
+static int         order = 0;                               // order number of nodes arrival
+static int         nb_nodes = 0;                            // total number of nodes
+static int         nb_ins_nodes = 0;                        // number of nodes already inserted
 
 typedef struct f_node {                     // node that failed to join
     int   id;
@@ -713,7 +715,7 @@ struct ans_data {
   ==========================  UTILITY FUNCTIONS ===============================
 */
 
-static unsigned long count_lines_of_file(const char *file_patch);
+static int          count_lines_of_file(const char *file);
 static void         display_var(node_t me);
 static char*        routing_table(node_t me);
 static void         set_n_store_infos(node_t me);
@@ -899,22 +901,22 @@ static void        proc_data_cleanup(void* arg);
 
 /**
  * \brief Count lines of a file
- * \param file_patch the name of the file
- * \return number of lines in file
+ * \param file the name of the file
+ * \return number of lines
  */
-static unsigned long count_lines_of_file(const char *file_patch) {
-    FILE *fp = fopen(file_patch, "r");
-    unsigned long line_count = 0;
-
-    if(fp == NULL){
-        fclose(fp);
-        return 0;
+static int count_lines_of_file(const char *file) {
+    int ch, count = 0;
+    FILE *fp = fopen(file, "r");
+    if(fp == NULL) {
+        return -1;
     }
-    while ( fgetline(fp) )
-        line_count++;
-
+    while((ch = fgetc(fp)) != EOF) {
+        if (ch == '\n') {
+            count++;
+        }
+    }
     fclose(fp);
-    return line_count;
+    return count - 4;
 }
 
 /**
@@ -2879,7 +2881,8 @@ static void run_tasks_queue(node_t me) {
         sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
 
         MSG_process_sleep(sleep_time);
-    } while (MSG_get_clock() < max_simulation_time);
+    //while (MSG_get_clock() < max_simulation_time);
+    } while (nb_ins_nodes < nb_nodes);
 
     XBT_OUT();
 }
@@ -8873,6 +8876,7 @@ int node(int argc, char *argv[]) {
     if (join_success) {
 
         XBT_INFO("Node %d: **** JOIN COMPLETED ****", node.self.id);
+        nb_ins_nodes++;
 
         // active state
         set_active(&node, node.self.id);
@@ -8891,7 +8895,8 @@ int node(int argc, char *argv[]) {
         msg_error_t res = MSG_TRANSFER_FAILURE;
         s_state_t state = get_state(&node);
 
-        while (MSG_get_clock() < max_simulation_time && state.active != 'n') {
+        //while (MSG_get_clock() < max_simulation_time && state.active != 'n') {
+        while (nb_ins_nodes < nb_nodes && state.active != 'n') {
 
             // prepare a new 'listening' phase
             if (node.comm_received == NULL) {
@@ -10368,8 +10373,7 @@ int main(int argc, char *argv[]) {
     const char* deployment_file = argv[2];
     if (argc == 4) max_simulation_time = atoi(argv[3]);
 
-    unsigned long nb_lines = count_lines_of_file(deployment_file);
-    XBT_VERB("Nb_lignes = %u", nb_lines);
+    nb_nodes = count_lines_of_file(deployment_file);
 
     //MSG_set_channel_number(0);         //TODO: je n'ai pas compris l'utilité de set_channel_number
     MSG_create_environment(platform_file);
@@ -10383,8 +10387,8 @@ int main(int argc, char *argv[]) {
 
 
     // print all routing tables
-    XBT_INFO("************************************     PRINT ALL     "
-            "************************************\n");
+    XBT_INFO("************************************     PRINT ALL  (nb_ins_nodes = %d)    "
+            "************************************\n", nb_ins_nodes);
     unsigned int cpt = 0, nb_nodes = 0, nb_nodes_tot = 0;
 
     XBT_VERB("compt_proc_rest = %d - compt_proc = %d", compt_proc_rest, compt_proc);
@@ -10406,6 +10410,7 @@ int main(int argc, char *argv[]) {
     int max_msg_nodes = -1;             // max number of messages for one node
     int max_node;                       // node that needed max number
 
+    /*
     // write it down to a file
     FILE *fp;
     fp = fopen("./log_nodes.txt", "w+");
@@ -10415,6 +10420,7 @@ int main(int argc, char *argv[]) {
         fprintf(fp, "%s, ", debug_msg[i]);
     }
     fprintf(fp, "\n");
+    */
 
     xbt_dynar_foreach(infos_dst, cpt, elem) {
         if (elem != NULL) {
@@ -10430,6 +10436,7 @@ int main(int argc, char *argv[]) {
                 tot_msg      += nb_messages[elem->node_id][i];
             }
 
+            /*
             fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
                     elem->node_id,
                     tot_msg,
@@ -10471,6 +10478,7 @@ int main(int argc, char *argv[]) {
                     nb_messages[elem->node_id][35],
                     nb_messages[elem->node_id][36],
                     nb_messages[elem->node_id][37]);
+            */
 
             if (elem->active == 'a') {
 
@@ -10519,7 +10527,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    fclose(fp);
+    //fclose(fp);
 
     XBT_INFO("Number of elements in infos_dst = %d", cpt);
     XBT_INFO("Messages needed for %d active nodes / %d total nodes ( sent - broadcasted )",
