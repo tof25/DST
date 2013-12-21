@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/12/20
+ *  Written by Christophe Enderlin on 2013/12/21
  *
  */
 
@@ -76,8 +76,6 @@ typedef struct s_dst_info {
     char  active;                           // node state
     char *routing_table;                    // string representation of a routing table
     int   attempts;                         // number of attempts to join the dst
-    int   nb_messages;                      /* number of messages needed for the
-                                               node to join */
     int   add_stage;                        /* boolean: was it necessary to add
                                                a stage to insert this node ? */
     int   nbr_split_stages;                 /* number of splitted stages to make
@@ -715,6 +713,7 @@ struct ans_data {
   ==========================  UTILITY FUNCTIONS ===============================
 */
 
+static unsigned long count_lines_of_file(const char *file_patch);
 static void         display_var(node_t me);
 static char*        routing_table(node_t me);
 static void         set_n_store_infos(node_t me);
@@ -897,6 +896,26 @@ static void        proc_data_cleanup(void* arg);
 /*
  ========================== FUNCTIONS DEFINITIONS =============================
 */
+
+/**
+ * \brief Count lines of a file
+ * \param file_patch the name of the file
+ * \return number of lines in file
+ */
+static unsigned long count_lines_of_file(const char *file_patch) {
+    FILE *fp = fopen(file_patch, "r");
+    unsigned long line_count = 0;
+
+    if(fp == NULL){
+        fclose(fp);
+        return 0;
+    }
+    while ( fgetline(fp) )
+        line_count++;
+
+    fclose(fp);
+    return line_count;
+}
 
 /**
  * \brief Ask a remote node to display some variable (for debug)
@@ -2194,7 +2213,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
  * \param id the node for which messages will be counted
  * \return The total number of messages
  */
-static int tot_msg_number(int id) {
+static int tot_msg_number(int id) {                                         //TODO : inutile ?
 
     int i, tot = 0;
 
@@ -4658,7 +4677,7 @@ static void init(node_t me) {
     me->dst_infos.node_id = me->self.id;
     me->dst_infos.routing_table = NULL;
     me->dst_infos.attempts = 1;
-    me->dst_infos.nb_messages = 0;
+    //me->dst_infos.nb_messages = 0;
     me->dst_infos.add_stage = 0;
     me->dst_infos.nbr_split_stages = 0;
     me->dst_infos.load = xbt_new0(int, me->height);
@@ -4863,9 +4882,7 @@ static int join(node_t me, int contact_id) {
             state.active,
             state.new_id);
 
-    //me->dst_infos.nb_messages = tot_msg_number() - me->dst_infos.nb_messages + 1;
-    me->dst_infos.nb_messages = tot_msg_number(me->self.id);
-    XBT_VERB("Node %d: nb_msg = %d", me->self.id, me->dst_infos.nb_messages);
+    //me->dst_infos.nb_messages = tot_msg_number(me->self.id);
 
     display_rout_table(me, 'V');
 
@@ -8825,12 +8842,11 @@ int node(int argc, char *argv[]) {
                 // only one order number per node
                 node.dst_infos.order = order++;
             }
-            node.dst_infos.nb_messages = tot_msg_number(node.self.id);
+            //node.dst_infos.nb_messages = tot_msg_number(node.self.id);
 
-            XBT_VERB("Node %d: order = %d, nb_msg = %d",
+            XBT_VERB("Node %d: order = %d",
                     node.self.id,
-                    node.dst_infos.order,
-                    node.dst_infos.nb_messages);
+                    node.dst_infos.order);
 
             //TODO : 3e argument probablement inutile
             //join_success = join(&node, contact_id, tries);
@@ -10352,7 +10368,8 @@ int main(int argc, char *argv[]) {
     const char* deployment_file = argv[2];
     if (argc == 4) max_simulation_time = atoi(argv[3]);
 
-    //XBT_VERB("Nb_lignes = %d", system("cat deployment_file_100.xml | wc -l"));
+    unsigned long nb_lines = count_lines_of_file(deployment_file);
+    XBT_VERB("Nb_lignes = %u", nb_lines);
 
     //MSG_set_channel_number(0);         //TODO: je n'ai pas compris l'utilité de set_channel_number
     MSG_create_environment(platform_file);
@@ -10382,11 +10399,22 @@ int main(int argc, char *argv[]) {
     size = 0;
 
     dst_infos_t elem;
-    int tot_msg_nodes = 0;
-    int nb_msg[TYPE_NBR] = {0};
-    int nb_br_msg[TYPE_NBR] = {0};
-    int max_msg_nodes = -1;
-    int max_node;
+    int tot_msg_nodes = 0;              // total number of messages for all nodes
+    int tot_msg = 0;                    // number of messages for current node
+    int nb_msg[TYPE_NBR] = {0};         // total number of messages per task type
+    int nb_br_msg[TYPE_NBR] = {0};      // total number of messages per broadcasted task type
+    int max_msg_nodes = -1;             // max number of messages for one node
+    int max_node;                       // node that needed max number
+
+    // write it down to a file
+    FILE *fp;
+    fp = fopen("./log_nodes.txt", "w+");
+    fprintf(fp, "Node, Nb Msg, ");
+    for (i = 0; i < TYPE_NBR; i++) {
+
+        fprintf(fp, "%s, ", debug_msg[i]);
+    }
+    fprintf(fp, "\n");
 
     xbt_dynar_foreach(infos_dst, cpt, elem) {
         if (elem != NULL) {
@@ -10394,18 +10422,63 @@ int main(int argc, char *argv[]) {
             nb_nodes_tot++;
 
             // sum messages counters
+            tot_msg = 0;
             for (i = 0; i < TYPE_NBR; i++) {
 
-                nb_msg[i] += nb_messages[elem->node_id][i];
+                nb_msg[i]    += nb_messages[elem->node_id][i];
                 nb_br_msg[i] += nb_br_messages[elem->node_id][i];
+                tot_msg      += nb_messages[elem->node_id][i];
             }
+
+            fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
+                    elem->node_id,
+                    tot_msg,
+                    nb_messages[elem->node_id][0],
+                    nb_messages[elem->node_id][1],
+                    nb_messages[elem->node_id][2],
+                    nb_messages[elem->node_id][3],
+                    nb_messages[elem->node_id][4],
+                    nb_messages[elem->node_id][5],
+                    nb_messages[elem->node_id][6],
+                    nb_messages[elem->node_id][7],
+                    nb_messages[elem->node_id][8],
+                    nb_messages[elem->node_id][9],
+                    nb_messages[elem->node_id][10],
+                    nb_messages[elem->node_id][11],
+                    nb_messages[elem->node_id][12],
+                    nb_messages[elem->node_id][13],
+                    nb_messages[elem->node_id][14],
+                    nb_messages[elem->node_id][15],
+                    nb_messages[elem->node_id][16],
+                    nb_messages[elem->node_id][17],
+                    nb_messages[elem->node_id][18],
+                    nb_messages[elem->node_id][19],
+                    nb_messages[elem->node_id][20],
+                    nb_messages[elem->node_id][21],
+                    nb_messages[elem->node_id][22],
+                    nb_messages[elem->node_id][23],
+                    nb_messages[elem->node_id][24],
+                    nb_messages[elem->node_id][25],
+                    nb_messages[elem->node_id][26],
+                    nb_messages[elem->node_id][27],
+                    nb_messages[elem->node_id][28],
+                    nb_messages[elem->node_id][29],
+                    nb_messages[elem->node_id][30],
+                    nb_messages[elem->node_id][31],
+                    nb_messages[elem->node_id][32],
+                    nb_messages[elem->node_id][33],
+                    nb_messages[elem->node_id][34],
+                    nb_messages[elem->node_id][35],
+                    nb_messages[elem->node_id][36],
+                    nb_messages[elem->node_id][37]);
 
             if (elem->active == 'a') {
 
                 nb_nodes++;
-                tot_msg_nodes += elem->nb_messages;
-                if (elem->nb_messages > max_msg_nodes) {
-                    max_msg_nodes = elem->nb_messages;
+                tot_msg_nodes += tot_msg;
+                if (tot_msg > max_msg_nodes) {
+
+                    max_msg_nodes = tot_msg;
                     max_node = elem->node_id;
                 }
 
@@ -10415,7 +10488,7 @@ int main(int argc, char *argv[]) {
                         (elem->add_stage == 0 ? "Didn't add any stage" :
                          "Added a stage"),
                         elem->nbr_split_stages,
-                        elem->nb_messages,
+                        tot_msg,
                         elem->attempts,
                         elem->routing_table);
             } else {
@@ -10445,6 +10518,8 @@ int main(int argc, char *argv[]) {
             XBT_VERB("cpt: %d, elem = NULL", cpt);
         }
     }
+
+    fclose(fp);
 
     XBT_INFO("Number of elements in infos_dst = %d", cpt);
     XBT_INFO("Messages needed for %d active nodes / %d total nodes ( sent - broadcasted )",
