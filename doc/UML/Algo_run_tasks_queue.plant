@@ -48,7 +48,7 @@ else
         if "" then
             -->[No] s1
         else
-            -->[Yes] "Launch fork process to run head request"
+            -->[Yes] "<b>Launch fork process</b> to run head request"
             --> "<i>Run_state</i> <-- RUNNING" as run1
             --> s1
         endif

@@ -56,7 +56,7 @@ loop For the whole simulation time
 
     else other tasks
 
-        Tasks_Queue -> Tasks_Queue: handle_task()
+        Tasks_Queue -> Tasks_Queue: handle_task
         activate Tasks_Queue #Blue
         deactivate Tasks_Queue
     end

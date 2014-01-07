@@ -10381,9 +10381,9 @@ int main(int argc, char *argv[]) {
     MSG_function_register("node", node);
     MSG_launch_application(deployment_file);
 
-    xbt_os_timer_start(timer);
+    xbt_os_walltimer_start(timer);
     msg_error_t res = MSG_main();
-    xbt_os_timer_stop(timer);
+    xbt_os_walltimer_stop(timer);
 
 
     // print all routing tables
