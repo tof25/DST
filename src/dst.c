@@ -5121,7 +5121,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         /*** Ask for permission to get into the Critical Section ***/
         val_ret = cs_req(me, me->self.id, new_node_id, cs_new_node_prio);
 
-        XBT_VERB("Node %d: back to %s", me->self.id, __FUNCTION__);
+        XBT_DEBUG("Node %d: back to [%s:%d]", me->self.id, __FUNCTION__, __LINE__);
 
         /*
            if ((me->cs_req == 1 && me->cs_new_id != new_node_id) ||

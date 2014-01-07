@@ -1,30 +1,27 @@
 @startuml
 (*top) --> "<i>val_ret</i> <-- OK"
---> "me is leader ?"
+--> "Leader ?"
 if "" then
     -->[Yes] "<i>n <-- 0</i>"
-    note left : me is leader
     --> "<i>val_ret</i> <-- <b>cs_req()</b>"
     --> "<i>val_ret</i> = UPDATE_NOK ?" as req1
     if "" then
         -->[Yes] == SUITE ==
     else
         -->[No] "<i>n</i> <-- number of stages to split"
-        note left : me is available
         --> "<i>n</i> > 0 ?"
         if "" then
-            -->[Yes] "<i>val_ret</i> <-- <b>Broadcast</b> CS_REQ\nto leaders from stage <i>n</i>+1"
+            -->[Yes] "<i>val_ret</i> <-- <b>Broadcast</b> CS_REQ\nto leaders from stage <i>n</i>"
             --> "<i>val_ret</i> = UPDATE_NOK ?" as req2
             if "" then
-                -->[No] "<i>val_ret</i> <-- <b>Broadcast</b> SET UPD\nto leaders from stage <i>n</i>+1"
-                note left : leaders available
-                --> "<i>val_ret</i> = UPDATE_NOK ?" as req3
+                -->[No] "<i>val_ret</i> <-- <b>broadcast</b> SET UPD\nto leaders from stage <i>n</i>"
+                --> "<i>val_ret</i> = update_NOK ?" as req3
                 if "" then
-                    -->[Yes] "<i>val_ret</i> <-- <b>Broadcast</b> REMOVE STATE\nto leaders from stage <i>n</i>+1"
+                    -left->[Yes] "<i>val_ret</i> <-- <b>Broadcast</b> REMOVE STATE\nto leaders from stage <i>n</i>"
                     --> == SUITE ==
                 else
                     -->[No] "<b>split_request</b>(stage 1..n)"
-                    --> "<i>val_ret</i> <-- <b>Broadcast</b> SET ACT\nto all DST from stage <i>n</i>+1"
+                    --> "<i>val_ret</i> <-- <b>Broadcast</b> SET ACT\nto all DST from stage <i>n</i>"
                     --> == SUITE ==
                 endif
             else
@@ -35,23 +32,24 @@ if "" then
         endif
     endif
 else
-    -->[No] "transmit request to leader"
+    -right->[No] "transmit request to leader"
+    --> "<i>answer</i> <-- leader's answer"
+    --> "<b>set_active(me)</b>"
     --> == FIN ==
 endif
 
 == SUITE == --> "<i>val_ret</i> = UPDATE_NOK ?"
 if "" then
     -->[No] "<b>set_update()</b>"
-    note right : insert new node
     --> "<i>cpy_brothers[]</i> <-- <i>brothers[0][]</i>"
     --> "<b>send_msg_async</b>(NEW_BRO_RCV, <i>cpy_brothers[]</i>)"
     --> "<b>wait_for_completion()</b>"
     --> "send SET STATE 'p' to all table"
-    --> "answer OK"
+    --> "<i>answer</i> <-- OK"
     --> == FIN ==
 
 else
-    -->[Yes] "answer NOK"
+    -->[Yes] "<i>answer</i> <-- NOK"
     --> == FIN ==
 endif
 
