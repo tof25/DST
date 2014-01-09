@@ -35,7 +35,7 @@ else
     -right->[No] "transmit request to leader"
     --> "<i>answer</i> <-- leader's answer"
     --> "<b>set_active(me)</b>"
-    --> == FIN ==
+    --> "return <i>answer</i>"
 endif
 
 == SUITE == --> "<i>val_ret</i> = UPDATE_NOK ?"
@@ -44,16 +44,14 @@ if "" then
     --> "<i>cpy_brothers[]</i> <-- <i>brothers[0][]</i>"
     --> "<b>send_msg_async</b>(NEW_BRO_RCV, <i>cpy_brothers[]</i>)"
     --> "<b>wait_for_completion()</b>"
-    --> "send SET STATE 'p' to all table"
-    --> "<i>answer</i> <-- OK"
-    --> == FIN ==
-
+    --> "set_active()"
+    --> "send SET STATE 'p' to all table\nbut stage 0"
+    --> "<i>answer</i> <-- <i>val_ret</i>"
 else
-    -->[Yes] "<i>answer</i> <-- NOK"
-    --> == FIN ==
+    -->[Yes] "<i>answer</i> <-- <i>val_ret</i>"
 endif
 
-== FIN == --> "return <i>answer</i>"
+--> "return <i>answer</i>"
 --> (*)
 
 @enduml
