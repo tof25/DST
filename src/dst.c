@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2013/12/21
+ *  Written by Christophe Enderlin on 2014/01/12
  *
  */
 
@@ -5140,10 +5140,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     state.new_id);
 
             answer.cnx_req.new_contact.id = -1;
-            //val_ret = UPDATE_NOK;
         } else {
-
-            //val_ret = OK;
 
             XBT_VERB("Node %d: [%s:%d] '%c'/%d - available",
                     me->self.id,
@@ -5151,17 +5148,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     __LINE__,
                     state.active,
                     state.new_id);
-
-            // set cs_req
-            /*
-               me->cs_req = 1;
-               me->cs_new_id = new_node_id;
-               me->cs_req_time = MSG_get_clock();
-
-               XBT_DEBUG("Node %d: in connection_request() - after cs_req",
-               me->self.id);
-               display_sc(me, 'D');
-            */
 
             u_req_args_t args;
             msg_task_t task_sent = NULL;
@@ -5254,13 +5240,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     xbt_free(args.broadcast.args);
                     args.broadcast.args = NULL;
 
-                    /*
-                    // Set_Update broadcast isn't supposed to fail if cs_req returned OK
-                    xbt_assert(val_ret != UPDATE_NOK,
-                            "Node %d: Set UPDATE error while making room for node %d",
-                            me->self.id,
-                            new_node_id);
-                    */
                     if (val_ret == UPDATE_NOK) {
 
                         /* Set_Update broadcast failed (probably because a cs_req has been reset meanwhile)
@@ -5327,7 +5306,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         args.broadcast.first_call = 1;
                         args.broadcast.source_id = me->self.id;
                         args.broadcast.new_node_id = new_node_id;
-                        args.broadcast.lead_br = 0;             //TODO !! test passer à 1
+                        args.broadcast.lead_br = 0;             // broadcast to everyone (leaders only don't work)
 
                         args.broadcast.args = xbt_new0(u_req_args_t, 1);
                         args.broadcast.args->set_active.new_node_id = new_node_id;
@@ -5348,8 +5327,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                 } else {
 
                     // cs_req returned NOK
-
-                    //me->cs_req = 0;
 
                     state = get_state(me);
                     XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
@@ -5469,7 +5446,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             }
             */
 
-            /* set every member to 'p' to show that their preds table is about
+            /* set every member's state to 'p' to show that their preds table is about
                to change (when adding the new coming node in it) */
 
             u_req_args_t u_req_args;
@@ -10335,11 +10312,9 @@ int main(int argc, char *argv[]) {
 
     if (argc < 3) {
 
-        printf("Usage: %s platform_file deployment_file [simulation_time]"
+        printf("Usage: %s platform_file deployment_file"
                 " --log=msg_dst.thres:info 2>&1 | tools/MSG_visualization/colorize.pl\n",
                 argv[0]);
-        printf("       simulation_time defaults to %d ",
-                (int) max_simulation_time);
         exit(1);
     }
 
@@ -10371,9 +10346,10 @@ int main(int argc, char *argv[]) {
 
     const char* platform_file = argv[1];
     const char* deployment_file = argv[2];
-    if (argc == 4) max_simulation_time = atoi(argv[3]);
+    //if (argc == 4) max_simulation_time = atoi(argv[3]);
 
     nb_nodes = count_lines_of_file(deployment_file);
+    XBT_INFO("START BUILDING A DST OF %d NODES", nb_nodes);
 
     //MSG_set_channel_number(0);         //TODO: je n'ai pas compris l'utilité de set_channel_number
     MSG_create_environment(platform_file);
@@ -10389,7 +10365,7 @@ int main(int argc, char *argv[]) {
     // print all routing tables
     XBT_INFO("************************************     PRINT ALL  (nb_ins_nodes = %d)    "
             "************************************\n", nb_ins_nodes);
-    unsigned int cpt = 0, nb_nodes = 0, nb_nodes_tot = 0;
+    unsigned int cpt = 0, loc_nb_nodes = 0, loc_nb_nodes_tot = 0;
 
     XBT_VERB("compt_proc_rest = %d - compt_proc = %d", compt_proc_rest, compt_proc);
 
@@ -10425,7 +10401,7 @@ int main(int argc, char *argv[]) {
     xbt_dynar_foreach(infos_dst, cpt, elem) {
         if (elem != NULL) {
 
-            nb_nodes_tot++;
+            loc_nb_nodes_tot++;
 
             // sum messages counters
             tot_msg = 0;
@@ -10482,7 +10458,7 @@ int main(int argc, char *argv[]) {
 
             if (elem->active == 'a') {
 
-                nb_nodes++;
+                loc_nb_nodes++;
                 tot_msg_nodes += tot_msg;
                 if (tot_msg > max_msg_nodes) {
 
@@ -10531,8 +10507,8 @@ int main(int argc, char *argv[]) {
 
     XBT_INFO("Number of elements in infos_dst = %d", cpt);
     XBT_INFO("Messages needed for %d active nodes / %d total nodes ( sent - broadcasted )",
-            nb_nodes,
-            nb_nodes_tot);      //TODO : nb_nodes_tot contient certainement la même valeur que cpt
+            loc_nb_nodes,
+            loc_nb_nodes_tot);      //TODO : loc_nb_nodes_tot contient certainement la même valeur que cpt
     for (i = 0; i < TYPE_NBR; i++) {
         XBT_INFO("\t['%25s': %6d - %3d]",
                 debug_msg[i],
@@ -10540,7 +10516,7 @@ int main(int argc, char *argv[]) {
                 nb_br_msg[i]);
     }
 
-    if (nb_nodes != nb_nodes_tot) {
+    if (loc_nb_nodes != loc_nb_nodes_tot) {
 
         XBT_INFO(" ");
         i = 0;

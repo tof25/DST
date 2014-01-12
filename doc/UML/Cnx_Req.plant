@@ -1,5 +1,14 @@
 @startuml
+title <u>Connection_request()</u>\n\n
 (*top) --> "<i>val_ret</i> <-- OK"
+note left
+    possible values :
+    - OK
+    - STORED
+    - UPDATE_OK
+    - UPDATE_NOK
+    - FAILED
+end note
 --> "Leader ?"
 if "" then
     -->[Yes] "<i>n <-- 0</i>"
@@ -17,11 +26,11 @@ if "" then
                 -->[No] "<i>val_ret</i> <-- <b>broadcast</b> SET UPD\nto leaders from stage <i>n</i>"
                 --> "<i>val_ret</i> = update_NOK ?" as req3
                 if "" then
-                    -left->[Yes] "<i>val_ret</i> <-- <b>Broadcast</b> REMOVE STATE\nto leaders from stage <i>n</i>"
+                    -left->[Yes] "<b>Broadcast</b> REMOVE STATE\nto leaders from stage <i>n</i>"
                     --> == SUITE ==
                 else
-                    -->[No] "<b>split_request</b>(stage 1..n)"
-                    --> "<i>val_ret</i> <-- <b>Broadcast</b> SET ACT\nto all DST from stage <i>n</i>"
+                    -->[No] "<b>split_request</b>(stage n..1)"
+                    --> "<b>Broadcast</b> SET ACTIVE\nto all nodes from stage <i>n</i>"
                     --> == SUITE ==
                 endif
             else
@@ -34,7 +43,7 @@ if "" then
 else
     -right->[No] "transmit request to leader"
     --> "<i>answer</i> <-- leader's answer"
-    --> "<b>set_active(me)</b>"
+    --> "<b>set_active()</b>" as act1
     --> "return <i>answer</i>"
 endif
 
@@ -44,8 +53,10 @@ if "" then
     --> "<i>cpy_brothers[]</i> <-- <i>brothers[0][]</i>"
     --> "<b>send_msg_async</b>(NEW_BRO_RCV, <i>cpy_brothers[]</i>)"
     --> "<b>wait_for_completion()</b>"
-    --> "set_active()"
+    --> "build <i>answer</i>"
+    --> "<b>set_active()</b>" as act2
     --> "send SET STATE 'p' to all table\nbut stage 0"
+    --> "reset <i>cs_req</i>"
     --> "<i>answer</i> <-- <i>val_ret</i>"
 else
     -->[Yes] "<i>answer</i> <-- <i>val_ret</i>"
