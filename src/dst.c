@@ -3793,10 +3793,10 @@ static msg_error_t send_msg_sync(node_t me,
     comm = NULL;
 
     // count messages
-    nb_messages[req_data->args.get_rep.new_node_id][cpy_req_data->type]++;
+    nb_messages[args.get_rep.new_node_id][cpy_req_data->type]++;
     if (cpy_req_data->type == TASK_BROADCAST) {
 
-        nb_br_messages[req_data->args.get_rep.new_node_id][cpy_req_data->args.broadcast.type]++;
+        nb_br_messages[args.get_rep.new_node_id][cpy_req_data->args.broadcast.type]++;
     }
 
 
@@ -4946,7 +4946,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
     }
 
     // set self state to 'p' right now in case me would be chosen
-    set_state(me, new_node_id, 'p');
+    //set_state(me, new_node_id, 'p');
 
     XBT_VERB("Node %d: [%s:%d] '%c'/%d - new_node = %d",
             me->self.id,
@@ -4967,49 +4967,57 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
     u_req_args.nb_pred.stage = stage;
     u_req_args.nb_pred.new_node_id = new_node_id;
 
-    int f;
-    for (f = 0; f < me->bro_index[0]; f+=2) {       // take only brothers that will stay for sure (in case of SPLIT)
+    int f = 0;
+    //for (f = 0; f < me->bro_index[0]; f+=2) {       // take only brothers that will stay for sure (in case of SPLIT)
 
-        if (me->brothers[0][f].id == me->self.id) {
+    //    if (me->brothers[0][f].id == me->self.id) {
 
-            load_f = me->pred_index[stage];
-        } else {
-            msg_error_t res = send_msg_sync(me,
-                    TASK_NB_PRED,
-                    me->brothers[0][f].id,
-                    u_req_args,
-                    &rcv_ans_data);
+    //        load_f = me->pred_index[stage];
+    //    } else {
+    //        msg_error_t res = send_msg_sync(me,
+    //                TASK_NB_PRED,
+    //                me->brothers[0][f].id,
+    //                u_req_args,
+    //                &rcv_ans_data);
 
-            // TODO : s'assurer qu'on est toujours à l'état 'g' à ce stade
+    //        // TODO : s'assurer qu'on est toujours à l'état 'g' à ce stade
 
-            if (res != MSG_OK) {
+    //        if (res != MSG_OK) {
 
-                // nb pred failure
-                XBT_WARN("Node %d: failed to get the number of predecessors"
-                        " for stage %d from node %d",
-                        me->self.id,
-                        stage, me->brothers[0][f].id);
+    //            // nb pred failure
+    //            XBT_WARN("Node %d: failed to get the number of predecessors"
+    //                    " for stage %d from node %d",
+    //                    me->self.id,
+    //                    stage, me->brothers[0][f].id);
 
-                // defaults to b in this case   //TODO: vérifier si c'est une bonne idée
-                rcv_ans_data->answer.nb_pred.load = b;  //TODO : Attention, pointeur pas initialisé ?
-            }
-            load_f = rcv_ans_data->answer.nb_pred.load;
-            /* load_f will be negative if me->brothers[0][f] is in 'b' state */
+    //            // defaults to b in this case   //TODO: vérifier si c'est une bonne idée
+    //            rcv_ans_data->answer.nb_pred.load = b;  //TODO : Attention, pointeur pas initialisé ?
+    //        }
+    //        load_f = rcv_ans_data->answer.nb_pred.load;
+    //        /* load_f will be negative if me->brothers[0][f] is in 'b' state */
 
-            XBT_DEBUG("Node %d: load of brothers[0][%d](%d) = %d",
-                    me->self.id,
-                    f,
-                    me->brothers[0][f].id,
-                    load_f);
-        }
+    //        XBT_DEBUG("Node %d: load of brothers[0][%d](%d) = %d",
+    //                me->self.id,
+    //                f,
+    //                me->brothers[0][f].id,
+    //                load_f);
+    //    }
 
-        if (load_f >= 0 && load_f < load) {
-            load = load_f;
-            answer.get_rep.new_rep = me->brothers[0][f];
-        }
+    //    if (load_f >= 0 && load_f < load) {
+    //        load = load_f;
+    //        answer.get_rep.new_rep = me->brothers[0][f];
+    //    }
 
-        data_ans_free(me, &rcv_ans_data);
-    }
+    //    data_ans_free(me, &rcv_ans_data);
+    //}
+
+    // choose rep randomly
+    srand(time(NULL));
+    do {
+        f = rand() % (me->bro_index[0]);
+    } while (f % 2 != 0);
+    xbt_assert(f < me->bro_index[0], "STOP !!");
+    answer.get_rep.new_rep = me->brothers[0][f];
 
     // remove 'g' state
     int idx = state_search(me, 'g', new_node_id);
@@ -5029,6 +5037,30 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
                 __LINE__,
                 new_node_id);
     }
+
+    /*
+    // remove 'p' state
+    if (answer.get_rep.new_rep.id != me->self.id) {
+
+        idx = state_search(me, 'p', new_node_id);
+        if (idx > -1) {
+
+            XBT_DEBUG("Node %d: [%s:%d] idx = %d",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    idx);
+
+            xbt_dynar_remove_at(me->states, idx, NULL);
+
+            XBT_VERB("Node %d: [%s:%d] 'p' state removed for new_id %d",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    new_node_id);
+        }
+    }
+    */
 
     display_states(me, 'V');
 
@@ -5848,6 +5880,27 @@ static void del_pred(node_t me, int stage, int pred2del) {
 
         // set DST infos
         me->dst_infos.load[stage] = me->pred_index[stage];
+
+        /*
+        // remove 'p' state
+        idx = state_search(me, 'p', pred2del);
+        if (idx > -1) {
+
+            XBT_DEBUG("Node %d: [%s:%d] idx = %d",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    idx);
+
+            xbt_dynar_remove_at(me->states, idx, NULL);
+
+            XBT_VERB("Node %d: [%s:%d] 'p' state removed for new_id %d",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    pred2del);
+        }
+        */
     }
 
     XBT_OUT();
@@ -6794,6 +6847,10 @@ static void split(node_t me, int stage, int new_node_id) {
     */
 
     // wait until state is not 'p' anymore to launch calls of connect_splitted_groups
+
+    XBT_VERB("Wait for no 'p' state");
+    display_states(me, 'V');
+
     int found = -1;
     do {
         found = state_search(me, 'p', -1);
@@ -8542,13 +8599,12 @@ static void load_balance(node_t me, int contact_id) {
                     u_req_args.get_rep.stage = i;
                     u_req_args.get_rep.new_node_id = me->self.id;
 
-                    /* TODO : ne pas oublier
+                    // TODO : ne pas oublier
                     res = send_msg_sync(me,
                             TASK_GET_REP,
                             me->brothers[i][j].id,
                             u_req_args,
                             &answer_data);
-                    */
 
                     res = MSG_OK;
 
