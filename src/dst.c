@@ -1861,7 +1861,10 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                         req->answer_to);
             }
 
+            //compteur[req->args.broadcast.type]--;
+
             // free unused memory
+            data_req_free(me, &req);
             task_free(&(proc_data->task));
             xbt_dynar_free(&(proc_data->async_answers));
             xbt_dynar_free(&(proc_data->sync_answers));
@@ -2297,7 +2300,10 @@ static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) 
 
     XBT_IN();
 
-    //compteur[args.broadcast.type]++;
+    //if (args.broadcast.first_call == 1) {
+
+        //compteur[args.broadcast.type]++;
+    //}
 
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
 
@@ -4411,6 +4417,8 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             me->self.id,
             args.broadcast.source_id);
 
+    //e_task_type_t mem_type = args.broadcast.type;
+
     // cases where current broadcast musn't be interrupted by another one
     switch(args.broadcast.type) {
 
@@ -4478,7 +4486,10 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
             } else {
 
-                //compteur[args.broadcast.type]++;
+                //if (args.broadcast.first_call == 1) {
+
+                    //compteur[args.broadcast.type]++;
+                //}
 
                 // remote call
                 msg_error_t res = send_msg_async(me,
@@ -4516,7 +4527,10 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
             ans_cpt = 1;
 
-            //compteur[args.broadcast.type]++;
+            //if (args.broadcast.first_call == 1) {
+
+                //compteur[args.broadcast.type]++;
+            //}
 
             // remote call
             msg_error_t res = send_msg_async(me,
@@ -4560,7 +4574,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             // return NOK if any of both answers is NOK
             if (task_sent != NULL) {
 
-                req_data = MSG_task_get_data(task_sent);
+                //req_data = MSG_task_get_data(task_sent);
                 //compteur[req_data->args.broadcast.type]--;
 
                 local_ret = handle_task(me, &task_sent);
@@ -4592,7 +4606,8 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         if (task_sent != NULL) {
 
             req_data = MSG_task_get_data(task_sent);
-            //compteur[req_data->args.broadcast.type]--;
+            //compteur[req_data->args.broadcast.type]--;  //TODO : regarder si le type peut être CS_REQ ou pas
+            //compteur[mem_type]--;
             data_req_free(me, &req_data);
         }
         task_free(&task_sent);
@@ -8965,11 +8980,6 @@ int node(int argc, char *argv[]) {
                     if (strcmp(MSG_task_get_name(task_received), "ans") != 0) {
 
                         // Received request
-                        /*
-                        if (xbt_dynar_is_empty(node.tasks_queue) == 0 &&      //TODO : peut-être inutile avec forks
-                                req->type == TASK_CNX_REQ) {
-                            */
-
                         // push the received CNX_REQ task onto the dynar ...
                         if (req->type == TASK_CNX_REQ) {
 
@@ -9646,7 +9656,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             }
 
                             task_free(task);
-
                         } else {
 
                             // next broadcast calls
@@ -10560,7 +10569,7 @@ int main(int argc, char *argv[]) {
     XBT_INFO("compteur");
     int z = 0;
     for (z = 0; z < TYPE_NBR; z++) {
-        if (compteur[z] > 0) {
+        if (compteur[z] != 0) {
 
                 XBT_INFO("\tcpt[%s] = %d", debug_msg[z], compteur[z]);
         }
