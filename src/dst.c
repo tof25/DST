@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/01/12
+ *  Written by Christophe Enderlin on 2014/01/18
  *
  */
 
@@ -5015,7 +5015,7 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
     srand(time(NULL));
     do {
         f = rand() % (me->bro_index[0]);
-    } while (f % 2 != 0);
+    } while (f % 2 != 0);                       // take only brothers that will stay for sure (in case of SPLIT)
     xbt_assert(f < me->bro_index[0], "STOP !!");
     answer.get_rep.new_rep = me->brothers[0][f];
 
@@ -8600,11 +8600,13 @@ static void load_balance(node_t me, int contact_id) {
                     u_req_args.get_rep.new_node_id = me->self.id;
 
                     // TODO : ne pas oublier
+                    /*
                     res = send_msg_sync(me,
                             TASK_GET_REP,
                             me->brothers[i][j].id,
                             u_req_args,
                             &answer_data);
+                    */
 
                     res = MSG_OK;
 
@@ -9070,6 +9072,7 @@ int node(int argc, char *argv[]) {
             }
             state = get_state(&node);
         }   // End While
+        MSG_process_sleep(1000.0);
     } else {
 
         XBT_INFO("Node %d: **** JOIN ABORT ... ****", node.self.id);
