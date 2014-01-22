@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/01/18
+ *  Written by Christophe Enderlin on 2014/01/22
  *
  */
 
@@ -45,7 +45,7 @@ static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     /* max number of brothers in a node
                                                (must be twice a) */
-static int         COMM_TIMEOUT = 50000;                    // timeout for communications
+static int         COMM_TIMEOUT = 10000;                    // timeout for communications (mustn't be greater than MAX_WAIT_COMPL)
 static double      max_simulation_time = 10500;             // max default simulation time              //TODO : plus utile ?
 static xbt_dynar_t infos_dst;                               // to store all global DST infos
 static int         nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type
@@ -6827,15 +6827,6 @@ static void split(node_t me, int stage, int new_node_id) {
 
     display_preds(me, 'D');
 
-    // tells every upper stage pred it's got a new member
-    int ans_cpt = me->pred_index[stage + 1];
-    args.cnx_groups.stage = stage + 1;
-    args.cnx_groups.pos_init = index_bro(me, stage + 1, me->self.id);
-    args.cnx_groups.pos_new = me->bro_index[stage + 1];
-    args.cnx_groups.init_rep_id = init_rep_id;
-    args.cnx_groups.new_rep_id = new_rep_id;
-    args.cnx_groups.new_node_id = new_node_id;
-
     // for local call
     /*
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
@@ -6861,6 +6852,15 @@ static void split(node_t me, int stage, int new_node_id) {
     } while (found > -1);
 
     XBT_VERB("Node %d: [%s:%d] state 'p' not found", me->self.id, __FUNCTION__, __LINE__);
+
+    // tells every upper stage pred it's got a new member
+    int ans_cpt = me->pred_index[stage + 1];
+    args.cnx_groups.stage = stage + 1;
+    args.cnx_groups.pos_init = index_bro(me, stage + 1, me->self.id);
+    args.cnx_groups.pos_new = me->bro_index[stage + 1];
+    args.cnx_groups.init_rep_id = init_rep_id;
+    args.cnx_groups.new_rep_id = new_rep_id;
+    args.cnx_groups.new_node_id = new_node_id;
 
     // works on a copy of upper stage preds
     int cpy_pred_index = me->pred_index[stage + 1];
