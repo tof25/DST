@@ -8944,9 +8944,18 @@ int node(int argc, char *argv[]) {
         msg_task_t task_received = NULL;
         msg_error_t res = MSG_TRANSFER_FAILURE;
         s_state_t state = get_state(&node);
+        int nb_proc = 0;
 
         //while (MSG_get_clock() < max_simulation_time && state.active != 'n') {
-        while (nb_ins_nodes < nb_nodes && state.active != 'n') {
+        //while (nb_ins_nodes < nb_nodes && state.active != 'n') {
+        while (1) {
+
+            state = get_state(&node);
+            if (state.active == 'n') break;
+
+            nb_proc = xbt_swag_size(MSG_host_get_process_list(MSG_host_self()));
+
+            if (!(nb_proc > 1 || nb_ins_nodes < nb_nodes)) break;
 
             // prepare a new 'listening' phase
             if (node.comm_received == NULL) {
@@ -9072,7 +9081,6 @@ int node(int argc, char *argv[]) {
             }
             state = get_state(&node);
         }   // End While
-        MSG_process_sleep(1000.0);
     } else {
 
         XBT_INFO("Node %d: **** JOIN ABORT ... ****", node.self.id);
