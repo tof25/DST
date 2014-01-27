@@ -1,0 +1,24 @@
+@startuml
+(*top) -->"Periodic Listen"
+
+if "Message received ?" then
+  -right->[No]"Do other things"
+  -->"Periodic Listen"
+else
+  [Yes]if "" then
+    -left->[Answer]"Send Ack"
+    -->"Periodic Listen"
+  else
+    [Request]if "" then
+      -->"Handle Req"
+      --> == BEFORE_RUN ==
+    else
+      -->"Create proc Req"
+      --> == BEFORE_RUN ==
+    endif
+    -->"Run remain tasks"
+    -up->"Periodic Listen"
+  endif
+endif
+
+@enduml

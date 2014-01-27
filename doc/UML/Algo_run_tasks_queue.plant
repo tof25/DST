@@ -1,0 +1,60 @@
+@startuml
+
+(*top) --> "<i>Run_state</i> <-- IDLE" as init1
+--> "<i>Last_return</i> <-- UPDATE_NOK" as init2
+note left
+    Possible values:
+    - OK
+    - STORED
+    - UPDATE_OK
+    - UPDATE_NOK
+    - FAILED
+end note
+--> "<i>cpt</i> <--  -1" as init3
+
+--> "<b>Run Delayed Tasks</b>\n(if any)" as q1
+--> "Tasks Queue not empty  &&\n<i>active</i> = 'a' ?"
+
+if "" then
+    -->[No] "Sleep for a while" as s1
+    --> "End time ?"
+    if "" then
+        -->[Yes] "END"
+        -->(*)
+    else
+        -->[No] q1
+    endif
+else
+    -->[Yes] "<i>Run_state</i> IDLE ?"
+    if "" then
+        -->[Yes] "<i>Last_return</i> = UPDATE_NOK ?"
+        note right : if FAILED, remove head task also\n(not the leader)
+        if "" then
+            -->[No] "<i>Last_return</i> <-- NOK"
+            --> "Shift Queue (remove head)" as q3
+            --> "Sort Queue by priority order"
+            --> "Queue not empty  &&\n<i>state</i> = 'a' ?" as q2
+        else
+            -->[Yes] "<i>cpt</i> ++"
+            --> "<i>cpt</i> >= <i>MAX_CNX</i> ?"
+            if "" then
+                -->[Yes] "Display Warning"
+                --> "<i>cpt</i> <-- 0"
+                --> q2
+            else
+                -->[No] q2
+            endif
+        endif
+        if "" then
+            -->[No] s1
+        else
+            -->[Yes] "<b>Launch fork process</b> to run head request"
+            --> "<i>Run_state</i> <-- RUNNING" as run1
+            --> s1
+        endif
+    else
+        -->[No] s1
+    endif
+endif
+
+@enduml

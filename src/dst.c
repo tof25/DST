@@ -8965,7 +8965,7 @@ int node(int argc, char *argv[]) {
             } else {
 
                 xbt_swag_foreach(elem, proc_set) {
-                    XBT_INFO("swag elem = '%s'", MSG_process_get_name(elem));
+                    XBT_DEBUG("swag elem = '%s'", MSG_process_get_name(elem));
                 }
                 done = 1;
             }
