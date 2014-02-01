@@ -4312,8 +4312,15 @@ static msg_error_t send_ans_sync(node_t me,
     // send answer
     do {
 
-        // async send
-        comm = MSG_task_isend(task_sent, ans_data->sent_to);
+        if (ans_data->type != TASK_ADD_PRED) {
+
+            // async send
+            comm = MSG_task_isend(task_sent, ans_data->sent_to);
+        } else {
+
+            // best effort send
+            MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
+        }
 
         /* max_wait has to be used in case of receiver process is down.
          * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
@@ -4321,24 +4328,27 @@ static msg_error_t send_ans_sync(node_t me,
          * // TODO : à vérifier
          * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
          */
-        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
+        if (ans_data->type != TASK_ADD_PRED) {
+            while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
-            MSG_process_sleep(1.0);
-        }
+                MSG_process_sleep(1.0);
+            }
 
-        if (MSG_get_clock() > max_wait || comm == NULL) {
+            if (MSG_get_clock() > max_wait || comm == NULL) {
 
-            res = MSG_TRANSFER_FAILURE;
-            xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
-                    me->self.id,
-                    __FUNCTION__,
-                    __LINE__,
-                    max_wait,
-                    MSG_get_clock(),
-                    comm);
-        } else {
+                res = MSG_TRANSFER_FAILURE;
+                xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        max_wait,
+                        MSG_get_clock(),
+                        comm);
+            } else {
 
-            res = MSG_comm_get_status(comm);
+                res = MSG_comm_get_status(comm);
+                XBT_VERB("RES = %s - loop_cpt = %d", debug_res_msg[res], loop_cpt);
+            }
         }
 
         // only loop_cpt attemps are allowed
@@ -5752,10 +5762,11 @@ static void add_pred(node_t me, int stage, int id) {
     XBT_IN();
 
     s_state_t state = get_state(me);
-    XBT_VERB("Node %d: '%c'/%d - add_pred() ...",
+    XBT_VERB("Node %d: '%c'/%d - add_pred(%d) ...",
             me->self.id,
             state.active,
-            state.new_id);
+            state.new_id,
+            id);
 
     xbt_assert(stage < me->height,
             "Node %d: height error - stage = %d - height = %d",
@@ -8959,6 +8970,8 @@ int node(int argc, char *argv[]) {
             proc_set = MSG_host_get_process_list(MSG_host_self());
             nb_proc = xbt_swag_size(proc_set);
 
+            //if (nb_proc == 1) XBT_VERB("NB_PROC = 1");
+
             if (nb_proc > 1 || nb_ins_nodes < nb_nodes) {
 
                 done = 0;
@@ -9081,6 +9094,7 @@ int node(int argc, char *argv[]) {
                         // ignore answers, only process requests
                         if (ans != NULL){
 
+                            XBT_VERB("Node %d: ignore answers from %d", node.self.id, ans->sender_id);
                             xbt_free(ans);
                         }
                         task_free(&task_received);
