@@ -4308,19 +4308,15 @@ static msg_error_t send_ans_sync(node_t me,
     msg_error_t res = MSG_OK;
     int max_loops = 10;
     int loop_cpt = 0;
+    int nb_proc = 0;
+    xbt_swag_t proc_set = NULL;
+    msg_process_t elem = NULL;
 
     // send answer
     do {
 
-        if (ans_data->type != TASK_ADD_PRED) {
-
-            // async send
-            comm = MSG_task_isend(task_sent, ans_data->sent_to);
-        } else {
-
-            // best effort send
-            MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
-        }
+        // async send
+        comm = MSG_task_isend(task_sent, ans_data->sent_to);
 
         /* max_wait has to be used in case of receiver process is down.
          * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
@@ -4328,27 +4324,40 @@ static msg_error_t send_ans_sync(node_t me,
          * // TODO : à vérifier
          * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
          */
-        if (ans_data->type != TASK_ADD_PRED) {
-            while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
+        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
-                MSG_process_sleep(1.0);
+            proc_set = MSG_host_get_process_list(MSG_host_self());
+            nb_proc = xbt_swag_size(proc_set);
+
+            /*
+            if (MSG_get_clock() > 40000) XBT_VERB("SLEEP (1.0) nb_proc = %d", nb_proc);
+
+            xbt_swag_foreach(elem, proc_set) {
+                XBT_VERB("swag elem = '%s'", MSG_process_get_name(elem));
             }
+            */
 
-            if (MSG_get_clock() > max_wait || comm == NULL) {
+            if (nb_proc == 1) break;    // At the end of the simulation, don't wait for reception (receiver may be stopped)
 
-                res = MSG_TRANSFER_FAILURE;
-                xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
-                        me->self.id,
-                        __FUNCTION__,
-                        __LINE__,
-                        max_wait,
-                        MSG_get_clock(),
-                        comm);
-            } else {
+            MSG_process_sleep(1.0);
+        }
 
-                res = MSG_comm_get_status(comm);
-                XBT_VERB("RES = %s - loop_cpt = %d", debug_res_msg[res], loop_cpt);
-            }
+        if (nb_proc == 1) break;
+
+        if (MSG_get_clock() > max_wait || comm == NULL) {
+
+            res = MSG_TRANSFER_FAILURE;
+            xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    max_wait,
+                    MSG_get_clock(),
+                    comm);
+        } else {
+
+            res = MSG_comm_get_status(comm);
+            XBT_DEBUG("RES = %s - loop_cpt = %d", debug_res_msg[res], loop_cpt);
         }
 
         // only loop_cpt attemps are allowed
@@ -9094,7 +9103,7 @@ int node(int argc, char *argv[]) {
                         // ignore answers, only process requests
                         if (ans != NULL){
 
-                            XBT_VERB("Node %d: ignore answers from %d", node.self.id, ans->sender_id);
+                            XBT_VERB("Node %d: ignore answer from %d", node.self.id, ans->sender_id);
                             xbt_free(ans);
                         }
                         task_free(&task_received);
