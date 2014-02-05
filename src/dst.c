@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/01/22
+ *  Written by Christophe Enderlin on 2014/01/29
  *
  */
 
@@ -1411,7 +1411,11 @@ static int state_search(node_t me, char active, int new_id) {
         }
     }
 
-    XBT_DEBUG("Node %d: pos = %u", me->self.id, pos);
+    XBT_DEBUG("Node %d: [%s:%d] pos = %d",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            pos);
     XBT_OUT();
 
     return pos;
@@ -3834,7 +3838,7 @@ static msg_error_t send_msg_sync(node_t me,
         if (res != MSG_OK) {
 
             // reception failure
-            XBT_ERROR("Node %d: Failed to receive the answer to my '%s' request from %s"
+            xbt_assert(1 == 0, "Node %d: Failed to receive the answer to my '%s' request from %s"
                     " result : %s (line %d)",
                     cpy_req_data->sender_id,
                     debug_msg[cpy_req_data->type],
@@ -3911,9 +3915,11 @@ static msg_error_t send_msg_sync(node_t me,
                    destinataire qui doit détruire ces données */
 
                 // look if the expected answer has been received meanwhile
-                XBT_VERB("Node %d: back to send_sync(). Answer received"
+                XBT_VERB("Node %d: [%s:%d] back to send_sync(). Answer received"
                         " meanwhile? - dynar length = %lu",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         xbt_dynar_length(proc_data->sync_answers));
 
                 // if it exists, the expected answer is at the top of dynar
@@ -4295,8 +4301,10 @@ static msg_error_t send_ans_sync(node_t me,
     // create task with answer data
     msg_task_t task_sent = MSG_task_create("ans", COMP_SIZE, COMM_SIZE, ans_data);
 
-    XBT_VERB("Node %d: {%d} Answering '%s - %s' to %d - '%s'",
+    XBT_VERB("Node %d: [%s:%d] {%d} Answering '%s - %s' to %d - '%s'",
             ans_data->sender_id,
+            __FUNCTION__,
+            __LINE__,
             new_node_id,
             debug_msg[ans_data->type],
             debug_msg[ans_data->br_type],
@@ -8954,12 +8962,17 @@ int node(int argc, char *argv[]) {
         while (done == 0) {
 
             state = get_state(&node);
-            if (state.active == 'n') break;
+            //if (state.active == 'n') break;
 
             proc_set = MSG_host_get_process_list(MSG_host_self());
             nb_proc = xbt_swag_size(proc_set);
 
-            if (nb_proc > 1 || nb_ins_nodes < nb_nodes) {
+            if (nb_proc == 1 && nb_ins_nodes < nb_nodes) {
+
+                XBT_VERB("nb_proc = 1 : nb_ins_nodes = %d, state.active = %c", nb_ins_nodes, state.active);
+            }
+
+            if (nb_proc > 1 || nb_ins_nodes < nb_nodes || state.active != 'a') {
 
                 done = 0;
             } else {
