@@ -4316,6 +4316,9 @@ static msg_error_t send_ans_sync(node_t me,
     msg_error_t res = MSG_OK;
     int max_loops = 10;
     int loop_cpt = 0;
+    int nb_proc = 0;
+    xbt_swag_t proc_set = NULL;
+    msg_process_t elem = NULL;
 
     // send answer
     do {
@@ -4331,8 +4334,23 @@ static msg_error_t send_ans_sync(node_t me,
          */
         while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
+            proc_set = MSG_host_get_process_list(MSG_host_self());
+            nb_proc = xbt_swag_size(proc_set);
+
+            /*
+            if (MSG_get_clock() > 40000) XBT_VERB("SLEEP (1.0) nb_proc = %d", nb_proc);
+
+            xbt_swag_foreach(elem, proc_set) {
+                XBT_VERB("swag elem = '%s'", MSG_process_get_name(elem));
+            }
+            */
+
+            if (nb_proc == 1) break;    // At the end of the simulation, don't wait for reception (receiver may be stopped)
+
             MSG_process_sleep(1.0);
         }
+
+        if (nb_proc == 1) break;
 
         if (MSG_get_clock() > max_wait || comm == NULL) {
 
@@ -4347,6 +4365,7 @@ static msg_error_t send_ans_sync(node_t me,
         } else {
 
             res = MSG_comm_get_status(comm);
+            XBT_DEBUG("RES = %s - loop_cpt = %d", debug_res_msg[res], loop_cpt);
         }
 
         // only loop_cpt attemps are allowed
@@ -5760,10 +5779,11 @@ static void add_pred(node_t me, int stage, int id) {
     XBT_IN();
 
     s_state_t state = get_state(me);
-    XBT_VERB("Node %d: '%c'/%d - add_pred() ...",
+    XBT_VERB("Node %d: '%c'/%d - add_pred(%d) ...",
             me->self.id,
             state.active,
-            state.new_id);
+            state.new_id,
+            id);
 
     xbt_assert(stage < me->height,
             "Node %d: height error - stage = %d - height = %d",
@@ -8967,12 +8987,9 @@ int node(int argc, char *argv[]) {
             proc_set = MSG_host_get_process_list(MSG_host_self());
             nb_proc = xbt_swag_size(proc_set);
 
-            if (nb_proc == 1 && nb_ins_nodes < nb_nodes) {
+            //if (nb_proc == 1) XBT_VERB("NB_PROC = 1");
 
-                XBT_VERB("nb_proc = 1 : nb_ins_nodes = %d, state.active = %c", nb_ins_nodes, state.active);
-            }
-
-            if (nb_proc > 1 || nb_ins_nodes < nb_nodes || state.active != 'a') {
+            if (nb_proc > 1 || nb_ins_nodes < nb_nodes) {
 
                 done = 0;
             } else {
@@ -9094,6 +9111,7 @@ int node(int argc, char *argv[]) {
                         // ignore answers, only process requests
                         if (ans != NULL){
 
+                            XBT_VERB("Node %d: ignore answer from %d", node.self.id, ans->sender_id);
                             xbt_free(ans);
                         }
                         task_free(&task_received);
