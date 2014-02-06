@@ -4337,20 +4337,19 @@ static msg_error_t send_ans_sync(node_t me,
             proc_set = MSG_host_get_process_list(MSG_host_self());
             nb_proc = xbt_swag_size(proc_set);
 
-            /*
-            if (MSG_get_clock() > 40000) XBT_VERB("SLEEP (1.0) nb_proc = %d", nb_proc);
+            //if (MSG_get_clock() > 40000) XBT_VERB("SLEEP (1.0) nb_proc = %d", nb_proc);
 
             xbt_swag_foreach(elem, proc_set) {
-                XBT_VERB("swag elem = '%s'", MSG_process_get_name(elem));
+                XBT_VERB("[%s:%d] swag elem = '%s'", __FUNCTION__, __LINE__,  MSG_process_get_name(elem));
             }
-            */
 
-            if (nb_proc == 1) break;    // At the end of the simulation, don't wait for reception (receiver may be stopped)
+            //if (nb_proc == 1) break;    // At the end of the simulation, don't wait for reception (receiver may be stopped)
 
+            XBT_VERB("SLEEP ...");
             MSG_process_sleep(1.0);
         }
 
-        if (nb_proc == 1) break;
+        //if (nb_proc == 1) break;
 
         if (MSG_get_clock() > max_wait || comm == NULL) {
 
@@ -9006,7 +9005,7 @@ int node(int argc, char *argv[]) {
                 task_received = NULL;
                 node.comm_received = MSG_task_irecv(&task_received, node.self.mailbox);
 
-                XBT_VERB("Node %d: Waiting for a task...", node.self.id);
+                XBT_VERB("Node %d: [%s:%d] Waiting for a task...", node.self.id, __FUNCTION__, __LINE__);
             }
 
             //XBT_DEBUG("Node %d: comm test", node.self.id);
