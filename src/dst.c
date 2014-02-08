@@ -1415,7 +1415,11 @@ static int state_search(node_t me, char active, int new_id) {
         }
     }
 
-    XBT_DEBUG("Node %d: pos = %u", me->self.id, pos);
+    XBT_DEBUG("Node %d: [%s:%d] pos = %d",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            pos);
     XBT_OUT();
 
     return pos;
@@ -3838,7 +3842,7 @@ static msg_error_t send_msg_sync(node_t me,
         if (res != MSG_OK) {
 
             // reception failure
-            XBT_ERROR("Node %d: Failed to receive the answer to my '%s' request from %s"
+            xbt_assert(1 == 0, "Node %d: Failed to receive the answer to my '%s' request from %s"
                     " result : %s (line %d)",
                     cpy_req_data->sender_id,
                     debug_msg[cpy_req_data->type],
@@ -3915,9 +3919,11 @@ static msg_error_t send_msg_sync(node_t me,
                    destinataire qui doit détruire ces données */
 
                 // look if the expected answer has been received meanwhile
-                XBT_VERB("Node %d: back to send_sync(). Answer received"
+                XBT_VERB("Node %d: [%s:%d] back to send_sync(). Answer received"
                         " meanwhile? - dynar length = %lu",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         xbt_dynar_length(proc_data->sync_answers));
 
                 // if it exists, the expected answer is at the top of dynar
@@ -4299,8 +4305,10 @@ static msg_error_t send_ans_sync(node_t me,
     // create task with answer data
     msg_task_t task_sent = MSG_task_create("ans", COMP_SIZE, COMM_SIZE, ans_data);
 
-    XBT_VERB("Node %d: {%d} Answering '%s - %s' to %d - '%s'",
+    XBT_VERB("Node %d: [%s:%d] {%d} Answering '%s - %s' to %d - '%s'",
             ans_data->sender_id,
+            __FUNCTION__,
+            __LINE__,
             new_node_id,
             debug_msg[ans_data->type],
             debug_msg[ans_data->br_type],
@@ -4312,49 +4320,49 @@ static msg_error_t send_ans_sync(node_t me,
     msg_error_t res = MSG_OK;
     int max_loops = 10;
     int loop_cpt = 0;
+    int nb_proc = 0;
+    xbt_swag_t proc_set = NULL;
+    msg_process_t elem = NULL;
 
     // send answer
     do {
 
-        //if (ans_data->type != TASK_ADD_PRED) {
-
-            // async send
-            comm = MSG_task_isend(task_sent, ans_data->sent_to);
-        //} else {
-
-            // best effort send
-        //    MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
-        //}
+        // async send
+        comm = MSG_task_isend(task_sent, ans_data->sent_to);
 
         /* max_wait has to be used in case of receiver process is down.
          * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
          * nothing happens if receiver process is down.
          * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
          */
-        //if (ans_data->type != TASK_ADD_PRED) {
-            while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
+        while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
-                MSG_process_sleep(1.0);
+            proc_set = MSG_host_get_process_list(MSG_host_self());
+            nb_proc = xbt_swag_size(proc_set);
+
+            xbt_swag_foreach(elem, proc_set) {
+                XBT_VERB("[%s:%d] swag elem = '%s'", __FUNCTION__, __LINE__,  MSG_process_get_name(elem));
             }
 
-            if (xbt_dynar_length(MSG_hosts_as_dynar()) == 1) break;
+            XBT_VERB("SLEEP ...");
+            MSG_process_sleep(1.0);
+        }
 
-            if (MSG_get_clock() > max_wait || comm == NULL) {
+        if (MSG_get_clock() > max_wait || comm == NULL) {
 
-                res = MSG_TRANSFER_FAILURE;
-                xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
-                        me->self.id,
-                        __FUNCTION__,
-                        __LINE__,
-                        max_wait,
-                        MSG_get_clock(),
-                        comm);
-            } else {
+            res = MSG_TRANSFER_FAILURE;
+            xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    max_wait,
+                    MSG_get_clock(),
+                    comm);
+        } else {
 
-                res = MSG_comm_get_status(comm);
-                XBT_VERB("RES = %s - loop_cpt = %d", debug_res_msg[res], loop_cpt);
-            }
-        //}
+            res = MSG_comm_get_status(comm);
+            XBT_DEBUG("RES = %s - loop_cpt = %d", debug_res_msg[res], loop_cpt);
+        }
 
         // only loop_cpt attemps are allowed
         if (res == MSG_TIMEOUT) loop_cpt++;
@@ -8971,7 +8979,7 @@ int node(int argc, char *argv[]) {
         do {
 
             state = get_state(&node);
-            if (state.active == 'n') break;
+            //if (state.active == 'n') break;
 
             proc_set = MSG_host_get_process_list(MSG_host_self());
             nb_proc = xbt_swag_size(proc_set);
@@ -8999,7 +9007,7 @@ int node(int argc, char *argv[]) {
                 task_received = NULL;
                 node.comm_received = MSG_task_irecv(&task_received, node.self.mailbox);
 
-                XBT_VERB("Node %d: Waiting for a task...", node.self.id);
+                XBT_VERB("Node %d: [%s:%d] Waiting for a task...", node.self.id, __FUNCTION__, __LINE__);
             }
 
             //XBT_DEBUG("Node %d: comm test", node.self.id);
@@ -9104,7 +9112,7 @@ int node(int argc, char *argv[]) {
                         // ignore answers, only process requests
                         if (ans != NULL){
 
-                            XBT_VERB("Node %d: ignore answers from %d", node.self.id, ans->sender_id);
+                            XBT_VERB("Node %d: ignore answer from %d", node.self.id, ans->sender_id);
                             xbt_free(ans);
                         }
                         task_free(&task_received);
