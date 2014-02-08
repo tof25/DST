@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/01/22
+ *  Written by Christophe Enderlin on 2014/02/08
  *
  */
 
@@ -12,6 +12,8 @@
 /* TODO: voir si tout est OK pour les timers (peut-on remplacer des
  * MSG_get_clock() par des clock ?)
  */
+
+//TODO: voir si on peut paramétrer un ADD_PRED pour qu'il envoie ou pas une réponse
 
 //#define MSG_USE_DEPRECATED
 #include <stdio.h>                          // printf and friends
@@ -40,6 +42,8 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
 #define MAX_CNX 1000                        // max number of attempts to run CNX_REQ (just to display a warning)
+#define WAIT_BEFORE_END 1000                // Wait for last messages before ending simulation  //TODO : est-il possible de calculer cette valeur ? (il s'agit du temps nécessaire pour recevoir les messages restants après JOIN COMPLETED)
+
 
 static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
@@ -1167,7 +1171,7 @@ static void display_rout_table(node_t me, char log) {
 /**
  * \brief Gets the mailbox name of a node
  * \param node_id node id
- * \param mailbox pointer to where the mailbox name should be written
+ * \param mailbox pointer to where the mailbox name should be written to
  * i      (there must be enough space)
  */
 static void get_mailbox(int node_id, char* mailbox) {
@@ -4312,27 +4316,28 @@ static msg_error_t send_ans_sync(node_t me,
     // send answer
     do {
 
-        if (ans_data->type != TASK_ADD_PRED) {
+        //if (ans_data->type != TASK_ADD_PRED) {
 
             // async send
             comm = MSG_task_isend(task_sent, ans_data->sent_to);
-        } else {
+        //} else {
 
             // best effort send
-            MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
-        }
+        //    MSG_task_dsend(task_sent, ans_data->sent_to, NULL);
+        //}
 
         /* max_wait has to be used in case of receiver process is down.
          * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
          * nothing happens if receiver process is down.
-         * // TODO : à vérifier
          * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
          */
-        if (ans_data->type != TASK_ADD_PRED) {
+        //if (ans_data->type != TASK_ADD_PRED) {
             while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
                 MSG_process_sleep(1.0);
             }
+
+            if (xbt_dynar_length(MSG_hosts_as_dynar()) == 1) break;
 
             if (MSG_get_clock() > max_wait || comm == NULL) {
 
@@ -4349,7 +4354,7 @@ static msg_error_t send_ans_sync(node_t me,
                 res = MSG_comm_get_status(comm);
                 XBT_VERB("RES = %s - loop_cpt = %d", debug_res_msg[res], loop_cpt);
             }
-        }
+        //}
 
         // only loop_cpt attemps are allowed
         if (res == MSG_TIMEOUT) loop_cpt++;
@@ -4674,11 +4679,12 @@ static void init(node_t me) {
 
     // set mailbox
     get_mailbox(me->self.id, me->self.mailbox);
-    MSG_mailbox_set_async(me->self.mailbox);   //TODO : faut-il le faire aussi pour proc_mailbox ?
+    MSG_mailbox_set_async(me->self.mailbox);
 
     // set process data
     proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
 
+    // proc mailbox is the same as node's one
     get_mailbox(me->self.id, proc_data->proc_mailbox);
     proc_data->node = NULL;
     proc_data->task = NULL;
@@ -8959,10 +8965,10 @@ int node(int argc, char *argv[]) {
         int done = 0;
         xbt_swag_t proc_set = NULL;
         msg_process_t elem = NULL;
+        float wait = 0.0;
 
         //while (MSG_get_clock() < max_simulation_time && state.active != 'n') {
-        //while (nb_ins_nodes < nb_nodes && state.active != 'n') {
-        while (done == 0) {
+        do {
 
             state = get_state(&node);
             if (state.active == 'n') break;
@@ -8972,15 +8978,19 @@ int node(int argc, char *argv[]) {
 
             //if (nb_proc == 1) XBT_VERB("NB_PROC = 1");
 
-            if (nb_proc > 1 || nb_ins_nodes < nb_nodes) {
+            if (done == 0) {
+                if (nb_proc > 1 || nb_ins_nodes < nb_nodes) {
 
-                done = 0;
-            } else {
+                    done = 0;
+                } else {
 
-                xbt_swag_foreach(elem, proc_set) {
-                    XBT_DEBUG("swag elem = '%s'", MSG_process_get_name(elem));
+                    xbt_swag_foreach(elem, proc_set) {
+                        XBT_DEBUG("swag elem = '%s'", MSG_process_get_name(elem));
+                    }
+                    XBT_DEBUG("Node %d: DONE !", node.self.id);
+                    done = 1;
+                    wait = MSG_get_clock() + WAIT_BEFORE_END;
                 }
-                done = 1;
             }
 
             // prepare a new 'listening' phase
@@ -9107,7 +9117,10 @@ int node(int argc, char *argv[]) {
                 }
             }
             state = get_state(&node);
-        }   // End While
+        } while (done == 0 || MSG_get_clock() < wait);
+
+        XBT_DEBUG("Node %d: End While loop - will quit node() - nb_ins_nodes = %d", node.self.id, nb_ins_nodes);
+
     } else {
 
         XBT_INFO("Node %d: **** JOIN ABORT ... ****", node.self.id);
