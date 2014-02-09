@@ -13,13 +13,13 @@ Main_Proc -> Tasks_Queue: create
 note left of Tasks_Queue: proc_run_tasks()
 activate Tasks_Queue #LightSteelBlue
 
-Tasks_Queue -> Tasks_Queue: run_tasks_queue
+Tasks_Queue -> Tasks_Queue: run_tasks_queue (of Main_Proc)
 activate Tasks_Queue #YellowGreen
 
 loop For the whole simulation time
 |||
 
-    Tasks_Queue -> Tasks_Queue: run_delayed_tasks
+    Tasks_Queue -> Tasks_Queue: run_delayed_tasks (of Main_Proc)
     activate Tasks_Queue #Gold
 
     loop State 'u' : expected CNX_GROUPS only

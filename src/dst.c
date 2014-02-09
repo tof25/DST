@@ -8,12 +8,12 @@
 /* TODO: gérer la non-réponse d'un contact lors de l'arrivée d'un nœud.
  *       gérer tous les timeout des comm_wait() */
 
-
-/* TODO: voir si tout est OK pour les timers (peut-on remplacer des
- * MSG_get_clock() par des clock ?)
- */
+// TODO: voir si tout est OK pour les timers (peut-on remplacer des MSG_get_clock() par des clock ?)
 
 //TODO: voir si on peut paramétrer un ADD_PRED pour qu'il envoie ou pas une réponse
+
+//TODO: introduire un indicateur de réponses à venir. On pourra s'en servir pour terminer la simulation.
+//      (à la place de WAIT_BEFORE_END)
 
 //#define MSG_USE_DEPRECATED
 #include <stdio.h>                          // printf and friends
@@ -42,7 +42,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
 #define MAX_CNX 1000                        // max number of attempts to run CNX_REQ (just to display a warning)
-#define WAIT_BEFORE_END 1000                // Wait for last messages before ending simulation  //TODO : est-il possible de calculer cette valeur ? (il s'agit du temps nécessaire pour recevoir les messages restants après JOIN COMPLETED)
+#define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
 static const int a = 2;                     /* min number of brothers in a node
@@ -1174,7 +1174,7 @@ static void display_rout_table(node_t me, char log) {
  * \param mailbox pointer to where the mailbox name should be written to
  * i      (there must be enough space)
  */
-static void get_mailbox(int node_id, char* mailbox) {
+static void get_mailbox(int node_id, char* mailbox) {       //TODO : renommer cette fonction en set_mailbox
 
     snprintf(mailbox, MAILBOX_NAME_SIZE, "%d", node_id);
 }
@@ -1184,14 +1184,14 @@ static void get_mailbox(int node_id, char* mailbox) {
  * \param proc_mailbox pointer to where the mailbox name should be written
  *        (there must be enough space)
  */
-static void get_proc_mailbox(char* proc_mailbox) {
+static void get_proc_mailbox(char* proc_mailbox) {      //TODO : renommer cette fonction en set_proc ...
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     snprintf(proc_mailbox, MAILBOX_NAME_SIZE, "%s", proc_data->proc_mailbox);
 }
 
 /**
- * \brief Add process ID to the mailbox name to make the process unique
+ * \brief Add process ID to the mailbox name of a process to make it unique
  */
 static void setId_proc_mailbox(void) {
 
@@ -1763,9 +1763,9 @@ static void check_cs(node_t me, int sender_id) {
 
 
 /**
- * \brief Launch fork processes when needed
+ * \brief Run a given task locally or with a fork process, according to its type
  * \param me the current node
- * \param task the task to be executed by the process
+ * \param task the task to be executed
  */
 static void launch_fork_process(node_t me, msg_task_t task) {
 
@@ -1776,7 +1776,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
     if (req->type == TASK_CNX_REQ ||
         (req->type == TASK_BROADCAST && (req->args.broadcast.type == TASK_SPLIT || req->args.broadcast.type == TASK_CS_REQ))) {
 
-        // handle the received request with a fork process ..
+        // handle the task with a fork process ..
         proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
 
         proc_data->node = me;
@@ -1812,6 +1812,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                 break;
         }
 
+        // create process only if cs_req succeeded
         if (val_ret == OK) {
 
             set_fork_mailbox(me->self.id,
@@ -1835,11 +1836,13 @@ static void launch_fork_process(node_t me, msg_task_t task) {
             XBT_VERB("Node %d: process created", me->self.id);
         } else {
 
+            // cs_req failed
             XBT_VERB("Node %d: [%s:%d] not available - process not created",
                     me->self.id,
                     __FUNCTION__,
                     __LINE__);
 
+            // tell the sender
             if (strcmp(proc_data->proc_mailbox, req->answer_to) != 0) {
 
                 u_ans_data_t answer;
@@ -1862,7 +1865,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                         req->answer_to);
             } else {
 
-                XBT_VERB("Node %d: [%s:%d] No answer after broadcast - answer_to: %s",
+                XBT_DEBUG("Node %d: [%s:%d] No answer - answer_to: %s",
                         me->self.id,
                         __FUNCTION__,
                         __LINE__,
@@ -1881,9 +1884,10 @@ static void launch_fork_process(node_t me, msg_task_t task) {
         }
     } else {
 
-        // ... or by itself
+        // ... or locally
         xbt_assert(!(req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_CS_REQ),
                 "[:%d] STOP !! - task %s", __LINE__, debug_msg[req->args.broadcast.type]);
+
         handle_task(me, &task);
     }
 
@@ -2669,7 +2673,8 @@ static int check(node_t me) {
  * \brief Create a fork process in charge of launching run_tasks_queue()
  * \param me the current node
  * \param new_id new coming node
- * \param c a letter to indicate the source of the call
+ * \param c a letter to indicate the source of the call         //TODO: argument plus utile ? (voir aussi
+ * run_delayed_tasks)
  */
 static void call_run_tasks_queue(node_t me, int new_id, char c) {
     XBT_IN();
@@ -2693,7 +2698,7 @@ static void call_run_tasks_queue(node_t me, int new_id, char c) {
             "tasks_queue",
             proc_data->proc_mailbox);
 
-    XBT_VERB("Node %d: create fork process (run_tasks_queue)", me->self.id);
+    XBT_VERB("Node %d: create fork process (tasks_queue)", me->self.id);
 
     MSG_process_create(proc_data->proc_mailbox,
             proc_run_tasks,
@@ -2726,8 +2731,9 @@ static void run_tasks_queue(node_t me) {
     float min = 1.2;
     double sleep_time = 0;
 
-    XBT_VERB("Node %d: [:%d] set run_state = {%s - %s}",
+    XBT_DEBUG("Node %d: [%s:%d] set run_state = {%s - %s}",
             me->self.id,
+            __FUNCTION__,
             __LINE__,
             debug_run_msg[me->run_task.run_state],
             debug_ret_msg[me->run_task.last_ret]);
@@ -2742,7 +2748,7 @@ static void run_tasks_queue(node_t me) {
             run_delayed_tasks(me, 'F');
         }
 
-        // display tasks queue once
+        // display tasks queue only once
         if (state.active != 'b') {
             if (me->run_task.run_state != prev_state) {
 
@@ -2890,12 +2896,11 @@ static void run_tasks_queue(node_t me) {
             }
         }
 
-        // wait a while
+        // wait a random delay
         srand(time(NULL));
         sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
-
         MSG_process_sleep(sleep_time);
-    //while (MSG_get_clock() < max_simulation_time);
+
     } while (nb_ins_nodes < nb_nodes);
 
     XBT_OUT();
@@ -2905,7 +2910,7 @@ static void run_tasks_queue(node_t me) {
  * \brief Run tasks stored for a delayed execution
  * \param me the current node
  */
-static void run_delayed_tasks(node_t me, char c) {
+static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argument c inutile
 
     XBT_IN();
 
@@ -2953,7 +2958,7 @@ static void run_delayed_tasks(node_t me, char c) {
                 req_args = req_data->args;
                 if (req_args.cnx_groups.new_node_id == state.new_id) {
 
-                    XBT_INFO("Node %d: [%s:%d] run %c - '%c'/%d - run CNX_GROUPS (task[%d])",
+                    XBT_VERB("Node %d: [%s:%d] run %c - '%c'/%d - run CNX_GROUPS (task[%d])",
                             me->self.id,
                             __FUNCTION__,
                             __LINE__,
@@ -2980,9 +2985,9 @@ static void run_delayed_tasks(node_t me, char c) {
 
         if (nb_elems > 0) {
 
-            int nb_cnx_req = 0;
+            //int nb_cnx_req = 0;
             req_data_t req = NULL;
-            e_task_type_t buf_type = TASK_NULL;
+            //e_task_type_t buf_type = TASK_NULL;
             char is_contact = 0;
             int buf_new_node_id = -1;
             int mem_nb_elems = 0;
@@ -3003,7 +3008,19 @@ static void run_delayed_tasks(node_t me, char c) {
                     // store current length
                     mem_nb_elems = nb_elems;
 
-                    // process CNX_REQ tasks after all the others             //TODO : normalement, il ne devrait plus y avoir de CNX_REQ dans ce dynar. A vérifier
+                    // there shouldn't be any CNX_REQ in that dynar
+                    xbt_assert(req->type != TASK_CNX_REQ,
+                            "Node %d: [%s:%d] There shouldn't be any CNX_REQ in delayed_tasks anymore !! - task[%d] is {'%s - %s' from %d}",
+                            me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
+                            idx,
+                            MSG_task_get_name(*task_ptr),
+                            debug_msg[req->type],
+                            req->sender_id);
+
+                    /*
+                    // process CNX_REQ tasks after all the others
                     if (req->type == TASK_CNX_REQ && nb_cnx_req < nb_elems) {
 
                         XBT_VERB("Node %d: [%s:%d] inside run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
@@ -3024,8 +3041,9 @@ static void run_delayed_tasks(node_t me, char c) {
 
                         continue;
                     }
+                    */
 
-                    XBT_VERB("Node %d: run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
+                    XBT_VERB("Node %d: run %c - '%c'/%d - task[%d] is {'%s - %s' from %d}",
                             me->self.id,
                             c,
                             state.active,
@@ -3033,70 +3051,75 @@ static void run_delayed_tasks(node_t me, char c) {
                             idx,
                             MSG_task_get_name(*task_ptr),
                             debug_msg[req->type],
-                            req->sender_id,
-                            nb_cnx_req);
+                            req->sender_id);
 
-                    buf_type = req->type;
+                    //buf_type = req->type;
                     is_contact = (req->sender_id == req->args.cnx_req.new_node_id);
                     buf_new_node_id = req->args.cnx_req.new_node_id;
 
                     // run task
                     val_ret = handle_task(me, &elem);
 
-                    XBT_VERB("Node %d: back to run_delayed_tasks : val_ret = %s",
+                    XBT_VERB("Node %d: [%s:%d] back to run_delayed_tasks : val_ret = %s",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
                             debug_ret_msg[val_ret]);
 
-                    //if (val_ret == UPDATE_NOK) set_active(me, me->cs_new_id);
+                    //TODO : expliquer
                     if (val_ret == UPDATE_NOK) {
 
                         state = get_state(me);
                         if (state.active == 'a' && me->cs_req == 1 && me->cs_new_id == buf_new_node_id) {
                             me->cs_req = 0;
                             me->cs_req_time = MSG_get_clock();
-                            XBT_VERB("Node %d: cs_req reset", me->self.id);
+
+                            XBT_VERB("Node %d: [%s:%d] cs_req reset",
+                                    me->self.id,
+                                    __FUNCTION__,
+                                    __LINE__);
+
                             display_sc(me, 'V');
                         }
                     }
 
                     if (val_ret == OK || val_ret == UPDATE_OK || (val_ret == UPDATE_NOK && !is_contact)) {
 
-                        // remove task from dynar
+                        // remove task from dynar if it succeeded or if failed but me is not contact
+                        // (contact will have to transmit again to its current leader)
                         xbt_dynar_remove_at(me->delayed_tasks, idx, &elem);
                         nb_elems--;
 
+                        /*
                         if (buf_type == TASK_CNX_REQ) {
 
                             nb_cnx_req--;
                         }
+                        */
 
-                        XBT_VERB("Node %d: task[%d] removed", me->self.id, idx);
-
-                        if (val_ret == UPDATE_NOK) {
-
-                            /*
-                            state = get_state(me);
-                            if (state.active == 'a') {
-                                cs_rel(me, me->cs_new_id);
-                            }
-                            */
-                            //TODO : peut-être vaudrait-il mieux trier les files de tâches à lancer
-                            //break;
-                        }
+                        XBT_VERB("Node %d: [%s:%c] task[%d] removed",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
+                                idx);
 
                     } else {
 
-                        // if task didn't run sucessfully, don't remove it and stop here
-                        XBT_VERB("Node %d: task[%d] NOK not removed", me->self.id, idx);
-                        idx++;
-                        //TODO : peut-être vaudrait-il mieux trier les files de tâches à lancer
-                        //break;
+                        // if on contact and task didn't run sucessfully, don't remove it
+                        XBT_VERB("Node %d: [%s:%c] task[%d] NOK not removed",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
+                                idx);
+
+                        // next task        //TODO : erreur ?
+                        //idx++;
                     }
 
                     //req = NULL;
                     state = get_state(me);
 
-                    //dynar may have been modified by handle_task
+                    //dynar may have been modified by handle_task           //TODO : pourquoi avoir commenté cette partie ?
                     /*
                     nb_elems = (int) xbt_dynar_length(me->delayed_tasks);
                     if (nb_elems != mem_nb_elems) {
@@ -3114,9 +3137,10 @@ static void run_delayed_tasks(node_t me, char c) {
                         }
                     }
                     */
-                }
+                } // next task
                 //MSG_process_sleep(0.2);
-            } while (val_ret == OK && nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
+            // while (val_ret == OK && nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
+            } while (val_ret == OK && nb_elems > 0 && state.active == 'a');
         }
 
         state = get_state(me);
@@ -3306,7 +3330,7 @@ static void display_tasks_queue(node_t me) {
 }
 
 /*
- * \brief Comparison function used to sort dynar
+ * \brief Comparison function used to sort tasks_queue dynar
  * \param arg1 first element
  * \param arg2 second element
  * \return int value
@@ -3350,7 +3374,7 @@ static void sort_tasks_queue(node_t me) {
 
     if (xbt_dynar_length(me->tasks_queue) > 1) {
 
-        XBT_VERB("Node %d: [%s:%d] sort tasks queue",
+        XBT_DEBUG("Node %d: [%s:%d] sort tasks queue",
                 me->self.id,
                 __FUNCTION__,
                 __LINE__);
@@ -10703,7 +10727,11 @@ int main(int argc, char *argv[]) {
 }
 
 /*
- * \brief Fork process function
+   ========================  Functions run by fork processes  ==================================
+*/
+
+/*
+ * \brief Function run by one of Handle_task process (Cnx_req, Br_Split, Br_Cs_Req)
  */
 static int proc_handle_task(int argc, char* argv[]) {
 
@@ -10754,10 +10782,11 @@ static int proc_handle_task(int argc, char* argv[]) {
         handle_task(proc_data->node, &proc_task);
     }
 
-    XBT_VERB("Node %d: [%s:%d] fork process dies",
+    XBT_VERB("Node %d: [%s:%d] process '%s' dies",
             proc_data->node->self.id,
             __FUNCTION__,
-            __LINE__);
+            __LINE__,
+            proc_data->proc_mailbox);
 
     XBT_DEBUG("task = %p", proc_task);
 
@@ -10767,14 +10796,14 @@ static int proc_handle_task(int argc, char* argv[]) {
     return 0;
 }
 
-
 /*
- * \brief Fork process to run remain tasks
- * param me the current node
+ * \brief Function run by Tasks_queue process in charge of processing the queue of requested tasks
  */
 static int proc_run_tasks(int argc, char* argv[]) {
 
+    // Attach process Id to the mailbox to make it unique
     setId_proc_mailbox();
+
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
     XBT_VERB("Node %d: [%s:%d] mailbox = '%s'",
@@ -10788,7 +10817,8 @@ static int proc_run_tasks(int argc, char* argv[]) {
     xbt_assert(proc_data != NULL, "proc_data = NULL !!");
 
     /*
-    XBT_VERB("Node %d: fork process (run_tasks_queue) dies node = %p",      //TODO : chercher pourquoi node a été libéré avant cet appel (pas node_free, semble-t-il)
+    XBT_VERB("Node %d: fork process (run_tasks_queue) dies node = %p",
+    //TODO : chercher pourquoi node a été libéré avant cet appel (pas node_free, semble-t-il)
 
             proc_data->node->self.id,
             proc_data->node);
@@ -10801,53 +10831,9 @@ static int proc_run_tasks(int argc, char* argv[]) {
 }
 
 /*
- * \brief Fork process to run delayed tasks
+ * \brief Cleanup function run when a process dies
+ * \param arg data to destroy
  */
-/*
-static int proc_run_tasks(int argc, char* argv[]) {
-
-    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
-
-    XBT_DEBUG("Node %d: in fork process (run_delayed_tasks) - mailbox = '%s'",
-            proc_data->node->self.id,
-            proc_data->proc_mailbox);
-
-    s_state_t state;
-    long clock = 0;
-    int min = 10;
-    int max = 30;
-    long sleep_time = 0.0;
-    srand(time(NULL));
-
-    while (MSG_get_clock() < max_simulation_time-10) {
-        XBT_DEBUG("process sleep ...");
-
-        sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
-        MSG_process_sleep(sleep_time);
-
-        state = get_state(proc_data->node);
-
-        XBT_DEBUG("Node %d: '%c'/%d in fork process (run_delayed_tasks) - wake",
-                proc_data->node->self.id,
-                state.active,
-                state.new_id);
-
-        if ((state.active == 'a' || state.active == 'u') && xbt_dynar_length(proc_data->node->delayed_tasks) > 0) {
-            run_delayed_tasks(proc_data->node, 'F');
-        }
-    }
-
-    XBT_DEBUG("Node %d: fork process (run_delayed_tasks) dies node = %p",
-            proc_data->node->self.id,
-            proc_data->node);
-
-    MSG_process_set_data_cleanup(proc_data_cleanup);
-    MSG_process_kill(MSG_process_self());
-
-    return 0;
-}
-*/
-
 static void proc_data_cleanup(void* arg) {
     XBT_IN();
 
