@@ -1903,8 +1903,10 @@ static void launch_fork_process(node_t me, msg_task_t task) {
  */
 static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) {
 
-    XBT_IN("\tNode %d: waiting for %d answers",
+    XBT_IN("\tNode %d: [%s:%d] waiting for %d answers",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             ans_cpt);
 
     xbt_assert(ans_cpt >= 0,
