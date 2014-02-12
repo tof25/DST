@@ -1,5 +1,5 @@
 @startuml
-(*top) -->"All answers received ?"
+(*top) -->"All answers received ?\n(<i>async_answers</i> in <i>proc_data</i>)" as st1
 
 if "" then
     -->[Yes] "END"
@@ -21,7 +21,7 @@ else
         if "" then
             -->[Yes] "<i>ans_cpt --</i>"
         else
-            -->[No] "All answers received ?"
+            -->[No] st1
         endif
 
     else
@@ -34,19 +34,19 @@ else
                 --> == ANSWER_PROCESSED ==
             else
                 -->[No] "Answer --> <i>async_answers</i>"
-                --> "All answers received ?"
+                --> st1
             endif
         else
             -right->[No] "Sync expected answer ?"
             if "" then
-                -->[Yes] "Answer --> <i>sync_answers</i>"
+                -->[Yes] "Answer --> <i>sync_answers</i>\n(<i>sync_answers</i> in <i>proc_data</i>)"
                 --> == ANSWER_PROCESSED ==
             else
                     -->[No] "Answer discarded"
                     --> == ANSWER_PROCESSED ==
             endif
         endif
-        == ANSWER_PROCESSED == -->[Answer\nprocessed] "All answers received ?"
+        == ANSWER_PROCESSED == -->[Answer\nprocessed] st1
     endif
 endif
 @enduml
