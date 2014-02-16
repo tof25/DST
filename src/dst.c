@@ -6701,24 +6701,20 @@ static void split(node_t me, int stage, int new_node_id) {
     s_state_t state = get_state(me);
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
 
-    XBT_VERB("Node %d: '%c'/%d - split() ... - new_node = %d",
-            me->self.id,
-            state.active,
-            state.new_id,
-            new_node_id);
-
-    XBT_VERB("Node %d: [%s:%d] splitting stage %d",
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d - splitting stage %d ... - new_node = %d",
             me->self.id,
             __FUNCTION__,
             __LINE__,
-            stage);
+            state.active,
+            state.new_id,
+            stage,
+            new_node_id);
 
     XBT_DEBUG("Node %d: [%s:%d] routing table before split", me->self.id, __FUNCTION__, __LINE__);
-    display_rout_table(me, 'V');
+    display_rout_table(me, 'D');
     display_preds(me, 'D');
 
-    /* copy local clock into first brother's (it will become a leader after
-       split) */
+    /* copy local clock into first brother's (it will become a leader after split) */
     //TODO : à faire ??
 
     // finds a representative of the other node (after splitting)
@@ -6750,7 +6746,6 @@ static void split(node_t me, int stage, int new_node_id) {
 
     // prepare the dynar of all async messages recipients
     int cpt = 0;
-    //recp_rec_t recp_array = xbt_new0(s_recp_rec_t, me->bro_index[stage]);
     recp_rec_t elem = NULL;
 
     if (stay == 1) {
@@ -6847,14 +6842,18 @@ static void split(node_t me, int stage, int new_node_id) {
     }
 
     xbt_assert(cpt <= me->bro_index[stage],
-            "Node %d: cpt too high (%d) - bro_index[%d] = %d",
+            "Node %d: [%s:%d] cpt too high (%d) - bro_index[%d] = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             cpt,
             stage,
             me->bro_index[stage]);
 
-    XBT_DEBUG("Node %d: init_rep_id = %d - new_rep_id = %d",
+    XBT_DEBUG("Node %d: [%s:%d] init_rep_id = %d - new_rep_id = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             init_rep_id,
             new_rep_id);
 
@@ -6868,9 +6867,13 @@ static void split(node_t me, int stage, int new_node_id) {
         wait_for_completion(me, cpt, new_node_id);
     }
 
-    xbt_assert(idx <= b, "DST out of bounds. idx = %d", idx);
+    xbt_assert(idx <= b, "[%s:%d] DST out of bounds. idx = %d", __FUNCTION__, __LINE__, idx);
 
-    XBT_VERB("Node %d routing table after split", me->self.id);
+    XBT_VERB("Node %d: [%s:%d] routing table after split",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__);
+
     display_rout_table(me, 'V');
 
     // set and store DST infos
@@ -6890,8 +6893,12 @@ static void split(node_t me, int stage, int new_node_id) {
 
     // wait until state is not 'p' anymore to launch calls of connect_splitted_groups
 
-    XBT_VERB("Wait for no 'p' state");
-    display_states(me, 'V');
+    XBT_DEBUG("Node %d: [%s:%d] Wait for no 'p' state",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__);
+
+    display_states(me, 'D');
 
     int found = -1;
     do {
@@ -6902,7 +6909,7 @@ static void split(node_t me, int stage, int new_node_id) {
         }
     } while (found > -1);
 
-    XBT_VERB("Node %d: [%s:%d] state 'p' not found", me->self.id, __FUNCTION__, __LINE__);
+    XBT_DEBUG("Node %d: [%s:%d] state 'p' not found", me->self.id, __FUNCTION__, __LINE__);
 
     // tells every upper stage pred it's got a new member
     int ans_cpt = me->pred_index[stage + 1];
@@ -6920,11 +6927,16 @@ static void split(node_t me, int stage, int new_node_id) {
     int hist_cpy_pred_index = me->pred_index[stage + 1];
     node_rep_t hist_cpy_preds = xbt_new0(s_node_rep_t, me->pred_index[stage + 1]);
 
+    XBT_DEBUG("Node %d: [%s:%d] make a copy of upper stage preds",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__);
+
     for (i = 0; i < cpy_pred_index ; i++) {
 
         cpy_preds[i] = me->preds[stage + 1][i];
         hist_cpy_preds[i] = me->preds[stage + 1][i];
-        XBT_VERB("cpy_preds[%d] = %d", i, cpy_preds[i].id);
+        XBT_DEBUG("cpy_preds[%d] = %d", i, cpy_preds[i].id);
     }
 
     int cpy_pred_index2 = 0;
@@ -6962,14 +6974,12 @@ static void split(node_t me, int stage, int new_node_id) {
                 res = send_msg_async(me,
                         TASK_CNX_GROUPS,
                         cpy_preds[i].id,
-                        //me->preds[stage + 1][i].id,
                         args);
 
                 xbt_assert(res == MSG_OK, "Node %d: Failed to send '%s' to %d",
                         me->self.id,
                         debug_msg[TASK_CNX_GROUPS],
                         cpy_preds[i].id);
-                //me->preds[stage + 1][i].id);
 
 
                 elem = xbt_new0(s_recp_rec_t, 1);
@@ -6977,15 +6987,16 @@ static void split(node_t me, int stage, int new_node_id) {
                 elem->type = TASK_CNX_GROUPS;
                 elem->br_type = TASK_NULL;
                 elem->recp = cpy_preds[i];
-                //elem->recp = me->preds[stage + 1][i];
                 elem->new_node_id = new_node_id;
                 elem->answer_data = NULL;
                 xbt_dynar_push(proc_data->async_answers, &elem);
 
                 // elem->recp has to exist
                 xbt_assert(elem->recp.id > - 1,
-                        "Node %d: #8# recp.id is %d !!",
+                        "Node %d: [%s:%d] #8# recp.id is %d !!",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         elem->recp.id);
             }
         }
