@@ -1,0 +1,130 @@
+@startuml
+(*top) --> "set_update()"
+
+partition "finds a rep for the leaving node"
+--> "pos <-- index_bro(stage, me)"
+--> "stay <-- (pos+1) % 2"
+--> "<i>stay = 0 ?</i>"
+
+if "" then
+    -->[Yes] "other_node_id <-- brothers[stage][pos - 1].id"
+    --> == S1 ==
+else
+    -->[No] "<i>pos = bro_index[stage] - 1 ?</i>"
+    if "" then
+        -->[Yes] "other_node_id <-- brothers[stage][pos - 1].id"
+    else
+        -->[No] "other_node_id <-- brothers[stage][pos + 1].id"
+    endif
+    --> == S1 ==
+endif
+end partition
+
+partition "execute splitting"
+--> "i <-- 0\nidx <-- 0\nnew_grp <-- []\ncpt <-- 0"
+
+--> "<i>stay = 1 ?</i>"
+if "" then
+    partition "current node stays"
+    -left->[Yes] == S2 ==
+    --> "i % 2 = 0 ?"
+    note right : brother i stays ?
+    if "" then
+        -->[Yes] "new_grp[idx] <-- brothers[stage][i]" as ins1
+        --> "idx++" as ins2
+        --> "i++" as endloop1
+    else
+        -->[No] "send DEL_PRED\nto brothers[stage][i])" as ins3
+        --> "DEL_PRED --> proc_data.async_answers" as ins4
+        --> "cpt++" as ins5
+    endif
+    --> endloop1
+    --> "i < bro_index[stage] ?" as ins6
+    if "" then
+        -->[Yes] == S2 ==
+    else
+        -->[No] "init_rep_id <-- me.id"
+        --> "new_rep_id <-- other_node_id"
+    endif
+    end partition
+    --> == S5 ==
+else
+    partition "current node leaves"
+    -right->[No] == S4 ==
+    --> "i % 2 = 1 ?"
+    note left : brother i stays ?
+    if "" then
+        -->[Yes] "new_grp[idx] <-- brothers[stage][i]"
+        --> "idx++"
+        --> "i++" as endloop2
+    else
+        -->[No] "send DEL_PRED\nto brothers[stage][i])"
+        --> "DEL_PRED --> proc_data.async_answers"
+        --> "cpt++"
+    endif
+    --> endloop2
+    --> "i < bro_index[stage] ?"
+    if "" then
+        -->[Yes] == S4 ==
+    else
+        -->[No] "init_rep_id <-- other_node_id"
+        --> "new_rep_id <-- me.id"
+    endif
+    end partition
+    --> == S5 ==
+endif
+--> "brothers[stage] <-- new_grp"
+--> "bro_index[stage] <-- idx"
+--> "<i>cpt > 0 ?</i>"
+if "" then
+    -->[Yes] "wait_for_completion"
+endif
+end partition
+
+--> "<b>wait until no 'p' state is found</b>"
+
+partition "tell every 'father' he's got a new 'son'"
+--> "ans_cpt <-- pred_index[stage + 1]"
+--> "cpy_pred_index <-- pred_index[stage + 1]\ncpy_preds <-- pred[stage + 1]"
+note right : 'fathers' are upper stage preds\nuses copies of them
+--> "hist_cpy_pred_index <-- pred_index[stage + 1]\nhist_cpy_preds <-- pred[stage + 1]"
+--> "i <-- 0\nj <-- 0\nk <-- 0\ncpt_loop <-- 0"
+--> == S6 ==
+    --> "cpy_pred_index2 <-- 0"
+    --> == S7 ==
+        --> "cpy_preds[i] == me ?"
+        if "" then
+            -->[Yes] "ans_cpt--"
+            note left : local call
+            --> "i++" as endloop3
+        else
+            -->[No] "send CNX_GROUPS to cpy_preds[i]"
+        endif
+        --> "i++" as endloop3
+        --> "<i>i < cpy_pred_index ?</i>" as ins7
+        if "" then
+            -->[Yes] == S7 ==
+        else
+            partition "checks if new preds have been added meanwhile"
+            -->[No] "<i>cpt_loop > 0</i> ?" as ins8
+            if "" then
+                -->[Yes] "<i>cpy_pred_index2 > 0 && cpt_loop > 0 ?</i>"
+                if "" then
+                    -->[Yes] == S6 ==
+                else
+                    -->[No] "No" as ins9
+                endif
+            else
+                -->[No] "No" as ins10
+            endif
+            end partition
+
+            --> "<i>ans_cpt > 0 ?</i>" as ins11
+            if "" then
+                -->[Yes] "wait for completion" as ins12
+            else
+                -->[No] "No" as ins13
+            endif
+        endif
+end partition
+@enduml
