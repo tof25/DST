@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/02/08
+ *  Written by Christophe Enderlin on 2014/02/17
  *
  */
 
@@ -49,7 +49,7 @@ static const int a = 2;                     /* min number of brothers in a node
                                                (except for the root node) */
 static const int b = 4;                     /* max number of brothers in a node
                                                (must be twice a) */
-static int         COMM_TIMEOUT = 10000;                    // timeout for communications (mustn't be greater than MAX_WAIT_COMPL)
+static int         COMM_TIMEOUT = 19000;                    // timeout for communications (mustn't be greater than MAX_WAIT_COMPL)
 static double      max_simulation_time = 10500;             // max default simulation time              //TODO : plus utile ?
 static xbt_dynar_t infos_dst;                               // to store all global DST infos
 static int         nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type
