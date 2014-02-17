@@ -21,7 +21,8 @@ endif
 end partition
 
 partition "execute splitting"
---> "i <-- 0\nidx <-- 0\nnew_grp <-- []\ncpt <-- 0"
+
+-left-> "i <-- 0\nidx <-- 0\nnew_grp <-- []\ncpt <-- 0"
 
 --> "<i>stay = 1 ?</i>"
 if "" then
@@ -90,9 +91,12 @@ partition "tell every 'father' he's got a new 'son'"
 
 --> "ans_cpt <-- pred_index[stage + 1]"
 --> "cpy_pred_index <-- pred_index[stage + 1]\ncpy_preds <-- pred[stage + 1]"
+
 note right : 'fathers' are upper stage preds\nuses copies of them
+
 --> "hist_cpy_pred_index <-- pred_index[stage + 1]\nhist_cpy_preds <-- pred[stage + 1]"
 --> "i <-- 0\ncpt_loop <-- 0"
+
 --> "cpy_pred_index2 <-- 0" as ins15
 --> "cpy_preds[i] = me ?" as ins16
 if "" then
@@ -103,6 +107,7 @@ else
     -->[No] "send CNX_GROUPS to cpy_preds[i]"
 endif
 --> "i++" as endloop3
+
 --> "<i>i < cpy_pred_index ?</i>" as ins7
 if "" then
     -->[Yes] ins16
@@ -118,27 +123,28 @@ else
         if "" then
             -->[Yes] "cpy_preds <-- cpy_preds2"
             --> "append cpy_preds2 to hist_cpy_pred"
+            --> "<i>cpy_pred_index2 > 0</i> && <i>cpt_loop > 0</i> ?" as cond1
+            if "" then
+                -->[Yes] ins15
+            else
+                -->[No] "<i>ans_cpt > 0 ?</i>" as ins11
+                if "" then
+                    -->[Yes] "wait for completion" as ins12
+                    --> "<b>wait until no 'p' state is found</b>" as ins13
+                    --> "connect_splitted_groups()"
+                    --> (*)
+                else
+                    -->[No] ins13
+                endif
+            endif
         else
-            -->[No] "<i>cpy_pred_index2 > 0</i> && <i>cpt_loop > 0</i> ?" as cond1
+            -->[No] cond1
         endif
     else
         -->[No] cond1
     endif
 
     end partition
-
-    if "" then
-        -->[Yes] ins15
-    else
-        -->[No] "<i>ans_cpt > 0 ?</i>" as ins11
-        if "" then
-            -->[Yes] "wait for completion" as ins12
-            --> "wait until no 'p' state is found" as ins13
-        else
-            -->[No] ins13
-        endif
-        --> "connect_splitted_groups()"
-    endif
 endif
 end partition
 @enduml
