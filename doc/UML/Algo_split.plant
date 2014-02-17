@@ -25,9 +25,10 @@ partition "execute splitting"
 
 --> "<i>stay = 1 ?</i>"
 if "" then
+
     partition "current node stays"
-    -left->[Yes] == S2 ==
-    --> "i % 2 = 0 ?"
+
+    -left->[Yes] "i % 2 = 0 ?" as ins14
     note right : brother i stays ?
     if "" then
         -->[Yes] "new_grp[idx] <-- brothers[stage][i]" as ins1
@@ -41,7 +42,7 @@ if "" then
     --> endloop1
     --> "i < bro_index[stage] ?" as ins6
     if "" then
-        -->[Yes] == S2 ==
+        -->[Yes] ins14
     else
         -->[No] "init_rep_id <-- me.id"
         --> "new_rep_id <-- other_node_id"
@@ -49,9 +50,10 @@ if "" then
     end partition
     --> == S5 ==
 else
+
     partition "current node leaves"
-    -right->[No] == S4 ==
-    --> "i % 2 = 1 ?"
+
+    -right->[No] "i % 2 = 1 ?" as ins10
     note left : brother i stays ?
     if "" then
         -->[Yes] "new_grp[idx] <-- brothers[stage][i]"
@@ -65,7 +67,7 @@ else
     --> endloop2
     --> "i < bro_index[stage] ?"
     if "" then
-        -->[Yes] == S4 ==
+        -->[Yes] ins10
     else
         -->[No] "init_rep_id <-- other_node_id"
         --> "new_rep_id <-- me.id"
@@ -78,53 +80,65 @@ endif
 --> "<i>cpt > 0 ?</i>"
 if "" then
     -->[Yes] "wait_for_completion"
+    --> "<b>wait until no 'p' state is found</b>" as ins9
+else
+    -->[No] ins9
 endif
 end partition
 
---> "<b>wait until no 'p' state is found</b>"
-
 partition "tell every 'father' he's got a new 'son'"
+
 --> "ans_cpt <-- pred_index[stage + 1]"
 --> "cpy_pred_index <-- pred_index[stage + 1]\ncpy_preds <-- pred[stage + 1]"
 note right : 'fathers' are upper stage preds\nuses copies of them
 --> "hist_cpy_pred_index <-- pred_index[stage + 1]\nhist_cpy_preds <-- pred[stage + 1]"
---> "i <-- 0\nj <-- 0\nk <-- 0\ncpt_loop <-- 0"
---> == S6 ==
-    --> "cpy_pred_index2 <-- 0"
-    --> == S7 ==
-        --> "cpy_preds[i] == me ?"
-        if "" then
-            -->[Yes] "ans_cpt--"
-            note left : local call
-            --> "i++" as endloop3
-        else
-            -->[No] "send CNX_GROUPS to cpy_preds[i]"
-        endif
-        --> "i++" as endloop3
-        --> "<i>i < cpy_pred_index ?</i>" as ins7
-        if "" then
-            -->[Yes] == S7 ==
-        else
-            partition "checks if new preds have been added meanwhile"
-            -->[No] "<i>cpt_loop > 0</i> ?" as ins8
-            if "" then
-                -->[Yes] "<i>cpy_pred_index2 > 0 && cpt_loop > 0 ?</i>"
-                if "" then
-                    -->[Yes] == S6 ==
-                else
-                    -->[No] "No" as ins9
-                endif
-            else
-                -->[No] "No" as ins10
-            endif
-            end partition
+--> "i <-- 0\ncpt_loop <-- 0"
+--> "cpy_pred_index2 <-- 0" as ins15
+--> "cpy_preds[i] = me ?" as ins16
+if "" then
+    -->[Yes] "ans_cpt--"
+    note right : local call\n(see at the end)
+    --> "i++" as endloop3
+else
+    -->[No] "send CNX_GROUPS to cpy_preds[i]"
+endif
+--> "i++" as endloop3
+--> "<i>i < cpy_pred_index ?</i>" as ins7
+if "" then
+    -->[Yes] ins16
+else
 
-            --> "<i>ans_cpt > 0 ?</i>" as ins11
-            if "" then
-                -->[Yes] "wait for completion" as ins12
-            else
-                -->[No] "No" as ins13
-            endif
+    partition "check if new preds have been added meanwhile"
+
+    -->[No] "<i>cpt_loop > 0</i> ?" as ins8
+    if "" then
+        -->[Yes] "cpt_loops--"
+        --> "add new preds in cpy_preds2"
+        --> "cpy_pred_index2 > 0 ?"
+        if "" then
+            -->[Yes] "cpy_preds <-- cpy_preds2"
+            --> "append cpy_preds2 to hist_cpy_pred"
+        else
+            -->[No] "<i>cpy_pred_index2 > 0</i> && <i>cpt_loop > 0</i> ?" as cond1
         endif
+    else
+        -->[No] cond1
+    endif
+
+    end partition
+
+    if "" then
+        -->[Yes] ins15
+    else
+        -->[No] "<i>ans_cpt > 0 ?</i>" as ins11
+        if "" then
+            -->[Yes] "wait for completion" as ins12
+            --> "wait until no 'p' state is found" as ins13
+        else
+            -->[No] ins13
+        endif
+        --> "connect_splitted_groups()"
+    endif
+endif
 end partition
 @enduml
