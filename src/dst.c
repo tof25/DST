@@ -6881,18 +6881,7 @@ static void split(node_t me, int stage, int new_node_id) {
 
     display_preds(me, 'D');
 
-    // for local call
-    /*
-    req_data_t req_data = xbt_new0(s_req_data_t, 1);
-    req_data->type = TASK_CNX_GROUPS;
-    req_data->sender_id = me->self.id;
-    req_data->recipient_id = me->self.id;
-    req_data->args = args;
-    msg_task_t local_task = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
-    */
-
     // wait until state is not 'p' anymore to launch calls of connect_splitted_groups
-
     XBT_DEBUG("Node %d: [%s:%d] Wait for no 'p' state",
             me->self.id,
             __FUNCTION__,
@@ -6909,10 +6898,11 @@ static void split(node_t me, int stage, int new_node_id) {
         }
     } while (found > -1);
 
-    XBT_DEBUG("Node %d: [%s:%d] state 'p' not found", me->self.id, __FUNCTION__, __LINE__);
+    XBT_DEBUG("Node %d: [%s:%d] no more state 'p'", me->self.id, __FUNCTION__, __LINE__);
 
     // tells every upper stage pred it's got a new member
-    int ans_cpt = me->pred_index[stage + 1];
+    //int ans_cpt = me->pred_index[stage + 1];
+    int ans_cpt = 0;
     args.cnx_groups.stage = stage + 1;
     args.cnx_groups.pos_init = index_bro(me, stage + 1, me->self.id);
     args.cnx_groups.pos_new = me->bro_index[stage + 1];
@@ -6941,7 +6931,7 @@ static void split(node_t me, int stage, int new_node_id) {
 
     int cpy_pred_index2 = 0;
     node_rep_t cpy_preds2 = NULL;
-    int cpt_loop = 0;
+    int cpt_loop = 2;           //TODO : pas forcément utile de le faire plus d'une fois ?
     int j = 0;
     int k = 0;
     do {
@@ -6949,25 +6939,11 @@ static void split(node_t me, int stage, int new_node_id) {
 
         // send CNX_GROUPS to each stage+1 pred
         for (i = 0; i < cpy_pred_index; i++) {
-            //for (i = 0; i < me->pred_index[stage + 1]; i++)
-
-
             if (cpy_preds[i].id == me->self.id) {
-                //if (me->preds[stage + 1][i].id == me->self.id)
 
-                // local call (no answer is expected)
-                ans_cpt--;
+                // local call - see at the end (no answer is expected)
+                //ans_cpt--;
 
-                /*
-                connect_splitted_groups(me,
-                        args.cnx_groups.stage,
-                        args.cnx_groups.pos_init,
-                        args.cnx_groups.pos_new,
-                        args.cnx_groups.init_rep_id,
-                        args.cnx_groups.new_rep_id,
-                        args.cnx_groups.new_node_id);
-                        */
-                //handle_task(me, &local_task);
             } else {
 
                 // remote call
@@ -6990,6 +6966,8 @@ static void split(node_t me, int stage, int new_node_id) {
                 elem->new_node_id = new_node_id;
                 elem->answer_data = NULL;
                 xbt_dynar_push(proc_data->async_answers, &elem);
+
+                ans_cpt++;
 
                 // elem->recp has to exist
                 xbt_assert(elem->recp.id > - 1,
@@ -7038,8 +7016,13 @@ static void split(node_t me, int stage, int new_node_id) {
                 }
             }
 
-            // new pred(s) have been found : copy them to cpy_preds
+            // new pred(s) have been found : replace cpy_preds with them
             if (cpy_pred_index2 > 0) {
+
+                XBT_VERB("Node %d: [%s:%d] new_preds have come",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
 
                 xbt_free(cpy_preds);
                 cpy_pred_index = cpy_pred_index2;
@@ -7063,7 +7046,7 @@ static void split(node_t me, int stage, int new_node_id) {
                             cpy_preds[i].id,
                             cpt_loop);
                 }
-                xbt_free(cpy_preds2);
+                xbt_free(cpy_preds2);       //TODO : à sortir du if ?
             }
         }
 
@@ -7104,6 +7087,7 @@ static void split(node_t me, int stage, int new_node_id) {
             state.active,
             state.new_id);
 
+    // local call
     connect_splitted_groups(me,
             args.cnx_groups.stage,
             args.cnx_groups.pos_init,
