@@ -2,8 +2,7 @@
 (*top) --> "set_update()"
 
 partition "finds a rep for the leaving node"
---> "pos <-- index_bro(stage, me)"
---> "stay <-- (pos+1) % 2"
+--> "pos <-- index_bro(stage, me)\nstay <-- (pos+1) % 2"
 --> "<i>stay = 0 ?</i>"
 
 if "" then
@@ -76,11 +75,10 @@ else
     end partition
     --> == S5 ==
 endif
---> "brothers[stage] <-- new_grp"
---> "bro_index[stage] <-- idx"
+--> "brothers[stage] <-- new_grp\nbro_index[stage] <-- idx"
 --> "<i>cpt > 0 ?</i>"
 if "" then
-    -->[Yes] "wait_for_completion"
+    -->[Yes] "wait_for_completion(cpt)"
     --> "<b>wait until no 'p' state is found</b>" as ins9
 else
     -->[No] ins9
@@ -90,21 +88,23 @@ end partition
 partition "tell every 'father' he's got a new 'son'"
 
 --> "ans_cpt <-- pred_index[stage + 1]"
---> "cpy_pred_index <-- pred_index[stage + 1]\ncpy_preds <-- pred[stage + 1]"
+--> "cpy_pred_index <-- pred_index[stage + 1]\ncpy_preds <-- preds[stage + 1]"
 
 note right : 'fathers' are upper stage preds\nuses copies of them
 
---> "hist_cpy_pred_index <-- pred_index[stage + 1]\nhist_cpy_preds <-- pred[stage + 1]"
---> "i <-- 0\ncpt_loop <-- 0"
+--> "hist_cpy_pred_index <-- pred_index[stage + 1]\nhist_cpy_preds <-- preds[stage + 1]"
+--> "i <-- 0\ncpt_loop <-- 0\nans_cpt <-- 0"
 
 --> "cpy_pred_index2 <-- 0" as ins15
 --> "cpy_preds[i] = me ?" as ins16
 if "" then
-    -->[Yes] "ans_cpt--"
+    -->[Yes] " "
     note right : local call\n(see at the end)
     --> "i++" as endloop3
 else
     -->[No] "send CNX_GROUPS to cpy_preds[i]"
+    --> "CNX_GROUPS --> proc_data.async_answers"
+    --> "ans_cpt++"
 endif
 --> "i++" as endloop3
 
@@ -129,7 +129,7 @@ else
             else
                 -->[No] "<i>ans_cpt > 0 ?</i>" as ins11
                 if "" then
-                    -->[Yes] "wait for completion" as ins12
+                    -->[Yes] "wait_for_completion(ans_cpt)" as ins12
                     --> "<b>wait until no 'p' state is found</b>" as ins13
                     --> "connect_splitted_groups()"
                     --> (*)
