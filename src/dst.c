@@ -1,16 +1,16 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/02/17
+ *  Written by Christophe Enderlin on 2014/02/26
  *
  */
+
+// TODO : voir si toutes les réponses aux ADD_PRED sont requises
 
 /* TODO: gérer la non-réponse d'un contact lors de l'arrivée d'un nœud.
  *       gérer tous les timeout des comm_wait() */
 
 // TODO: voir si tout est OK pour les timers (peut-on remplacer des MSG_get_clock() par des clock ?)
-
-//TODO: voir si on peut paramétrer un ADD_PRED pour qu'il envoie ou pas une réponse
 
 //TODO: introduire un indicateur de réponses à venir. On pourra s'en servir pour terminer la simulation.
 //      (à la place de WAIT_BEFORE_END)
@@ -368,6 +368,7 @@ typedef struct {
     int new_node_id;
     int stage;
     int new_pred_id;
+    int w_ans;
 } s_task_add_pred_t;            // add a predessessor
 
 typedef struct {
@@ -4869,9 +4870,11 @@ static int join(node_t me, int contact_id) {
     me->dst_infos.nbr_split_stages = answer_data->answer.cnx_req.nbr_split_stages;
 
     state = get_state(me);
-    XBT_INFO("Node %d: '%c'/%d - contact %d has %d stages -"
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d - contact %d has %d stages -"
             " add_stage = %d - nbr_split_stages = %d - its state was '%c'/%d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             state.active,
             state.new_id,
             contact.id,
@@ -4924,9 +4927,6 @@ static int join(node_t me, int contact_id) {
     // answer_data is not needed anymore
     data_ans_free(me, &answer_data);
 
-    // display the received datas
-    display_rout_table(me, 'V');
-
     // set and store DST infos
     set_n_store_infos(me);
 
@@ -4951,8 +4951,6 @@ static int join(node_t me, int contact_id) {
             state.new_id);
 
     //me->dst_infos.nb_messages = tot_msg_number(me->self.id);
-
-    display_rout_table(me, 'V');
 
     // set and store DST infos
     set_n_store_infos(me);
@@ -5125,13 +5123,13 @@ static u_ans_data_t get_rep(node_t me, int stage, int new_node_id) {
 }
 
 /**
- * \brief This function makes room for a new node joining the DST if necessary
- *        and insert it.
+ * \brief This function (run by new node's contact) makes room for a new joining node
+ *        if necessary and inserts it.
  * \param me the current node
  * \param new_node_id the involved new coming node
  * \param cs_new_node_prio new node's priority
  * \param try number of joining attempts
- * \return Answer data containing the contact's routing table
+ * \return Answer data (to the new node) containing the contact's routing table
  */
 static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_node_prio, int try) {
 
@@ -5454,7 +5452,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
             /* tells every first stage concerned node to let the new node in */
 
-            // works on a copy of first stage brothers
+            // works on a copy of first stage brothers      //TODO : utile ? on a fait un set_update avant qui devrait protéger la table ...
             int cpy_bro_index = me->bro_index[0];
             cpy_brothers = xbt_new0(s_node_rep_t, b);
             int i,j;
@@ -5535,36 +5533,28 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     state.new_id,
                     new_node_id);
 
-            /*
-            // everything's ok, add new node as a pred for me at every stage (see also start of load balance)
-            for (i = 0; i < me->height; i++) {
-
-                add_pred(me, i, new_node_id);
-            }
-            */
-
-            /* set every member's state to 'p' to show that their preds table is about
-               to change (when adding the new coming node in it) */
+            // New_node has to be a pred for the whole table
+            // NOTE : 'p' n'est pas utile puisqu'on ne maîtrise pas la
+            // précédence de SET_STATE sur ADD_PRED avec send_msg_async
 
             u_req_args_t u_req_args;
-            u_req_args.set_state.new_node_id = new_node_id;
-            u_req_args.set_state.state = 'p';
+            u_req_args.add_pred.new_pred_id = new_node_id;
+            u_req_args.add_pred.new_node_id = new_node_id;
+            u_req_args.add_pred.w_ans = 0;
 
             for (i = 1; i < me->height; i++) {    // not needed for stage 0
+
+                u_req_args.add_pred.stage = i;
                 for (j = 0; j < me->bro_index[i]; j++) {
 
+                    /* Current node doesn't have to add new node as a pred. It'll
+                       be replaced by new_node during load_balancing */
                     if (me->brothers[i][j].id != me->self.id) {
 
                         res = send_msg_async(me,
-                                TASK_SET_STATE,
+                                TASK_ADD_PRED,
                                 me->brothers[i][j].id,
                                 u_req_args);
-
-                    } else {
-
-                        /* current node doesn't have to change its state. It'll
-                           be replaced by the new node in the transmitted table */
-                        //set_state(me, new_node_id, 'p');
                     }
                 }
             }
@@ -6259,6 +6249,7 @@ static void add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, 
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
     args.add_pred.new_node_id = new_node_id;
+    args.add_pred.w_ans = 1;
 
     if (right == 0) {
 
@@ -6526,6 +6517,7 @@ static void connect_splitted_groups(node_t me,
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
     args.add_pred.new_node_id = new_node_id;
+    args.add_pred.w_ans = 1;
 
     // insert init_rep and new_rep
     XBT_DEBUG("Node %d: insert %d in brothers[%d][%d]",
@@ -7235,6 +7227,7 @@ static void merge(node_t me,
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
     args.add_pred.new_node_id = new_node_id;
+    args.add_pred.w_ans = 1;
 
     /* if merge() is broadcasted, right equals 0 or 1. If merge() is simply
      * called, it equals 10 or 11. This is to manage side flipping for coming
@@ -7855,6 +7848,7 @@ static void replace_bro(node_t me, int stage, int init_idx, int new_id, int new_
         args.add_pred.stage = stage;
         args.add_pred.new_pred_id = me->self.id;
         args.add_pred.new_node_id = new_node_id;
+        args.add_pred.w_ans = 1;
 
         res = send_msg_async(me,
                 TASK_ADD_PRED,
@@ -7983,6 +7977,7 @@ static void shift_bro(node_t me, int stage, s_node_rep_t new_node, int right, in
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
     args.add_pred.new_node_id = new_node.id;
+    args.add_pred.w_ans = 1;
 
     res = send_msg_async(me,
             TASK_ADD_PRED,
@@ -8548,9 +8543,9 @@ static void merge_request(node_t me, int new_node_id) {
 }
 
 /**
- * \brief To balance load among nodes for current routing table
+ * \brief Function run by new node to balance load
  * \param me current node
- * \param contact_id the node that provided current me's routing table
+ * \param contact_id the node that provided current routing table
  */
 static void load_balance(node_t me, int contact_id) {
 
@@ -8583,14 +8578,18 @@ static void load_balance(node_t me, int contact_id) {
     u_req_args_t u_req_args;
     msg_error_t res;
 
-    /* starts by adding me as a pred for the whole table
-       (so that each member's preds will be up to date as soon as possible) */
+    /*
+    // Starts by adding me as a pred for the whole table
+    // (so that each member's preds will be up to date as soon as possible)
+    // Each member's state have been set to 'p' at the end of connection_request()
     u_req_args.add_pred.new_pred_id = me->self.id;
     u_req_args.add_pred.new_node_id = me->self.id;
 
     for (i = 1; i < me->height; i++) {
         for (j = 0; j < me->bro_index[i]; j++) {
 
+            // don't send to contact since it'll be replaced by me in current
+            // table
             if (me->brothers[i][j].id != contact_id) {
 
                 u_req_args.add_pred.stage = i;
@@ -8602,6 +8601,7 @@ static void load_balance(node_t me, int contact_id) {
             }
         }
     }
+    */
 
     // browse the whole routing table to find other representatives
     for (i = 1; i < me->height; i++) {
@@ -8686,6 +8686,7 @@ static void load_balance(node_t me, int contact_id) {
                         u_req_args.add_pred.stage = i;
                         u_req_args.add_pred.new_pred_id = me->self.id;
                         u_req_args.add_pred.new_node_id = me->self.id;
+                        u_req_args.add_pred.w_ans = 1;
 
                         // synchro (6)
                         res = send_msg_sync(me,
@@ -9573,7 +9574,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 add_pred(me, rcv_args.add_pred.stage, rcv_args.add_pred.new_pred_id);
 
                 // send a 'completed task' message back
-                if (rcv_req->sender_id != me->self.id) {
+                if (rcv_req->sender_id != me->self.id &&
+                    rcv_args.add_pred.w_ans == 1) {
 
                     send_completed(me, type, rcv_req->sender_id, rcv_req->answer_to, rcv_args.add_pred.new_node_id);
                 }
