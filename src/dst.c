@@ -6,6 +6,7 @@
  */
 
 // TODO : voir si toutes les réponses aux ADD_PRED sont requises
+// TODO : voir si 'p' pourrait arriver après un add_pred
 
 /* TODO: gérer la non-réponse d'un contact lors de l'arrivée d'un nœud.
  *       gérer tous les timeout des comm_wait() */
@@ -5533,18 +5534,12 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     state.new_id,
                     new_node_id);
 
-            // New_node has to be a pred for the whole table
-            // NOTE : 'p' n'est pas utile puisqu'on ne maîtrise pas la
-            // précédence de SET_STATE sur ADD_PRED avec send_msg_async
-
+            // all preds will change during load_balance
             u_req_args_t u_req_args;
-            u_req_args.add_pred.new_pred_id = new_node_id;
-            u_req_args.add_pred.new_node_id = new_node_id;
-            u_req_args.add_pred.w_ans = 0;
+            u_req_args.set_state.new_node_id = new_node_id;
+            u_req_args.set_state.state = 'p';
 
             for (i = 1; i < me->height; i++) {    // not needed for stage 0
-
-                u_req_args.add_pred.stage = i;
                 for (j = 0; j < me->bro_index[i]; j++) {
 
                     /* Current node doesn't have to add new node as a pred. It'll
@@ -5552,12 +5547,13 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     if (me->brothers[i][j].id != me->self.id) {
 
                         res = send_msg_async(me,
-                                TASK_ADD_PRED,
+                                TASK_SET_STATE,
                                 me->brothers[i][j].id,
                                 u_req_args);
                     }
                 }
             }
+            //TODO : faut-il un wait_for_completion ici ?
             me->cs_req = 0;
             me->cs_req_time = MSG_get_clock();
         }
@@ -6249,7 +6245,7 @@ static void add_bro_array(node_t me, int stage, node_rep_t bro, int array_size, 
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
     args.add_pred.new_node_id = new_node_id;
-    args.add_pred.w_ans = 1;
+    args.add_pred.w_ans = 0;
 
     if (right == 0) {
 
@@ -7227,7 +7223,7 @@ static void merge(node_t me,
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
     args.add_pred.new_node_id = new_node_id;
-    args.add_pred.w_ans = 1;
+    args.add_pred.w_ans = 0;
 
     /* if merge() is broadcasted, right equals 0 or 1. If merge() is simply
      * called, it equals 10 or 11. This is to manage side flipping for coming
@@ -7848,7 +7844,7 @@ static void replace_bro(node_t me, int stage, int init_idx, int new_id, int new_
         args.add_pred.stage = stage;
         args.add_pred.new_pred_id = me->self.id;
         args.add_pred.new_node_id = new_node_id;
-        args.add_pred.w_ans = 1;
+        args.add_pred.w_ans = 0;
 
         res = send_msg_async(me,
                 TASK_ADD_PRED,
@@ -7977,7 +7973,7 @@ static void shift_bro(node_t me, int stage, s_node_rep_t new_node, int right, in
     args.add_pred.stage = stage;
     args.add_pred.new_pred_id = me->self.id;
     args.add_pred.new_node_id = new_node.id;
-    args.add_pred.w_ans = 1;
+    args.add_pred.w_ans = 0;
 
     res = send_msg_async(me,
             TASK_ADD_PRED,
@@ -8578,12 +8574,11 @@ static void load_balance(node_t me, int contact_id) {
     u_req_args_t u_req_args;
     msg_error_t res;
 
-    /*
-    // Starts by adding me as a pred for the whole table
-    // (so that each member's preds will be up to date as soon as possible)
-    // Each member's state have been set to 'p' at the end of connection_request()
+    // Add me as a pred for the whole table
+    // (states 'p' have been sent at the end of connection_request())
     u_req_args.add_pred.new_pred_id = me->self.id;
     u_req_args.add_pred.new_node_id = me->self.id;
+    u_req_args.add_pred.w_ans = 0;
 
     for (i = 1; i < me->height; i++) {
         for (j = 0; j < me->bro_index[i]; j++) {
@@ -8601,7 +8596,8 @@ static void load_balance(node_t me, int contact_id) {
             }
         }
     }
-    */
+
+    //TODO : faut-il mettre un wait for completion, ici ?
 
     // browse the whole routing table to find other representatives
     for (i = 1; i < me->height; i++) {
