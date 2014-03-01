@@ -744,6 +744,7 @@ static void         make_copy_brothers(node_t me,
 static void         make_copy_preds(node_t me,
                                     s_node_rep_t ***cpy_preds,
                                     int **cpy_pred_index);
+static node_rep_t   compare_tables(node_t me, s_node_rep_t ***table, int **table_index);
 static void         make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task);
 static s_state_t    get_state(node_t me);
 static void         set_active(node_t me, int new_id);
@@ -2306,6 +2307,75 @@ static void make_copy_preds(node_t me,
         }
     }
 
+    XBT_OUT();
+}
+
+/**
+ * \brief Returns an array of nodes that are in the given table but not in current one
+ *        Tables dimensions have to be the same
+ *        Returns NULL if tables are the same
+ * \param me the current node
+ * \param table the second table
+ * \param table_index second table indexes
+ * \return array of nodes
+ */
+static node_rep_t compare_tables(node_t me, s_node_rep_t ***table, int **table_index) {
+
+    XBT_IN();
+
+    node_rep_t ret_nodes = NULL;
+    int bro = 0;
+    int stage = 0;
+    int idx = 0;
+
+    // checks if stage sizes are the same
+    for (stage = 0; stage < me->height; stage++) {
+        xbt_assert(me->bro_index[stage] == (*table_index)[stage],
+                "Node %d: [%s:%d] indexes aren't the same !!"
+                "me->bro_index[%d] = %d | table_index[%d] = %d",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                stage,
+                me->bro_index[stage],
+                stage,
+                (*table_index)[stage]);
+    }
+
+    // looks for any difference
+    for (stage = 0; stage < me->height; stage++) {
+        for (bro = 0; bro < me->bro_index[stage]; bro++) {
+            if (me->brothers[stage][bro].id != (*table)[stage][bro].id) {
+                if (ret_nodes == NULL) {
+
+                    ret_nodes = xbt_new0(s_node_rep_t, idx + 1);
+                } else {
+
+                    ret_nodes = xbt_realloc(ret_nodes, (idx + 1) * sizeof(s_node_rep_t));
+                }
+                ret_nodes[idx] = (*table)[stage][bro];
+                idx++;
+            }
+        }
+    }
+
+    // displays the result
+    if (ret_nodes != NULL) {
+
+        printf("Node %d: [%s:%d] diff nodes found !! : [ ",
+        me->self.id,
+        __FUNCTION__,
+        __LINE__);
+
+        for (bro = 0; bro < idx; bro++) {
+
+            printf("%d ", ret_nodes[bro].id);
+        }
+
+        printf("]\n");
+    }
+
+    return ret_nodes;
     XBT_OUT();
 }
 
