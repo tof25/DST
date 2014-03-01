@@ -1,9 +1,12 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/02/26
+ *  Written by Christophe Enderlin on 2014/03/01
  *
  */
+
+// TODO : écrire une fonction de comparaison de deux tables de routage qui retournerait la liste des noeuds qui ne figurent pas dans une des deux ( à déterminer )
+//        l'utiliser dans load_balance() pour supprimer les 'p' inutiles envoyés en fin de connection_request()
 
 // TODO : voir si toutes les réponses aux ADD_PRED sont requises
 // TODO : voir si 'p' pourrait arriver après un add_pred
@@ -4900,7 +4903,10 @@ static int join(node_t me, int contact_id) {
             me->brothers[stage][brother] =
                 answer_data->answer.cnx_req.brothers[stage][brother];
         }
+
+        xbt_free(answer_data->answer.cnx_req.brothers[stage]);
     }
+    xbt_free(answer_data->answer.cnx_req.brothers);
 
     // set the stage 0 predecessors
     for (brother = 0; brother < b; brother++ ) {
@@ -4921,6 +4927,7 @@ static int join(node_t me, int contact_id) {
         me->bro_index[stage] = answer_data->answer.cnx_req.bro_index[stage];
     }
     me->pred_index[0] = me->bro_index[0];
+    xbt_free(answer_data->answer.cnx_req.bro_index);
 
     // set DST infos
     me->dst_infos.load[0] = me->pred_index[0];
@@ -5516,10 +5523,21 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             }
 
             // answer construction
+
+            // TODO : ne pas envoyer une copie du pointeur mais une copie de la
+            // table. Dans load_balance, il faudra comparer la table courante
+            // avec la table reçue pour ôter les 'p' qui n'ont pas lieu d'être
+
+            /* send a copy of routing table to new node since it may be modified
+               meanwhile ( see also load_balance() ) */
+            int *cpy_bro_index2 = NULL;
+            s_node_rep_t **cpy_brothers2 = NULL;
+            make_copy_brothers(me, &cpy_brothers2, &cpy_bro_index2);
+
             answer.cnx_req.new_contact = me->self;
-            answer.cnx_req.brothers = me->brothers;
-            answer.cnx_req.bro_index = me->bro_index;
-            answer.cnx_req.height = me->height;
+            answer.cnx_req.brothers = cpy_brothers2;
+            answer.cnx_req.bro_index = cpy_bro_index2;
+            answer.cnx_req.height = me->height;         //TODO : modifier make_copy_brothers pour récupérer aussi la hauteur
             state = get_state(me);
             answer.cnx_req.contact_state = state;
             answer.cnx_req.try = try;
@@ -5540,15 +5558,15 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             u_req_args.set_state.state = 'p';
 
             for (i = 1; i < me->height; i++) {    // not needed for stage 0
-                for (j = 0; j < me->bro_index[i]; j++) {
+                for (j = 0; j < cpy_bro_index2[i]; j++) {
 
                     /* Current node doesn't have to add new node as a pred. It'll
                        be replaced by new_node during load_balancing */
-                    if (me->brothers[i][j].id != me->self.id) {
+                    if (cpy_brothers2[i][j].id != me->self.id) {
 
                         res = send_msg_async(me,
                                 TASK_SET_STATE,
-                                me->brothers[i][j].id,
+                                cpy_brothers2[i][j].id,
                                 u_req_args);
                     }
                 }
