@@ -1,0 +1,25 @@
+Suite au déplacement des add_pred de load_balance vers connection_request
+(27/02/2014)
+
+672 rejoint le DST via 660
+
+8411.621    660 est dans CNX_REQ, il insère 672.
+            660 envoie Add_Pred(672) à 587 (membre 0 de l'étage 1)
+
+8419.680    660 reçoit et exécute CNX_GROUPS : 587 est replacé par 897
+
+8420.580    Donc 660 envoie Add_Pred(660) à 897 qui l'éxécutera à 8422.787
+
+8421.528    672 reçoit la réponse CNX_REQ de 660
+            La table reçue de 660 a 897 comme membre 0 de l'étage 1 mais c'est
+            587 qui a 672 comme prédécesseur.
+
+==> 660 ne sait pas qu'il doit envoyer Add_Pred(672) à 897
+    et 672 ne le fait plus non plus
+
+==> Solution : répéter les add_pred dans load_balance ?
+               si oui, faut-il ajouter un wait_for_completion après ?
+               problème : Comment ôter alors 672 des preds de 587 ?
+
+==> Pas bonne solution : il faut remettre des 'p' à la fin de connection_request
+               et des add_pred dans load_balance (qui vont annuler les 'p')
