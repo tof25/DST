@@ -642,6 +642,8 @@ typedef struct {
 
 typedef struct {
 
+    s_node_rep_t **cur_table;
+    int *cur_index;
     s_node_rep_t **brothers, new_contact;
     int *bro_index;
     int height;
@@ -2328,8 +2330,9 @@ static node_rep_t compare_tables(node_t me, s_node_rep_t ***table, int **table_i
     int stage = 0;
     int idx = 0;
 
+    display_rout_table(me, 'V');
     // checks if stage sizes are the same
-    for (stage = 0; stage < me->height; stage++) {
+    for (stage = 1; stage < me->height; stage++) {
         xbt_assert(me->bro_index[stage] == (*table_index)[stage],
                 "Node %d: [%s:%d] indexes aren't the same !!"
                 "me->bro_index[%d] = %d | table_index[%d] = %d",
@@ -4978,6 +4981,12 @@ static int join(node_t me, int contact_id) {
     }
     xbt_free(answer_data->answer.cnx_req.brothers);
 
+    display_rout_table(me, 'V');
+    // check if received table has been modified since its sending
+    XBT_VERB("[%s] answer.cnx_req.cur_index[1] = %d", __FUNCTION__, answer_data->answer.cnx_req.cur_index[1]);
+    node_rep_t diff_nodes = compare_tables(me, &(answer_data->answer.cnx_req.cur_table), &(answer_data->answer.cnx_req.cur_index));
+    xbt_assert(diff_nodes == NULL, "DIFF NODES FOUND !!");
+
     // set the stage 0 predecessors
     for (brother = 0; brother < b; brother++ ) {
 
@@ -5604,6 +5613,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             s_node_rep_t **cpy_brothers2 = NULL;
             make_copy_brothers(me, &cpy_brothers2, &cpy_bro_index2);
 
+            answer.cnx_req.cur_table = me->brothers;
+            answer.cnx_req.cur_index = me->bro_index;
+    XBT_VERB("[%s] answer.cnx_req.cur_index[1] = %d", __FUNCTION__, answer.cnx_req.cur_index[1]);
+    display_rout_table(me, 'V');
             answer.cnx_req.new_contact = me->self;
             answer.cnx_req.brothers = cpy_brothers2;
             answer.cnx_req.bro_index = cpy_bro_index2;
