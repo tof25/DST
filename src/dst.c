@@ -4975,17 +4975,17 @@ static int join(node_t me, int contact_id) {
 
             me->brothers[stage][brother] =
                 answer_data->answer.cnx_req.brothers[stage][brother];
+
+                XBT_DEBUG("[%s] cnx_req_brothers[%d][%d] = %d",
+                __FUNCTION__,
+                stage,
+                brother,
+                answer_data->answer.cnx_req.brothers[stage][brother].id);
         }
 
         xbt_free(answer_data->answer.cnx_req.brothers[stage]);
     }
     xbt_free(answer_data->answer.cnx_req.brothers);
-
-    display_rout_table(me, 'V');
-    // check if received table has been modified since its sending
-    XBT_VERB("[%s] answer.cnx_req.cur_index[1] = %d", __FUNCTION__, answer_data->answer.cnx_req.cur_index[1]);
-    node_rep_t diff_nodes = compare_tables(me, &(answer_data->answer.cnx_req.cur_table), &(answer_data->answer.cnx_req.cur_index));
-    xbt_assert(diff_nodes == NULL, "DIFF NODES FOUND !!");
 
     // set the stage 0 predecessors
     for (brother = 0; brother < b; brother++ ) {
@@ -5007,6 +5007,10 @@ static int join(node_t me, int contact_id) {
     }
     me->pred_index[0] = me->bro_index[0];
     xbt_free(answer_data->answer.cnx_req.bro_index);
+
+    // check if received table has been modified since its sending
+    node_rep_t diff_nodes = compare_tables(me, &(answer_data->answer.cnx_req.cur_table), &(answer_data->answer.cnx_req.cur_index));
+    xbt_assert(diff_nodes == NULL, "DIFF NODES FOUND !!");
 
     // set DST infos
     me->dst_infos.load[0] = me->pred_index[0];
@@ -5615,12 +5619,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
             answer.cnx_req.cur_table = me->brothers;
             answer.cnx_req.cur_index = me->bro_index;
-    XBT_VERB("[%s] answer.cnx_req.cur_index[1] = %d", __FUNCTION__, answer.cnx_req.cur_index[1]);
-    display_rout_table(me, 'V');
             answer.cnx_req.new_contact = me->self;
             answer.cnx_req.brothers = cpy_brothers2;
             answer.cnx_req.bro_index = cpy_bro_index2;
-            answer.cnx_req.height = me->height;         //TODO : modifier make_copy_brothers pour récupérer aussi la hauteur
+            answer.cnx_req.height = me->height;         //TODO : modifier make_copy_brothers pour récupérer aussi la hauteur ?
             state = get_state(me);
             answer.cnx_req.contact_state = state;
             answer.cnx_req.try = try;
