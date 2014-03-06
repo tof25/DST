@@ -6,7 +6,7 @@ Suite au déplacement des add_pred de load_balance vers connection_request
 8411.621    660 est dans CNX_REQ, il insère 672.
             660 envoie Add_Pred(672) à 587 (membre 0 de l'étage 1)
 
-8419.680    660 reçoit et exécute CNX_GROUPS : 587 est replacé par 897
+8419.680    660 reçoit et exécute CNX_GROUPS : 587 est remplacé par 897
 
 8420.580    Donc 660 envoie Add_Pred(660) à 897 qui l'éxécutera à 8422.787
 

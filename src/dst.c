@@ -5656,7 +5656,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     }
                 }
             }
-            //TODO : faut-il un wait_for_completion ici ?
+            //TODO : faut-il un wait_for_completion ici ? oui certainement
             me->cs_req = 0;
             me->cs_req_time = MSG_get_clock();
         }
