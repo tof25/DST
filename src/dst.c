@@ -5010,7 +5010,13 @@ static int join(node_t me, int contact_id) {
 
     // check if received table has been modified since its sending
     node_rep_t diff_nodes = compare_tables(me, &(answer_data->answer.cnx_req.cur_table), &(answer_data->answer.cnx_req.cur_index));
-    xbt_assert(diff_nodes == NULL, "DIFF NODES FOUND !!");
+    if (diff_nodes != NULL) {
+        XBT_VERB("Node %d: [%s:%d] DIFF NODES FOUND !!",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
+        //TODO : prévoir de libérer diff_nodes
+    }
 
     // set DST infos
     me->dst_infos.load[0] = me->pred_index[0];
@@ -5033,6 +5039,21 @@ static int join(node_t me, int contact_id) {
 
     // find other representatives for load balancing
     load_balance(me, contact.id);
+
+    // remove 'p' state from contact
+    u_req_args.remove_state.new_node_id = me->self.id;
+    u_req_args.remove_state.active = 'p';
+
+    XBT_VERB("Node %d: [%s:%d] Tell %d to remove 'p' state",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            contact.id);
+
+    res = send_msg_async(me,
+            TASK_REMOVE_STATE,
+            contact.id,
+            u_req_args);
 
     display_rout_table(me, 'I');
     state = get_state(me);
@@ -5604,6 +5625,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                 wait_for_completion(me, cpt, new_node_id);
             }
+
+            // prevent me from running connect_splitted_groups
+            // (will be reset in join(), after load_balance())
+            set_state(me, -1, 'p');
 
             // answer construction
 
