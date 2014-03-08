@@ -1,0 +1,45 @@
+Rappel de la situation:
+
+Dans la version précédente, le choix avait été fait d'avoir simplement un seul
+process par hôte. Des tests approfondis ont montré que ça ne paraîssait pas une
+bonne solution. Voici un exemple de cas de figure qui pose problème:
+
+2 noeuds intègrent le DST via un même leader:
+ * Node 14 --> Node 121 --> Node 42
+   puis
+ * Node 249 --> Node 121 --> Node 42
+   Cette arrivée de Node 249 provoque de scissions et un ajout d'étage
+
+ - Node 121 reçoit bien ACK_CNX_REQ/14 de 42 mais le stocke parce qu'il est
+   déjà en attente de ACK_CNX_REQ/249 envoyé à 42
+
+ - Node 14 ne recevant pas la réponse de 121 reste en 'b'. Il ne peut donc
+   répondre à ADD_STAGE/249 ==> DEADLOCK
+
+On envisage donc d'utiliser plusieurs process par hôte pour séparer les tâches :
+un qui reçoit les requêtes et un autre qui les traite, par exemple.
+
+Pour rappel, voici une vue d'ensemble de l'intégration d'un nouvel arrivant
+
+<DST_Arrival.png>
+<DST_Arrival_001.png>
+
+Voici maintenant le schéma général de la gestion de ces process multiples:
+
+<Call_procs.png>
+
+On utilise un maximum de trois process par noeud:
+    - Main_Proc:
+      Comme son nom l'indique, c'est le process principal en charge des
+      initialisations et de la création du process Tasks_Queue
+
+    - Tasks_Queue:
+      Ce process est chargé de faire tourner la fonction run_tasks_queue() qui
+      traite la file des tâches reçues à exécuter. Cette fonction tourne pendant
+      toute la durée de la simulation.
+
+    - Handle_Task:
+      Ce process peut être créé par run_tasks_queue() pour exécuter les tâches
+      suivantes : CNX_REQ, BR_SPLIT et BR_CS_REQ
+      De la sorte, ces tâches peuvent s'exécuter sur leur propre process et les
+      écoutes ne peuvent plus être mélangées.
