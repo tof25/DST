@@ -3099,32 +3099,10 @@ static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argu
                             debug_msg[req->type],
                             req->sender_id);
 
-                    /*
-                    // process CNX_REQ tasks after all the others
-                    if (req->type == TASK_CNX_REQ && nb_cnx_req < nb_elems) {
-
-                        XBT_VERB("Node %d: [%s:%d] inside run %c - '%c'/%d - task[%d] is {'%s - %s' from %d} - nb CNX_REQ = %d",
-                                me->self.id,
-                                __FUNCTION__,
-                                __LINE__,
-                                c,
-                                state.active,
-                                state.new_id,
-                                idx,
-                                MSG_task_get_name(*task_ptr),
-                                debug_msg[req->type],
-                                req->sender_id,
-                                nb_cnx_req);
-
-                        nb_cnx_req++;
-                        idx++;
-
-                        continue;
-                    }
-                    */
-
-                    XBT_VERB("Node %d: run %c - '%c'/%d - task[%d] is {'%s - %s' from %d}",
+                    XBT_VERB("Node %d: [%s:%d] run %c - '%c'/%d - task[%d] is {'%s - %s' from %d}",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
                             c,
                             state.active,
                             state.new_id,
@@ -3186,14 +3164,15 @@ static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argu
                     } else {
 
                         // if on contact and task didn't run sucessfully, don't remove it
-                        XBT_VERB("Node %d: [%s:%c] task[%d] NOK not removed",
+                        XBT_VERB("Node %d: [%s:%d] task[%d] %s not removed",
                                 me->self.id,
                                 __FUNCTION__,
                                 __LINE__,
-                                idx);
+                                idx,
+                                debug_ret_msg[val_ret]);
 
-                        // next task        //TODO : erreur ?
-                        //idx++;
+                        // next task        //TODO : erreur ? peut-être pas
+                        idx++;
                     }
 
                     //req = NULL;
@@ -4445,10 +4424,10 @@ static msg_error_t send_ans_sync(node_t me,
             nb_proc = xbt_swag_size(proc_set);
 
             xbt_swag_foreach(elem, proc_set) {
-                XBT_VERB("[%s:%d] swag elem = '%s'", __FUNCTION__, __LINE__,  MSG_process_get_name(elem));
+                XBT_DEBUG("[%s:%d] swag elem = '%s'", __FUNCTION__, __LINE__,  MSG_process_get_name(elem));
             }
 
-            XBT_VERB("SLEEP ...");
+            XBT_DEBUG("SLEEP ...");
             MSG_process_sleep(1.0);
         }
 
