@@ -3141,10 +3141,14 @@ static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argu
                         }
                     }
 
-                    if (val_ret == OK || val_ret == UPDATE_OK || (val_ret == UPDATE_NOK && !is_contact)) {
+                    if (val_ret  == OK ||
+                        val_ret  == UPDATE_OK ||
+                        (val_ret == UPDATE_NOK && !is_contact) ||
+                        val_ret  == STORED) {
 
-                        // remove task from dynar if it succeeded or if failed but me is not contact
-                        // (contact will have to transmit again to its current leader)
+                        /* remove task from dynar if it succeeded or if failed but me is not contact
+                           (contact will have to transmit again to its current leader)
+                           Also remove in case of STORED so that this task isn't duplicated */
                         xbt_dynar_remove_at(me->delayed_tasks, idx, &elem);
                         nb_elems--;
 
@@ -3197,8 +3201,6 @@ static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argu
                     }
                     */
                 } // next task
-                //MSG_process_sleep(0.2);
-            // while (val_ret == OK && nb_cnx_req > 0 && nb_elems > 0 && state.active == 'a');
             } while (val_ret == OK && nb_elems > 0 && state.active == 'a');
         }
 
@@ -3427,6 +3429,7 @@ static int compar_fn(const void *arg1, const void *arg2) {
 
 /**
  * \brief Sort tasks queue according to new nodes' priority
+ * \param me the current node
  */
 static void sort_tasks_queue(node_t me) {
     XBT_IN();
@@ -3450,6 +3453,10 @@ static void sort_tasks_queue(node_t me) {
     XBT_OUT();
 }
 
+/**
+ * \brief display delayed tasks
+ * \param me the current node
+ */
 static void display_delayed_tasks(node_t me) {
     XBT_IN();
 
