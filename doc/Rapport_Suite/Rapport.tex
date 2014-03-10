@@ -35,11 +35,33 @@ On utilise un maximum de trois process par noeud:
 
     - Tasks_Queue:
       Ce process est chargé de faire tourner la fonction run_tasks_queue() qui
-      traite la file des tâches reçues à exécuter. Cette fonction tourne pendant
+      traite la file des tâches CNX_REQ reçues. Cette fonction tourne pendant
       toute la durée de la simulation.
 
     - Handle_Task:
-      Ce process peut être créé par run_tasks_queue() pour exécuter les tâches
+      Ce process est créé par run_tasks_queue() pour exécuter les tâches
       suivantes : CNX_REQ, BR_SPLIT et BR_CS_REQ
       De la sorte, ces tâches peuvent s'exécuter sur leur propre process et les
       écoutes ne peuvent plus être mélangées.
+
+
+Dans le détail.
+
+Fonctionnement de run_tasks_queue
+<Algo_run_tasks_queue.png>
+
+Comme déjà précisé, la file tasks_queue contient toutes les demandes de
+connection (c'est à dire toutes les tâches CNX_REQ) reçues. run_tasks_queue()
+est donc chargé de traiter les requêtes présentes dans cette file, par ordre de
+priorité. (noter l'étape de tri de la file avant exécution suivante)
+
+Après avoir traité les tâches différées (voir détails plus loin), on s'occupe de
+la file proprement dite.
+
+MAX_CNX ne sert qu'à afficher un message en cas de nombreuses tentatives
+d'exécution d'une même requête.
+
+launch_fork_process() (voir détails plus loin) est chargée d'exécuter la
+requête courante. Ici, elle confie l'éxécution de la requête à un process fils
+Handle_task et rend la main juste après. D'où la nécessité de la variable
+Run_state pour savoir si l'exécution de la tâche est terminée ou pas.

@@ -1,0 +1,10 @@
+@startuml
+title <u>Launch fork process</u>\n\n
+
+--> "req == CNX_REQ || BR_SPLIT || BR_CS_REQ ?"
+if "" then
+    -->[Yes] "toto"
+else
+    -->[No] "titi"
+endif
+@enduml

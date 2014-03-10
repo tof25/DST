@@ -53,7 +53,12 @@ if "" then
     --> "<i>cpy_brothers[]</i> <-- <i>brothers[0][]</i>"
     --> "<b>send_msg_async</b>(NEW_BRO_RCV, <i>cpy_brothers[]</i>)"
     --> "<b>wait_for_completion()</b>"
-    --> "build <i>answer</i>"
+    --> "<b>set_state(me, 'p')</b>"
+note left
+  state 'p' will be removed after
+  new_node has run load_balance()
+end note
+    --> "build <i>answer</i>\n(send a copy of current table)"
     --> "<b>set_active()</b>" as act2
     --> "send SET STATE 'p' to all table\nbut stage 0"
     --> "reset <i>cs_req</i>"
