@@ -9484,6 +9484,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
                 *task = NULL;
                 val_ret = STORED;
+                //TODO : on n'est pas STORED si on met cette tâche dans tasks_queue
             }
 
             XBT_VERB("Node %d: TASK_CNX_REQ done for new node %d - val_ret = %s",
