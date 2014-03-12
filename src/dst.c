@@ -1428,6 +1428,7 @@ static int state_search(node_t me, char active, int new_id) {
             __FUNCTION__,
             __LINE__,
             pos);
+
     XBT_OUT();
 
     return pos;
@@ -2639,11 +2640,13 @@ static void set_state(node_t me, int new_id, char active) {
     }
 
     state = get_state(me);
-    XBT_DEBUG("Node %d: '%c'/%d - end of set_state() ... - new_node = %d",
+    XBT_VERB("Node %d: '%c'/%d - end of set_state() ... - new_node = %d",
             me->self.id,
             state.active,
             state.new_id,
             new_id);
+
+    display_states(me, 'V');
 
     //XBT_OUT();
 }
@@ -5027,7 +5030,8 @@ static int join(node_t me, int contact_id) {
     load_balance(me, contact.id);
 
     // remove 'p' state from contact
-    u_req_args.remove_state.new_node_id = me->self.id;
+    //u_req_args.remove_state.new_node_id = me->self.id;
+    u_req_args.remove_state.new_node_id = -1;
     u_req_args.remove_state.active = 'p';
 
     XBT_VERB("Node %d: [%s:%d] Tell %d to remove 'p' state",
@@ -5612,15 +5616,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                 wait_for_completion(me, cpt, new_node_id);
             }
 
-            // prevent me from running connect_splitted_groups
-            // (will be reset in join(), after load_balance())
-            set_state(me, -1, 'p');
-
             // answer construction
-
-            // TODO : ne pas envoyer une copie du pointeur mais une copie de la
-            // table. Dans load_balance, il faudra comparer la table courante
-            // avec la table reçue pour ôter les 'p' qui n'ont pas lieu d'être
 
             /* send a copy of routing table to new node since it may be modified
                meanwhile ( see also load_balance() ) */
@@ -5640,6 +5636,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
             // now, me can be active
             set_active(me, new_node_id);
+
+            // prevent me from running connect_splitted_groups
+            // (will be reset in join(), after load_balance())
+            set_state(me, -1, 'p');
 
             state = get_state(me);
             XBT_INFO("Node %d: '%c'/%d - **** NODE %d INSERTED ****",
