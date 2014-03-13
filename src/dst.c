@@ -4353,10 +4353,16 @@ static msg_error_t send_msg_async(node_t me,
     xbt_assert(mem_type < TYPE_NBR , "send_msg_async : STOP !! - type = %d", mem_type);
     xbt_assert(mem_br_type < TYPE_NBR , "send_msg_async : STOP !! - br_type = %d", mem_br_type);
 
+    // new_node_id may be -1 when TASK_REMOVE_STATE, for example
+    if (new_node_id < 0) {
+
+        new_node_id = me->self.id;
+    }
     nb_messages[new_node_id][mem_type]++;
     if (mem_type == TASK_BROADCAST) {
 
-        nb_br_messages[req_data->args.get_rep.new_node_id][mem_br_type]++;
+        //nb_br_messages[req_data->args.get_rep.new_node_id][mem_br_type]++;
+        nb_br_messages[new_node_id][mem_br_type]++;
     }
 
     XBT_OUT();
