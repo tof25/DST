@@ -7148,8 +7148,8 @@ static void split(node_t me, int stage, int new_node_id) {
                             cpy_preds[i].id,
                             cpt_loop);
                 }
-                xbt_free(cpy_preds2);       //TODO : à sortir du if ?
             }
+            xbt_free(cpy_preds2);       //TODO : à sortir du if ?
         }
 
         /*
