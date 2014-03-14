@@ -21,16 +21,22 @@ if "" then
         --> "<i>n</i> > 0 ?"
         if "" then
             -->[Yes] "<i>val_ret</i> <-- <b>Broadcast</b> CS_REQ\nto leaders from stage <i>n</i>"
+note right
+    Make room for new node
+end note
             --> "<i>val_ret</i> = UPDATE_NOK ?" as req2
             if "" then
                 -->[No] "<i>val_ret</i> <-- <b>broadcast</b> SET UPD\nto leaders from stage <i>n</i>"
                 --> "<i>val_ret</i> = update_NOK ?" as req3
                 if "" then
-                    -left->[Yes] "<b>Broadcast</b> REMOVE STATE\nto leaders from stage <i>n</i>"
+                    -right->[Yes] "<b>Broadcast</b> REMOVE STATE('u')\nto leaders from stage <i>n</i>"
                     --> == SUITE ==
                 else
                     -->[No] "<b>split_request</b>(stage n..1)"
                     --> "<b>Broadcast</b> SET ACTIVE\nto all nodes from stage <i>n</i>"
+note right
+    Room made
+end note
                     --> == SUITE ==
                 endif
             else
@@ -50,17 +56,26 @@ endif
 == SUITE == --> "<i>val_ret</i> = UPDATE_NOK ?"
 if "" then
     -->[No] "<b>set_update()</b>"
+note right
+    inserting new node
+end note
     --> "<i>cpy_brothers[]</i> <-- <i>brothers[0][]</i>"
     --> "<b>send_msg_async</b>(NEW_BRO_RCV, <i>cpy_brothers[]</i>)"
     --> "<b>wait_for_completion()</b>"
-    --> "<b>set_state(me, 'p')</b>"
-note left
-  state 'p' will be removed after
-  new_node has run load_balance()
-end note
     --> "build <i>answer</i>\n(send a copy of current table)"
     --> "<b>set_active()</b>" as act2
-    --> "send SET STATE 'p' to all table\nbut stage 0"
+    --> "<b>set_state(me, 'p')</b>"
+note left
+  Prevents me from running
+  connect_splitted_groups meanwhile.
+  State 'p' will be removed after
+  new_node has run load_balance()
+end note
+    --> "send SET STATE 'p' to all table copy\nbut stage 0"
+note left
+    Each member's preds table is about
+    to change during load_balance()
+end note
     --> "reset <i>cs_req</i>"
     --> "<i>answer</i> <-- <i>val_ret</i>"
 else
