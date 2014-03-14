@@ -1,12 +1,9 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/03/07
+ *  Written by Christophe Enderlin on 2014/03/14
  *
  */
-
-// TODO : écrire une fonction de comparaison de deux tables de routage qui retournerait la liste des noeuds qui ne figurent pas dans une des deux ( à déterminer )
-//        l'utiliser dans load_balance() pour supprimer les 'p' inutiles envoyés en fin de connection_request()
 
 // TODO : voir si toutes les réponses aux ADD_PRED sont requises
 // TODO : voir si 'p' pourrait arriver après un add_pred
@@ -2756,8 +2753,7 @@ static int check(node_t me) {
  * \brief Create a fork process in charge of launching run_tasks_queue()
  * \param me the current node
  * \param new_id new coming node
- * \param c a letter to indicate the source of the call         //TODO: argument plus utile ? (voir aussi
- * run_delayed_tasks)
+ * \param c a letter to indicate the source of the call         //TODO: argument plus utile ? (voir aussi run_delayed_tasks)
  */
 static void call_run_tasks_queue(node_t me, int new_id, char c) {
     XBT_IN();
