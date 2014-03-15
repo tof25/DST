@@ -729,8 +729,8 @@ static char*        routing_table(node_t me);
 static void         set_n_store_infos(node_t me);
 static void         display_preds(node_t me, char log);
 static void         display_rout_table(node_t me, char log);
-static void         get_mailbox(int node_id, char* mailbox);
-static void         get_proc_mailbox(char* proc_mailbox);
+static void         set_mailbox(int node_id, char* mailbox);
+static void         set_proc_mailbox(char* proc_mailbox);
 static void         set_fork_mailbox(int node_id, int new_node_id, char* session, char* mailbox);
 static void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
@@ -751,8 +751,8 @@ static e_val_ret_t  set_update(node_t me, int new_id, int new_node_prio);
 static void         set_state(node_t me, int new_id, char active);
 static void         remove_state(node_t me, int new_id, char active);
 static int          check(node_t me);
-static void         call_run_tasks_queue(node_t me, int new_id, char c);
-static void         run_delayed_tasks(node_t me, char c);
+static void         call_run_tasks_queue(node_t me, int new_id);
+static void         run_delayed_tasks(node_t me);
 static void         run_tasks_queue(node_t me);
 static void         node_free(node_t me);
 static void         data_ans_free(node_t me, ans_data_t *answer_data);
@@ -1174,22 +1174,22 @@ static void display_rout_table(node_t me, char log) {
 }
 
 /**
- * \brief Gets the mailbox name of a node
+ * \brief Sets the mailbox name of a node
  * \param node_id node id
  * \param mailbox pointer to where the mailbox name should be written to
- * i      (there must be enough space)
+ *        (there must be enough space)
  */
-static void get_mailbox(int node_id, char* mailbox) {       //TODO : renommer cette fonction en set_mailbox
+static void set_mailbox(int node_id, char* mailbox) {
 
     snprintf(mailbox, MAILBOX_NAME_SIZE, "%d", node_id);
 }
 
 /**
- * \brief Gets the mailbox name of current process
- * \param proc_mailbox pointer to where the mailbox name should be written
+ * \brief Sets the mailbox name of current process
+ * \param proc_mailbox pointer to where the mailbox name should be written to
  *        (there must be enough space)
  */
-static void get_proc_mailbox(char* proc_mailbox) {      //TODO : renommer cette fonction en set_proc ...
+static void set_proc_mailbox(char* proc_mailbox) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     snprintf(proc_mailbox, MAILBOX_NAME_SIZE, "%s", proc_data->proc_mailbox);
@@ -1937,7 +1937,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     int k, idx, nok_id;
     s_state_t state;
     char proc_mailbox[MAILBOX_NAME_SIZE];
-    get_proc_mailbox(proc_mailbox);
+    set_proc_mailbox(proc_mailbox);
 
     // async answers already received ? (from other recursive calls of this function)
     check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
@@ -2407,9 +2407,9 @@ static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) 
     req_data->sender_id = me->self.id;
     req_data->recipient_id = me->self.id;
 
-    //get_mailbox(me->self.id, req_data->answer_to);
-    get_proc_mailbox(req_data->answer_to);
-    get_mailbox(me->self.id, req_data->sent_to);
+    //set_mailbox(me->self.id, req_data->answer_to);
+    set_proc_mailbox(req_data->answer_to);
+    set_mailbox(me->self.id, req_data->sent_to);
 
     req_data->args = args;
 
@@ -2753,17 +2753,15 @@ static int check(node_t me) {
  * \brief Create a fork process in charge of launching run_tasks_queue()
  * \param me the current node
  * \param new_id new coming node
- * \param c a letter to indicate the source of the call         //TODO: argument plus utile ? (voir aussi run_delayed_tasks)
  */
-static void call_run_tasks_queue(node_t me, int new_id, char c) {
+static void call_run_tasks_queue(node_t me, int new_id) {
     XBT_IN();
 
     s_state_t state = get_state(me);
-    XBT_DEBUG("Node %d: '%c'/%d - run tasks queue -'%c'",
+    XBT_DEBUG("Node %d: '%c'/%d - run tasks queue",
             me->self.id,
             state.active,
-            state.new_id,
-            c);
+            state.new_id);
 
     proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
     proc_data->node = me;
@@ -2824,7 +2822,7 @@ static void run_tasks_queue(node_t me) {
         // run delayed tasks, if any
         if (xbt_dynar_is_empty(me->delayed_tasks) == 0) {
 
-            run_delayed_tasks(me, 'F');
+            run_delayed_tasks(me);
         }
 
         // display tasks queue only once
@@ -2989,7 +2987,7 @@ static void run_tasks_queue(node_t me) {
  * \brief Run tasks stored for a delayed execution
  * \param me the current node
  */
-static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argument c inutile
+static void run_delayed_tasks(node_t me) {
 
     XBT_IN();
 
@@ -3000,11 +2998,10 @@ static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argu
     // display delayed tasks
     if (nb_elems > 0 && state.active == 'a') {
 
-        XBT_VERB("Node %d: [%s:%d] start run %c - '%c'/%d -  delayed_tasks length = %u",
+        XBT_VERB("Node %d: [%s:%d] start run - '%c'/%d -  delayed_tasks length = %u",
                 me->self.id,
                 __FUNCTION__,
                 __LINE__,
-                c,
                 state.active,
                 state.new_id,
                 nb_elems);
@@ -3037,11 +3034,10 @@ static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argu
                 req_args = req_data->args;
                 if (req_args.cnx_groups.new_node_id == state.new_id) {
 
-                    XBT_VERB("Node %d: [%s:%d] run %c - '%c'/%d - run CNX_GROUPS (task[%d])",
+                    XBT_VERB("Node %d: [%s:%d] run - '%c'/%d - run CNX_GROUPS (task[%d])",
                             me->self.id,
                             __FUNCTION__,
                             __LINE__,
-                            c,
                             state.active,
                             state.new_id,
                             cpt);
@@ -3098,11 +3094,10 @@ static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argu
                             debug_msg[req->type],
                             req->sender_id);
 
-                    XBT_VERB("Node %d: [%s:%d] run %c - '%c'/%d - task[%d] is {'%s - %s' from %d}",
+                    XBT_VERB("Node %d: [%s:%d] run - '%c'/%d - task[%d] is {'%s - %s' from %d}",
                             me->self.id,
                             __FUNCTION__,
                             __LINE__,
-                            c,
                             state.active,
                             state.new_id,
                             idx,
@@ -3204,9 +3199,8 @@ static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argu
         }
 
         state = get_state(me);
-        XBT_VERB("Node %d: run %c - '%c'/%d - end of delayed tasks execution. dynar_length = %lu",
+        XBT_VERB("Node %d: run - '%c'/%d - end of delayed tasks execution. dynar_length = %lu",
                 me->self.id,
-                c,
                 state.active,
                 state.new_id,
                 xbt_dynar_length(me->delayed_tasks));
@@ -3215,7 +3209,7 @@ static void run_delayed_tasks(node_t me, char c) {      //TODO: supprimer l'argu
         /*
         if (xbt_dynar_length(me->delayed_tasks) > 0) {
 
-            run_delayed_tasks(me, 'D');
+            run_delayed_tasks(me);
         }
         */
     }
@@ -3779,8 +3773,8 @@ static msg_error_t send_msg_sync(node_t me,
     req_data->args = args;
 
     // create mailboxes
-    get_mailbox(req_data->recipient_id, req_data->sent_to);
-    get_proc_mailbox(req_data->answer_to);
+    set_mailbox(req_data->recipient_id, req_data->sent_to);
+    set_proc_mailbox(req_data->answer_to);
 
     // req_data may be altered during loops
     *cpy_req_data = *req_data;
@@ -3816,7 +3810,7 @@ static msg_error_t send_msg_sync(node_t me,
         req_elem = xbt_new0(s_recp_rec_t, 1);
         req_elem->type = type;
         req_elem->recp.id = recipient_id;
-        get_mailbox(recipient_id, req_elem->recp.mailbox);
+        set_mailbox(recipient_id, req_elem->recp.mailbox);
         req_elem->br_type = (type == TASK_BROADCAST ? args.broadcast.type : TASK_NULL);
         req_elem->answer_data = NULL;
 
@@ -4042,8 +4036,8 @@ static msg_error_t send_msg_sync(node_t me,
                             xbt_dynar_length(proc_data->sync_answers));
 
                     // run delayed tasks
-                    //call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id, '1');
-                    //run_delayed_tasks(me, '1');
+                    //call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id);
+                    //run_delayed_tasks(me);
                     break;
                 } else {
 
@@ -4262,8 +4256,8 @@ static msg_error_t send_msg_async(node_t me,
     req_data->args = args;
 
     // create mailboxes
-    get_mailbox(req_data->recipient_id, req_data->sent_to);
-    get_proc_mailbox(req_data->answer_to);
+    set_mailbox(req_data->recipient_id, req_data->sent_to);
+    set_proc_mailbox(req_data->answer_to);
 
     // create and send task with data
     msg_task_t task_sent = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
@@ -4781,14 +4775,14 @@ static void init(node_t me) {
     me->last_check_time = 0;
 
     // set mailbox
-    get_mailbox(me->self.id, me->self.mailbox);
+    set_mailbox(me->self.id, me->self.mailbox);
     MSG_mailbox_set_async(me->self.mailbox);
 
     // set process data
     proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
 
     // proc mailbox is the same as node's one
-    get_mailbox(me->self.id, proc_data->proc_mailbox);
+    set_mailbox(me->self.id, proc_data->proc_mailbox);
     proc_data->node = NULL;
     proc_data->task = NULL;
 
@@ -4848,7 +4842,7 @@ static void init(node_t me) {
     set_n_store_infos(me);
 
     // create fork process in charge of processing remain tasks
-    call_run_tasks_queue(me, me->self.id, 'F');
+    call_run_tasks_queue(me, me->self.id);
 
     display_preds(me, 'D');
 
@@ -5920,7 +5914,7 @@ static void add_pred(node_t me, int stage, int id) {
     if (index_pred(me, stage, id) != -1) return;
 
     me->preds[stage][me->pred_index[stage]].id = id;
-    get_mailbox(id, me->preds[stage][me->pred_index[stage]].mailbox);
+    set_mailbox(id, me->preds[stage][me->pred_index[stage]].mailbox);
 
     me->pred_index[stage]++;
 
@@ -5943,7 +5937,7 @@ static void add_pred(node_t me, int stage, int id) {
         for (i = me->pred_index[stage]; i < me->pred_index[stage] + b; i++) {
 
             me->preds[stage][i].id = 0;
-            get_mailbox(0, me->preds[stage][i].mailbox);
+            set_mailbox(0, me->preds[stage][i].mailbox);
         }
 
         XBT_DEBUG("Node %d: Predecessors array has been set bigger", me->self.id);
@@ -6028,7 +6022,7 @@ static void del_pred(node_t me, int stage, int pred2del) {
         }
 
         me->preds[stage][idx].id = -1;
-        get_mailbox(-1, me->preds[stage][idx].mailbox);
+        set_mailbox(-1, me->preds[stage][idx].mailbox);
         me->pred_index[stage]--;
 
         // set DST infos
@@ -6123,7 +6117,7 @@ static void del_member(node_t me, int stage, int start, int end) {
             }
 
             me->brothers[stage][j].id = -1;
-            get_mailbox(0, me->brothers[stage][j].mailbox);
+            set_mailbox(0, me->brothers[stage][j].mailbox);
             me->bro_index[stage]--;
 
             XBT_VERB("Node %d: node %d deleted - %s",
@@ -6297,7 +6291,7 @@ static void add_brother(node_t me, int stage, int id) {
             routing_table(me));
 
     me->brothers[stage][me->bro_index[stage]].id = id;
-    get_mailbox(id, me->brothers[stage][me->bro_index[stage]].mailbox);
+    set_mailbox(id, me->brothers[stage][me->bro_index[stage]].mailbox);
     me->bro_index[stage]++;
 
     XBT_OUT();
@@ -6330,7 +6324,7 @@ static void insert_bro(node_t me, int stage, int id) {
     }
 
     me->brothers[stage][0].id = id;
-    get_mailbox(id, me->brothers[stage][0].mailbox);
+    set_mailbox(id, me->brothers[stage][0].mailbox);
     me->bro_index[stage]++;
     display_rout_table(me, 'V');
     XBT_OUT();
@@ -6524,7 +6518,7 @@ static void del_bro(node_t me, int stage, int bro2del) {
     }
 
     me->brothers[stage][size - 1].id = -1;
-    get_mailbox(0, me->brothers[stage][size - 1].mailbox);
+    set_mailbox(0, me->brothers[stage][size - 1].mailbox);
     me->bro_index[stage]--;
 
     XBT_OUT();
@@ -6639,7 +6633,7 @@ static void connect_splitted_groups(node_t me,
             pos_init);
 
     me->brothers[stage][pos_init].id = init_rep_id;
-    get_mailbox(init_rep_id, me->brothers[stage][pos_init].mailbox);
+    set_mailbox(init_rep_id, me->brothers[stage][pos_init].mailbox);
 
     XBT_DEBUG("Node %d: add %d at the end",
             me->self.id,
@@ -6675,7 +6669,7 @@ static void connect_splitted_groups(node_t me,
             elem->br_type = TASK_NULL;
             elem->recp.id = rep_id;
             elem->new_node_id = new_node_id;
-            get_mailbox(rep_id, elem->recp.mailbox);
+            set_mailbox(rep_id, elem->recp.mailbox);
             elem->answer_data = NULL;
             xbt_dynar_push(proc_data->async_answers, &elem);
 
@@ -6705,7 +6699,7 @@ static void connect_splitted_groups(node_t me,
             elem->br_type = TASK_NULL;
             elem->recp.id = init_rep_id;
             elem->new_node_id = new_node_id;
-            get_mailbox(init_rep_id, elem->recp.mailbox);
+            set_mailbox(init_rep_id, elem->recp.mailbox);
             elem->answer_data = NULL;
             xbt_dynar_push(proc_data->async_answers, &elem);
 
@@ -6746,7 +6740,7 @@ static void connect_splitted_groups(node_t me,
         elem->br_type = TASK_NULL;
         elem->recp.id = new_rep_id;
         elem->new_node_id = new_node_id;
-        get_mailbox(new_rep_id, elem->recp.mailbox);
+        set_mailbox(new_rep_id, elem->recp.mailbox);
         elem->answer_data = NULL;
         xbt_dynar_push(proc_data->async_answers, &elem);
 
@@ -7926,7 +7920,7 @@ static void replace_bro(node_t me, int stage, int init_idx, int new_id, int new_
         // replace brother
         bro_id = me->brothers[stage][init_idx].id;
         me->brothers[stage][init_idx].id = new_id;
-        get_mailbox(new_id, me->brothers[stage][init_idx].mailbox);
+        set_mailbox(new_id, me->brothers[stage][init_idx].mailbox);
     } else {
 
         // add brother
@@ -9096,8 +9090,8 @@ int node(int argc, char *argv[]) {
                 node.dst_infos.add_stage);
 
         // run remaining tasks, if any
-        //call_run_delayed_tasks(&node, node.self.id, '3');
-        //run_delayed_tasks(&node, '3');
+        //call_run_delayed_tasks(&node, node.self.id);
+        //run_delayed_tasks(&node);
 
         // task receive loop
         msg_task_t task_received = NULL;
@@ -9159,7 +9153,7 @@ int node(int argc, char *argv[]) {
                 */
 
                 // Run remain tasks if any
-                //call_run_delayed_tasks(&node, node.self.id, '4');
+                //call_run_delayed_tasks(&node, node.self.id);
 
                 // TODO: remplacer les get_clock() par une variable ?
                 if (MSG_get_clock() >= node.deadline && state.active == 'a' && 1 == 0) {    //TODO : ne pas oublier
@@ -9942,9 +9936,9 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                     req_data->type = rcv_args.broadcast.type;
                                     req_data->sender_id = me->self.id;
                                     req_data->recipient_id = me->self.id;
-                                    get_proc_mailbox(req_data->answer_to);
-                                    //get_mailbox(me->self.id, req_data->answer_to);
-                                    get_mailbox(me->self.id, req_data->sent_to);
+                                    set_proc_mailbox(req_data->answer_to);
+                                    //set_mailbox(me->self.id, req_data->answer_to);
+                                    set_mailbox(me->self.id, req_data->sent_to);
 
                                     if (rcv_args.broadcast.args != NULL) {
 
