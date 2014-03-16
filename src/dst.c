@@ -5,10 +5,6 @@
  *
  */
 
-// TODO : écrire une fonction de comparaison de deux tables de routage qui retournerait la liste des noeuds qui ne figurent pas dans une des deux ( à déterminer )
-//        l'utiliser dans load_balance() pour supprimer les 'p' inutiles envoyés en fin de connection_request()
-
-// TODO : voir si toutes les réponses aux ADD_PRED sont requises
 // TODO : voir si 'p' pourrait arriver après un add_pred
 
 /* TODO: gérer la non-réponse d'un contact lors de l'arrivée d'un nœud.
@@ -2318,8 +2314,8 @@ static void make_copy_preds(node_t me,
  *        Tables dimensions have to be the same
  *        Returns NULL if tables are the same
  * \param me the current node
- * \param table the second table
- * \param table_index second table indexes
+ * \param table the table to compare to
+ * \param table_index given table indexes
  * \return array of nodes
  */
 static node_rep_t compare_tables(node_t me, s_node_rep_t ***table, int **table_index) {
