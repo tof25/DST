@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/03/14
+ *  Written by Christophe Enderlin on 2014/03/16
  *
  */
 
@@ -735,7 +735,7 @@ static void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
 static int          index_pred(node_t me, int stage, int id);
 static e_val_ret_t  wait_for_completion(node_t me, int ans_cpt, int new_node_id);
-static int          tot_msg_number(int id);
+//static int          tot_msg_number(int id);
 static void         make_copy_brothers(node_t me,
                                        s_node_rep_t ***cpy_brothers,
                                        int **cpy_bro_index);
@@ -2237,7 +2237,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
  * \param id the node for which messages will be counted
  * \return The total number of messages
  */
-static int tot_msg_number(int id) {                                         //TODO : inutile ?
+/*
+static int tot_msg_number(int id) {
 
     int i, tot = 0;
 
@@ -2246,6 +2247,7 @@ static int tot_msg_number(int id) {                                         //TO
     }
     return tot;
 }
+*/
 
 /**
  * \brief Provide a copy of me's routing table
@@ -2926,8 +2928,10 @@ static void run_tasks_queue(node_t me) {
                     task_free(task_ptr);
 
                     //TODO : on n'est pas forcément OK ici, on peut aussi être FAILED
-                    XBT_VERB("Node %d: last run was '%s' : shift queue - run_state = %s",
+                    XBT_VERB("Node %d: [%s:%c] last run was '%s' : shift queue - run_state = %s",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
                             debug_ret_msg[me->run_task.last_ret],
                             debug_run_msg[me->run_task.run_state]);
 
@@ -3168,7 +3172,7 @@ static void run_delayed_tasks(node_t me) {
                                 idx,
                                 debug_ret_msg[val_ret]);
 
-                        // next task        //TODO : erreur ? peut-être pas
+                        // next task        //TODO : erreur ?
                         idx++;
                     }
 
@@ -3814,7 +3818,7 @@ static msg_error_t send_msg_sync(node_t me,
         req_elem->answer_data = NULL;
 
         // every request data's first field is new_node_id - so get_rep is OK
-        // TODO : si c'est pas bon, il faut modifier send_msg_sync pour ajouter new_node_id à ses arguments
+        // NOTE : si c'est pas bon, il faut modifier send_msg_sync pour ajouter new_node_id à ses arguments
         req_elem->new_node_id = req_data->args.get_rep.new_node_id;
 
         proc_data = MSG_process_get_data(MSG_process_self());
@@ -3830,8 +3834,7 @@ static msg_error_t send_msg_sync(node_t me,
                 xbt_dynar_length(proc_data->sync_answers));
 
         /* max_wait has to be used in case of receiver process is down.
-         * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
-         * nothing happens if receiver process is down.
+         * If host is shut down, MSG_TRANSFER_FAILURE is raised but nothing happens if receiver process is down.
          * // TODO : à vérifier
          * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
          */
@@ -4283,8 +4286,7 @@ static msg_error_t send_msg_async(node_t me,
         comm = MSG_task_isend(task_sent, req_data->sent_to);
 
         /* max_wait has to be used in case of receiver process is down.
-         * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
-         * nothing happens if receiver process is down.
+         * If host is shut down, MSG_TRANSFER_FAILURE is raised but nothing happens if receiver process is down.
          * // TODO : à vérifier
          * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
          */
@@ -4419,8 +4421,7 @@ static msg_error_t send_ans_sync(node_t me,
         comm = MSG_task_isend(task_sent, ans_data->sent_to);
 
         /* max_wait has to be used in case of receiver process is down.
-         * If host is shut down, MSG_TRANSFER_FAILURE is raised but 
-         * nothing happens if receiver process is down.
+         * If host is shut down, MSG_TRANSFER_FAILURE is raised but nothing happens if receiver process is down.
          * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
          */
         while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
@@ -4999,7 +5000,8 @@ static int join(node_t me, int contact_id) {
                 me->self.id,
                 __FUNCTION__,
                 __LINE__);
-        //TODO : prévoir de libérer diff_nodes
+
+        xbt_free(diff_nodes);
     }
 
     // set DST infos
@@ -5298,14 +5300,18 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         // me is the leader
         int n = 0;
 
-        state = get_state(me);          //TODO : get_state() inutile ?
-        XBT_INFO("Node %d: '%c'/%d - I am the leader",
+        //state = get_state(me);          //TODO : get_state() inutile ?
+        XBT_INFO("Node %d: [%s:%d] '%c'/%d - I am the leader",
                 me->self.id,
+                __FUNCTION__,
+                __LINE__,
                 state.active,
                 state.new_id);
 
-        XBT_DEBUG("Node %d: start try = %d",
+        XBT_DEBUG("Node %d: [%s:%c] start try = %d",
                 me->self.id,
+                __FUNCTION__,
+                __LINE__,
                 try);
 
         display_sc(me, 'D');
@@ -5662,7 +5668,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     }
                 }
             }
-            //TODO : faut-il un wait_for_completion ici ? oui certainement
+            //TODO : faut-il un wait_for_completion ici ? si oui, il faut reprendre SET_STATE qui n'envoie pas de ack
             me->cs_req = 0;
             me->cs_req_time = MSG_get_clock();
         }
@@ -5939,13 +5945,21 @@ static void add_pred(node_t me, int stage, int id) {
             set_mailbox(0, me->preds[stage][i].mailbox);
         }
 
-        XBT_DEBUG("Node %d: Predecessors array has been set bigger", me->self.id);
+        XBT_DEBUG("Node %d: [%s:%d] Predecessors array has been set bigger",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
     }
 
     /* if current state is 'p', then it's an add_pred coming from load_balance() :
        just pops out this state */
 
-    //TODO: afficher les états ici avant le remove
+    XBT_DEBUG("Node %d: [%s:%d] Before remove",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__);
+
+    display_states(me, 'D');
     state = get_state(me);
 
     // remove 'p' state
@@ -6275,7 +6289,6 @@ static void cut_node(node_t me, int stage, int right, int cut_pos, int new_node_
  * \param stage the given stage
  * \param id the new brother's id
  */
-// TODO : est-il possible d'y inclure les ADD_PRED ?
 static void add_brother(node_t me, int stage, int id) {
 
     XBT_IN();
@@ -6528,8 +6541,7 @@ static void del_bro(node_t me, int stage, int bro2del) {
  *        split. As their father, it must connect to those two new sons.
  * \param me the current node
  * \param stage the stage that owns a new son
- * \param pos_init the position of init_rep in the calling node's stage
- *                 above the splitted one
+ * \param pos_init the position of init_rep in the calling node's stage above the splitted one
  * \param pos_new the position of new_rep (the size of this upper stage)
  * \param init_rep_id a representative of the former node
  * \param new_rep_id a representative of the new node
@@ -6583,7 +6595,7 @@ static void connect_splitted_groups(node_t me,
 
     /* current node is being updated (normaly already at 'u' by broadcast from
        connection_request(), but can be stored and delayed) */
-    set_update(me, new_node_id, -1);   //TODO!! : à vérifier
+    set_update(me, new_node_id, -1);   //TODO : à vérifier
 
     s_state_t state = get_state(me);
     XBT_VERB("Node %d: '%c'/%d - connect_splitted_groups() ... - new_node = %d",
