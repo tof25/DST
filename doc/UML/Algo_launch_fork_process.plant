@@ -16,7 +16,7 @@ if "" then
       "Broadcast"
     end note
 
-    -->"task = CS_REQ ?"
+    -->"task = BR_CS_REQ ?"
     if "" then
         -->[Yes]"val_ret <-- cs_req()"
         -->"val_ret = OK ?"
@@ -25,11 +25,11 @@ if "" then
     endif
 
     if "" then
-        -->[Yes]"process create"
+        -->[Yes]"create fork process"
         -->(*)
     else
         -->[No]"not available\ndon't create process"
-        -->"tell then sender"
+        -->"tell the sender"
         -->(*)
     endif
 else
