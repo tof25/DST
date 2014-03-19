@@ -2751,7 +2751,7 @@ static int check(node_t me) {
 }
 
 /**
- * \brief Create a fork process in charge of launching run_tasks_queue()
+ * \brief Create a fork process in charge of running run_tasks_queue()
  * \param me the current node
  * \param new_id new coming node
  */
@@ -2788,8 +2788,7 @@ static void call_run_tasks_queue(node_t me, int new_id) {
 
 /**
  * \brief Run tasks stored in tasks_queue dynar
- *        Only CNX_REQ requests are stored in this dynar
- * param me the current node
+ * \param me the current node
  */
 static void run_tasks_queue(node_t me) {
     XBT_IN();
