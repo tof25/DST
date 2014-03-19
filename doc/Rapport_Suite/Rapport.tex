@@ -1,67 +1,97 @@
-Rappel de la situation:
+Introduction
+*************
 
-Dans la version précédente, le choix avait été fait d'avoir simplement un seul
-process par hôte. Des tests approfondis ont montré que ça ne paraîssait pas une
-bonne solution. Voici un exemple de cas de figure qui pose problème:
+Dans la première version de mon simulateur, le choix avait été fait d'avoir un seul process par hôte. Des tests
+approfondis ont montré que ça ne paraîssait pas une bonne solution. Voici un exemple de cas de figure qui pose problème:
 
 2 noeuds intègrent le DST via un même leader:
  * Node 14 --> Node 121 --> Node 42
    puis
  * Node 249 --> Node 121 --> Node 42
-   Cette arrivée de Node 249 provoque de scissions et un ajout d'étage
+   Cette arrivée de Node 249 provoque des scissions et un ajout d'étage
 
- - Node 121 reçoit bien ACK_CNX_REQ/14 de 42 mais le stocke parce qu'il est
-   déjà en attente de ACK_CNX_REQ/249 envoyé à 42
+ - Node 121 reçoit bien ACK_CNX_REQ/14 de 42 mais le stocke parce qu'il est en attente de ACK_CNX_REQ/249 envoyé à 42
 
- - Node 14 ne recevant pas la réponse de 121 reste en 'b'. Il ne peut donc
-   répondre à ADD_STAGE/249 ==> DEADLOCK
+ - Node 14 ne recevant pas la réponse de 121 reste en 'b'. A ce stade de l'intégration, il fait déjà partie du DST
+   (aucune scission n'a été requise et l'intégration a donc été rapide) et il reçoit donc ADD_STAGE/249 mais il ne peut
+   y répondre ==> DEADLOCK
 
-On envisage donc d'utiliser plusieurs process par hôte pour séparer les tâches :
-un qui reçoit les requêtes et un autre qui les traite, par exemple.
+Un seul process (hébergé sur Node 121) est chargé ici de l'intégration de deux nouveaux noeuds différents et il attend
+donc deux réponses. Pour ne pas tenir compte de l'ordre de réception de ces réponses, on pense alors à deux solutions
+possibles:
+1) Utiliser la fonction MSG_comm_waitany() de Simgrid
+2) Mettre en oeuvre un process par nouveau noeud
 
-Pour rappel, voici une vue d'ensemble de l'intégration d'un nouvel arrivant
+Ces deux solutions présentent peut-être un inconvénient : on doit utiliser une structure de données pour stocker soit
+les communications à écouter, soit les requêtes d'insertion en attente et cela peut peut-être poser des problèmes de
+passage à l'échelle. Mais j'ai choisi d'expérimenter plutôt la deuxième solution du fait qu'elle permet de bien séparer
+les tâches et donc, de présenter une trace bien plus lisible.
 
-<DST_Arrival.png>
-<DST_Arrival_001.png>
+De plus, plusieurs nouveaux noeuds utilisant le même contact ne pouvant pas être traités simultanément, il faut
+concevoir un mécanisme de file d'attente pour les traiter séquentiellement.
 
-Voici maintenant le schéma général de la gestion de ces process multiples:
+Présentation d'une solution
+***************************
+
+Voici donc le schéma général de cette solution à process multiples:
 
 <Call_procs.png>
 
+launch_fork_process() est une fonction chargée de choisir comment exécuter les requêtes qui lui sont transmises : elle
+les confie soit à un nouveau process (cas de CNX_REQ, BR_SPLIT, BR_CS_REQ), soit au process courant.
+
 On utilise un maximum de trois process par noeud:
-    - Main_Proc:
-      Comme son nom l'indique, c'est le process principal en charge des
-      initialisations et de la création du process Tasks_Queue
+    * Main_Proc:
+      Comme son nom l'indique, c'est le process principal :
+        - il se charge des initialisations et de la création du process Tasks_Queue.
+        - lorsqu'il reçoit une requête, soit il la place dans tasks_queue (cas ces CNX_REQ), soit il la transmet à
+          launch_fork_process().
+        - héberge les files tasks_queue (les CNX_REQ en attente) et delayed_tasks (les tâches différées)
+        - héberge ses files async_answers et sync_answers (les réponses asynchrones et synchrones attendues)
 
-    - Tasks_Queue:
-      Ce process est chargé de faire tourner la fonction run_tasks_queue() qui
-      traite la file des tâches CNX_REQ reçues. Cette fonction tourne pendant
-      toute la durée de la simulation.
+    * Tasks_Queue:
+      Ce process est chargé de faire tourner la fonction run_tasks_queue() qui traite les files tasks_queue et
+      delayed_tasks.
+      Il héberge ses propres files async_answers et sync_answers.
 
-    - Handle_Task:
-      Ce process est créé par run_tasks_queue() pour exécuter les tâches
-      suivantes : CNX_REQ, BR_SPLIT et BR_CS_REQ
-      De la sorte, ces tâches peuvent s'exécuter sur leur propre process et les
-      écoutes ne peuvent plus être mélangées.
-
+    * Handle_Task:
+      C'est ce process qui est éventuellement créé par launch_fork_process() pour traiter les requêtes concernées.
+      Il héberge aussi ses propres files async_answers et sync_answers.
 
 Dans le détail.
+***************
 
-Fonctionnement de run_tasks_queue
+run_tasks_queue
+---------------
+
 <Algo_run_tasks_queue.png>
 
-Comme déjà précisé, la file tasks_queue contient toutes les demandes de
-connection (c'est à dire toutes les tâches CNX_REQ) reçues. run_tasks_queue()
-est donc chargé de traiter les requêtes présentes dans cette file, par ordre de
-priorité. (noter l'étape de tri de la file avant exécution suivante)
+La file tasks_queue contient toutes les demandes de connection (c'est à dire toutes les tâches CNX_REQ) reçues par le
+noeud courant. run_tasks_queue() est donc chargée de traiter les requêtes présentes dans cette file, par ordre de
+priorité.
 
-Après avoir traité les tâches différées (voir détails plus loin), on s'occupe de
-la file proprement dite.
+Après avoir traité les tâches différées (voir détails plus loin), on s'occupe de la file tasks_queue proprement dite, à
+condition d'être actif (à l'état 'a').
 
-MAX_CNX ne sert qu'à afficher un message en cas de nombreuses tentatives
-d'exécution d'une même requête.
+Chaque requête de cette file sera traitée par un process distinct, mais il n'est pas possible d'insérer plus d'un
+nouveau noeud à la fois et il faut donc que ces process s'exécutent séquentiellement. C'est la raison d'être de la
+variable de noeud Run_state : pour s'occuper de la tâche suivante, la tâche courante doit être terminée. (valeur IDLE)
 
-launch_fork_process() (voir détails plus loin) est chargée d'exécuter la
-requête courante. Ici, elle confie l'éxécution de la requête à un process fils
-Handle_task et rend la main juste après. D'où la nécessité de la variable
-Run_state pour savoir si l'exécution de la tâche est terminée ou pas.
+Lors de l'arrivée d'un nouveau noeud, on a la séquence d'appels suivante : nouveau noeud --> contact --> leader. En cas
+d'échec, le contact doit refaire une tentive plus tard, mais son leader peut avoir changé entre temps. Le leader doit
+donc dépiler la requête alors que le contact doit la conserver. Deux valeurs de retour en cas d'échec sont alors
+requises : un leader retourne la valeur FAILED alors qu'un contact retournera la valeur UPDATE_NOK.
+
+Comme on peut le voir, une valeur de retour UPDATE_NOK laisse la requête dans la file pour une nouvelle tentative un peu
+plus tard. ("Sleep for a while") Dans le cas contraire, on dépile pour passer à la requête suivante. (à noter qu'on
+s'assure de toujours respecter l'ordre de priorité grâce au tri effectué à ce moment-là)
+
+MAX_CNX ne sert qu'à afficher un message en cas de nombreuses tentatives d'exécution d'une même requête.
+
+L'exécution d'une requête de la file est confiée à launch_fork_process() (voir plus haut)
+
+run_delayed_tasks
+-----------------
+
+launch_fork_process
+-------------------

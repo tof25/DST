@@ -29,7 +29,7 @@ if "" then
         -->(*)
     else
         -->[No]"not available\ndon't create process"
-        -->"tell the sender"
+        -->"tell task sender"
         -->(*)
     endif
 else

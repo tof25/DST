@@ -28,7 +28,7 @@ else
     -->[Yes] "<i>Run_state</i> IDLE ?"
     if "" then
         -->[Yes] "<i>Last_return</i> = UPDATE_NOK ?"
-        note right : if FAILED, remove head task also\n(not the leader)
+        note right : if FAILED, remove head task also\n(only for leader)
         if "" then
             -->[No] "<i>Last_return</i> <-- NOK"
             --> "Shift Queue (remove head)" as q3
