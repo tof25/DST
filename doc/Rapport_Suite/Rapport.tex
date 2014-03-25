@@ -5,10 +5,9 @@ Dans la première version de mon simulateur, le choix avait été fait d'avoir u
 approfondis ont montré que ça ne paraîssait pas une bonne solution. Voici un exemple de cas de figure qui pose problème:
 
 2 noeuds intègrent le DST via un même leader:
- * Node 14 --> Node 121 --> Node 42
+ * Node 14 --> Node 121 --> Node 42 (intégration rapide, pas de scission requise)
    puis
- * Node 249 --> Node 121 --> Node 42
-   Cette arrivée de Node 249 provoque des scissions et un ajout d'étage
+ * Node 249 --> Node 121 --> Node 42 (scissions et ajout d'étage requis)
 
  - Node 121 reçoit bien ACK_CNX_REQ/14 de 42 mais le stocke parce qu'il est en attente de ACK_CNX_REQ/249 envoyé à 42
 
