@@ -25,10 +25,10 @@ if "" then
     endif
 
     if "" then
-        -->[Yes]"create fork process"
+        -->[Yes]"create fork process\nto run task"
         -->(*)
     else
-        -->[No]"not available\ndon't create process"
+        -->[No]"not available:\ndon't create process\ndon't run task"
         -->"tell task sender"
         -->(*)
     endif

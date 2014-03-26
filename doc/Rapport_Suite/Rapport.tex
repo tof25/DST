@@ -92,5 +92,29 @@ L'exécution d'une requête de la file est confiée à launch_fork_process() (vo
 run_delayed_tasks
 -----------------
 
+
 launch_fork_process
 -------------------
+
+<Algo_launch_fork_process.png>
+
+Si la tâche transmise à cette fonction n'est ni une demande de connexion
+(CNX_REQ), ni une diffusion de SPLIT ou de CS_REQ, alors elle est exécutée
+localement, c'est à dire par le process courant.
+Sinon, elle est confiée à un nouveau process créé pour l'occasion.
+
+Remarque sur ce nouveau process:
+--------------------------------
+Il doit possèder ses propres file d'attente de réponses attendues (async_answers
+et sync_answers) de sorte qu'elles ne puissent plus être mélangées avec celle
+requises pour l'insertion d'un autre nouveau noeud.
+
+Il est labelisé ainsi : xxx-nom_process-yyy où :
+  - xxx est l'id du noeud courant
+  - nom_process est le nom attribué par cette fonction (tel que "Cnx_req" ou "Br_split", etc)
+  - yyy est l'id du nouveau noeud qui a déclenché la création de ce process.
+
+Dans le cas où la tâche est une diffusion de CS_REQ (demande d'entrée en section
+critique), on commence par s'assurer que le noeud courant est disponible (c'est
+à dire répondrait favorablement à un CS_REQ) pour ne pas créer de process fils
+inutilement.
