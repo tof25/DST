@@ -4,30 +4,30 @@ Introduction
 Dans la première version de mon simulateur, le choix avait été fait d'avoir un seul process par hôte. Des tests
 approfondis ont montré que ça ne paraîssait pas une bonne solution. Voici un exemple de cas de figure qui pose problème:
 
-2 noeuds intègrent le DST via un même leader:
+2 noeuds intègrent le DST via un même contact:
  * Node 14 --> Node 121 --> Node 42 (intégration rapide, pas de scission requise)
    puis
  * Node 249 --> Node 121 --> Node 42 (scissions et ajout d'étage requis)
 
- - Node 121 reçoit bien ACK_CNX_REQ/14 de 42 mais le stocke parce qu'il est en attente de ACK_CNX_REQ/249 envoyé à 42
+ - Node 121 reçoit bien ACK_CNX_REQ/14 de 42 mais le stocke parce qu'il est en attente de ACK_CNX_REQ/249 de 42
 
  - Node 14 ne recevant pas la réponse de 121 reste en 'b'. A ce stade de l'intégration, il fait déjà partie du DST
-   (aucune scission n'a été requise et l'intégration a donc été rapide) et il reçoit donc ADD_STAGE/249 mais il ne peut
-   y répondre ==> DEADLOCK
+   et il reçoit donc ADD_STAGE/249 mais il ne peut y répondre ==> DEADLOCK
 
 Un seul process (hébergé sur Node 121) est chargé ici de l'intégration de deux nouveaux noeuds différents et il attend
-donc deux réponses. Pour ne pas tenir compte de l'ordre de réception de ces réponses, on pense alors à deux solutions
-possibles:
+donc deux réponses. Le problème vient alors du fait qu'il ne peut pas traiter les réponses du premier pendant qu'il est occupé avec le deuxième.
+
+Pour ne pas tenir compte de l'ordre de réception de ces réponses, on pense alors à deux solutions possibles:
 1) Utiliser la fonction MSG_comm_waitany() de Simgrid
-2) Mettre en oeuvre un process par nouveau noeud
+2) Utiliser plusieurs process dédiés :
 
-Ces deux solutions présentent peut-être un inconvénient : on doit utiliser une structure de données pour stocker soit
-les communications à écouter, soit les requêtes d'insertion en attente et cela peut peut-être poser des problèmes de
-passage à l'échelle. Mais j'ai choisi d'expérimenter plutôt la deuxième solution du fait qu'elle permet de bien séparer
-les tâches et donc, de présenter une trace bien plus lisible.
+J'ai choisi d'expérimenter la deuxième solution du fait qu'elle permet de bien séparer les tâches et donc, de présenter une trace bien plus lisible.
+Voici l'idée générale :
+  - chaque demande d'insertion de nouveau noeud est traitée par un process distinct créé pour l'occasion
+  - un process fils ne peut pas recevoir de réponses à des requêtes qu'il n'a pas émises.
 
-De plus, plusieurs nouveaux noeuds utilisant le même contact ne pouvant pas être traités simultanément, il faut
-concevoir un mécanisme de file d'attente pour les traiter séquentiellement.
+De plus, plusieurs nouveaux noeuds utilisant le même contact ne pouvant pas être traités simultanément,
+un mécanisme de file d'attente pour les traiter séquentiellement a été mis en place.
 
 Présentation d'une solution
 ***************************
@@ -39,14 +39,14 @@ Voici donc le schéma général de cette solution à process multiples:
 launch_fork_process() est une fonction chargée de choisir comment exécuter les requêtes qui lui sont transmises : elle
 les confie soit à un nouveau process (cas de CNX_REQ, BR_SPLIT, BR_CS_REQ), soit au process courant.
 
-On utilise un maximum de trois process par noeud:
+On utilise trois process par noeud:
     * Main_Proc:
       Comme son nom l'indique, c'est le process principal :
-        - il se charge des initialisations et de la création du process Tasks_Queue.
-        - lorsqu'il reçoit une requête, soit il la place dans tasks_queue (cas ces CNX_REQ), soit il la transmet à
+        - il se charge des initialisations et de la création du process Tasks_Queue (qui tourne tout le temps de la simulation).
+        - lorsqu'il reçoit une requête, soit il la place dans la file tasks_queue (cas ces CNX_REQ), soit il la transmet à
           launch_fork_process().
-        - héberge les files tasks_queue (les CNX_REQ en attente) et delayed_tasks (les tâches différées)
-        - héberge ses files async_answers et sync_answers (les réponses asynchrones et synchrones attendues)
+        - il héberge les files tasks_queue (les CNX_REQ en attente) et delayed_tasks (les tâches différées)
+        - il héberge ses propres files async_answers et sync_answers (les réponses asynchrones et synchrones attendues)
 
     * Tasks_Queue:
       Ce process est chargé de faire tourner la fonction run_tasks_queue() qui traite les files tasks_queue et
@@ -66,7 +66,7 @@ run_tasks_queue
 <Algo_run_tasks_queue.png>
 
 La file tasks_queue contient toutes les demandes de connection (c'est à dire toutes les tâches CNX_REQ) reçues par le
-noeud courant. run_tasks_queue() est donc chargée de traiter les requêtes présentes dans cette file, par ordre de
+noeud qui héberge cette file. run_tasks_queue() est donc chargée de traiter les requêtes présentes dans cette file, par ordre de
 priorité.
 
 Après avoir traité les tâches différées (voir détails plus loin), on s'occupe de la file tasks_queue proprement dite, à
