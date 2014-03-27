@@ -103,18 +103,20 @@ Si la tâche transmise à cette fonction n'est ni une demande de connexion
 localement, c'est à dire par le process courant.
 Sinon, elle est confiée à un nouveau process créé pour l'occasion.
 
-Remarque sur ce nouveau process:
+Remarques sur ce nouveau process:
 --------------------------------
 Il doit possèder ses propres file d'attente de réponses attendues (async_answers
-et sync_answers) de sorte qu'elles ne puissent plus être mélangées avec celle
+et sync_answers) de sorte qu'elles ne puissent plus être mélangées avec celles
 requises pour l'insertion d'un autre nouveau noeud.
 
 Il est labelisé ainsi : xxx-nom_process-yyy où :
   - xxx est l'id du noeud courant
   - nom_process est le nom attribué par cette fonction (tel que "Cnx_req" ou "Br_split", etc)
-  - yyy est l'id du nouveau noeud qui a déclenché la création de ce process.
+  - yyy est l'id du nouveau noeud en cours d'insertion
+On s'assure ainsi de l'unicité de l'étiquette d'un process.
 
 Dans le cas où la tâche est une diffusion de CS_REQ (demande d'entrée en section
 critique), on commence par s'assurer que le noeud courant est disponible (c'est
 à dire répondrait favorablement à un CS_REQ) pour ne pas créer de process fils
-inutilement.
+inutilement. En cas de non-disponibilité, il faut en informer l'émetteur de la
+requête.
