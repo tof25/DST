@@ -1,60 +1,115 @@
-Introduction
-*************
+RAPPEL
+******
 
-Dans la première version de mon simulateur, le choix avait été fait d'avoir un seul process par hôte. Des tests
-approfondis ont montré que ça ne paraîssait pas une bonne solution. Voici un exemple de cas de figure qui pose problème:
+Déroulement des opérations pour l'insertion d'un nouveau noeud dans le DST: (sans équilibrage de
+charge, pour simplfifier)
+<DST_Arrival.png>
+
+
+SITUATION
+**********
+
+A l'issue de nombreux tests, la première version de mon simulateur a montré son manque de robustesse
+: lorsqu'un grand nombre de nouveaux arrivants impactent la même zone du DST à un même moment, les
+choses se passent mal.
+L'ensemble des problèmes observés semble pouvoir être ramené aux deux points suivants :
+
+1) Le foisonnement des requêtes/réponses se passe mal
+-----------------------------------------------------
+
+Voici un exemple de cas de figure qui pose problème:
 
 2 noeuds intègrent le DST via un même contact:
  * Node 14 --> Node 121 --> Node 42 (intégration rapide, pas de scission requise)
    puis
  * Node 249 --> Node 121 --> Node 42 (scissions et ajout d'étage requis)
 
- - Node 121 reçoit bien ACK_CNX_REQ/14 de 42 mais le stocke parce qu'il est en attente de ACK_CNX_REQ/249 de 42
+ - Alors que Node 121 est en attente de ACK_CNX_REQ/249 de 42, il reçoit ACK_CNX_REQ/14 de 42. Il le
+   stocke donc puisque ce n'est pas la réponse qu'il attend.
 
- - Node 14 ne recevant pas la réponse de 121 reste en 'b'. A ce stade de l'intégration, il fait déjà partie du DST
-   et il reçoit donc ADD_STAGE/249 mais il ne peut y répondre ==> DEADLOCK
+ - Node 14 ne recevant pas la réponse de 121 reste en 'b'.
+   A ce stade de l'intégration, il fait déjà partie du DST et il reçoit donc ADD_STAGE/249 mais il
+   ne peut y répondre ==> DEADLOCK
 
-Un seul process (hébergé sur Node 121) est chargé ici de l'intégration de deux nouveaux noeuds différents et il attend
-donc deux réponses. Le problème vient alors du fait qu'il ne peut pas traiter les réponses du premier pendant qu'il est occupé avec le deuxième.
+Comme on le voit, le fait que ACK_CNX_REQ/14 soit stocké par 121 pose problème ici.
 
-Pour ne pas tenir compte de l'ordre de réception de ces réponses, on pense alors à deux solutions possibles:
+Un seul process (hébergé sur Node 121) chargé de l'intégration de deux nouveaux noeuds différents
+attend deux réponses. Le problème vient alors du fait qu'il ne peut pas traiter les réponses du
+premier pendant qu'il est occupé avec le deuxième. Ce mécanisme n'est donc pas correct.
+
+On pense alors à deux solutions possibles:
 1) Utiliser la fonction MSG_comm_waitany() de Simgrid
-2) Utiliser plusieurs process dédiés :
+   (elle permet de réagir à n'importe quelle réponse parmi un groupe attendues)
+2) Utiliser plusieurs process dédiés, chacun gérant ses propres requêtes/réponses
 
-J'ai choisi d'expérimenter la deuxième solution du fait qu'elle permet de bien séparer les tâches et donc, de présenter une trace bien plus lisible.
-Voici l'idée générale :
-  - chaque demande d'insertion de nouveau noeud est traitée par un process distinct créé pour l'occasion
-  - un process fils ne peut pas recevoir de réponses à des requêtes qu'il n'a pas émises.
+La deuxième solution semble permettre de bien séparer les tâches, ce qui aurait un double avantage :
+arrêter de mélanger les requêtes/réponses pour différents nouveaux arrivants, et présenter une
+trace d'exécution plus lisible.
 
-De plus, plusieurs nouveaux noeuds utilisant le même contact ne pouvant pas être traités simultanément,
-un mécanisme de file d'attente pour les traiter séquentiellement a été mis en place.
+2) L'échec d'une diffusion d'un SET_UPDATE est mal géré
+-------------------------------------------------------
 
-Présentation d'une solution
-***************************
+Pour rappel, lorsque l'arrivée d'un nouveau noeud requiert des scissions, on diffuse un SET_UPDATE
+sur l'ensemble du sous-arbre impacté dans le but de placer un verrou (l'état 'u') sur l'ensemble des
+ces noeuds. Ainsi, ils ne peuvent plus s'occuper que des requêtes concernant cet ajout (les autres
+sont soit refusées, soient différées).
+
+Lorsque cette diffusion échoue (parce qu'on tombe sur une partie déjà verrouillée pour un autre
+arrivant, par exemple), on se retrouve dans la situation où une partie du sous-arbre a été
+verrouillée pour le nouveau noeud courant, et une autre pour un autre nouveau noeud. Il est donc
+important de remettre les choses en état (ôter les verrous posés par la diffusion en échec) pour ne
+pas bloquer les choses.
+
+Mais les test ont montré qu'on arrive malgré tout à générer des deadlocks puisque deux diffusions
+peuvent se bloquer mutuellement sans fin.
+
+Il faut donc trouver des solutions pour ces deux problèmes.
+
+1) Présentation d'une solution au premier point
+***********************************************
+
+Voici les principes de base de cette solution :
+  - Chaque demande d'insertion de nouveau noeud est traitée par un process distinct créé pour
+    l'occasion
+  - Un de ces process fils ne peut pas recevoir de réponses à des requêtes qu'il n'a pas émises.
+    Dit autrement, il doit (et peut) traiter immédiatement toutes les réponses reçues.
+  - Plusieurs nouveaux noeuds utilisant le même contact ne pouvant pas être traités simultanément,
+    un mécanisme de file d'attente pour les traiter séquentiellement est mis en place.
+
+De plus, j'ai fait le choix d'utiliser aussi un tel sous-processus pour les diffusions de SPLIT et
+de CS_REQ parce ce que là encore, cela semble être un avantage de ne pas mélanger les réponses
+attendues dans le cas de diffusions croisées.
 
 Voici donc le schéma général de cette solution à process multiples:
 
 <Call_procs.png>
 
-launch_fork_process() est une fonction chargée de choisir comment exécuter les requêtes qui lui sont transmises : elle
-les confie soit à un nouveau process (cas de CNX_REQ, BR_SPLIT, BR_CS_REQ), soit au process courant.
+Remarque préliminaire:
+launch_fork_process() est une fonction chargée de choisir comment exécuter les requêtes qui lui
+sont transmises : elle les confie soit à un nouveau process (cas de CNX_REQ, BR_SPLIT, BR_CS_REQ),
+soit au process courant.
 
 On utilise trois process par noeud:
     * Main_Proc:
       Comme son nom l'indique, c'est le process principal :
-        - il se charge des initialisations et de la création du process Tasks_Queue (qui tourne tout le temps de la simulation).
-        - lorsqu'il reçoit une requête, soit il la place dans la file tasks_queue (cas ces CNX_REQ), soit il la transmet à
-          launch_fork_process().
-        - il héberge les files tasks_queue (les CNX_REQ en attente) et delayed_tasks (les tâches différées)
-        - il héberge ses propres files async_answers et sync_answers (les réponses asynchrones et synchrones attendues)
+        - il se charge des initialisations et de la création du process Tasks_Queue (qui tourne
+          tout le temps de la simulation).
+        - il héberge les files tasks_queue (les CNX_REQ en attente) et delayed_tasks (les tâches
+          différées)
+        - lorsqu'il reçoit une requête, soit il la place dans la file tasks_queue (cas des
+          CNX_REQ), soit il la transmet à launch_fork_process(). Il peut aussi différer des requêtes
+          en les plaçant dans la file delayed_tasks (À VÉRIFIER)
+        - il héberge ses propres files async_answers et sync_answers (les réponses asynchrones et
+          synchrones attendues)
 
     * Tasks_Queue:
-      Ce process est chargé de faire tourner la fonction run_tasks_queue() qui traite les files tasks_queue et
-      delayed_tasks.
+      Ce process est chargé de faire tourner la fonction run_tasks_queue() qui traite les files
+      tasks_queue et delayed_tasks.
       Il héberge ses propres files async_answers et sync_answers.
 
     * Handle_Task:
-      C'est ce process qui est éventuellement créé par launch_fork_process() pour traiter les requêtes concernées.
+      C'est ce process qui est éventuellement créé par launch_fork_process() pour traiter les
+      requêtes concernées.
       Il héberge aussi ses propres files async_answers et sync_answers.
 
 Dans le détail.
@@ -65,27 +120,31 @@ run_tasks_queue
 
 <Algo_run_tasks_queue.png>
 
-La file tasks_queue contient toutes les demandes de connection (c'est à dire toutes les tâches CNX_REQ) reçues par le
-noeud qui héberge cette file. run_tasks_queue() est donc chargée de traiter les requêtes présentes dans cette file, par ordre de
-priorité.
+La file tasks_queue contient toutes les demandes de connection (c'est à dire toutes les tâches
+CNX_REQ) reçues par le noeud qui héberge cette file. run_tasks_queue() est donc chargée de traiter
+les requêtes présentes dans cette file, par ordre de priorité.
 
-Après avoir traité les tâches différées (voir détails plus loin), on s'occupe de la file tasks_queue proprement dite, à
-condition d'être actif (à l'état 'a').
+Après avoir traité les tâches différées (voir détails plus loin), on s'occupe de la file
+tasks_queue proprement dite, à condition d'être actif (à l'état 'a').
 
-Chaque requête de cette file sera traitée par un process distinct, mais il n'est pas possible d'insérer plus d'un
-nouveau noeud à la fois et il faut donc que ces process s'exécutent séquentiellement. C'est la raison d'être de la
-variable de noeud Run_state : pour s'occuper de la tâche suivante, la tâche courante doit être terminée. (valeur IDLE)
+Chaque requête de cette file sera traitée par un process distinct, mais il n'est pas possible
+d'insérer plus d'un nouveau noeud à la fois et il faut donc que ces process s'exécutent
+séquentiellement. C'est la raison d'être de la variable de noeud Run_state : pour s'occuper de la
+tâche suivante, la tâche courante doit être terminée. (valeur IDLE)
 
-Lors de l'arrivée d'un nouveau noeud, on a la séquence d'appels suivante : nouveau noeud --> contact --> leader. En cas
-d'échec, le contact doit refaire une tentive plus tard, mais son leader peut avoir changé entre temps. Le leader doit
-donc dépiler la requête alors que le contact doit la conserver. Deux valeurs de retour en cas d'échec sont alors
-requises : un leader retourne la valeur FAILED alors qu'un contact retournera la valeur UPDATE_NOK.
+Lors de l'arrivée d'un nouveau noeud, on a la séquence d'appels suivante : nouveau noeud -->
+contact --> leader. En cas d'échec, le contact doit refaire une tentive plus tard, mais son leader
+peut avoir changé entre temps. Le leader doit donc dépiler la requête alors que le contact doit la
+conserver. Deux valeurs de retour en cas d'échec sont alors requises : un leader retourne la valeur
+FAILED alors qu'un contact retournera la valeur UPDATE_NOK.
 
-Comme on peut le voir, une valeur de retour UPDATE_NOK laisse la requête dans la file pour une nouvelle tentative un peu
-plus tard. ("Sleep for a while") Dans le cas contraire, on dépile pour passer à la requête suivante. (à noter qu'on
-s'assure de toujours respecter l'ordre de priorité grâce au tri effectué à ce moment-là)
+Comme on peut le voir, une valeur de retour UPDATE_NOK laisse la requête dans la file pour une
+nouvelle tentative un peu plus tard. ("Sleep for a while") Dans le cas contraire, on dépile pour
+passer à la requête suivante. (à noter qu'on s'assure de toujours respecter l'ordre de priorité
+grâce au tri effectué à ce moment-là)
 
-MAX_CNX ne sert qu'à afficher un message en cas de nombreuses tentatives d'exécution d'une même requête.
+MAX_CNX ne sert qu'à afficher un message en cas de nombreuses tentatives d'exécution d'une même
+requête.
 
 L'exécution d'une requête de la file est confiée à launch_fork_process() (voir plus haut)
 
@@ -98,25 +157,23 @@ launch_fork_process
 
 <Algo_launch_fork_process.png>
 
-Si la tâche transmise à cette fonction n'est ni une demande de connexion
-(CNX_REQ), ni une diffusion de SPLIT ou de CS_REQ, alors elle est exécutée
-localement, c'est à dire par le process courant.
-Sinon, elle est confiée à un nouveau process créé pour l'occasion.
+Si la tâche transmise à cette fonction n'est ni une demande de connexion (CNX_REQ), ni une
+diffusion de SPLIT ou de CS_REQ, alors elle est exécutée localement, c'est à dire par le process
+courant. Sinon, elle est confiée à un nouveau process créé pour l'occasion.
 
 Remarques sur ce nouveau process:
 --------------------------------
-Il doit possèder ses propres file d'attente de réponses attendues (async_answers
-et sync_answers) de sorte qu'elles ne puissent plus être mélangées avec celles
-requises pour l'insertion d'un autre nouveau noeud.
+Il doit possèder ses propres file d'attente de réponses attendues (async_answers et sync_answers)
+de sorte qu'elles ne puissent plus être mélangées avec celles requises pour l'insertion d'un autre
+nouveau noeud.
 
 Il est labelisé ainsi : xxx-nom_process-yyy où :
   - xxx est l'id du noeud courant
   - nom_process est le nom attribué par cette fonction (tel que "Cnx_req" ou "Br_split", etc)
   - yyy est l'id du nouveau noeud en cours d'insertion
-On s'assure ainsi de l'unicité de l'étiquette d'un process.
+On s'assure ainsi de l'unicité de l'étiquette de ce process.
 
-Dans le cas où la tâche est une diffusion de CS_REQ (demande d'entrée en section
-critique), on commence par s'assurer que le noeud courant est disponible (c'est
-à dire répondrait favorablement à un CS_REQ) pour ne pas créer de process fils
-inutilement. En cas de non-disponibilité, il faut en informer l'émetteur de la
-requête.
+Dans le cas où la tâche est une diffusion de CS_REQ (demande d'entrée en section critique), on
+commence par s'assurer que le noeud courant est disponible (c'est à dire répondrait favorablement à
+un CS_REQ) pour ne pas créer de process fils inutilement. En cas de non-disponibilité, il faut en
+informer l'émetteur de la requête.
