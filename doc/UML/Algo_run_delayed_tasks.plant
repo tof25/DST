@@ -1,0 +1,59 @@
+@startuml
+title <u>run_delayed_tasks</u>\n\n
+(*top) -->"cpt <-- 0\nidx <-- 0\nk <-- 0\nval_ret <-- OK\nnb_elems <-- taille de delayed_tasks"
+
+partition "Commence par exécuter les CNX_GROUPS pour le même nouveau noeud"
+
+-->"state.active = 'u' && delayed_tasks non vide ?"
+if ""
+    -->[Yes] "task <-- delayed_tasks(cpt)" as loop1
+    -->"task.type = CNX_GROUPS ?"
+    if ""
+        -->[Yes] "cnx_groups.new_node_id = state.new_node_id ?"
+        if ""
+            -->[Yes] "dépile task de delayed_taks"
+            -->"cpt --"
+            -->"handle_tasks(task)"
+            -->"nb_elems <-- taille de delayed_tasks"
+            -->"cpt ++" as jump1
+        else
+            -->[No] jump1
+        endif
+    else
+        -->[No] jump1
+    endif
+    -->"cpt < nb_elems ?"
+    if ""
+        -->[Yes] loop1
+    else
+
+end partition
+
+        -->[No] "state.active = 'a' && delayed_tasks non vide ?" as jump2
+    endif
+else
+    -->[No] jump2
+endif
+
+if ""
+    -->[Yes] "nb_elems > 0 ?"
+    if ""
+        -->[Yes] "is_contact <-- 0\nbuf_new_node_id <-- -1\nidx <-- 0"
+        -->"idx < nb_elems && state.active = 'a' ?"
+        if ""
+            -->[Yes] "task <-- delayed_tasks(idx)"
+            -->"is_contact <-- (sender_id = cnx_req.new_node_id ?)\nbuf_new_node_id <-- cnx_req.new_node_id"
+            -->"val_ret <-- handle_task(task)"
+
+        else
+            -->[No] "No2"
+        endif
+    else
+        -->[No] "No1"
+    endif
+else
+    -->[No] "No"
+endif
+
+-->(*)
+@enduml
