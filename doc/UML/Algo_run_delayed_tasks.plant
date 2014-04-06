@@ -1,6 +1,6 @@
 @startuml
 title <u>Run_Delayed_Tasks</u>\n\n
-(*top) -->"cpt <-- 0\nidx <-- 0\nk <-- 0\nval_ret <-- OK\nnb_elems <-- taille de delayed_tasks"
+(*top) -->"cpt <-- 0\nidx <-- 0\nval_ret <-- OK\nnb_elems <-- taille de delayed_tasks"
 
 partition "Run CNX_GROUPS for same new node"
 
