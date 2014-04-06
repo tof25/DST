@@ -1,59 +1,95 @@
 @startuml
-title <u>run_delayed_tasks</u>\n\n
+title <u>Run_Delayed_Tasks</u>\n\n
 (*top) -->"cpt <-- 0\nidx <-- 0\nk <-- 0\nval_ret <-- OK\nnb_elems <-- taille de delayed_tasks"
 
-partition "Commence par exécuter les CNX_GROUPS pour le même nouveau noeud"
+partition "Run CNX_GROUPS for same new node"
 
 -->"state.active = 'u' && delayed_tasks non vide ?"
 if ""
-    -->[Yes] "task <-- delayed_tasks(cpt)" as loop1
-    -->"task.type = CNX_GROUPS ?"
-    if ""
-        -->[Yes] "cnx_groups.new_node_id = state.new_node_id ?"
+    -->[Yes]"cpt < nb_elems && state.active = 'u' ?" as jump0
+    if "" then
+        -->[Yes] "task <-- delayed_tasks(cpt)" as loop1
+        -->"task.type = CNX_GROUPS ?"
         if ""
-            -->[Yes] "dépile task de delayed_taks"
-            -->"cpt --"
-            -->"handle_tasks(task)"
-            -->"nb_elems <-- taille de delayed_tasks"
-            -->"cpt ++" as jump1
+            -->[Yes] "cnx_groups.new_node_id = state.new_node_id ?"
+            if ""
+                -->[Yes] "remove delayed_tasks(cpt)"
+                -->"cpt --"
+                -->"handle_tasks(task)"
+                -->"nb_elems <-- taille de delayed_tasks"
+                -->"cpt ++" as jump1
+            else
+                -->[No] jump1
+            endif
         else
             -->[No] jump1
         endif
+        -->jump0
     else
-        -->[No] jump1
+        -->[No] == JUMP2 ==
     endif
-    -->"cpt < nb_elems ?"
-    if ""
-        -->[Yes] loop1
-    else
-
 end partition
 
-        -->[No] "state.active = 'a' && delayed_tasks non vide ?" as jump2
-    endif
 else
-    -->[No] jump2
+    -->[No] == JUMP2 ==
 endif
+== JUMP2 == --> "state.active = 'a' && delayed_tasks non vide ?"
+
+note right : Process other delayed_tasks
 
 if ""
     -->[Yes] "nb_elems > 0 ?"
     if ""
-        -->[Yes] "is_contact <-- 0\nbuf_new_node_id <-- -1\nidx <-- 0"
-        -->"idx < nb_elems && state.active = 'a' ?"
+        -->[Yes] "is_contact <-- 0\nbuf_new_node_id <-- -1"
+        --> == LOOP3 ==
+        -->"idx <-- 0"
+        -->"idx < nb_elems && state.active = 'a' ?" as loop2
         if ""
             -->[Yes] "task <-- delayed_tasks(idx)"
-            -->"is_contact <-- (sender_id = cnx_req.new_node_id ?)\nbuf_new_node_id <-- cnx_req.new_node_id"
+            -->"is_contact <-- (task.sender_id = cnx_req.new_node_id ?)\nbuf_new_node_id <-- cnx_req.new_node_id"
             -->"val_ret <-- handle_task(task)"
+            -->"val_ret = UPDATE_NOK ?"
+
+note left
+    reset me.cs_req ?
+end note
+
+            if "" then
+                -->[Yes] "state.active = 'a' &&\nme.cs_req = 1 &&\nme.cs_new_id = buf_new_node_id ?"
+                if "" then
+                    -->[Yes]"reset me.cs_req"
+                    --> == JUMP3 ==
+                else
+                    -->[No] == JUMP3 ==
+                endif
+
+                    == JUMP3 == -->"val_ret = OK ||\nval_ret = UPDATE_OK ||\n(val_ret = UPDATE_NOK && !is_contact) ||\nval_ret = STORED ?"
+                if "" then
+                    -->[Yes]"remove delayed_tasks(idx)"
+                    -->"nb_elems --"
+                    --> == LOOP2 ==
+                else
+                    -->[No] "idx ++"
+                    --> == LOOP2 ==
+                    --> loop2
+                endif
+            else
+                -->[No] == JUMP3 ==
+            endif
 
         else
-            -->[No] "No2"
+            -Right->[No] "val_ret = OK &&\nnb_elems > 0 &&\nstate.active = 'a'"
+            if "" then
+                -->[Yes] == LOOP3 ==
+            else
+                -->[No] "END"
+                -->(*)
+            endif
         endif
     else
-        -->[No] "No1"
+        -->[No] "END"
     endif
 else
-    -->[No] "No"
+    -->[No] "END"
 endif
-
--->(*)
 @enduml
