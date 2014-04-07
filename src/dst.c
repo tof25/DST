@@ -3050,6 +3050,9 @@ static void run_delayed_tasks(node_t me) {
                     handle_task(me, &elem);
                     nb_elems = (int) xbt_dynar_length(me->delayed_tasks);
 
+                    /*TODO : il semble qu'il y ait ici une possiblité de boucle infinie si les
+                             CNX_GROUPS sont à nouveau stockées. Possible ? */
+
                     // state may have been changed by handle_task()
                     state = get_state(me);
                 }
@@ -3120,7 +3123,7 @@ static void run_delayed_tasks(node_t me) {
                             __LINE__,
                             debug_ret_msg[val_ret]);
 
-                    //TODO : expliquer
+                    //TODO : expliquer. Voir si le cas se produit ou pas
                     if (val_ret == UPDATE_NOK) {
 
                         state = get_state(me);
@@ -3139,7 +3142,7 @@ static void run_delayed_tasks(node_t me) {
 
                     if (val_ret  == OK ||
                         val_ret  == UPDATE_OK ||
-                        (val_ret == UPDATE_NOK && !is_contact) ||
+                        (val_ret == UPDATE_NOK && !is_contact) ||       //TODO : ne pourrait-on pas utiliser FAILED plutôt que cette formule ici ?
                         val_ret  == STORED) {
 
                         /* remove task from dynar if it succeeded or if failed but me is not contact
@@ -4028,7 +4031,7 @@ static msg_error_t send_msg_sync(node_t me,
                     // the expected answer has been received
                     *answer_data = (*elem_ptr)->answer_data;
 
-                    // pop top record from dynar since it's now useless
+                    // pop record from dynar since it's now useless
                     xbt_dynar_pop(proc_data->sync_answers, &ans_elem);
                     xbt_free(ans_elem);     //TODO: s'assurer que ça ne libère pas answer_data
 
