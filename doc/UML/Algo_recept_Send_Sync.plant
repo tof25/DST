@@ -3,9 +3,9 @@
 -->"Task Received"
 
 if "" then
-    -->[Request] "Remain_tasks not empty\n&& Task is CNX_REQ ?"
+    -->[Request] "Request is CNX_REQ ?"
     if "" then
-        -->[Yes] "Push task on Remain_tasks"
+        -->[Yes] "Push request on Tasks_Queue"
         --> == REQUEST_PROCESSED ==
     else
         -->[No] "Handle request"

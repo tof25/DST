@@ -151,6 +151,77 @@ L'exécution d'une requête de la file est confiée à launch_fork_process() (vo
 run_delayed_tasks
 -----------------
 
+Cette fonction est chargée de traiter la file des tâches différées (delayed_tasks). Lorsqu'une tâche
+ne peut pas être exécutée par un noeud, soit elle est refusée (et retournée à l'émetteur), soit
+elle est stockée dans cette file pour être exécutée plus tard.
+
+On distingue deux cas : soit le noeud courant est à l'état 'u', soit il est à 'a'.
+
+1) état 'u'
+-----------
+Dans ce cas, un nouveau noeud est en cours d'insertion. Il est donc important de traiter en priorité
+les tâches qui pourraient permettre de terminer cette insertion (l'idée est toujours d'éviter les
+blocages)
+
+On parcourt donc la file à la recherche d'éventuels CNX_GROUPS pour le même nouveau noeud que celui
+en cours d'insertion (c'est le test cnx_groups.new_node_id = state.new_node_id) et on tente de les
+exécuter. (handle_task(task))
+
+Lorsqu'on trouve une tâche CNX_GROUPS à exécuter, on l'ôte de la file sans s'assurer que son
+exécution a réussi ou pas. En effet, si elle a échoué, elle est à nouveau stockée dans la file.
+
+*******************************************************************************
+TODO : corriger le commentaire ici à cause de la possibilité de boucle sans fin
+*******************************************************************************
+
+Variables: 
+    - nb_elems : contient le nombre d'éléments de la file.
+
+    - cpt      : itérateur (de 0 à nb_elems)
+
+2) état 'a'
+-----------
+Ici, le noeud courant est prêt à exécuter n'importe quelle tâche et il s'agit donc de traiter toutes
+les autres tâches.
+
+Variables:
+    - nb_elems   :      comme précédemment, elle contient le nombre d'éléments de la file.
+                        Elle n'est pas remise à jour en cours de boucle comme dans le cas précécent.
+                        Si d'autres tâches sont stockées dans l'intervalle, on n'en tient pas compte
+                        immédiatement, elles seront traitées lors d'une prochaine exécution de cette
+                        fonction. (l'idée est de ne pas risquer de se retrouver dans une boucle sans
+                        fin)
+
+    - idx        :      itérateur (de 0 à nb_elems)
+
+    - is_contact :      vaut 1 si le noeud courant est le contact direct du nouveau noeud.
+                        (autrement dit, si l'émetteur de la tâche est le nouveau noeud)
+
+    - buf_new_node_id : cnx_req.new_node_id est mémorisé dans cette variable parce qu'on en a besoin
+                        après la destruction de cnx_req.
+
+    On ôte la tâche courante de la file dans les cas suivants :
+        - l'exécution a réussi (OK et UPDATE_OK)
+        - la tâche a à nouveau été stockée (STORED)
+        - l'exécution a échoué mais le noeud courant n'est pas le contact direct du nouveau noeud.
+          (UPDATE_NOK && !is_contact)
+          Il s'agit du cas FAILED décrit plus haut.
+
+*********************************************************************
+TODO : ne pourrait-on pas utiliser FAILED ici plutôt que is_contact ?
+*********************************************************************
+
+On peut également remarquer que si le noeud courant était verrouillé pour le même nouveau noeud que
+celui dont la tâche vient d'échouer, alors on ôte le verrou.
+
+*****************
+TODO : pourquoi ?
+*****************
+
+Il est imoportant de souligner qu'à l'issue de l'exécution de cette fonction, la file n'est pas
+forcément vide. Elle contient toutes les tâches dont l'exécution a échoué (et qu'on veut retenter
+plus tard), et celles qui ont été stockées par d'autres process entre temps.
+
 
 launch_fork_process
 -------------------
@@ -177,3 +248,33 @@ Dans le cas où la tâche est une diffusion de CS_REQ (demande d'entrée en sect
 commence par s'assurer que le noeud courant est disponible (c'est à dire répondrait favorablement à
 un CS_REQ) pour ne pas créer de process fils inutilement. En cas de non-disponibilité, il faut en
 informer l'émetteur de la requête.
+
+Description des fonctions de communication:
+*******************************************
+<Algo_send_Send_Sync.png>
+
+*******************
+TODO : Algo à faire
+*******************
+
+<Algo_recept_Send_Sync.png>
+La fonction send_msg_sync() est chargée d'envoyer une requête à un autre noeud, puis d'en attendre
+la réponse.
+Cet algorithem présente cette partie d'attente de réponse.
+
+Deux types de tâches peuvent être reçus :
+
+1) Requête:
+***********
+
+Si c'est une CNX_REQ, on la place dans Tasks_Queue (voir algo run_tasks_queue), sinon, elle est
+éxécutée. Si la réponse attendue n'a pas été reçue entre temps, on se remet en écoute. Sinon,
+l'enregistrement correspondant est ôté de la file sync_answers et la réponse mémorisée.
+
+2) Réponse:
+***********
+Si c'est la réponse attendue, même traitement que plus haut.
+Sinon, s'il s'agit d'une des autres réponses synchrones ou asynchrones attendues, on l'inscrit dans
+la file adéquate (sync_answers ou async_answsers, respectivement). Après quoi on se remet en écoute.
+
+
