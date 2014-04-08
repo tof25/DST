@@ -1,52 +1,56 @@
 @startuml
-(*top) -->"All answers received ?\n(<i>async_answers</i> in <i>proc_data</i>)" as st1
+title \n<u>wait_for_completion\n(<i>async_answers</i> and <i>sync_answers</i> in <i>proc_data</i>)\n\n</u>\n
+
+(*top) -->"<i>ret</i> <-- OK"
+-->"All answers received ?\n(set <i><b>ans_cpt</i></b> and <i><b>ret</i></b> accordingly)" as st1
+note right: function named check_async_nok()
 
 if "" then
-    -->[Yes] "END"
+    -->[Yes] "Return <i>ret</i>"
     -->(*)
 else
     -->[No] "Wait for task"
     --> "Task Received"
 
     if "" then
-        -->[Request] "Remain_tasks not empty\n&& Task is CNX_REQ ?"
+        -->[Request] "Request is CNX_REQ ?"
         if "" then
-            -->[Yes] "Task --> <i>remain_tasks</i>"
-            --> == REQUEST_PROCESSED ==
+            -->[Yes] "Push request on tasks_queue"
+            --> == LOOP ==
         else
-            -->[No] "Handle request (fork)"
-            --> == REQUEST_PROCESSED ==
+            -->[No] "Handle request"
+            --> == LOOP ==
         endif
-        == REQUEST_PROCESSED == --> "Answer received meanwhile ?"
-        if "" then
-            -->[Yes] "<i>ans_cpt --</i>"
-        else
-            -->[No] st1
-        endif
-
+        == LOOP == -->[Request\nprocessed] st1
     else
         -->[Answer] "Expected async answer ?"
         if "" then
-            -->[Yes] "Current expected one ?"
+            -->[Yes] "One of the <i>ans_cpt</i> answers ?"
             if "" then
-                -->[Yes] "<i>ans_cpt --</i>"
-                --> "Remove match from <i>async_answers</i>"
-                --> == ANSWER_PROCESSED ==
+                -->[Yes]"(ans.type = BROADCAST ||\nans_type = SET_UPDATE) &&\n<i>ret</i> <> UPDATE_OK ?"
+                if "" then
+                    -->[Yes]"<i>ret</i> <-- <i>answer.val_ret</i>"
+                    -->"<i>ans_cpt --</i>" as jump1
+                else
+                    -->[No]jump1
+                endif
+                --> "Remove record from\n<i>async_answers</i>"
+                --> == LOOP2 ==
             else
-                -->[No] "Answer --> <i>async_answers</i>"
-                --> st1
+                -->[No] "Record answer into\n<i>async_answers</i>"
+                --> == LOOP2 ==
             endif
         else
             -right->[No] "Sync expected answer ?"
             if "" then
-                -->[Yes] "Answer --> <i>sync_answers</i>\n(<i>sync_answers</i> in <i>proc_data</i>)"
-                --> == ANSWER_PROCESSED ==
+                -->[Yes] "Record answer into\n<i>sync_answers</i>"
+                --> == LOOP2 ==
             else
                     -->[No] "Answer discarded"
-                    --> == ANSWER_PROCESSED ==
+                    --> == LOOP2 ==
             endif
         endif
-        == ANSWER_PROCESSED == -->[Answer\nprocessed] st1
+        == LOOP2 == -->[Answer\nprocessed] st1
     endif
 endif
 @enduml

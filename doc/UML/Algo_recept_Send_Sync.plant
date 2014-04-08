@@ -1,4 +1,6 @@
 @startuml
+title \n<u>send_msg_sync</u> (reception part)\n(<i>async_answers</i> and <i>sync_answers</i> in <i>proc_data</i>)\n\n
+
 (*top) -->"Wait for task"
 -->"Task Received"
 
@@ -14,7 +16,7 @@ if "" then
     == REQUEST_PROCESSED == --> "Answer received meanwhile ?"
     if "" then
         -->[Yes] "Get answer data"
-        --> "Remove match from <i>sync_answers</i>"
+        --> "Remove record from <i>sync_answers</i>"
         --> "END"
         -->(*)
     else
@@ -28,12 +30,12 @@ else
     else
         -->[No] "Other expected sync answer ?"
         if "" then
-            -->[Yes] "Answer --> <i>sync_answers</i>"
+            -->[Yes] "Record answer into\n<i>sync_answers</i>"
             --> == ANSWER_PROCESSED ==
         else
             -->[No] "Async expected answer ?"
             if "" then
-                -->[Yes] "Answer --> <i>async_answers</i>"
+                -->[Yes] "Record answer into\n<i>async_answers</i>"
                 --> == ANSWER_PROCESSED ==
             else
                 -->[No] "Answer discarded"

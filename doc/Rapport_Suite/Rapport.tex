@@ -251,16 +251,12 @@ informer l'émetteur de la requête.
 
 Description des fonctions de communication:
 *******************************************
-<Algo_send_Send_Sync.png>
-
-*******************
-TODO : Algo à faire
-*******************
+<Algo_send_msg_sync.png>  TODO : Algo à faire 
 
 <Algo_recept_Send_Sync.png>
 La fonction send_msg_sync() est chargée d'envoyer une requête à un autre noeud, puis d'en attendre
 la réponse.
-Cet algorithem présente cette partie d'attente de réponse.
+Cet algorithme présente cette partie d'attente de réponse.
 
 Deux types de tâches peuvent être reçus :
 
@@ -277,4 +273,10 @@ Si c'est la réponse attendue, même traitement que plus haut.
 Sinon, s'il s'agit d'une des autres réponses synchrones ou asynchrones attendues, on l'inscrit dans
 la file adéquate (sync_answers ou async_answsers, respectivement). Après quoi on se remet en écoute.
 
+---------------------------------------------------
 
+<Algo_recept_Wait.png>
+
+**************************************
+TODO : faire algo de check_async_nok ?
+**************************************
