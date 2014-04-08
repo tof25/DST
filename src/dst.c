@@ -1669,7 +1669,7 @@ static void rec_sync_answer(node_t me, int idx, ans_data_t ans) {
 
 /**
  * \brief Auxiliary function for wait_for_completion().
- *        Search for received answers in async_answers dynar, adjust ans_cpt accordingly,
+ *        Search for received answers in proc_data->async_answers dynar, adjust ans_cpt accordingly,
  *        and records any NOK answer.
  * \param me the current node
  * \param ans_cpt number of expected answers
@@ -1779,7 +1779,8 @@ static void launch_fork_process(node_t me, msg_task_t task) {
     req_data_t req = MSG_task_get_data(task);
 
     if (req->type == TASK_CNX_REQ ||
-        (req->type == TASK_BROADCAST && (req->args.broadcast.type == TASK_SPLIT || req->args.broadcast.type == TASK_CS_REQ))) {
+        (req->type == TASK_BROADCAST && (req->args.broadcast.type == TASK_SPLIT ||
+                                         req->args.broadcast.type == TASK_CS_REQ))) {
 
         // handle the task with a fork process ..
         proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
@@ -2059,10 +2060,9 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                 if (dynar_idx != -1) {
 
-                    /* Yes. Is it one of the current expected ones ? */
+                    /* Yes. Is it one of the ans_cpt expected ones ? */
 
-                    if (dynar_idx <= dynar_size - 1 &&
-                            dynar_idx >= dynar_size - ans_cpt) {
+                    if (dynar_idx <= dynar_size - 1 && dynar_idx >= dynar_size - ans_cpt) {
 
                         // look if a set_update task has failed
                         if (ans->type == TASK_BROADCAST || ans->type == TASK_SET_UPDATE) {
@@ -2084,9 +2084,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                             (*elem_ptr)->answer_data = NULL;
                         }
 
-                        xbt_dynar_remove_at(proc_data->async_answers,
-                                dynar_idx,
-                                NULL);
+                        xbt_dynar_remove_at(proc_data->async_answers, dynar_idx, NULL);
 
                         dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
                     } else {
@@ -2111,7 +2109,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 } else {
 
                     /* No, this answer is not an async expected one.
-                     * Is it a sync expected one ? */
+                       Is it a sync expected one ? */
 
                     dynar_idx = expected_answers_search(me,
                             proc_data->sync_answers,
@@ -2134,8 +2132,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                     } else {
 
                         /* No, this answer wasn't expected. Ignore it. */
-                        XBT_DEBUG("Node %d: not found in dynars. Ignore it",
-                                me->self.id);
+                        XBT_DEBUG("Node %d: not found in dynars. Ignore it", me->self.id);
                     }
                 }
 
@@ -2152,8 +2149,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                 /*NOTE: il ne semble pas nécessaire de récupérer la valeur de
                   retour de handle_task() ici */
-
-                //if (xbt_dynar_is_empty(me->tasks_queue) == 0 &&
 
                 // push the received CNX_REQ task onto the dynar ...
                 if (req->type == TASK_CNX_REQ) {
