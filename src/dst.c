@@ -45,9 +45,9 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
-static const int a = 2;                     /* min number of brothers in a node
+static const int a = 3;                     /* min number of brothers in a node
                                                (except for the root node) */
-static const int b = 4;                     /* max number of brothers in a node
+static const int b = 6;                     /* max number of brothers in a node
                                                (must be twice a) */
 static int         COMM_TIMEOUT = 19000;                    // timeout for communications (mustn't be greater than MAX_WAIT_COMPL)
 static double      max_simulation_time = 10500;             // max default simulation time              //TODO : plus utile ?
@@ -57,6 +57,7 @@ static int         nb_br_messages[100000][TYPE_NBR] = {0};  // total number of b
 static int         order = 0;                               // order number of nodes arrival
 static int         nb_nodes = 0;                            // total number of nodes
 static int         nb_ins_nodes = 0;                        // number of nodes already inserted
+static int         mem_log = -1;                            // ensures that log new setting occurs only once
 
 typedef struct f_node {                     // node that failed to join
     int   id;
@@ -2803,6 +2804,7 @@ static void run_tasks_queue(node_t me) {
     float max = 4.3;
     float min = 1.2;
     double sleep_time = 0;
+    int mem_head_id = -1;
 
     XBT_DEBUG("Node %d: [%s:%d] set run_state = {%s - %s}",
             me->self.id,
@@ -2812,6 +2814,33 @@ static void run_tasks_queue(node_t me) {
             debug_ret_msg[me->run_task.last_ret]);
 
     do {
+
+        //log
+        if (xbt_dynar_length(me->tasks_queue) > 0) {
+
+            task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
+
+            xbt_assert(task_ptr != NULL && *task_ptr != NULL,
+                    "Node %d: [%s:%d] task_ptr shouldn't be NULL here !",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__);
+
+            req_data = MSG_task_get_data(*task_ptr);
+
+            if (mem_head_id == -1 || mem_head_id != req_data->args.cnx_req.new_node_id) {
+
+                mem_head_id = req_data->args.cnx_req.new_node_id;
+
+                XBT_INFO("Node %d: [%s:%d] nb_ins_nodes = %d, queue_length = %d, head new_node = %d",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        nb_ins_nodes,
+                        (int)xbt_dynar_length(me->tasks_queue),
+                        req_data->args.cnx_req.new_node_id);
+            }
+        }
 
         state = get_state(me);
 
@@ -9155,12 +9184,14 @@ int node(int argc, char *argv[]) {
                 // no task was received: make some periodic calls
                 state = get_state(&node);
 
-                /*
-                if (MSG_get_clock() >= 680) {
+                // set log details
+                if ((nb_ins_nodes >= 0.95 * nb_nodes) && (mem_log == -1)) {
 
+                    //xbt_assert(1 == 0, "nb_ins_nodes = %d, nb_nodes = %d", nb_ins_nodes, nb_nodes);
                     xbt_log_control_set("msg_dst.thres:verbose");
+                    XBT_VERB("Node %d: Log Verbose - nb_ins_nodes = %d, nb_nodes = %d", node.self.id, nb_ins_nodes, nb_nodes);
+                    mem_log++;
                 }
-                */
 
                 // Run remain tasks if any
                 //call_run_delayed_tasks(&node, node.self.id);
