@@ -2799,6 +2799,7 @@ static void run_tasks_queue(node_t me) {
     me->run_task.run_state = IDLE;
     me->run_task.last_ret = UPDATE_NOK;
     e_run_state_t prev_state = RUNNING;
+    sort_tasks_queue(me);
     float max = 4.3;
     float min = 1.2;
     double sleep_time = 0;
@@ -2912,7 +2913,7 @@ static void run_tasks_queue(node_t me) {
                     }
                 } else {
 
-                    // last run was OK
+                    // last run was OK or FAILED
                     me->run_task.last_ret = UPDATE_NOK;
 
                     // shift queue to remove head task
@@ -2931,6 +2932,7 @@ static void run_tasks_queue(node_t me) {
 
                     xbt_dynar_shift(me->tasks_queue, NULL);
                     sort_tasks_queue(me);
+                    cpt = 0;
                 }
 
                 state = get_state(me);
