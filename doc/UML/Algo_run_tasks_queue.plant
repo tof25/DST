@@ -10,6 +10,7 @@ note left
     - UPDATE_NOK
     - FAILED
 end note
+--> "Sort Queue by priority order" as init4
 --> "<i>cpt</i> <--  -1" as init3
 
 --> "<b>Run Delayed Tasks</b>\n(if any)" as q1
@@ -25,7 +26,7 @@ if "" then
         -->[No] q1
     endif
 else
-    -->[Yes] "<i>Run_state</i> IDLE ?"
+    -->[Yes] "<i>Run_state</i> = IDLE ?"
     if "" then
         -->[Yes] "<i>Last_return</i> = UPDATE_NOK ?"
         note right : if FAILED, remove head task also\n(only for leader)
@@ -33,6 +34,7 @@ else
             -->[No] "<i>Last_return</i> <-- NOK"
             --> "Shift Queue (remove head)" as q3
             --> "Sort Queue by priority order"
+            --> "<i>cpt</i> <-- 0" as q4
             --> "Queue not empty  &&\n<i>state</i> = 'a' ?" as q2
         else
             -->[Yes] "<i>cpt</i> ++"
