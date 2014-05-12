@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/03/16
+ *  Written by Christophe Enderlin on 2014/05/12
  *
  */
 
@@ -7027,14 +7027,14 @@ static void split(node_t me, int stage, int new_node_id) {
     display_states(me, 'D');
 
     int found = -1;
-    float max_wait = MSG_get_clock() + MAX_WAIT_COMPL;
+    float max_wait = MSG_get_clock() + MAX_WAIT_COMPL / 2;
     do {
         found = state_search(me, 'p', -1);
         if (found > -1) {
 
             MSG_process_sleep(0.1);
         }
-    } while (found > -1 && MSG_get_clock() < max_wait - 2000);
+    } while (found > -1 && MSG_get_clock() < max_wait);
 
     // stops here if 'p' state is not removed
     if (MSG_get_clock() >= max_wait && found > -1) {
