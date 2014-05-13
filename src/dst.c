@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/05/12
+ *  Written by Christophe Enderlin on 2014/05/13
  *
  */
 
@@ -2952,7 +2952,7 @@ static void run_tasks_queue(node_t me) {
                     task_free(task_ptr);
 
                     //TODO : on n'est pas forcément OK ici, on peut aussi être FAILED
-                    XBT_VERB("Node %d: [%s:%c] last run was '%s' : shift queue - run_state = %s",
+                    XBT_VERB("Node %d: [%s:%d] last run was '%s' : shift queue - run_state = %s",
                             me->self.id,
                             __FUNCTION__,
                             __LINE__,
@@ -2960,9 +2960,10 @@ static void run_tasks_queue(node_t me) {
                             debug_run_msg[me->run_task.run_state]);
 
                     xbt_dynar_shift(me->tasks_queue, NULL);
-                    sort_tasks_queue(me);
                     cpt = 0;
                 }
+
+                sort_tasks_queue(me);
 
                 state = get_state(me);
                 if (xbt_dynar_is_empty(me->tasks_queue) == 0 && state.active == 'a') {
@@ -5555,6 +5556,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     // cs_req returned NOK
 
                     state = get_state(me);
+                    //TODO : comptage des essais pas bon
                     XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
                             me->self.id,
                             state.active,
