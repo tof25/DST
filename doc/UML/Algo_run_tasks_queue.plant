@@ -33,9 +33,8 @@ else
         if "" then
             -->[No] "<i>Last_return</i> <-- NOK"
             --> "Shift Queue (remove head)" as q3
-            --> "Sort Queue by priority order"
             --> "<i>cpt</i> <-- 0" as q4
-            --> "Queue not empty  &&\n<i>state</i> = 'a' ?" as q2
+            --> "Sort Queue by priority order" as q2
         else
             -->[Yes] "<i>cpt</i> ++"
             --> "<i>cpt</i> >= <i>MAX_CNX</i> ?"
@@ -47,6 +46,7 @@ else
                 -->[No] q2
             endif
         endif
+        --> "Queue not empty  &&\n<i>state</i> = 'a' ?"
         if "" then
             -->[No] s1
         else
