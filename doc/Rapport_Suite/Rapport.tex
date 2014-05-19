@@ -39,7 +39,7 @@ premier pendant qu'il est occupé avec le deuxième. Ce mécanisme n'est donc pa
 
 On pense alors à deux solutions possibles:
 1) Utiliser la fonction MSG_comm_waitany() de Simgrid
-   (elle permet de réagir à n'importe quelle réponse parmi un groupe attendues)
+   (elle permet de réagir à n'importe quelle réponse parmi celles qui sont attendues)
 2) Utiliser plusieurs process dédiés, chacun gérant ses propres requêtes/réponses
 
 La deuxième solution semble permettre de bien séparer les tâches, ce qui aurait un double avantage :
@@ -52,7 +52,7 @@ trace d'exécution plus lisible.
 Pour rappel, lorsque l'arrivée d'un nouveau noeud requiert des scissions, on diffuse un SET_UPDATE
 sur l'ensemble du sous-arbre impacté dans le but de placer un verrou (l'état 'u') sur l'ensemble des
 ces noeuds. Ainsi, ils ne peuvent plus s'occuper que des requêtes concernant cet ajout (les autres
-sont soit refusées, soient différées).
+sont soit refusées, soit différées).
 
 Lorsque cette diffusion échoue (parce qu'on tombe sur une partie déjà verrouillée pour un autre
 arrivant, par exemple), on se retrouve dans la situation où une partie du sous-arbre a été
@@ -60,8 +60,9 @@ verrouillée pour le nouveau noeud courant, et une autre pour un autre nouveau n
 important de remettre les choses en état (ôter les verrous posés par la diffusion en échec) pour ne
 pas bloquer les choses.
 
-Mais les test ont montré qu'on arrive malgré tout à générer des deadlocks puisque deux diffusions
-peuvent se bloquer mutuellement sans fin.
+Les tests ont montré que la méthode utilisée pour cela n'est pas correcte puiqu'on arrive malgré
+tout à générer des deadlocks. (ces deux sous-arbres se bloquent mutuellement)
+
 
 Il faut donc trouver des solutions pour ces deux problèmes.
 
@@ -71,13 +72,14 @@ Il faut donc trouver des solutions pour ces deux problèmes.
 Voici les principes de base de cette solution :
   - Chaque demande d'insertion de nouveau noeud est traitée par un process distinct créé pour
     l'occasion
-  - Un de ces process fils ne peut pas recevoir de réponses à des requêtes qu'il n'a pas émises.
+  - Ce sous-process ne peut pas recevoir de réponses à des requêtes qu'il n'a pas émises.
     Dit autrement, il doit (et peut) traiter immédiatement toutes les réponses reçues.
+    (plus besoin de différer ou de refuser)
   - Plusieurs nouveaux noeuds utilisant le même contact ne pouvant pas être traités simultanément,
     un mécanisme de file d'attente pour les traiter séquentiellement est mis en place.
 
 De plus, j'ai fait le choix d'utiliser aussi un tel sous-processus pour les diffusions de SPLIT et
-de CS_REQ parce ce que là encore, cela semble être un avantage de ne pas mélanger les réponses
+de CS_REQ parce que là encore, cela semble être un avantage de ne pas mélanger les réponses
 attendues dans le cas de diffusions croisées.
 
 Voici donc le schéma général de cette solution à process multiples:
@@ -89,7 +91,7 @@ launch_fork_process() est une fonction chargée de choisir comment exécuter les
 sont transmises : elle les confie soit à un nouveau process (cas de CNX_REQ, BR_SPLIT, BR_CS_REQ),
 soit au process courant.
 
-On utilise trois process par noeud:
+On utilise au plus trois process par noeud:
     * Main_Proc:
       Comme son nom l'indique, c'est le process principal :
         - il se charge des initialisations et de la création du process Tasks_Queue (qui tourne
@@ -98,12 +100,12 @@ On utilise trois process par noeud:
           différées)
         - lorsqu'il reçoit une requête, soit il la place dans la file tasks_queue (cas des
           CNX_REQ), soit il la transmet à launch_fork_process(). Il peut aussi différer des requêtes
-          en les plaçant dans la file delayed_tasks (À VÉRIFIER)
+          en les plaçant dans la file delayed_tasks (TODO : À VÉRIFIER)
         - il héberge ses propres files async_answers et sync_answers (les réponses asynchrones et
           synchrones attendues aux requêtes qu'il a émises)
 
     * Tasks_Queue:
-      Ce process est chargé de faire tourner la fonction run_tasks_queue() qui traite les files
+      Ce process est chargé d'exécuter la fonction run_tasks_queue() qui traite les files
       tasks_queue et delayed_tasks.
       Il héberge aussi ses propres files async_answers et sync_answers.
 
@@ -133,15 +135,16 @@ d'insérer plus d'un nouveau noeud à la fois et il faut donc que ces process s'
 séquentiellement. C'est la raison d'être de la variable de noeud Run_state : pour s'occuper de la
 tâche suivante, la tâche courante doit être terminée. (valeur IDLE)
 
-Deux sortes d'échec d'insertion possibles :
+Variable Last_return :
+Il y a deux sortes d'échec d'insertion possibles.
 Lors de l'arrivée d'un nouveau noeud, on a la séquence d'appels suivante : nouveau noeud -->
 contact --> leader. En cas d'échec, le contact doit refaire une tentive plus tard, mais son leader
 peut avoir changé entre temps. Le leader doit donc dépiler la requête alors que le contact doit la
-conserver. Deux valeurs de retour en cas d'échec sont alors requises : un leader retourne la valeur
-FAILED alors qu'un contact retournera la valeur UPDATE_NOK.
+conserver dans la file. Deux valeurs de retour en cas d'échec sont alors requises : un leader
+retourne la valeur FAILED alors qu'un contact retournera la valeur UPDATE_NOK.
 
 Comme on peut le voir, une valeur de retour UPDATE_NOK laisse la requête dans la file pour une
-nouvelle tentative un peu plus tard. ("Sleep for a while") Dans le cas contraire, on dépile pour
+nouvelle tentative un peu plus tard ("Sleep for a while"). Dans le cas contraire, on dépile pour
 passer à la requête suivante.
 
 Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité à ce moment-là. En
@@ -156,6 +159,8 @@ L'exécution d'une requête de la file est confiée à launch_fork_process() (vo
 
 run_delayed_tasks
 -----------------
+
+<Algo_run_delayed_tasks.png>
 
 Cette fonction est chargée de traiter la file des tâches différées (delayed_tasks). Lorsqu'une tâche
 ne peut pas être exécutée par un noeud, soit elle est refusée (et retournée à l'émetteur), soit
