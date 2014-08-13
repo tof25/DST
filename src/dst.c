@@ -3138,7 +3138,7 @@ static void run_delayed_tasks(node_t me) {
                             req->sender_id);
 
                     //buf_type = req->type;
-                    is_contact = (req->sender_id == req->args.cnx_req.new_node_id);
+                    is_contact = (req->sender_id == req->args.cnx_req.new_node_id);  // new_node_id is the first field of every request
                     buf_new_node_id = req->args.cnx_req.new_node_id;
 
                     // run task

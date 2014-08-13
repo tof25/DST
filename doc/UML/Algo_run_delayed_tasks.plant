@@ -2,7 +2,7 @@
 title <u>Run_Delayed_Tasks</u>\n\n
 (*top) -->"cpt <-- 0\nidx <-- 0\nval_ret <-- OK\nnb_elems <-- taille de delayed_tasks"
 
-partition "Run CNX_GROUPS for same new node"
+partition "Run CNX_GROUPS (if any) for same new node"
 
 -->"state.active = 'u' && delayed_tasks non vide ?"
 if ""
@@ -46,12 +46,13 @@ if ""
         -->"idx < nb_elems && state.active = 'a' ?" as loop2
         if ""
             -->[Yes] "task <-- delayed_tasks(idx)"
-            -->"is_contact <-- (task.sender_id = cnx_req.new_node_id ?)\nbuf_new_node_id <-- cnx_req.new_node_id"
+            -->"is_contact <-- (task.sender_id = task_args.new_node_id ?)\nbuf_new_node_id <-- task_args.new_node_id"
             -->"val_ret <-- handle_task(task)"
             -->"val_ret = UPDATE_NOK ?"
 
 note left
     reset me.cs_req ?
+    A expliquer
 end note
 
             if "" then

@@ -170,16 +170,15 @@ On distingue deux cas : soit le noeud courant est à l'état 'u', soit il est à
 
 1) état 'u'
 -----------
-Dans ce cas, un nouveau noeud est en cours d'insertion. Il est donc important de traiter en priorité
-les tâches qui pourraient permettre de terminer cette insertion (l'idée est toujours d'éviter les
-blocages)
+Dans ce cas, un nouveau noeud est en cours d'insertion et les seules tâches exécutables ici sont
+celles qui pourraient permettre de terminer cette insertion (toujours dans l'idée d'éviter les blocages)
+Il s'agit des tâches CNX_GROUPS pour le même nouveau noeud que celui en cours d'insertion.
+(c'est le test cnx_groups.new_node_id = state.new_node_id)
 
-On parcourt donc la file à la recherche d'éventuels CNX_GROUPS pour le même nouveau noeud que celui
-en cours d'insertion (c'est le test cnx_groups.new_node_id = state.new_node_id) et on tente de les
-exécuter. (handle_task(task))
+On parcourt donc la file à la recherche de ces tâches qu'on tente d'exécuter. (handle_task(task))
 
-Lorsqu'on trouve une tâche CNX_GROUPS à exécuter, on l'ôte de la file sans s'assurer que son
-exécution a réussi ou pas. En effet, si elle a échoué, elle est à nouveau stockée dans la file.
+Lorsqu'on en trouve une, on l'ôte de la file sans s'assurer que son exécution a réussi ou pas
+puisque si elle échoue, elle est à nouveau stockée dans la file.
 
 *******************************************************************************
 TODO : corriger le commentaire ici à cause de la possibilité de boucle sans fin
