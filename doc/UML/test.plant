@@ -1,0 +1,13 @@
+@startuml
+
+start
+
+while (cpt < nb_elems && state.active = 'u')
+    :task1;
+    :task2;
+    :task3;
+endwhile
+
+stop
+
+@enduml

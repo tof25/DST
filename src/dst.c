@@ -3075,7 +3075,7 @@ static void run_delayed_tasks(node_t me) {
                     xbt_dynar_remove_at(me->delayed_tasks, cpt, &elem);
                     cpt--;
                     handle_task(me, &elem);
-                    nb_elems = (int) xbt_dynar_length(me->delayed_tasks);
+                    //nb_elems = (int) xbt_dynar_length(me->delayed_tasks);
 
                     /*TODO : il semble qu'il y ait ici une possiblité de boucle infinie si les
                              CNX_GROUPS sont à nouveau stockées. Possible ? */
