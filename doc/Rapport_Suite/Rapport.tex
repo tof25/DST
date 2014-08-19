@@ -160,55 +160,54 @@ L'exécution d'une requête de la file est confiée à launch_fork_process() (vo
 run_delayed_tasks
 -----------------
 
-<Algo_run_delayed_tasks.png>
+<Algo_run_delayed_tasks.png> TODO : image à couper en deux ?
 
 Cette fonction est chargée de traiter la file des tâches différées (delayed_tasks). Lorsqu'une tâche
 ne peut pas être exécutée par un noeud, soit elle est refusée (et retournée à l'émetteur), soit
-elle est stockée dans cette file pour être exécutée plus tard.
+elle est stockée dans cette file pour être exécutée plus tard. Cette fonction est donc appelée
+périodiquement. (Voir run_tasks_queue)
 
 On distingue deux cas : soit le noeud courant est à l'état 'u', soit il est à 'a'.
 
 1) état 'u'
 -----------
-Dans ce cas, un nouveau noeud est en cours d'insertion et les seules tâches exécutables ici sont
-celles qui pourraient permettre de terminer cette insertion (toujours dans l'idée d'éviter les blocages)
-Il s'agit des tâches CNX_GROUPS pour le même nouveau noeud que celui en cours d'insertion.
-(c'est le test cnx_groups.new_node_id = state.new_node_id)
-
-On parcourt donc la file à la recherche de ces tâches qu'on tente d'exécuter. (handle_task(task))
-
-Lorsqu'on en trouve une, on l'ôte de la file sans s'assurer que son exécution a réussi ou pas
-puisque si elle échoue, elle est à nouveau stockée dans la file.
-
-*******************************************************************************
-TODO : corriger le commentaire ici à cause de la possibilité de boucle sans fin
-*******************************************************************************
-
-Variables: 
-    - nb_elems : contient le nombre d'éléments de la file.
+Variables:
+    - nb_elems : contient le nombre d'éléments de la file au lancement de run_delayed_tasks
 
     - cpt      : itérateur (de 0 à nb_elems)
 
+Un nouveau noeud est alors en cours d'insertion et il faut examiner ce cas en premier pour minimiser
+les risques de blocages.
+Les seules tâches exécutables ici sont celles qui pourraient permettre de terminer cette insertion,
+c'est à dire les CNX_GROUPS pour le même nouveau noeud que celui en cours d'insertion.
+(c'est le test task_args.new_node_id == state.new_node_id)
+
+On parcourt donc la file à la recherche de ces tâches pour les exécuter. (handle_task(task))
+
+Lorsqu'on en trouve une, on peut l'ôter de la file sans s'assurer que son exécution a réussi ou pas
+puisque si elle échoue, elle est à nouveau stockée dans la file.
+
+A noter : à l'issue de la fonction handle_tasks, le nombre de tâches de la file a pu augmenter.
+Pourant, on choisi de ne pas mettre à jour la variable nb_elems ici pour ne pas risquer une boucle
+sans fin. Si des tâches ont été ajoutées entre temps, elles seront traitées lors d'une prochaine
+exécution de run_delayed_tasks.
+
 2) état 'a'
 -----------
-Ici, le noeud courant est prêt à exécuter n'importe quelle tâche et il s'agit donc de traiter toutes
-les autres tâches.
+Ici, le noeud courant est prêt à exécuter n'importe quelle autre tâche et on peut passer au reste de
+la file.
 
 Variables:
-    - nb_elems   :      comme précédemment, elle contient le nombre d'éléments de la file.
-                        Elle n'est pas remise à jour en cours de boucle comme dans le cas précécent.
-                        Si d'autres tâches sont stockées dans l'intervalle, on n'en tient pas compte
-                        immédiatement, elles seront traitées lors d'une prochaine exécution de cette
-                        fonction. (l'idée est de ne pas risquer de se retrouver dans une boucle sans
-                        fin)
+    - nb_elems   :      le nombre d'éléments restants de la file.
+                        N'est pas non plus remis à jour en cours de boucle.
 
     - idx        :      itérateur (de 0 à nb_elems)
 
     - is_contact :      vaut 1 si le noeud courant est le contact direct du nouveau noeud.
-                        (autrement dit, si l'émetteur de la tâche est le nouveau noeud)
+                        (autrement dit, si l'émetteur de la tâche à exécuter est le nouveau noeud)
 
-    - buf_new_node_id : cnx_req.new_node_id est mémorisé dans cette variable parce qu'on en a besoin
-                        après la destruction de cnx_req.
+    - buf_new_node_id : task_args.new_node_id est mémorisé dans cette variable parce qu'on en a besoin
+                        après la destruction de task.
 
     On ôte la tâche courante de la file dans les cas suivants :
         - l'exécution a réussi (OK et UPDATE_OK)
@@ -221,16 +220,24 @@ Variables:
 TODO : ne pourrait-on pas utiliser FAILED ici plutôt que is_contact ?
 *********************************************************************
 
-On peut également remarquer que si le noeud courant était verrouillé pour le même nouveau noeud que
+A noter : si le noeud courant était verrouillé pour le même nouveau noeud que
 celui dont la tâche vient d'échouer, alors on ôte le verrou.
 
 *****************
 TODO : pourquoi ?
 *****************
 
-Il est imoportant de souligner qu'à l'issue de l'exécution de cette fonction, la file n'est pas
-forcément vide. Elle contient toutes les tâches dont l'exécution a échoué (et qu'on veut retenter
-plus tard), et celles qui ont été stockées par d'autres process entre temps.
+À l'issue de l'exécution de cette boucle (idx == nb_elems), la file n'est pas forcément vide. Elle
+contient toutes les tâches dont l'exécution a échoué et celles qui ont été stockées par d'autres
+process entre temps. Cette boucle est alors à nouveau exécutée jusqu'à ce que nb_elems soit à 0,
+c'est dire jusqu'au succès de toutes les tâches qui se trouvaient dans cette file au moment de
+cet appel de run_delayed_tasks. Comme indiqué précédemment, les tâches ajoutées entre temps ne
+seront pas traitées lors de cette exécution.
+
+*************************************************************************************************
+TODO : se pourrait-il qu'il y ait un nouveau risque de boucle ici si une tâche échoue toujours ?
+       ne faudrait-il pas repérer ce cas ?
+*************************************************************************************************
 
 
 launch_fork_process

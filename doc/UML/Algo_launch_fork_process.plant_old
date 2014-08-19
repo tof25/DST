@@ -1,0 +1,39 @@
+@startuml
+title <u>Launch fork process</u>\n\n
+(*top) -->"val_ret <-- OK"
+-->"task = CNX_REQ || BR_SPLIT || BR_CS_REQ ?"
+if "" then
+    -->[Yes\nFork Process]"proc_data.node <-- me\nproc_data.task <-- task\ninit proc_data.async_answers\ninit proc_data.sync_answers"
+
+    note left
+        Init proc data
+    end note
+    -->"set proc_label"
+    note left
+      "Cnx_req"
+      "Br_Split"
+      "Br_Cs_Req"
+      "Broadcast"
+    end note
+
+    -->"task = BR_CS_REQ ?"
+    if "" then
+        -->[Yes]"val_ret <-- cs_req()"
+        -->"val_ret = OK ?"
+    else
+        -->[No]"val_ret = OK ?"
+    endif
+
+    if "" then
+        -->[Yes]"create fork process\nto run task"
+        -->(*)
+    else
+        -->[No]"not available:\ndon't create process\ndon't run task"
+        -->"tell task sender"
+        -->(*)
+    endif
+else
+    -->[No\nMain Process] "run task locally"
+    -->(*)
+endif
+@enduml
