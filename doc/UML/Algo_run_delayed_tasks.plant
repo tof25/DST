@@ -1,96 +1,53 @@
 @startuml
-title <u>Run_Delayed_Tasks</u>\n\n
-(*top) -->"cpt <-- 0\nidx <-- 0\nval_ret <-- OK\nnb_elems <-- taille de delayed_tasks"
 
-partition "Run CNX_GROUPS (if any) for same new node"
+start
 
--->"state.active = 'u' && delayed_tasks non vide ?"
-if ""
-    -->[Yes]"cpt < nb_elems && state.active = 'u' ?" as jump0
-    if "" then
-        -->[Yes] "task <-- delayed_tasks(cpt)" as loop1
-        -->"task.type = CNX_GROUPS ?"
-        if ""
-            -->[Yes] "cnx_groups.new_node_id = state.new_node_id ?"
-            if ""
-                -->[Yes] "remove delayed_tasks(cpt)"
-                -->"cpt --"
-                -->"handle_tasks(task)"
-                -->"nb_elems <-- taille de delayed_tasks"
-                -->"cpt ++" as jump1
-            else
-                -->[No] jump1
-            endif
-        else
-            -->[No] jump1
-        endif
-        -->jump0
-    else
-        -->[No] == JUMP2 ==
-    endif
-end partition
+:cpt <-- 0
+idx <-- 0
+val_ret <-- OK
+nb_elems <-- taille de delayed_tasks;
 
-else
-    -->[No] == JUMP2 ==
-endif
-== JUMP2 == --> "state.active = 'a' && delayed_tasks non vide ?"
+if (state.active = 'u' && delayed_tasks non vide ?) then (yes)
 
-note right : Process other delayed_tasks
-
-if ""
-    -->[Yes] "nb_elems > 0 ?"
-    if ""
-        -->[Yes] "is_contact <-- 0\nbuf_new_node_id <-- -1"
-        --> == LOOP3 ==
-        -->"idx <-- 0"
-        -->"idx < nb_elems && state.active = 'a' ?" as loop2
-        if ""
-            -->[Yes] "task <-- delayed_tasks(idx)"
-            -->"is_contact <-- (task.sender_id = task_args.new_node_id ?)\nbuf_new_node_id <-- task_args.new_node_id"
-            -->"val_ret <-- handle_task(task)"
-            -->"val_ret = UPDATE_NOK ?"
-
-note left
-    reset me.cs_req ?
-    A expliquer
-end note
-
-            if "" then
-                -->[Yes] "state.active = 'a' &&\nme.cs_req = 1 &&\nme.cs_new_id = buf_new_node_id ?"
-                if "" then
-                    -->[Yes]"reset me.cs_req"
-                    --> == JUMP3 ==
-                else
-                    -->[No] == JUMP3 ==
-                endif
-
-                    == JUMP3 == -->"val_ret = OK ||\nval_ret = UPDATE_OK ||\n(val_ret = UPDATE_NOK && !is_contact) ||\nval_ret = STORED ?"
-                if "" then
-                    -->[Yes]"remove delayed_tasks(idx)"
-                    -->"nb_elems --"
-                    --> == LOOP2 ==
-                else
-                    -->[No] "idx ++"
-                    --> == LOOP2 ==
-                    --> loop2
-                endif
-            else
-                -->[No] == JUMP3 ==
-            endif
-
-        else
-            -Right->[No] "val_ret = OK &&\nnb_elems > 0 &&\nstate.active = 'a'"
-            if "" then
-                -->[Yes] == LOOP3 ==
-            else
-                -->[No] "END"
-                -->(*)
+    while (cpt < nb_elems && state.active = 'u' ?)
+        :task <-- delayed_tasks(cpt);
+        if (task.type == CNX_GROUPS ?) then (yes)
+            if (task.args.new_node_id == state.new_node_id ?) then (yes)
+                :remove delayed_tasks(cpt);
+                :cpt--;
+                :handle_tasks(task);
             endif
         endif
-    else
-        -->[No] "END"
-    endif
-else
-    -->[No] "END"
+        :cpt++;
+    endwhile
 endif
+
+if (state.active = 'a' && delayed_tasks non vide ?) then (yes)
+    if (nb_elems > 0 ?) then (yes)
+        :is_contact <-- 0\nbuf_new_node_id <-- -1;
+        repeat
+            :idx <-- 0;
+            while (idx < nb_elems && state.active == 'a' ?)
+                :task <-- delayed_tasks(idx);
+                :is_contact <-- (task.sender_id == task.args.new_node_id ?);
+                :buf_new_node_id <-- task.args.new_node_id;
+                :val_ret <-- handle_tasks(task);
+                if (val_ret == UPDATE_NOK ?) then (yes)
+                    if (state.active == 'a' &&\nme.cs_req == 1 &&\nme.cs_new_id == buf_new_node_id ?) then (yes)
+                        :reset me.cs_req;
+                    endif
+                endif
+                if (val_ret == OK ||\nval_ret == UPDATE_OK ||\n(val_ret == UPDATE_NOK && !is_contact) ||\nval_ret == STORED ?) then (yes)
+                    :remove delayed_tasks(idx);
+                    :nb_elems--;
+                else (no)
+                    :idx++;
+                endif
+            endwhile
+        repeatwhile (val_ret == OK &&\nnb_elems > 0 &&\nstate.active == 'a' ?)
+    endif
+endif
+
+stop
+
 @enduml
