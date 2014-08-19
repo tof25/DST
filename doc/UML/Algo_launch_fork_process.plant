@@ -4,7 +4,7 @@ title <u>Launch fork process</u>\n\n
 start
 
 :val_ret <-- OK;
-if (task == CNX_REQ || BR_SPLIT || BR_CS_REQ ?) then (yes\nFork Process)
+if (task.type == CNX_REQ || BR_SPLIT || BR_CS_REQ ?) then (yes\nFork Process)
     :proc_data.node <-- me\nproc_data.task <-- task\ninit proc_data.async_answers\ninit proc_data.sync_answers;
 
     note left
@@ -18,8 +18,9 @@ if (task == CNX_REQ || BR_SPLIT || BR_CS_REQ ?) then (yes\nFork Process)
       "Broadcast"
     end note
 
-    if (task == BR_CS_REQ ?) then (yes)
+    if (task.type == BR_CS_REQ ?) then (yes)
         :val_ret <-- cs_req();
+    else (no)
     endif
 
     if (val_ret == OK ?) then (yes)
