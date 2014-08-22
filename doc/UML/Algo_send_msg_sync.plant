@@ -10,8 +10,59 @@ start
 repeat
     :send task (with isend);
     :push sent request onto proc dynar sync_answers;
+    while (communication is not finished &&\nmax_wait is not reached ?)
+        :sleep for a while;
+    endwhile
+    if (max_wait reached ?) then (yes)
+        :res <-- MSG_TRANSFER_FAILURE;
+        stop
+    else (no)
+        :res <-- comm_status;
+    endif
+    if (res == MSG_TIMEOUT) then (yes)
+        :loop_cpt++;
+    endif
 
-while (res == MSG_TIMEOUT && loop_cpt < max_loop ?)
+while (res == MSG_TIMEOUT && loop_cpt < max_loops ?)
+
+if (loop_cpt >= max_loops ||\nres != MSG_OK) then (yes)
+    :display error message;
+    stop
+else (no)
+    :res <-- MSG_OK;
+
+    note right
+        reception loop to get the answer back
+    end note
+
+    while (res != MSG_TIMEOUT ||\nreq.type != GET_REP)
+        :dynar_idx <-- -1;
+        :listen to answer;
+        if (res != MSG_OK) then (yes)
+            :display error message;
+        else (no)
+            if (received task is a request ?) then (request)
+                if (req.type == CNX_REQ ?) then (yes)
+                    :push req on tasks_queue;
+                else (no)
+                    :handle_task(req);
+                endif
+                :look into proc dynar sync_answers;
+                if (answer received meanwhile ?) then (yes)
+                    :pop record from sync_answers;
+                    stop
+                else (no)
+                endif
+            else (answer)
+                if (expected answer ?) then (yes)
+                    :pop record from sync_answers;
+                    stop
+                else (no)
+                endif
+            endif
+        endif
+    endwhile
+endif
 
 stop
 

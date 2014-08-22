@@ -3842,7 +3842,7 @@ static msg_error_t send_msg_sync(node_t me,
         // async send
         comm = MSG_task_isend(task_sent, req_data->sent_to);
 
-        // push onto sync_answers dynar
+        // push onto proc sync_answers dynar
         req_elem = xbt_new0(s_recp_rec_t, 1);
         req_elem->type = type;
         req_elem->recp.id = recipient_id;
@@ -3892,6 +3892,7 @@ static msg_error_t send_msg_sync(node_t me,
 
         // only loop_cpt attemps are allowed
         if (res == MSG_TIMEOUT) loop_cpt++;
+        //TODO: il faudrait dépiler sync_answers ici puisqu'on n'aura jamais la réponse.
 
     } while (res == MSG_TIMEOUT && loop_cpt < max_loops);
 
@@ -4045,6 +4046,7 @@ static msg_error_t send_msg_sync(node_t me,
                         xbt_dynar_length(proc_data->sync_answers));
 
                 // if it exists, the expected answer is at the top of dynar
+                // TODO : est-on sûr de ça ?
                 elem_ptr = xbt_dynar_get_ptr(
                         proc_data->sync_answers,
                         xbt_dynar_length(proc_data->sync_answers) - 1);
