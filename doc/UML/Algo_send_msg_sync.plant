@@ -1,0 +1,18 @@
+@startuml
+
+start
+
+:init request data;
+:create node and process mailboxes;
+:create task to be sent;
+:loop_cpt <-- 0;
+
+repeat
+    :send task (with isend);
+    :push sent request onto proc dynar sync_answers;
+
+while (res == MSG_TIMEOUT && loop_cpt < max_loop ?)
+
+stop
+
+@enduml

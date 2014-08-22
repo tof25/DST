@@ -129,13 +129,16 @@ les requêtes présentes dans cette file, par ordre de priorité.
 Après avoir traité les tâches différées (voir détails run_delayed_tasks plus loin), on s'occupe de
 la file tasks_queue proprement dite, à condition d'être actif (à l'état 'a').
 
-Variable Run_state :
+Le noeud courant possède deux variables "de noeud" (c'est à dire globales à tous les process qui
+tournent sur ce noeud) :
+
+* Run_state :
 Chaque requête de cette file sera traitée par un process distinct, mais il n'est pas possible ici
 d'insérer plus d'un nouveau noeud à la fois et il faut donc que ces process s'exécutent
-séquentiellement. C'est la raison d'être de la variable de noeud Run_state : pour s'occuper de la
-tâche suivante, la tâche courante doit être terminée. (valeur IDLE)
+séquentiellement. C'est la raison d'être de cette variable Run_state : pour s'occuper de la tâche
+suivante, la tâche courante doit être terminée. (valeur IDLE)
 
-Variable Last_return :
+* Last_return :
 Il y a deux sortes d'échec d'insertion possibles.
 Lors de l'arrivée d'un nouveau noeud, on a la séquence d'appels suivante : nouveau noeud -->
 contact --> leader. En cas d'échec, le contact doit refaire une tentive plus tard, mais son leader
@@ -145,7 +148,8 @@ retourne la valeur FAILED alors qu'un contact retournera la valeur UPDATE_NOK.
 
 Comme on peut le voir, une valeur de retour UPDATE_NOK laisse la requête dans la file pour une
 nouvelle tentative un peu plus tard ("Sleep for a while"). Dans le cas contraire, on dépile pour
-passer à la requête suivante.
+passer à la requête suivante. (On voit donc bien qu'en cas de retour FAILED, la requête est bien
+dépilée.)
 
 Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité à ce moment-là. En
 effet, pendant le temps d'exécution du CNX_REQ, d'autres demandes d'insertion ont pu arriver dans la
@@ -249,11 +253,9 @@ Si la tâche transmise à cette fonction n'est ni une demande de connexion (CNX_
 diffusion de SPLIT ou de CS_REQ, alors elle est exécutée localement, c'est à dire par le process
 courant. Sinon, elle est confiée à un nouveau process créé pour l'occasion.
 
-Remarques sur ce nouveau process:
---------------------------------
-Il doit possèder ses propres file d'attente de réponses attendues (async_answers et sync_answers)
-de sorte qu'elles ne puissent plus être mélangées avec celles requises pour l'insertion d'un autre
-nouveau noeud.
+Ce nouveau process doit possèder ses propres files d'attente de réponses attendues (async_answers et
+sync_answers) de sorte qu'elles ne puissent plus être mélangées avec celles requises pour l'insertion
+d'un autre nouveau noeud.
 
 Il est labelisé ainsi : xxx-nom_process-yyy où :
   - xxx est l'id du noeud courant

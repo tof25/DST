@@ -2800,7 +2800,10 @@ static void run_tasks_queue(node_t me) {
     me->run_task.run_state = IDLE;
     me->run_task.last_ret = UPDATE_NOK;
     e_run_state_t prev_state = RUNNING;
+
+    // sort queue by priority order
     sort_tasks_queue(me);
+
     float max = 4.3;
     float min = 1.2;
     double sleep_time = 0;
@@ -2963,6 +2966,7 @@ static void run_tasks_queue(node_t me) {
                     cpt = 0;
                 }
 
+                // sort queue by priority order
                 sort_tasks_queue(me);
 
                 state = get_state(me);

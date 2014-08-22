@@ -1,7 +1,11 @@
 @startuml
 
-(*top) --> "<i>Run_state</i> <-- IDLE" as init1
---> "<i>Last_return</i> <-- UPDATE_NOK" as init2
+start
+
+:<i>cpt</i> <--  -1
+<i>is_leader</i> <-- 0
+<i>Run_state</i> <-- IDLE;
+:<i>Last_return</i> <-- UPDATE_NOK;
 note left
     Possible values:
     - OK
@@ -10,53 +14,37 @@ note left
     - UPDATE_NOK
     - FAILED
 end note
---> "Sort Queue by priority order" as init4
---> "<i>cpt</i> <--  -1" as init3
+:Sort Queue by priority order;
 
---> "<b>Run Delayed Tasks</b>\n(if any)" as q1
---> "Tasks Queue not empty  &&\n<i>active</i> = 'a' ?"
+repeat
+    :<b>Run Delayed Tasks</b>\n(if any);
+    if (Tasks Queue not empty  &&\n<i>active</i> == 'a' ?) then (yes)
 
-if "" then
-    -->[No] "Sleep for a while" as s1
-    --> "End time ?"
-    if "" then
-        -->[Yes] "END"
-        -->(*)
-    else
-        -->[No] q1
-    endif
-else
-    -->[Yes] "<i>Run_state</i> = IDLE ?"
-    if "" then
-        -->[Yes] "<i>Last_return</i> = UPDATE_NOK ?"
-        note right : if FAILED, remove head task also\n(only for leader)
-        if "" then
-            -->[No] "<i>Last_return</i> <-- NOK"
-            --> "Shift Queue (remove head)" as q3
-            --> "<i>cpt</i> <-- 0" as q4
-            --> "Sort Queue by priority order" as q2
-        else
-            -->[Yes] "<i>cpt</i> ++"
-            --> "<i>cpt</i> >= <i>MAX_CNX</i> ?"
-            if "" then
-                -->[Yes] "Display Warning"
-                --> "<i>cpt</i> <-- 0"
-                --> q2
-            else
-                -->[No] q2
+        if (<i>Run_state</i> == IDLE ?) then (yes)
+            if (<i>Last_return</i> == UPDATE_NOK ?) then (no)
+                :<i>Last_return</i> <-- UPDATE_NOK;
+                :Shift Queue (remove head);
+                :<i>cpt</i> <-- 0;
+            else (yes)
+                :<i>cpt</i> ++;
+                if (<i>cpt</i> >= <i>MAX_CNX</i> ?) then (yes)
+                    :Display Warning;
+                    :<i>cpt</i> <-- 0;
+                else (no)
+                endif
             endif
+            :Sort Queue by priority order;
+            if (Queue not empty  &&\n<i>state</i> == 'a' ?) then (no)
+            else (yes)
+                :<b>Launch fork process</b> to run head request
+                <i>Run_state</i> <-- RUNNING;
+            endif
+        else (no)
         endif
-        --> "Queue not empty  &&\n<i>state</i> = 'a' ?"
-        if "" then
-            -->[No] s1
-        else
-            -->[Yes] "<b>Launch fork process</b> to run head request"
-            --> "<i>Run_state</i> <-- RUNNING" as run1
-            --> s1
-        endif
-    else
-        -->[No] s1
+    else (no)
     endif
-endif
+    :Sleep for a while;
+while (End Time ?)
+stop
 
 @enduml
