@@ -2,15 +2,16 @@
 
 start
 
-:init request data;
+:init req data;
 :create node and process mailboxes;
+:cpy_req <-- req;
 :create task to be sent;
 :loop_cpt <-- 0;
 
 repeat
     :send task (with isend);
     :push sent request onto proc dynar sync_answers;
-    while (communication is not finished &&\nmax_wait is not reached ?)
+    while (communication not finished &&\nmax_wait not reached ?) is (yes)
         :sleep for a while;
     endwhile
     if (max_wait reached ?) then (yes)
@@ -26,23 +27,25 @@ repeat
 
 repeat while (res == MSG_TIMEOUT && loop_cpt < max_loops ?) is (try again)
 
-if (loop_cpt >= max_loops ||\nres != MSG_OK) then (sending failed)
+if (loop_cpt >= max_loops ||\nres != MSG_OK) then (yes : sending failed)
     :display error message;
     stop
-else (send success)
+else (no : send success)
     :res <-- MSG_OK;
 
     note right
         reception loop to get the answer back
     end note
 
-    while (res != MSG_TIMEOUT ||\nreq.type != GET_REP) is (answer not received yet)
+    :success <-- false;
+
+    while (success == false &&\n(res != MSG_TIMEOUT ||\ncpy_req.type != GET_REP)) is (yes : answer not received yet)
         :dynar_idx <-- -1;
-        :listen to answer;
-        if (res != MSG_OK) then (yes)
+        :listen to tasks;
+        if (res != MSG_OK) then (yes : reception failure)
             :display error message;
-        else (no)
-            if (received task is a request ?) then (request)
+        else (no : task received)
+            if (request or answer ?) then (request)
                 if (req.type == CNX_REQ ?) then (yes)
                     :push req on tasks_queue;
                 else (no)
@@ -50,28 +53,22 @@ else (send success)
                 endif
                 :look into proc dynar sync_answers;
                 if (answer received meanwhile ?) then (yes)
-                    :pop record from sync_answers;
-                    note right
-                    get out of the while loop
-                    end note
-                    stop
+                    :pop record from proc sync_answers;
+                    :success <-- true;
                 else (no)
                 endif
             else (answer)
-                :dynar_idx <-- expected_answers_search(proc sync_answers);
-                if (dynar_idx == top of proc sync_answers\n(i.e. expected answer) ?) then (yes)
+                :dynar_idx <-- expected_answers_search(ans, proc **sync_answers**);
+                if (dynar_idx == top of proc sync_answers ?) then (yes : expected answer)
                     :pop record from sync_answers;
-                    note right
-                    get out of the while loop
-                    end note
-                    stop
+                    :success <-- true;
                 else (no)
-                    if (dynar_idx > - 1 ?) then (other sync expected answer)
-                        :rec_sync_answer(dynar_idx, req);
-                    else (not expected answer)
-                        :dynar_idx <-- expected_answers_search(proc async_answers);
-                        if (dynar_idx != -1) then (async expected answer)
-                            :rec_async_answer(dynar_idx, req);
+                    if (dynar_idx > - 1 ?) then (yes : other sync expected answer)
+                        :rec_sync_answer(dynar_idx, ans);
+                    else (not a sync expected answer)
+                        :dynar_idx <-- expected_answers_search(ans, proc **async_answers**);
+                        if (dynar_idx != -1) then (yes : async expected answer)
+                            :rec_async_answer(dynar_idx, ans);
                         else (not expected answer)
                             :discard answer;
                         endif
@@ -79,8 +76,18 @@ else (send success)
                 endif
             endif
         endif
-    endwhile (stop listening)
+    endwhile (no : stop listening)
+
+    if (res == MSG_TIMEOUT &&\ncpy_req.type == GET_REP) then (GET_REP timeout)
+        if (proc sync_answers is not empty ?) then (yes)
+            :pop GET_REP task from proc sync_answers dynar;
+        else (no)
+        endif
+    else (no)
+    endif
 endif
+
+:return res;
 
 stop
 
