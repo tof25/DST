@@ -21,21 +21,22 @@ repeat
     endif
     if (res == MSG_TIMEOUT) then (yes)
         :loop_cpt++;
+    else (no)
     endif
 
-while (res == MSG_TIMEOUT && loop_cpt < max_loops ?)
+repeat while (res == MSG_TIMEOUT && loop_cpt < max_loops ?) is (try again)
 
-if (loop_cpt >= max_loops ||\nres != MSG_OK) then (yes)
+if (loop_cpt >= max_loops ||\nres != MSG_OK) then (sending failed)
     :display error message;
     stop
-else (no)
+else (send success)
     :res <-- MSG_OK;
 
     note right
         reception loop to get the answer back
     end note
 
-    while (res != MSG_TIMEOUT ||\nreq.type != GET_REP)
+    while (res != MSG_TIMEOUT ||\nreq.type != GET_REP) is (answer not received yet)
         :dynar_idx <-- -1;
         :listen to answer;
         if (res != MSG_OK) then (yes)
@@ -50,18 +51,35 @@ else (no)
                 :look into proc dynar sync_answers;
                 if (answer received meanwhile ?) then (yes)
                     :pop record from sync_answers;
+                    note right
+                    get out of the while loop
+                    end note
                     stop
                 else (no)
                 endif
             else (answer)
-                if (expected answer ?) then (yes)
+                :dynar_idx <-- expected_answers_search(proc sync_answers);
+                if (dynar_idx == top of proc sync_answers\n(i.e. expected answer) ?) then (yes)
                     :pop record from sync_answers;
+                    note right
+                    get out of the while loop
+                    end note
                     stop
                 else (no)
+                    if (dynar_idx > - 1 ?) then (other sync expected answer)
+                        :rec_sync_answer(dynar_idx, req);
+                    else (not expected answer)
+                        :dynar_idx <-- expected_answers_search(proc async_answers);
+                        if (dynar_idx != -1) then (async expected answer)
+                            :rec_async_answer(dynar_idx, req);
+                        else (not expected answer)
+                            :discard answer;
+                        endif
+                    endif
                 endif
             endif
         endif
-    endwhile
+    endwhile (stop listening)
 endif
 
 stop
