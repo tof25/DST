@@ -270,30 +270,36 @@ informer l'émetteur de la requête.
 
 Description des fonctions de communication:
 *******************************************
-<Algo_send_msg_sync.png>  TODO : Algo à faire 
+<Algo_send_msg_sync.png>
 
-<Algo_recept_Send_Sync.png>
 La fonction send_msg_sync() est chargée d'envoyer une requête à un autre noeud, puis d'en attendre
 la réponse.
-Cet algorithme présente cette partie d'attente de réponse.
 
-Deux types de tâches peuvent être reçus :
+Introduction : Chaque process hébergé par un noeud possède deux files : sync_answers et async_answers.
+**************
+Ces deux files servent à stocker les requêtes synchrones et asynchrones (respectivement) en attente
+de réponse.
 
-1) Requête:
-***********
+Lorqu'une réponse est reçue, il y a trois cas possibles :
+- il s'agit de la réponse qu'on est en train d'attendre :
+  Dans ce cas, la requête correspondante est simplement dépilée et le traitement se poursuit
 
-Si c'est une CNX_REQ, on la place dans Tasks_Queue (voir algo run_tasks_queue), sinon, elle est
-éxécutée. Si la réponse attendue n'a pas été reçue entre temps, on se remet en écoute. Sinon,
-l'enregistrement correspondant est ôté de la file sync_answers et la réponse mémorisée.
+- il s'agit d'une autre réponse attendue :
+  Elle est alors enregistrée dans la bonne pile au même endroit que la requête correspondante
 
-2) Réponse:
-***********
-Si c'est la réponse attendue, même traitement que plus haut.
-Sinon, s'il s'agit d'une des autres réponses synchrones ou asynchrones attendues, on l'inscrit dans
-la file adéquate (sync_answers ou async_answsers, respectivement). Après quoi on se remet en écoute.
+- il ne s'agit d'aucune réponse attendue :
+  Elle est simplement ignorée (cas de certains accusés réception, par exemple)
+
+Déroulement de l'algo:
+**********************
+
+Première partie : envoi de la requête.
+
+
 
 ---------------------------------------------------
 
+<Algo_recept_Send_Sync.png>   TODO : Algos à faire
 <Algo_recept_Wait.png>
 
 **************************************
