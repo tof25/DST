@@ -270,6 +270,70 @@ informer l'émetteur de la requête.
 
 Description des fonctions de communication:
 *******************************************
+
+Différence entre requêtes synchrones et asynchrones :
+*****************************************************
+
+Synchrone :
+***********
+
+Cas des requêtes suivantes :
+
+- CNX_REQ ( fonctions join(), connection_request()  )
+- SPLIT_REQ ( fonction split_request() )
+- ADD_PRED ( fonction load_balance() )
+- BROADCAST ( fonction handle_task():BROADCAST )
+
+
+L'appelant exécute send_msg_sync() (voir détails plus loin). Cette fonction exécute les tâches
+suivantes :
+- crée la requête
+- encapsule la requête dans une tâche
+- empile la requête sur sync_answers
+- envoie la tâche au destinataire
+- attend la réponse
+- traite tout ce qui est reçu qui n'est pas la réponse
+- dès que la réponse est reçue, dépile la requête de sync_answers
+- retourne la réponse à l'appelant
+
+Asynchrone :
+************
+
+Deux cas possibles : un accusé réception est attendu ou pas
+
+1er cas : Un accusé réception est attendu
+-----------------------------------------
+
+Cas des requêtes suivantes :
+
+- BROADCAST ( fonction broadcast() )
+- NEW_BROTHER_RCV ( fonction connection_request() )
+- DEL_PRED ( fonctions connect_splitted_groups(), split() )
+- ADD_PRED ( fonction connect_splitted_groups() )
+- CNX_GROUPS ( fonction split() )
+
+L'appelant exécute send_msg_async() (voir détails plus loin). Cette fonction exécute les tâches
+suivantes :
+- crée la requête
+- encapsule la requête dans une tâche
+- envoie la tâche au destinataire
+
+Puis l'appelant empile la requête sur async_answers.
+
+Enfin, lorsque plusieurs requêtes ont été émises, il exécute wait_for_completion qui arrête le
+déroulement du programme tant que l'ensemble des accusés réception n'a pas été reçu. (voir détails
+de wait_for_completion plus loin)
+C'est cette fonction qui dépile les requêtes de async_answers au fur et à mesure de leur réception
+et comme send_msg_sync(), elle traite aussi tout ce qu'elle reçoit entre temps.
+
+2e cas : pas d'accusé réception
+-------------------------------
+
+Dans ce cas, l'appelant ne fait qu'exécuter send_msg_async().
+
+send_msg_sync() en détails:
+***************************
+
 <Algo_send_msg_sync.png>
 
 La fonction send_msg_sync() est chargée d'envoyer une requête à un autre noeud, puis d'en attendre
@@ -344,7 +408,7 @@ Remarques :
 ***********
 
 Dans cette fonction, la requête en attente de réponse se trouve toujours au sommet de la pile :
-un process donné ne peut exécuter qu'une seule instance de send_msg_sync à la fois, send_msg_sync
+un process donné ne peut exécuter qu'une seule instance de send_msg_sync() à la fois, send_msg_sync()
 est la seule fonction susceptible d'empiler une requête dans sync_answers, et une pile sync_answers
 n'est associée qu'à un seul process.
 De ce fait, lorsqu'on reçoit une réponse à une requête synchrone attendue, il est facile de déterminer

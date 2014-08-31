@@ -4328,14 +4328,15 @@ static msg_error_t send_msg_async(node_t me,
 
         /* max_wait has to be used in case of receiver process is down.
          * If host is shut down, MSG_TRANSFER_FAILURE is raised but nothing happens if receiver process is down.
-         * // TODO : à vérifier
-         * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
+         * TODO : à vérifier
+         * TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
+         * TODO : tester des cas de TIMEOUT pour voir s'ils sont bien pris en compte
          */
         while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
             MSG_process_sleep(0.9);
         }
-        if (MSG_get_clock() > max_wait || comm == NULL) {
+        if (MSG_get_clock() > max_wait || comm == NULL || MSG_comm_get_status(comm) == MSG_TRANSFER_FAILURE) {
 
             res = MSG_TRANSFER_FAILURE;
             xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
