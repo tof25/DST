@@ -3868,14 +3868,15 @@ static msg_error_t send_msg_sync(node_t me,
 
         /* max_wait has to be used in case of receiver process is down.
          * If host is shut down, MSG_TRANSFER_FAILURE is raised but nothing happens if receiver process is down.
-         * // TODO : à vérifier
-         * // TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
+         * TODO : à vérifier
+         * TODO : comment ajuster COMM_TIMEOUT en cas de mauvais réseau ou de grand DST ?
+         * TODO : tester des cas de TIMEOUT pour voir s'ils sont bien pris en compte
          */
         while (!MSG_comm_test(comm) && MSG_get_clock() <= max_wait) {
 
             MSG_process_sleep(1.2);
         }
-        if (MSG_get_clock() > max_wait || comm == NULL) {
+        if (MSG_get_clock() > max_wait || comm == NULL || MSG_comm_get_status(comm) == MSG_TRANSFER_FAILURE) {
 
             res = MSG_TRANSFER_FAILURE;
             xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
@@ -3890,9 +3891,15 @@ static msg_error_t send_msg_sync(node_t me,
             res = MSG_comm_get_status(comm);
         }
 
-        // only loop_cpt attemps are allowed
-        if (res == MSG_TIMEOUT) loop_cpt++;
-        //TODO: il faudrait dépiler sync_answers ici puisqu'on n'aura jamais la réponse.
+        // only max_loops attempts are allowed
+        if (res == MSG_TIMEOUT) {
+
+            loop_cpt++;
+
+            // get ready for another try
+            xbt_dynar_pop(proc_data->sync_answers, &req_elem);
+            xbt_free(req_elem);
+        }
 
     } while (res == MSG_TIMEOUT && loop_cpt < max_loops);
 
@@ -4046,7 +4053,6 @@ static msg_error_t send_msg_sync(node_t me,
                         xbt_dynar_length(proc_data->sync_answers));
 
                 // if it exists, the expected answer is at the top of dynar
-                // TODO : est-on sûr de ça ?
                 elem_ptr = xbt_dynar_get_ptr(
                         proc_data->sync_answers,
                         xbt_dynar_length(proc_data->sync_answers) - 1);

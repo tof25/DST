@@ -278,14 +278,15 @@ la réponse.
 Introduction : Chaque process hébergé par un noeud possède deux files : sync_answers et async_answers.
 **************
 Ces deux files servent à stocker les requêtes synchrones et asynchrones (respectivement) en attente
-de réponse.
+de réponse. Pour mémoire, la réponse à une requête synchrone contient les données demandées alors
+que la réponse à une requête asynchrone est simplement un accusé réception.
 
 Lorqu'une réponse est reçue, il y a trois cas possibles :
 - il s'agit de la réponse qu'on est en train d'attendre :
   Dans ce cas, la requête correspondante est simplement dépilée et le traitement se poursuit
 
 - il s'agit d'une autre réponse attendue :
-  Elle est alors enregistrée dans la bonne pile au même endroit que la requête correspondante
+  Elle est alors enregistrée dans la bonne pile, avec la requête correspondante
 
 - il ne s'agit d'aucune réponse attendue :
   Elle est simplement ignorée (cas de certains accusés réception, par exemple)
@@ -294,7 +295,60 @@ Déroulement de l'algo:
 **********************
 
 Première partie : envoi de la requête.
+***************************************
 
+Après avoir construit la tâche contenant la requête, celle-ci est envoyée au moyen de la fonction
+isend de Simgrid, puis stockée dans la pile sync_answers du process courant.
+On attend ensuite la fin de la communication.
+
+Deux traitements différents des cas d'échecs :
+- la communication ne se termine pas (cas du process destinataire arrêté) ou elle a le statut
+  MSG_TRANSFER_FAILURE (cas de l'hôte destinataire arrêté) :
+  La fonction s'arrête en retourant une erreur de transmission.
+
+- la communication se termine avec le statut TIMEOUT ( cas d'un destinataire trop occupé, par
+  exemple ) :
+  On recommence l'émission un certain nombre de fois (loop_cpt).
+  Si max_loops est atteint, la fonction est également arrêtée avec une erreur de transmission.
+
+
+Deuxième partie : réception de la réponse
+*****************************************
+
+Dans cette partie, le process courant se met en écoute de la réponse. En cas d'erreur de communication
+( res != MSG_OK ), on la signale et on se remet en écoute, sauf s'il s'agit d'un TIMEOUT pour une
+requête GET_REP. Dans ce cas, on arrête la fonction là en retournant simplement l'erreur pour la
+signaler à l'appelant. (Fin de l'algo) (TODO : expliquer pourquoi ? )
+
+Deux types de tâches peuvent être reçus ici : soit une requête, soit une réponse.
+
+* Cas d'une requête :
+  Si c'est une demande de connexion (CNX_REQ), elle est simplement stockée dans tasks_queue ( TODO :
+  voir si process ou noeud). Sinon, on l'exécute simplement avec handle_task. ( TODO : pourquoi pas
+  launch_fork_process ? )
+
+  Ensuite, on regarde dans la pile sync_answers pour voir si la réponse attendue n'a pas été reçue
+  entre temps. Si oui, elle est dépilée et on quitte la boucle de réception. Sinon, on se remet en
+  écoute.
+
+* Cas d'une réponse :
+  On commence par regarder s'il s'agit de la réponse synchrone attendue. Si oui, elle est dépilée et
+  on quitte la boucle de réception.
+  Sinon, il peut s'agir d'une autre réponse attendue (synchrone ou asynchrone). Autrement dit, la
+  requête correspondante à cette réponse est trouvée dans une des deux piles sync_answers ou
+  async_answers.
+  Dans ce cas, la réponse est enregistrée avec sa requête dans sa pile et on se remet en écoute.
+  S'il ne s'agit d'aucune réponse attendue, on peut l'ignorer simplement et se remettre en écoute.
+
+Remarques :
+***********
+
+Dans cette fonction, la requête en attente de réponse se trouve toujours au sommet de la pile :
+un process donné ne peut exécuter qu'une seule instance de send_msg_sync à la fois, send_msg_sync
+est la seule fonction susceptible d'empiler une requête dans sync_answers, et une pile sync_answers
+n'est associée qu'à un seul process.
+De ce fait, lorsqu'on reçoit une réponse à une requête synchrone attendue, il est facile de déterminer
+s'il s'agit de la réponse attendue ou d'une autre : la requête est au sommet de la pile ou pas.
 
 
 ---------------------------------------------------
