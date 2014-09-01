@@ -1,0 +1,46 @@
+@startuml
+
+title
+send_msg_async()
+
+end title
+
+start
+
+:init req data;
+:create task containing req;
+:loop_cpt <-- 0;
+
+repeat
+    :send task (with isend);
+    while (communication not finished &&\nmax_wait not reached ?) is (yes)
+        :sleep for a while;
+    endwhile
+    if (max_wait reached || comm_status == MSG_TRANSFER_FAILURE ?) then (yes)
+        :res <-- MSG_TRANSFER_FAILURE;
+        stop
+    else (no)
+        :res <-- comm_status;
+    endif
+    if (res == MSG_TIMEOUT ?) then (yes)
+        :loop_cpt++;
+    else (no)
+    endif
+
+repeat while (res == MSG_TIMEOUT && loop_cpt < max_loops ?) is (yes : try again)
+
+if (loop_cpt >= max_loops) then (yes : sending failed)
+    :display error message;
+    stop
+else (no)
+    if (res != MSG_OK) then (yes)
+        :display a warning;
+    else (no : send success)
+    endif
+endif
+
+:return MSG_OK;
+
+stop
+
+@enduml

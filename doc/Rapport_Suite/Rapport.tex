@@ -321,7 +321,7 @@ suivantes :
 Puis l'appelant empile la requête sur async_answers.
 
 Enfin, lorsque plusieurs requêtes ont été émises, il exécute wait_for_completion qui arrête le
-déroulement du programme tant que l'ensemble des accusés réception n'a pas été reçu. (voir détails
+déroulement du programme jusqu'à ce que l'ensemble des accusés réception ait été reçu. (voir détails
 de wait_for_completion plus loin)
 C'est cette fonction qui dépile les requêtes de async_answers au fur et à mesure de leur réception
 et comme send_msg_sync(), elle traite aussi tout ce qu'elle reçoit entre temps.
@@ -407,6 +407,7 @@ Deux types de tâches peuvent être reçus ici : soit une requête, soit une ré
 Remarques :
 ***********
 
+1)
 Dans cette fonction, la requête en attente de réponse se trouve toujours au sommet de la pile :
 un process donné ne peut exécuter qu'une seule instance de send_msg_sync() à la fois, send_msg_sync()
 est la seule fonction susceptible d'empiler une requête dans sync_answers, et une pile sync_answers
@@ -414,6 +415,9 @@ n'est associée qu'à un seul process.
 De ce fait, lorsqu'on reçoit une réponse à une requête synchrone attendue, il est facile de déterminer
 s'il s'agit de la réponse attendue ou d'une autre : la requête est au sommet de la pile ou pas.
 
+2)
+Si send_msg_sync() n'est pas appelée par le process principal, elle ne peut pas recevoir d'autre
+message que celui qui est attendu.
 
 ---------------------------------------------------
 

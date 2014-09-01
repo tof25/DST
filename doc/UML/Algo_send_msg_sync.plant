@@ -1,5 +1,10 @@
 @startuml
 
+title
+send_msg_sync()
+
+end title
+
 start
 
 partition Send_Request {
