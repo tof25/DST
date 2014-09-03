@@ -4035,6 +4035,9 @@ static msg_error_t send_msg_sync(node_t me,
                 } else {
 
                     // handle this received request
+                    if (req->type == TASK_BROADCAST) {
+                        xbt_assert(1 == 0, "TASK_BROADCAST !!");
+                    }
                     handle_task(me, &task_received);
                 }
                 ans = NULL;
