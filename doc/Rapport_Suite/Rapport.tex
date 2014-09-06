@@ -277,16 +277,27 @@ Différence entre requêtes synchrones et asynchrones :
 Synchrone :
 ***********
 
-Cas des requêtes suivantes :
+La requête synchrone est utilisée lorsqu'une réponse est attendue pour poursuivre l'exécution du
+programme.
 
-- CNX_REQ ( fonctions join(), connection_request()  )
-- SPLIT_REQ ( fonction split_request() )
-- ADD_PRED ( fonction load_balance() )
+Cas d'emplois principaux:
+(pour simplifier, la phase d'équilibrage de charge est ignorée ici)
+
+- CNX_REQ ( fonction join() )
+  La réponse attendue est la table de routage du contact qui a réussi l'insertion du nouveau noeud
+
 - BROADCAST ( fonction handle_task():BROADCAST )
+  La réponse attendue ici est la valeur de retour de la fonction handle_task(), c'est à dire le succès
+  ou l'échec de la requête diffusée.
 
+De plus, on utilise aussi ce type de requête pour retransmettre au leader les requêtes CNX_REQ et
+SPLIT_REQ. (pas forcément utile dans le cas de SPLIT_REQ, à voir)
 
-L'appelant exécute send_msg_sync() (voir détails plus loin). Cette fonction exécute les tâches
-suivantes :
+L'attente de la réponse ne devant pas être bloquante, toutes les requêtes ou autres réponses
+arrivant dans l'intervalle doivent être traitées.
+
+Déroulement simplifié des opérations : (voir détails plus loin)
+L'émetteur de la requête appelle send_msg_sync() qui exécute les tâches suivantes :
 - crée la requête
 - encapsule la requête dans une tâche
 - empile la requête sur sync_answers
@@ -296,10 +307,22 @@ suivantes :
 - dès que la réponse est reçue, dépile la requête de sync_answers
 - retourne la réponse à l'appelant
 
+
 Asynchrone :
 ************
 
-Deux cas possibles : un accusé réception est attendu ou pas
+Dans ce type de requête, le destinataire renvoie un simple accusé réception à l'émetteur une fois la
+requête demandée effectuée. Ces accusés réception seront pris en compte ou pas selon les besoins de
+synchronisation.
+
+Dans les deux cas, les opération se déroulent de cette façon :
+
+L'émetteur appelle send_msg_async() qui exécute les tâches suivantes : (voir détails plus loin)
+- crée la requête
+- encapsule la requête dans une tâche
+- envoie la tâche au destinataire
+
+Puis deux cas se présentent :
 
 1er cas : Un accusé réception est attendu
 -----------------------------------------
@@ -312,24 +335,18 @@ Cas des requêtes suivantes :
 - ADD_PRED ( fonction connect_splitted_groups() )
 - CNX_GROUPS ( fonction split() )
 
-L'appelant exécute send_msg_async() (voir détails plus loin). Cette fonction exécute les tâches
-suivantes :
-- crée la requête
-- encapsule la requête dans une tâche
-- envoie la tâche au destinataire
-
-Puis l'appelant empile la requête sur async_answers.
-
-Enfin, lorsque plusieurs requêtes ont été émises, il exécute wait_for_completion qui arrête le
-déroulement du programme jusqu'à ce que l'ensemble des accusés réception ait été reçu. (voir détails
-de wait_for_completion plus loin)
+L'émetteur empile alors la requête sur async_answers puis, lorsque plusieurs requêtes ont été émises,
+il appelle wait_for_completion() pour arrêter le déroulement du programme jusqu'à ce que l'ensemble
+des accusés réception ait été reçu. (voir détails de wait_for_completion plus loin)
 C'est cette fonction qui dépile les requêtes de async_answers au fur et à mesure de leur réception
 et comme send_msg_sync(), elle traite aussi tout ce qu'elle reçoit entre temps.
+
 
 2e cas : pas d'accusé réception
 -------------------------------
 
 Dans ce cas, l'appelant ne fait qu'exécuter send_msg_async().
+
 
 send_msg_sync() en détails:
 ***************************
@@ -342,12 +359,15 @@ la réponse.
 Introduction : Chaque process hébergé par un noeud possède deux files : sync_answers et async_answers.
 **************
 Ces deux files servent à stocker les requêtes synchrones et asynchrones (respectivement) en attente
-de réponse. Pour mémoire, la réponse à une requête synchrone contient les données demandées alors
-que la réponse à une requête asynchrone est simplement un accusé réception.
+de réponse, ainsi que leur réponse, dès qu'elle a été reçue. Ces requêtes sont dépilées dès que leur
+réponse a été prise en compte.
+Pour mémoire, la réponse à une requête synchrone contient les données demandées alors que la réponse
+à une requête asynchrone est simplement un accusé réception.
 
 Lorqu'une réponse est reçue, il y a trois cas possibles :
 - il s'agit de la réponse qu'on est en train d'attendre :
-  Dans ce cas, la requête correspondante est simplement dépilée et le traitement se poursuit
+  Dans ce cas, la réponse est prise en compte, la requête correspondante est simplement dépilée et
+  le traitement se poursuit.
 
 - il s'agit d'une autre réponse attendue :
   Elle est alors enregistrée dans la bonne pile, avec la requête correspondante
@@ -362,7 +382,7 @@ Première partie : envoi de la requête.
 ***************************************
 
 Après avoir construit la tâche contenant la requête, celle-ci est envoyée au moyen de la fonction
-isend de Simgrid, puis stockée dans la pile sync_answers du process courant.
+isend() de Simgrid, puis stockée dans la pile sync_answers du process courant.
 On attend ensuite la fin de la communication.
 
 Deux traitements différents des cas d'échecs :
@@ -382,14 +402,19 @@ Deuxième partie : réception de la réponse
 Dans cette partie, le process courant se met en écoute de la réponse. En cas d'erreur de communication
 ( res != MSG_OK ), on la signale et on se remet en écoute, sauf s'il s'agit d'un TIMEOUT pour une
 requête GET_REP. Dans ce cas, on arrête la fonction là en retournant simplement l'erreur pour la
-signaler à l'appelant. (Fin de l'algo) (TODO : expliquer pourquoi ? )
+signaler à l'appelant.
 
-Deux types de tâches peuvent être reçus ici : soit une requête, soit une réponse.
+GET_REP est traitée de cette façon pour supprimer une possibilité de deadlock. GET_REP demande à un
+noeud de fournir un autre représentant moins chargé pour un étage donné. S'il met trop de temps à
+répondre et qu'on abandonne, ça n'a pas d'autre conséquence que de conserver le même représentant.
+L'équilibrage de charge n'est alors pas optimumn, mais on accepte de défaut pour l'instant.
+
+Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
 
 * Cas d'une requête :
-  Si c'est une demande de connexion (CNX_REQ), elle est simplement stockée dans tasks_queue ( TODO :
-  voir si process ou noeud). Sinon, on l'exécute simplement avec handle_task. ( TODO : pourquoi pas
-  launch_fork_process ? )
+  Si c'est une demande de connexion (CNX_REQ), elle est simplement stockée dans tasks_queue (
+  rappel : cette file est hébergée par le noeud courant ).
+  Sinon, on l'exécute avec handle_task. ( TODO : pourquoi pas launch_fork_process ? )
 
   Ensuite, on regarde dans la pile sync_answers pour voir si la réponse attendue n'a pas été reçue
   entre temps. Si oui, elle est dépilée et on quitte la boucle de réception. Sinon, on se remet en
@@ -421,9 +446,58 @@ message que celui qui est attendu.
 
 ---------------------------------------------------
 
-<Algo_recept_Send_Sync.png>   TODO : Algos à faire
-<Algo_recept_Wait.png>
+
+send_msg_async() en détails
+***************************
+
+<Algo_send_msg_async.png>
+
+Cette fonction réalise la même chose que la première partie de send_msg_syn(), à la différence qu'on
+n'empile pas la requête puisqu'on laisse le soin à l'émetteur de décider s'il faut le faire ou pas.
+
+Une autre différence est qu'on ignore un éventuel défaut d'émission (res != MSG_OK) alors que le
+programme est arrêté dans send_msg_sync(). Ce n'est pas volontaire, je n'ai juste pas encore étudié
+la tolérance aux pannes.
+
+
+wait_for_completion() en détails
+********************************
+
+<Algo_wait_for_completion.png>
+
+On attend ans_cpt réponses. Si max_wait est atteint avant que toutes les réponses aient été reçues
+et traitées, on quitte sur erreur, ce cas ne devant pas se produire.
+
+wait_for_completion() pouvant s'appeler elle-même, il faut commencer par vérifier si des réponses
+attendues ont déjà été traitées par ces appels récursifs, et si oui, s'il en reste encore à traiter.
+C'est l'appel à check_async_nok() du début.
+
+Si oui, on se met en écoute, et comme dans send_msg_sync(), il faut traiter tout ce qui est reçu
+dans l'intervalle.
+
+- Requête:
+  ********
+
+  Si c'est CNX_REQ, on l'empile sur tasks_queue, sinon, on l'exécute avec launch_fork_process().
+  On regarde ensuite si des réponses ont été reçues entre temps avec check_async_nok(), puis on se
+  remet éventuellement en écoute.
+
+- Réponse:
+  ********
+
+  - Réponse asynchrone correspondant à une requête empilée :
+    - si elle fait partie de celles qui sont attendues, la requête correspondante est dépilée
+    d'async_answers, après avoir mémorisé un éventuel échec de BROADCAST ou SET_UPDATE dans ret
+    (pour du log)
+    On se remet ensuite en écoute s'il reste des réponses à recevoir. (ans_cpt > 0)
+
+    - sinon, elle est enregistrée dans async_answers
+
+  - Réponse synchrone attendue :
+    - si oui, elle est enregistrée dans sync_answers
+    - sinon, elle est ignorée.
+
 
 **************************************
-TODO : faire algo de check_async_nok ?
+TODO : faire algo de check_async_nok
 **************************************

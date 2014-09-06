@@ -32,7 +32,11 @@ while (max_wait not reached && ans_cpt > 0 ?) is (yes)
                 if (answer is the expected answer ?) then (yes)
                     if (answer.type == BROADCAST ||
                         answer.type == SET_UPDATE ?) then (yes)
-                        :ret <-- answer.ret;
+                        if (ret != UPDATE_NOK) then (yes)
+                            :ret <-- answer.ret;
+                        else (no)
+                        endif
+                    else (no)
                     endif
                     :ans_cpt--;
                     :pop record from async_answers;
@@ -49,7 +53,7 @@ while (max_wait not reached && ans_cpt > 0 ?) is (yes)
             endif
         endif
     endif
-endwhile
+endwhile (no)
 
 if (max_wait reached ?) then (yes)
     :display error message;
