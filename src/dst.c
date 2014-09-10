@@ -58,6 +58,7 @@ static int         order = 0;                               // order number of n
 static int         nb_nodes = 0;                            // total number of nodes
 static int         nb_ins_nodes = 0;                        // number of nodes already inserted
 static int         mem_log = -1;                            // ensures that log new setting occurs only once
+static int         inserted_nodes[100000] = {-1};           // to store a list of already inserted nodes
 
 typedef struct f_node {                     // node that failed to join
     int   id;
@@ -9051,48 +9052,7 @@ int node(int argc, char *argv[]) {
 
         do {
 
-            //tries++;
-
             // sleep before starting to join
-            /*
-            if (tries > 1) {
-
-                // TODO: faire des essais avec différentes bornes
-                int max = 25;
-                int min = 13;
-                srand(time(NULL));
-                sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
-
-                // get a new contact if too many failures
-                if (tries > tries_mem) {
-
-                    tries_mem += TRY_STEP;
-                    answer_data = NULL;
-                    res = send_msg_sync(&node,
-                            TASK_GET_NEW_CONTACT,
-                            contact_id,
-                            u_req_args,
-                            &answer_data);
-
-                    if (res == MSG_OK) {
-
-                        contact_id = answer_data->answer.get_new_contact.id;
-
-                        XBT_VERB("Node %d: got new contact %d instead of %d",
-                                node.self.id,
-                                contact_id,
-                                atoi(argv[2]));
-
-                    } else {
-
-                        XBT_VERB("Node %d: failed to get a new contact from node %d",
-                                node.self.id,
-                                contact_id);
-                    }
-                }
-            }
-            */
-
             XBT_INFO("Node %d: Let's sleep during %f",
                     node.self.id,
                     sleep_time);
@@ -9106,36 +9066,29 @@ int node(int argc, char *argv[]) {
             XBT_INFO("Node %d: Let's join the system ! (via contact %d) -"
                     " deadline = %f",
                     node.self.id,
-                    //atoi(argv[2]),
                     contact_id,
                     node.deadline);
 
             // set the dst infos for the current node
-            //if (tries == 1) {
             if (node.dst_infos.order == 0) {
 
                 // only one order number per node
                 node.dst_infos.order = order++;
             }
-            //node.dst_infos.nb_messages = tot_msg_number(node.self.id);
 
             XBT_VERB("Node %d: order = %d",
                     node.self.id,
                     node.dst_infos.order);
 
-            //TODO : 3e argument probablement inutile
-            //join_success = join(&node, contact_id, tries);
             join_success = join(&node, contact_id);
 
             if (!join_success) {
 
-                //XBT_INFO("Node %d: Join failure ! - tries = %d", node.self.id, tries);
                 XBT_INFO("Node %d: Join failure !", node.self.id);
             } else {
 
                 //xbt_assert(node.self.id != 1521, "Node %d", node.self.id);
             }
-        //} while (!join_success && tries < MAX_JOIN);
         } while (!join_success);
     } else {
 
@@ -9148,7 +9101,18 @@ int node(int argc, char *argv[]) {
     if (join_success) {
 
         XBT_INFO("Node %d: **** JOIN COMPLETED ****", node.self.id);
+
+        // record inserted node id in global array
+        inserted_nodes[nb_ins_nodes] = node.self.id;
         nb_ins_nodes++;
+
+        //display inserted_nodes
+        int iter = nb_ins_nodes - 10;
+        if (iter < 0) iter = 0;
+        XBT_VERB("Node %d: last ten inserted nodes :", node.self.id);
+        for (; iter < nb_ins_nodes; iter++) {
+            XBT_VERB("\tinserted_nodes[%d] = %d", iter, inserted_nodes[iter]);
+        }
 
         // active state
         set_active(&node, node.self.id);
