@@ -2878,9 +2878,11 @@ static void run_tasks_queue(node_t me) {
             // something to do
             if (me->run_task.run_state == IDLE) {
 
-                if (me->run_task.last_ret == OK) {
+                if (me->run_task.last_ret != UPDATE_NOK) {
 
-                    XBT_VERB("Node %d: task done - may be shifted out", me->self.id);
+                    XBT_VERB("Node %d: task done - ret = '%s' - may be shifted out",
+                            me->self.id,
+                            debug_ret_msg[me->run_task.last_ret]);
                 } else {
 
                     XBT_VERB("Node %d: something to do", me->self.id);
@@ -2973,9 +2975,11 @@ static void run_tasks_queue(node_t me) {
 
                     // run top request
 
-                    XBT_VERB("Node %d: run head request", me->self.id);
+                    XBT_VERB("Node %d: [%s:%d] run head request",
+                            me->self.id,
+                            __FUNCTION__,
+                            __LINE__);
 
-                    //task_ptr = xbt_dynar_get_ptr(me->tasks_queue, xbt_dynar_length(me->tasks_queue) - 1);
                     task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
 
                     xbt_assert(task_ptr != NULL && *task_ptr != NULL,
@@ -4919,10 +4923,8 @@ static int join(node_t me, int contact_id) {
     u_req_args_t u_req_args;
     u_req_args.cnx_req.new_node_id = me->self.id;
     u_req_args.cnx_req.cs_new_node_prio = me->prio;
-    //u_req_args.cnx_req.try = try;
     u_req_args.cnx_req.try = 0;
 
-    //ans_data_t answer_data = xbt_new0(s_ans_data_t, 1);
     ans_data_t answer_data = NULL;
 
     // send connection request
@@ -4945,6 +4947,7 @@ static int join(node_t me, int contact_id) {
         data_ans_free(me, &answer_data);
         return 0;
     }
+    xbt_assert(answer_data->answer.cnx_req.val_ret != FAILED, "STOP");
 
     /* get task answer data: new contact and its routing table */
 
@@ -5282,7 +5285,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
     XBT_IN();
 
     s_state_t state = get_state(me);
-    XBT_VERB("Node %d: [%s:%d] '%c'/%d - new_node = %d",
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d - Start connection request for new_node %d",
             me->self.id,
             __FUNCTION__,
             __LINE__,
@@ -5307,9 +5310,11 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
         //set_update(me, new_node_id);
 
-        state = get_state(me);
-        XBT_INFO("Node %d: '%c'/%d -Transfering 'Connection request' to the leader %d",
+        state = get_state(me);  //TODO : inutile ?
+        XBT_INFO("Node %d: [%s:%d] '%c'/%d -Transfering 'Connection request' to the leader %d",
                 me->self.id,
+                __FUNCTION__,
+                __LINE__,
                 state.active,
                 state.new_id,
                 me->brothers[0][0].id);
@@ -5347,7 +5352,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         // me is the leader
         int n = 0;
 
-        //state = get_state(me);          //TODO : get_state() inutile ?
         XBT_INFO("Node %d: [%s:%d] '%c'/%d - I am the leader",
                 me->self.id,
                 __FUNCTION__,
@@ -5410,8 +5414,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             if (n > 0) {
 
                 state = get_state(me);
-                XBT_INFO("Node %d: '%c'/%d - **** MAKING ROOM FOR NODE %d ... ****",
+                XBT_INFO("Node %d: [%s:%d] '%c'/%d - **** MAKING ROOM FOR NODE %d ... ****",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         state.active,
                         state.new_id,
                         new_node_id);
@@ -5422,8 +5428,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                 }
 
                 // broadcast a cs_req to all concerned leaders
-                XBT_VERB("Node %d: broadcast a cs_req to all concerned leaders",
-                        me->self.id);
+                XBT_VERB("Node %d: [%s:%d] broadcast a cs_req to all concerned leaders",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
 
                 args.broadcast.type = TASK_CS_REQ;
 
@@ -5563,8 +5571,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         args.broadcast.args = NULL;
 
                         state = get_state(me);
-                        XBT_INFO("Node %d: '%c'/%d -  **** ROOM MADE FOR NODE %d ****",
+                        XBT_INFO("Node %d: [%s:%d] '%c'/%d -  **** ROOM MADE FOR NODE %d ****",
                                 me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
                                 state.active,
                                 state.new_id,
                                 new_node_id);
@@ -5574,7 +5584,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     // cs_req returned NOK
 
                     state = get_state(me);
-                    //TODO : comptage des essais pas bon
+                    //TODO : comptage des essais pas bon. A ôter ?
                     XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
                             me->self.id,
                             state.active,
@@ -5595,8 +5605,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             set_update(me, new_node_id, cs_new_node_prio);    // stay at 'u' until the end
 
             state = get_state(me);
-            XBT_INFO("Node %d: '%c'/%d - **** INSERTING NODE %d ... ****",
+            XBT_INFO("Node %d: [%s:%d] '%c'/%d - **** INSERTING NODE %d ... ****",
                     me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
                     state.active,
                     state.new_id,
                     new_node_id);
@@ -5691,8 +5703,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             set_state(me, -1, 'p');
 
             state = get_state(me);
-            XBT_INFO("Node %d: '%c'/%d - **** NODE %d INSERTED ****",
+            XBT_INFO("Node %d: [%s:%d] '%c'/%d - **** NODE %d INSERTED ****",
                     me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
                     state.active,
                     state.new_id,
                     new_node_id);
@@ -5724,15 +5738,19 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
     }
 
     state = get_state(me);
-    XBT_INFO("Node %d: '%c'/%d -  end of connection_request() - val_ret = '%s', contact = %d",
+    XBT_INFO("Node %d: [%s:%d] '%c'/%d - end - val_ret = '%s', contact = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             state.active,
             state.new_id,
             debug_ret_msg[val_ret],
             answer.cnx_req.new_contact.id);
 
-    XBT_DEBUG("Node %d: answer.cnx_req.add_stage = %d",
+    XBT_DEBUG("Node %d: [%s:%d] answer.cnx_req.add_stage = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             answer.cnx_req.add_stage);
 
     xbt_free(cpy_brothers);
@@ -9054,7 +9072,7 @@ int node(int argc, char *argv[]) {
 
         do {
 
-            // sleep before starting to join
+            // sleep before first attempt to join
             if (MSG_get_clock() < sleep_time) {
 
                 XBT_INFO("Node %d: Let's sleep during %f",
@@ -9432,9 +9450,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_CNX_REQ:
-            //if ((state.active == 'u' && state.new_id == rcv_args.cnx_req.new_node_id) || (state.active == 'a'))
-            //test = (state.active != 'l'&& state.active != 'b' && strstr(MSG_process_get_name(MSG_process_self()), "dly") != NULL);            //TODO : ne pas oublier
 
+            // CNX_REQ has to be run by a fork process. If it's not the case, push it on tasks_queue
             if (strstr(MSG_process_get_name(MSG_process_self()), "Cnx") != NULL) {
 
                 is_contact = (rcv_req->sender_id == rcv_req->args.cnx_req.new_node_id);
@@ -9446,35 +9463,49 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                  */
                 if (is_leader && !is_contact && index_bro(me, 0, rcv_req->sender_id) == -1) {
 
+                    /*
                     if (is_contact) {
+
+                        // TODO : ce cas ne se produit jamais ici
 
                         // let the request in tasks_queue
                         answer.cnx_req.val_ret = UPDATE_NOK;
                     } else {
+                    */
 
-                        // remove the request from tasks_queue (sender will have to re-send its request)
-                        answer.cnx_req.val_ret = FAILED;
-                    }
+                        answer.cnx_req.val_ret = UPDATE_NOK;
+                    //}
                     answer.cnx_req.new_contact.id = -1;
 
-                    XBT_VERB("Node %d: isn't leader of %d anymore", me->self.id, rcv_req->sender_id);
+                    XBT_VERB("Node %d: [%s:%d] isn't leader of %d anymore - request fails",
+                            me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
+                            rcv_req->sender_id);
                 } else {
 
-                    // run task only if current process is 'Cnx_req'
+                    // run task only if me is the right leader or the contact
                     answer = connection_request(me,
                             rcv_args.cnx_req.new_node_id,
                             rcv_args.cnx_req.cs_new_node_prio,
                             rcv_args.cnx_req.try);
                 }
 
-                XBT_DEBUG("Node %d: CNX_REQ val_ret = %s - contact = %d",
+                XBT_DEBUG("Node %d: [%s:%d] CNX_REQ val_ret = %s - contact = %d",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         debug_ret_msg[answer.cnx_req.val_ret],
                         answer.cnx_req.new_contact.id);
 
-                // In case of failure, let task in tasks_queue (to repeat it) only if me is new node's contact
-                if (answer.cnx_req.val_ret == FAILED || answer.cnx_req.val_ret == UPDATE_NOK) {
-                    //TODO : val_ret ne peut pas être FAILED au retour de connection_request(). Ce test semble inutile
+                //if (answer.cnx_req.val_ret == FAILED || answer.cnx_req.val_ret == UPDATE_NOK)
+
+                //TODO : val_ret ne peut pas être FAILED au retour de connection_request().
+                //       Ce test semble inutile
+
+                // In case of failure, let task in tasks_queue only if me is new node's contact
+                // (UPDATE_NOK lets the request in queue, whereas FAILED removes it)
+                if (answer.cnx_req.val_ret == UPDATE_NOK) {
 
                     val_ret = (is_contact ? UPDATE_NOK : FAILED);
                 } else {
@@ -9482,16 +9513,15 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     val_ret = answer.cnx_req.val_ret;
                 }
 
-                XBT_DEBUG("Node %d: new CNX_REQ val_ret : %s - is_contact : %d",
+                XBT_DEBUG("Node %d: [%s:%d] new CNX_REQ val_ret : %s - is_contact : %d",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         debug_ret_msg[val_ret],
                         is_contact);
 
-                // Answer sender in case of success or FAILED
-                /*
-                if ((val_ret != FAILED && val_ret != UPDATE_NOK) ||
-                    ((val_ret == FAILED || val_ret == UPDATE_NOK) && rcv_req->sender_id != rcv_args.cnx_req.new_node_id)) {
-                    */
+                // Answer sender in case of success or FAILED (so that it may re-send its request to
+                // another contact)
                 if ((val_ret != FAILED && val_ret != UPDATE_NOK) || val_ret == FAILED) {
 
                     res = send_ans_sync(me,
@@ -9506,47 +9536,24 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 }
             } else {
 
-            //if (val_ret == UPDATE_NOK || !test) {
-            //if (!test) {
 
-                //if (val_ret == UPDATE_NOK || state.active == 'l' || state.active == 'b') {
-
-                /*
-                   if (1 == 1) {
-
-                   val_ret = UPDATE_NOK;
-
-                // send an answer back ...
-                answer.cnx_req.val_ret = val_ret;
-                res = send_ans_sync(me,
-                rcv_args.cnx_req.new_node_id,
-                type,
-                rcv_req->sender_id,
-                answer);
-
-                data_req_free(me, &rcv_req);
-                task_free(task);
-
-                } else {
-                */
-
-                // ... or store task (CNX_REQ isn't broadcasted)
-                XBT_VERB("Node %d: '%c'/%d - new node's priority : %d - store CNX_REQ/%d for later execution",
+                // push CNX_REQ task on queue if not run by dedicated process
+                XBT_VERB("Node %d: [%s:%d] push CNX_REQ task on tasks_queue",
                         me->self.id,
-                        state.active,
-                        state.new_id,
-                        rcv_args.cnx_req.cs_new_node_prio,
-                        rcv_args.cnx_req.new_node_id);
+                        __FUNCTION__,
+                        __LINE__);
 
                 xbt_dynar_push(me->tasks_queue, task);
 
                 *task = NULL;
                 val_ret = STORED;
-                //TODO : on n'est pas STORED si on met cette tâche dans tasks_queue
+                //TODO : vérifier si on passe par là.
             }
 
-            XBT_VERB("Node %d: TASK_CNX_REQ done for new node %d - val_ret = %s",
+            XBT_VERB("Node %d: [%s:%d] TASK_CNX_REQ done for new node %d - val_ret = %s",
                     me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
                     rcv_args.cnx_req.new_node_id,
                     debug_ret_msg[val_ret]);
 
