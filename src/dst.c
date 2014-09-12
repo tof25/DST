@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/05/13
+ *  Written by Christophe Enderlin on 2014/09/12
  *
  */
 
@@ -2801,6 +2801,7 @@ static void run_tasks_queue(node_t me) {
     me->run_task.run_state = IDLE;
     me->run_task.last_ret = UPDATE_NOK;
     e_run_state_t prev_state = RUNNING;
+    u_ans_data_t answer;
 
     // sort queue by priority order
     sort_tasks_queue(me);
@@ -2892,7 +2893,6 @@ static void run_tasks_queue(node_t me) {
                     cpt++;
                     if (cpt >= MAX_CNX) {
 
-                        // TODO : plus utile depuis le tri de la file d'attente ?
                         // too many attempts
                         task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
 
@@ -2904,7 +2904,7 @@ static void run_tasks_queue(node_t me) {
 
                         req_data = MSG_task_get_data(*task_ptr);
 
-                        XBT_WARN("Node %d: [%s:%d] Too many attemps (%d) for task {'%s - %s' from %d for new node %d}",
+                        XBT_VERB("Node %d: [%s:%d] Too many attemps (%d) for task {'%s - %s' from %d for new node %d}",
                                 me->self.id,
                                 __FUNCTION__,
                                 __LINE__,
@@ -2914,48 +2914,43 @@ static void run_tasks_queue(node_t me) {
                                 req_data->sender_id,
                                 req_data->args.cnx_req.new_node_id);
 
-                        /*
-                         NOTE : cette partie n'est plus utile depuis qu'on trie la file d'attente
-
-                        // push head request on tail before removing it
-                        cur_task = MSG_task_create(MSG_task_get_name(*task_ptr), COMP_SIZE, COMM_SIZE, MSG_task_get_data(*task_ptr));
-                        xbt_dynar_push(me->tasks_queue, &cur_task);
-
                         // shift queue to remove head task
-                        //data_req_free(me, &req_data);
-                        //task_free(task_ptr);                  // TODO : revoir cette libération qui pose problème
 
-                        state = get_state(me);
-                        XBT_VERB("Node %d: [%s:%d] '%c'/%d - last %d attempts weren't OK : rotate queue"
-                                " - run_state = %s - last_ret = %s",
+                        XBT_VERB("Node %d: [%s:%d] last run was '%s' : shift queue - run_state = %s",
                                 me->self.id,
                                 __FUNCTION__,
                                 __LINE__,
-                                state.active,
-                                state.new_id,
-                                cpt,
-                                debug_run_msg[me->run_task.run_state],
-                                debug_ret_msg[me->run_task.last_ret]);
-
-                        xbt_dynar_shift(me->tasks_queue, NULL);
-
-                        display_tasks_queue(me);
-                        */
+                                debug_ret_msg[me->run_task.last_ret],
+                                debug_run_msg[me->run_task.run_state]);
 
                         cpt = 0;
+
+                        // tell sender to test another contact
+                        answer.cnx_req.val_ret = UPDATE_NOK;
+                        answer.cnx_req.new_contact.id = -1;
+
+                        send_ans_sync(me,
+                                req_data->args.cnx_req.new_node_id,
+                                req_data->type,
+                                req_data->sender_id,
+                                req_data->answer_to,
+                                answer);
+
+                        //TODO : pourquoi ne faut-il pas libérer ici ?
+
+                        data_req_free(me, &req_data);
+                        //task_free(task_ptr);
+
+                        xbt_dynar_shift(me->tasks_queue, NULL);
                     }
                 } else {
 
-                    // last run was OK or FAILED
-                    me->run_task.last_ret = UPDATE_NOK;
-
-                    // shift queue to remove head task
+                    // last run was OK or FAILED : shift queue to remove head task
                     task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
                     req_data = MSG_task_get_data(*task_ptr);
                     data_req_free(me, &req_data);
                     task_free(task_ptr);
 
-                    //TODO : on n'est pas forcément OK ici, on peut aussi être FAILED
                     XBT_VERB("Node %d: [%s:%d] last run was '%s' : shift queue - run_state = %s",
                             me->self.id,
                             __FUNCTION__,
@@ -2964,6 +2959,9 @@ static void run_tasks_queue(node_t me) {
                             debug_run_msg[me->run_task.run_state]);
 
                     xbt_dynar_shift(me->tasks_queue, NULL);
+
+                    // get ready for next loop
+                    me->run_task.last_ret = UPDATE_NOK;
                     cpt = 0;
                 }
 
@@ -3002,6 +3000,7 @@ static void run_tasks_queue(node_t me) {
                         req_data->args.cnx_req.try++;
                     }
 
+                    xbt_assert(*task_ptr != NULL, "[%s:%d] STOP", __FUNCTION__, __LINE__);
                     launch_fork_process(me, *task_ptr);
                 }
             }
@@ -3404,6 +3403,7 @@ static void display_tasks_queue(node_t me) {
             XBT_VERB("Node %d: \ttask[%d] = NULL", me->self.id, k);
         } else {
 
+            xbt_assert(*task_ptr != NULL, "[%s:%d] STOP", __FUNCTION__, __LINE__);
             XBT_VERB("Node %d: \t%p: task[%d] = {'%s - %s' from %d for new node %d} - prio = %d",
                     me->self.id,
                     *task_ptr,
@@ -4941,6 +4941,7 @@ static int join(node_t me, int contact_id) {
 
         // join failure
         XBT_ERROR("Node %d failed to join the DST", me->self.id);
+
         data_ans_free(me, &answer_data);
         return 0;
     }
@@ -9049,15 +9050,19 @@ int node(int argc, char *argv[]) {
         u_req_args.get_new_contact.new_node_id = node.self.id;
         ans_data_t answer_data = NULL;
         msg_error_t res;
+        int index = 0;
 
         do {
 
             // sleep before starting to join
-            XBT_INFO("Node %d: Let's sleep during %f",
-                    node.self.id,
-                    sleep_time);
+            if (MSG_get_clock() < sleep_time) {
 
-            MSG_process_sleep(sleep_time);
+                XBT_INFO("Node %d: Let's sleep during %f",
+                        node.self.id,
+                        sleep_time);
+
+                MSG_process_sleep(sleep_time);
+            }
 
             XBT_INFO("Node %d: **** START JOINING DST *** (attempt number %d)",
                     node.self.id,
@@ -9085,6 +9090,21 @@ int node(int argc, char *argv[]) {
             if (!join_success) {
 
                 XBT_INFO("Node %d: Join failure !", node.self.id);
+
+                // randomly choose another contact
+                srand(time(NULL));
+                index = (double)rand() * (double)(nb_ins_nodes) / (double)RAND_MAX;
+
+                xbt_assert(index < nb_ins_nodes, "index = %d - nb_ins_nodes = %d", index, nb_ins_nodes);
+
+                contact_id = inserted_nodes[index];
+
+                XBT_INFO("Node %d: Try with another contact : %d",
+                        node.self.id,
+                        contact_id);
+
+                //xbt_assert(1 == 0);
+
             } else {
 
                 //xbt_assert(node.self.id != 1521, "Node %d", node.self.id);
@@ -9420,17 +9440,19 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                 is_contact = (rcv_req->sender_id == rcv_req->args.cnx_req.new_node_id);
                 is_leader = me->self.id == me->brothers[0][0].id;
 
+                /*
+                   if me isn't contact's leader any more, (because it had been splitted meanwhile)
+                   rejects the request
+                 */
                 if (is_leader && !is_contact && index_bro(me, 0, rcv_req->sender_id) == -1) {
 
-                    /*
-                       if me isn't contact's leader any more, (because it had been splitted meanwhile)
-                       rejects the request
-                     */
                     if (is_contact) {
 
+                        // let the request in tasks_queue
                         answer.cnx_req.val_ret = UPDATE_NOK;
                     } else {
 
+                        // remove the request from tasks_queue (sender will have to re-send its request)
                         answer.cnx_req.val_ret = FAILED;
                     }
                     answer.cnx_req.new_contact.id = -1;
@@ -9450,8 +9472,9 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         debug_ret_msg[answer.cnx_req.val_ret],
                         answer.cnx_req.new_contact.id);
 
-                // In case of failure, let task in queue (to repeat it) only if me is new node's contact
+                // In case of failure, let task in tasks_queue (to repeat it) only if me is new node's contact
                 if (answer.cnx_req.val_ret == FAILED || answer.cnx_req.val_ret == UPDATE_NOK) {
+                    //TODO : val_ret ne peut pas être FAILED au retour de connection_request(). Ce test semble inutile
 
                     val_ret = (is_contact ? UPDATE_NOK : FAILED);
                 } else {
@@ -9464,8 +9487,12 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         debug_ret_msg[val_ret],
                         is_contact);
 
+                // Answer sender in case of success or FAILED
+                /*
                 if ((val_ret != FAILED && val_ret != UPDATE_NOK) ||
                     ((val_ret == FAILED || val_ret == UPDATE_NOK) && rcv_req->sender_id != rcv_args.cnx_req.new_node_id)) {
+                    */
+                if ((val_ret != FAILED && val_ret != UPDATE_NOK) || val_ret == FAILED) {
 
                     res = send_ans_sync(me,
                             rcv_args.cnx_req.new_node_id,

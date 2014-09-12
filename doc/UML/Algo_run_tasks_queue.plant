@@ -28,7 +28,10 @@ repeat
             else (yes)
                 :<i>cpt</i> ++;
                 if (<i>cpt</i> >= <i>MAX_CNX</i> ?) then (yes)
+                    :Tell sender to try another contact;
                     :Display Warning;
+                    :<i>Last_return</i> <-- UPDATE_NOK;
+                    :Shift Queue (remove head);
                     :<i>cpt</i> <-- 0;
                 else (no)
                 endif
