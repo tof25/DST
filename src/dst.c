@@ -4858,7 +4858,7 @@ static void init(node_t me) {
     me->dst_infos.order = 0;
     me->dst_infos.node_id = me->self.id;
     me->dst_infos.routing_table = NULL;
-    me->dst_infos.attempts = 1;
+    me->dst_infos.attempts = 0;
     //me->dst_infos.nb_messages = 0;
     me->dst_infos.add_stage = 0;
     me->dst_infos.nbr_split_stages = 0;
@@ -4924,7 +4924,7 @@ static int join(node_t me, int contact_id) {
     u_req_args_t u_req_args;
     u_req_args.cnx_req.new_node_id = me->self.id;
     u_req_args.cnx_req.cs_new_node_prio = me->prio;
-    u_req_args.cnx_req.try = 0;
+    u_req_args.cnx_req.try = me->dst_infos.attempts;
 
     ans_data_t answer_data = NULL;
 
@@ -4943,14 +4943,22 @@ static int join(node_t me, int contact_id) {
     if (res != MSG_OK || answer_data->answer.cnx_req.val_ret == UPDATE_NOK) {
 
         // join failure
-        XBT_ERROR("Node %d failed to join the DST", me->self.id);
+        XBT_VERB("Node %d failed to join the DST", me->self.id);
+        me->dst_infos.attempts += answer_data->answer.cnx_req.try;
 
         data_ans_free(me, &answer_data);
         return 0;
     }
-    xbt_assert(answer_data->answer.cnx_req.val_ret != FAILED, "STOP");
+
+    xbt_assert(answer_data->answer.cnx_req.val_ret != FAILED,
+            "[%s:%d] STOP",
+            __FUNCTION__,
+            __LINE__);
 
     /* get task answer data: new contact and its routing table */
+
+    // records number of attempts
+    me->dst_infos.attempts += answer_data->answer.cnx_req.try;
 
     state = get_state(me);
     XBT_INFO("Node %d: '%c'/%d - **** GETTING INFOS FROM ITS NEW CONTACT %d (needed %d attempts) ... ****",
@@ -4958,10 +4966,7 @@ static int join(node_t me, int contact_id) {
             state.active,
             state.new_id,
             answer_data->answer.cnx_req.new_contact.id,
-            answer_data->answer.cnx_req.try);
-
-    // records number of attempts
-    me->dst_infos.attempts = answer_data->answer.cnx_req.try;
+            me->dst_infos.attempts);
 
     // discard the current tables
     int stage;
@@ -5585,7 +5590,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     // cs_req returned NOK
 
                     state = get_state(me);
-                    //TODO : comptage des essais pas bon. A ôter ?
+                    //TODO : comptage des essais pas bon. A modifier ?
                     XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
                             me->self.id,
                             state.active,

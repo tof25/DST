@@ -126,11 +126,11 @@ La file tasks_queue contient toutes les demandes de connection (c'est à dire to
 CNX_REQ) reçues par le noeud qui héberge cette file. run_tasks_queue() est donc chargée de traiter
 les requêtes présentes dans cette file, par ordre de priorité.
 
-Après avoir traité les tâches différées (voir détails run_delayed_tasks plus loin), on s'occupe de
+Après avoir traité les tâches différées (voir détails run_delayed_tasks() plus loin), on s'occupe de
 la file tasks_queue proprement dite, à condition d'être actif (à l'état 'a').
 
-Le noeud courant possède deux variables "de noeud" (c'est à dire globales à tous les process qui
-tournent sur ce noeud) :
+Le noeud courant possède deux variables "de noeud" (c'est à dire globales à tous les process
+hébergés par ce noeud) :
 
 * Run_state :
 Chaque requête de cette file sera traitée par un process distinct, mais il n'est pas possible ici
@@ -143,7 +143,7 @@ Il y a deux sortes d'échec d'insertion possibles.
 Lors de l'arrivée d'un nouveau noeud, on a la séquence d'appels suivante : nouveau noeud -->
 contact --> leader. En cas d'échec, le contact doit refaire une tentive plus tard, mais son leader
 peut avoir changé entre temps. Le leader doit donc dépiler la requête alors que le contact doit la
-conserver dans la file. Deux valeurs de retour en cas d'échec sont alors requises : un leader
+conserver dans sa file. Deux valeurs de retour en cas d'échec sont alors requises : un leader
 retourne la valeur FAILED alors qu'un contact retournera la valeur UPDATE_NOK.
 
 Comme on peut le voir, dans le cas général (i.e. cpt < MAX_CNX), une valeur de retour UPDATE_NOK
