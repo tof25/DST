@@ -2918,11 +2918,12 @@ static void run_tasks_queue(node_t me) {
 
                         // shift queue to remove head task
 
-                        XBT_VERB("Node %d: [%s:%d] last run was '%s' : shift queue - run_state = %s",
+                        XBT_VERB("Node %d: [%s:%d] last run was '%s' : shift queue and answer sender %d - run_state = %s",
                                 me->self.id,
                                 __FUNCTION__,
                                 __LINE__,
                                 debug_ret_msg[me->run_task.last_ret],
+                                req_data->sender_id,
                                 debug_run_msg[me->run_task.run_state]);
 
                         cpt = 0;
@@ -9491,17 +9492,12 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                             rcv_args.cnx_req.try);
                 }
 
-                XBT_DEBUG("Node %d: [%s:%d] CNX_REQ val_ret = %s - contact = %d",
+                XBT_DEBUG("Node %d: [%s:%d] CNX_REQ returned val_ret = %s - contact = %d",
                         me->self.id,
                         __FUNCTION__,
                         __LINE__,
                         debug_ret_msg[answer.cnx_req.val_ret],
                         answer.cnx_req.new_contact.id);
-
-                //if (answer.cnx_req.val_ret == FAILED || answer.cnx_req.val_ret == UPDATE_NOK)
-
-                //TODO : val_ret ne peut pas être FAILED au retour de connection_request().
-                //       Ce test semble inutile
 
                 // In case of failure, let task in tasks_queue only if me is new node's contact
                 // (UPDATE_NOK lets the request in queue, whereas FAILED removes it)
@@ -9513,7 +9509,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                     val_ret = answer.cnx_req.val_ret;
                 }
 
-                XBT_DEBUG("Node %d: [%s:%d] new CNX_REQ val_ret : %s - is_contact : %d",
+                XBT_DEBUG("Node %d: [%s:%d] CNX_REQ modified val_ret : %s - is_contact : %d",
                         me->self.id,
                         __FUNCTION__,
                         __LINE__,

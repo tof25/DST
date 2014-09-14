@@ -146,19 +146,33 @@ peut avoir changé entre temps. Le leader doit donc dépiler la requête alors q
 conserver dans la file. Deux valeurs de retour en cas d'échec sont alors requises : un leader
 retourne la valeur FAILED alors qu'un contact retournera la valeur UPDATE_NOK.
 
-Comme on peut le voir, une valeur de retour UPDATE_NOK laisse la requête dans la file pour une
-nouvelle tentative un peu plus tard ("Sleep for a while"). Dans le cas contraire, on dépile pour
-passer à la requête suivante. (On voit donc bien qu'en cas de retour FAILED, la requête est bien
-dépilée.)
+Comme on peut le voir, dans le cas général (i.e. cpt < MAX_CNX), une valeur de retour UPDATE_NOK
+laisse la requête dans la file pour une nouvelle tentative un peu plus tard ("Sleep for a while").
+Dans le cas contraire, on dépile pour passer à la requête suivante. (On voit donc bien qu'en cas de
+retour FAILED, la requête est bien dépilée.)
+
+En détails :
+À l'issue de l'exécution de connection_request(), une réponse est envoyée à l'émetteur seulement
+dans les cas où la requête est ici dépilée.
+
+Lors d'un échec, voici alors ce qu'il se passe dans la séquence de retour leader --> contact -->
+nouveau noeud: le leader reçoit FAILED : il dépile sa requête et répond UPDATE_NOK à son contact.
+Celui-ci ne dépile rien et ne répond pas à nouveau noeud. La requête restant dans la file s'exécutera
+alors au plus MAX_CNX fois.
+
+Si ce nombre est atteint, on décide alors de dépiler tout de même la requête et de répondre
+UPDATE_NOK au nouveau noeud. Il peut ainsi détecter l'échec et refaire d'autres tentatives avec
+d'autres contacts. (ces contacts sont alors choisis aléatoirement parmi les noeuds déjà intégrés au
+DST. Il s'agit d'un tableau global, donc introduisant un peu de centralisation dans cet algorithme.
+Voir commentaires en conclusion)
 
 Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité à ce moment-là. En
-effet, pendant le temps d'exécution du CNX_REQ, d'autres demandes d'insertion ont pu arriver dans la
+effet, pendant le temps d'exécution de CNX_REQ, d'autres demandes d'insertion ont pu arriver dans la
 file et il faut s'assurer que la prochaine à exécuter soit bien la suivante en termes de priorité.
 
-MAX_CNX ne sert qu'à afficher un message en cas de nombreuses tentatives d'exécution d'une même
-requête.
-
 L'exécution d'une requête de la file est confiée à launch_fork_process() (voir plus haut)
+
+TODO : Ecrire algo de la partie TASK_CNX_REQ de handle_task()
 
 
 run_delayed_tasks
