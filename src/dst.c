@@ -1797,6 +1797,11 @@ static void launch_fork_process(node_t me, msg_task_t task) {
         switch (req->type) {
             case TASK_CNX_REQ:
                 snprintf(proc_label, 10, "Cnx_req");
+                XBT_VERB("Node %d: [%s:%d] cnx_req.try = %d",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        req->args.cnx_req.try);
                 break;
 
             case TASK_BROADCAST:
@@ -2793,6 +2798,7 @@ static void run_tasks_queue(node_t me) {
     // inits
     int cpt = -1;
     char is_leader = 0;
+    char is_contact = 0;
     msg_task_t elem = NULL;
     msg_task_t cur_task = NULL;
     msg_task_t *task_ptr = NULL;
@@ -2991,6 +2997,13 @@ static void run_tasks_queue(node_t me) {
 
                     req_data = MSG_task_get_data(*task_ptr);
 
+                    xbt_assert(req_data->type == TASK_CNX_REQ,
+                            "Node %d: [%s:%d] task shouldn't be other than CNX_REQ : '%s'",
+                            me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
+                            debug_msg[req_data->type]);
+
                     XBT_VERB("Node %d: launch fork process for task {'%s - %s' from %d for new node %d}",
                             me->self.id,
                             MSG_task_get_name(*task_ptr),
@@ -2999,8 +3012,9 @@ static void run_tasks_queue(node_t me) {
                             req_data->args.cnx_req.new_node_id);
 
                     // increment number of attempts only if me is leader
-                    is_leader = me->self.id == me->brothers[0][0].id;
-                    if (is_leader == 1) {
+                    //is_leader = me->self.id == me->brothers[0][0].id;
+                    is_contact = req_data->sender_id == req_data->args.cnx_req.new_node_id;
+                    if (is_contact) {
 
                         req_data->args.cnx_req.try++;
                     }
@@ -5317,13 +5331,14 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         //set_update(me, new_node_id);
 
         state = get_state(me);  //TODO : inutile ?
-        XBT_INFO("Node %d: [%s:%d] '%c'/%d -Transfering 'Connection request' to the leader %d",
+        XBT_INFO("Node %d: [%s:%d] '%c'/%d -Transfering 'Connection request' to the leader %d - try = %d",
                 me->self.id,
                 __FUNCTION__,
                 __LINE__,
                 state.active,
                 state.new_id,
-                me->brothers[0][0].id);
+                me->brothers[0][0].id,
+                try);
 
         u_req_args_t args;
         args.cnx_req.new_node_id = new_node_id;
@@ -5699,7 +5714,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             answer.cnx_req.height = me->height;         //TODO : modifier make_copy_brothers pour récupérer aussi la hauteur ?
             state = get_state(me);
             answer.cnx_req.contact_state = state;
-            answer.cnx_req.try = try;
 
             // now, me can be active
             set_active(me, new_node_id);
@@ -5741,16 +5755,18 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             me->cs_req_time = MSG_get_clock();
         }
         answer.cnx_req.val_ret = val_ret;
+        answer.cnx_req.try = try;
     }
 
     state = get_state(me);
-    XBT_INFO("Node %d: [%s:%d] '%c'/%d - end - val_ret = '%s', contact = %d",
+    XBT_INFO("Node %d: [%s:%d] '%c'/%d - end - val_ret = '%s' - nb_attempts = %d, contact = %d",
             me->self.id,
             __FUNCTION__,
             __LINE__,
             state.active,
             state.new_id,
             debug_ret_msg[val_ret],
+            answer.cnx_req.try,
             answer.cnx_req.new_contact.id);
 
     XBT_DEBUG("Node %d: [%s:%d] answer.cnx_req.add_stage = %d",
