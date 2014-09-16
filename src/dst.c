@@ -8863,13 +8863,11 @@ static void load_balance(node_t me, int contact_id) {
                     u_req_args.get_rep.new_node_id = me->self.id;
 
                     // TODO : ne pas oublier
-                    /*
                     res = send_msg_sync(me,
                             TASK_GET_REP,
                             me->brothers[i][j].id,
                             u_req_args,
                             &answer_data);
-                    */
 
                     res = MSG_OK;
 
