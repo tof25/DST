@@ -1,0 +1,29 @@
+@startuml
+
+title
+check_async_nok()
+
+end title
+
+start
+
+:idx <-- dynar_size - 1;
+while (idx >= dynar_size - ans_cpt) is (yes)
+    :elem <-- async_answers[idx];
+    if (elem has been answered ?) (yes)
+        if (answer is UPDATE_NOK && elem.new_node_id == new_node_id) (yes)
+            :record return values in ret and nok_id;
+        else (no)
+        endif
+        :remove record idx from async_answers;
+        :ans_cpt--;
+    else (no)
+    endif
+    :idx--;
+endwhile
+
+:return ret and nok_id;
+
+stop
+
+@enduml
