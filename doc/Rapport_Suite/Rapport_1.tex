@@ -1,0 +1,592 @@
+\documentclass[12pt,twoside,openright]{report}
+
+% packages
+\usepackage[french]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[width=16cm,left=3cm,top=3.5cm]{geometry}
+\geometry{a4paper}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{paralist}
+\usepackage{tabularx}
+\usepackage{parskip}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+
+% some definitions
+\def\tb{\textbf}
+\def\ti{\em}
+\def\sc{\textsc}
+\definecolor{dark_green}{rgb}{0,0.6,0}
+
+%customize lists
+\frenchbsetup{ReduceListSpacing=true, CompactItemize=false}
+
+% for titlepage.
+\newcommand{\HRule}{\rule{\linewidth}{.5mm}}
+
+% Hyperref.
+\hypersetup{
+	backref=true,
+    pagebackref=true,
+    hyperindex=true,
+    colorlinks=true,
+    breaklinks=true,
+    urlcolor=blue,
+    linkcolor=black,
+    citecolor=black,
+    bookmarks=true,
+    bookmarksopen=true
+}
+
+\begin{document}
+
+% Title page
+\begin{titlepage}
+\thispagestyle{empty}
+
+\begin{center}
+
+\includegraphics[width=4cm]{LOGO-LIFC.pdf} \\[1.5cm]
+{\sc {\Large Université de Franche-Comté}} \\[1.5cm]
+
+\HRule \\[.8cm]
+\setlength{\baselineskip}{2\baselineskip}
+{\huge \bfseries Contruction d'un DST : autres propositions} \\[.4cm]
+\HRule \\[1.5cm]
+
+{\ti par} Christophe \sc{Enderlin} \\
+{\ti le} \today \\[.5cm]
+
+\end{center}
+\end{titlepage}
+
+\cleardoublepage
+\chapter{CONTEXTE}
+
+\section{RAPPEL}
+
+
+Pour mémoire, voici une représentation graphique du déroulement des opérations lors de l'insertion d'un nouveau noeud dans le DST, sans équilibrage de
+charge, pour simplifier. (voir page suivante)
+
+\newgeometry{margin=.5cm}
+  \begin{figure}
+    \centering
+    \includegraphics[height=\textheight]{./Images/DST_Arrival.png}
+  \end{figure}
+\restoregeometry
+
+\section{SITUATION}
+
+À l'issue de nombreux tests, la première version de mon simulateur a montré son manque de robustesse
+: lorsqu'un grand nombre de nouveaux arrivants impactent la même zone du DST à un même moment, les
+choses se passent mal.
+L'ensemble des problèmes observés semble pouvoir être ramené aux deux points suivants :
+
+\subsection{Le foisonnement des requêtes/réponses se passe mal}
+
+Voici un exemple de cas de figure qui pose problème:
+
+2 noeuds intègrent le DST via un même contact:
+\begin{itemize}
+	\item Node 14 $\rightarrow$ Node 121 $\rightarrow$ Node 42 (intégration rapide, pas de scission requise)
+	\item Node 249 $\rightarrow$ Node 121 $\rightarrow$ Node 42 (scissions et ajout d'étage requis)
+	\item Alors que Node 121 est en attente de ACK\_CNX\_REQ/249 de 42, il reçoit\\ACK\_CNX\_REQ/14 de 42. Il le
+   stocke donc puisque ce n'est pas la réponse qu'il attend.
+
+	\item Node 14 ne recevant pas la réponse de 121 reste en 'b'.
+   À ce stade de l'intégration, il fait déjà partie du DST et il reçoit donc ADD\_STAGE/249 mais il
+   ne peut y répondre : c'est un DEADLOCK
+   
+   \end{itemize}
+
+Comme on le voit, le fait que ACK\_CNX\_REQ/14 soit stocké par 121 pose problème ici.
+
+Un seul process (hébergé sur Node 121) chargé de l'intégration de deux nouveaux noeuds différents
+attend deux réponses. Le problème vient alors du fait qu'il ne peut pas traiter les réponses du
+premier pendant qu'il est occupé avec le deuxième. Ce mécanisme n'est donc pas correct.
+
+On pense alors à deux solutions possibles:
+1) Utiliser la fonction MSG\_comm\_waitany() de Simgrid
+   (elle permet de réagir à n'importe quelle réponse parmi celles qui sont attendues)
+2) Utiliser plusieurs process dédiés, chacun gérant ses propres requêtes/réponses
+
+La deuxième solution semble permettre de bien séparer les tâches, ce qui aurait un double avantage :
+arrêter de mélanger les requêtes/réponses pour différents nouveaux arrivants, et présenter une
+trace d'exécution plus lisible.
+
+\subsection{L'échec d'une diffusion d'un SET\_UPDATE est mal géré}
+
+Pour rappel, lorsque l'arrivée d'un nouveau noeud requiert des scissions, on diffuse un SET\_UPDATE
+sur l'ensemble du sous-arbre impacté dans le but de placer un verrou (l'état 'u') sur l'ensemble des
+ces noeuds. Ainsi, ils ne peuvent plus s'occuper que des requêtes concernant cet ajout (les autres
+sont soit refusées, soit différées).
+
+Lorsque cette diffusion échoue (parce qu'on tombe sur une partie déjà verrouillée pour un autre
+arrivant, par exemple), on se retrouve dans la situation où une partie du sous-arbre a été
+verrouillée pour le nouveau noeud courant, et une autre pour un autre nouveau noeud. Il est donc
+important de remettre les choses en état (ôter les verrous posés par la diffusion en échec) pour ne
+pas bloquer les choses.
+
+Les tests ont montré que la méthode utilisée pour cela n'est pas correcte puiqu'on arrive malgré
+tout à générer des deadlocks. (ces deux sous-arbres se bloquent mutuellement)
+
+
+Il faut donc trouver des solutions pour ces deux problèmes.
+
+\section{Proposition de solution}
+
+%1) Présentation d'une solution au premier point
+
+Voici les principes de base de cette solution :
+  - Chaque demande d'insertion de nouveau noeud est traitée par un process distinct créé pour
+    l'occasion
+  - Ce sous-process ne peut pas recevoir de réponses à des requêtes qu'il n'a pas émises.
+    Dit autrement, il doit (et peut) traiter immédiatement toutes les réponses reçues.
+    (plus besoin de différer ou de refuser)
+  - Plusieurs nouveaux noeuds utilisant le même contact ne pouvant pas être traités simultanément,
+    un mécanisme de file d'attente pour les traiter séquentiellement est mis en place.
+
+De plus, j'ai fait le choix d'utiliser aussi un tel sous-processus pour les diffusions de SPLIT et
+de CS\_REQ parce que là encore, cela semble être un avantage de ne pas mélanger les réponses
+attendues dans le cas de diffusions croisées.
+
+Voici donc le schéma général de cette solution à process multiples:
+
+\includegraphics{./Images/Call_procs.png}
+
+Remarque préliminaire:
+launch\_fork\_process() est une fonction chargée de choisir comment exécuter les requêtes qui lui
+sont transmises : elle les confie soit à un nouveau process (cas de CNX\_REQ, BR\_SPLIT, BR\_CS\_REQ),
+soit au process courant.
+
+On utilise au plus trois process par noeud:
+    * Main\_Proc:
+      Comme son nom l'indique, c'est le process principal :
+        - il se charge des initialisations et de la création du process Tasks\_Queue (qui tourne
+          tout le temps de la simulation).
+        - il héberge les files tasks\_queue (les CNX\_REQ en attente) et delayed\_tasks (les tâches
+          différées)
+        - lorsqu'il reçoit une requête, soit il la place dans la file tasks\_queue (cas des
+          CNX\_REQ), soit il la transmet à launch\_fork\_process(). Il peut aussi différer des requêtes
+          en les plaçant dans la file delayed\_tasks %(TODO : à vérifier)
+        - il héberge ses propres files async\_answers et sync\_answers (les réponses asynchrones et
+          synchrones attendues aux requêtes qu'il a émises)
+
+    * Tasks\_Queue:
+      Ce process est chargé d'exécuter la fonction run\_tasks\_queue() qui traite les files
+      tasks\_queue et delayed\_tasks.
+      Il héberge aussi ses propres files async\_answers et sync\_answers.
+
+    * Handle\_Task:
+      C'est ce process qui est éventuellement créé par launch\_fork\_process() pour traiter les
+      requêtes concernées.
+      Il héberge aussi ses propres files async\_answers et sync\_answers.
+
+%Dans le détail.
+%***************
+%
+%run_tasks_queue
+%---------------
+%
+%<Algo_run_tasks_queue.png>
+%
+%La file tasks_queue contient toutes les demandes de connection (c'est à dire toutes les tâches
+%CNX_REQ) reçues par le noeud qui héberge cette file. run_tasks_queue() est donc chargée de traiter
+%les requêtes présentes dans cette file, par ordre de priorité.
+%
+%Après avoir traité les tâches différées (voir détails run_delayed_tasks() plus loin), on s'occupe de
+%la file tasks_queue proprement dite, à condition d'être actif (à l'état 'a').
+%
+%Le noeud courant possède deux variables "de noeud" (c'est à dire globales à tous les process
+%hébergés par ce noeud) :
+%
+%* Run_state :
+%Chaque requête de cette file sera traitée par un process distinct, mais il n'est pas possible ici
+%d'insérer plus d'un nouveau noeud à la fois et il faut donc que ces process s'exécutent
+%séquentiellement. C'est la raison d'être de cette variable Run_state : pour s'occuper de la tâche
+%suivante, la tâche courante doit être terminée. (valeur IDLE)
+%
+%* Last_return :
+%Il y a deux sortes d'échec d'insertion possibles.
+%Lors de l'arrivée d'un nouveau noeud, on a la séquence d'appels suivante : nouveau noeud -->
+%contact --> leader. En cas d'échec, le contact doit refaire une tentive plus tard, mais son leader
+%peut avoir changé entre temps. Le leader doit donc dépiler la requête alors que le contact doit la
+%conserver dans sa file. Deux valeurs de retour en cas d'échec sont alors requises : un leader
+%retourne la valeur FAILED alors qu'un contact retournera la valeur UPDATE_NOK.
+%
+%Comme on peut le voir, dans le cas général (i.e. cpt < MAX_CNX), une valeur de retour UPDATE_NOK
+%laisse la requête dans la file pour une nouvelle tentative un peu plus tard ("Sleep for a while").
+%Dans le cas contraire, on dépile pour passer à la requête suivante. (On voit donc bien qu'en cas de
+%retour FAILED, la requête est bien dépilée.)
+%
+%En détails :
+%Ã€ l'issue de l'exécution de connection_request(), une réponse est envoyée à l'émetteur seulement
+%dans les cas où la requête est ici dépilée.
+%
+%Lors d'un échec, voici alors ce qu'il se passe dans la séquence de retour leader --> contact -->
+%nouveau noeud: le leader reçoit FAILED : il dépile sa requête et répond UPDATE_NOK à son contact.
+%Celui-ci ne dépile rien et ne répond pas à nouveau noeud. La requête restant dans la file s'exécutera
+%alors au plus MAX_CNX fois.
+%
+%Si ce nombre est atteint, on décide alors de dépiler tout de même la requête et de répondre
+%UPDATE_NOK au nouveau noeud. Il peut ainsi détecter l'échec et refaire d'autres tentatives avec
+%d'autres contacts. (ces contacts sont alors choisis aléatoirement parmi les noeuds déjà intégrés au
+%DST. Il s'agit d'un tableau global, donc introduisant un peu de centralisation dans cet algorithme.
+%Voir commentaires en conclusion)
+%
+%Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité à ce moment-là. En
+%effet, pendant le temps d'exécution de CNX_REQ, d'autres demandes d'insertion ont pu arriver dans la
+%file et il faut s'assurer que la prochaine à exécuter soit bien la suivante en termes de priorité.
+%
+%L'exécution d'une requête de la file est confiée à launch_fork_process() (voir plus haut)
+%
+%TODO : Ecrire algo de la partie TASK_CNX_REQ de handle_task()
+%
+%
+%run_delayed_tasks
+%-----------------
+%
+%<Algo_run_delayed_tasks.png> TODO : image à couper en deux ?
+%
+%Cette fonction est chargée de traiter la file des tâches différées (delayed_tasks). Lorsqu'une tâche
+%ne peut pas être exécutée par un noeud, soit elle est refusée (et retournée à l'émetteur), soit
+%elle est stockée dans cette file pour être exécutée plus tard. Cette fonction est donc appelée
+%périodiquement. (Voir run_tasks_queue)
+%
+%On distingue deux cas : soit le noeud courant est à l'état 'u', soit il est à 'a'.
+%
+%1) état 'u'
+%-----------
+%Variables:
+%    - nb_elems : contient le nombre d'éléments de la file au lancement de run_delayed_tasks
+%
+%    - cpt      : itérateur (de 0 à nb_elems)
+%
+%Un nouveau noeud est alors en cours d'insertion et il faut examiner ce cas en premier pour minimiser
+%les risques de blocages.
+%Les seules tâches exécutables ici sont celles qui pourraient permettre de terminer cette insertion,
+%c'est à dire les CNX_GROUPS pour le même nouveau noeud que celui en cours d'insertion.
+%(c'est le test task_args.new_node_id == state.new_node_id)
+%
+%On parcourt donc la file à la recherche de ces tâches pour les exécuter. (handle_task(task))
+%
+%Lorsqu'on en trouve une, on peut l'ôter de la file sans s'assurer que son exécution a réussi ou pas
+%puisque si elle échoue, elle est à nouveau stockée dans la file.
+%
+%A noter : à l'issue de la fonction handle_tasks, le nombre de tâches de la file a pu augmenter.
+%Pourant, on choisi de ne pas mettre à jour la variable nb_elems ici pour ne pas risquer une boucle
+%sans fin. Si des tâches ont été ajoutées entre temps, elles seront traitées lors d'une prochaine
+%exécution de run_delayed_tasks.
+%
+%2) état 'a'
+%-----------
+%Ici, le noeud courant est prêt à exécuter n'importe quelle autre tâche et on peut passer au reste de
+%la file.
+%
+%Variables:
+%    - nb_elems   :      le nombre d'éléments restants de la file.
+%                        N'est pas non plus remis à jour en cours de boucle.
+%
+%    - idx        :      itérateur (de 0 à nb_elems)
+%
+%    - is_contact :      vaut 1 si le noeud courant est le contact direct du nouveau noeud.
+%                        (autrement dit, si l'émetteur de la tâche à exécuter est le nouveau noeud)
+%
+%    - buf_new_node_id : task_args.new_node_id est mémorisé dans cette variable parce qu'on en a besoin
+%                        après la destruction de task.
+%
+%    On ôte la tâche courante de la file dans les cas suivants :
+%        - l'exécution a réussi (OK et UPDATE_OK)
+%        - la tâche a à nouveau été stockée (STORED)
+%        - l'exécution a échoué mais le noeud courant n'est pas le contact direct du nouveau noeud.
+%          (UPDATE_NOK && !is_contact)
+%          Il s'agit du cas FAILED décrit plus haut.
+%
+%*********************************************************************
+%TODO : ne pourrait-on pas utiliser FAILED ici plutôt que is_contact ?
+%*********************************************************************
+%
+%A noter : si le noeud courant était verrouillé pour le même nouveau noeud que
+%celui dont la tâche vient d'échouer, alors on ôte le verrou.
+%
+%*****************
+%TODO : pourquoi ?
+%*****************
+%
+%Ã€ l'issue de l'exécution de cette boucle (idx == nb_elems), la file n'est pas forcément vide. Elle
+%contient toutes les tâches dont l'exécution a échoué et celles qui ont été stockées par d'autres
+%process entre temps. Cette boucle est alors à nouveau exécutée jusqu'à ce que nb_elems soit à 0,
+%c'est dire jusqu'au succès de toutes les tâches qui se trouvaient dans cette file au moment de
+%cet appel de run_delayed_tasks. Comme indiqué précédemment, les tâches ajoutées entre temps ne
+%seront pas traitées lors de cette exécution.
+%
+%*************************************************************************************************
+%TODO : se pourrait-il qu'il y ait un nouveau risque de boucle ici si une tâche échoue toujours ?
+%       ne faudrait-il pas repérer ce cas ?
+%*************************************************************************************************
+%
+%
+%launch_fork_process
+%-------------------
+%
+%<Algo_launch_fork_process.png>
+%
+%Si la tâche transmise à cette fonction n'est ni une demande de connexion (CNX_REQ), ni une
+%diffusion de SPLIT ou de CS_REQ, alors elle est exécutée localement, c'est à dire par le process
+%courant. Sinon, elle est confiée à un nouveau process créé pour l'occasion.
+%
+%Ce nouveau process doit possèder ses propres files d'attente de réponses attendues (async_answers et
+%sync_answers) de sorte qu'elles ne puissent plus être mélangées avec celles requises pour l'insertion
+%d'un autre nouveau noeud.
+%
+%Il est labelisé ainsi : xxx-nom_process-yyy où :
+%  - xxx est l'id du noeud courant
+%  - nom_process est le nom attribué par cette fonction (tel que "Cnx_req" ou "Br_split", etc)
+%  - yyy est l'id du nouveau noeud en cours d'insertion
+%On s'assure ainsi de l'unicité de l'étiquette de ce process.
+%
+%Dans le cas où la tâche est une diffusion de CS_REQ (demande d'entrée en section critique), on
+%commence par s'assurer que le noeud courant est disponible (c'est à dire répondrait favorablement à
+%un CS_REQ) pour ne pas créer de process fils inutilement. En cas de non-disponibilité, il faut en
+%informer l'émetteur de la requête.
+%
+%Description des fonctions de communication:
+%*******************************************
+%
+%Différence entre requêtes synchrones et asynchrones :
+%*****************************************************
+%
+%Synchrone :
+%***********
+%
+%La requête synchrone est utilisée lorsqu'une réponse est attendue pour poursuivre l'exécution du
+%programme.
+%
+%Cas d'emplois principaux:
+%(pour simplifier, la phase d'équilibrage de charge est ignorée ici)
+%
+%- CNX_REQ ( fonction join() )
+%  La réponse attendue est la table de routage du contact qui a réussi l'insertion du nouveau noeud
+%
+%- BROADCAST ( fonction handle_task():BROADCAST )
+%  La réponse attendue ici est la valeur de retour de la fonction handle_task(), c'est à dire le succès
+%  ou l'échec de la requête diffusée.
+%
+%De plus, on utilise aussi ce type de requête pour retransmettre au leader les requêtes CNX_REQ et
+%SPLIT_REQ. (pas forcément utile dans le cas de SPLIT_REQ, à voir)
+%
+%L'attente de la réponse ne devant pas être bloquante, toutes les requêtes ou autres réponses
+%arrivant dans l'intervalle doivent être traitées.
+%
+%Déroulement simplifié des opérations : (voir détails plus loin)
+%L'émetteur de la requête appelle send_msg_sync() qui exécute les tâches suivantes :
+%- crée la requête
+%- encapsule la requête dans une tâche
+%- empile la requête sur sync_answers
+%- envoie la tâche au destinataire
+%- attend la réponse
+%- traite tout ce qui est reçu qui n'est pas la réponse
+%- dès que la réponse est reçue, dépile la requête de sync_answers
+%- retourne la réponse à l'appelant
+%
+%
+%Asynchrone :
+%************
+%
+%Dans ce type de requête, le destinataire renvoie un simple accusé réception à l'émetteur une fois la
+%requête demandée effectuée. Ces accusés réception seront pris en compte ou pas selon les besoins de
+%synchronisation.
+%
+%Dans les deux cas, les opération se déroulent de cette façon :
+%
+%L'émetteur appelle send_msg_async() qui exécute les tâches suivantes : (voir détails plus loin)
+%- crée la requête
+%- encapsule la requête dans une tâche
+%- envoie la tâche au destinataire
+%
+%Puis deux cas se présentent :
+%
+%1er cas : Un accusé réception est attendu
+%-----------------------------------------
+%
+%Cas des requêtes suivantes :
+%
+%- BROADCAST ( fonction broadcast() )
+%- NEW_BROTHER_RCV ( fonction connection_request() )
+%- DEL_PRED ( fonctions connect_splitted_groups(), split() )
+%- ADD_PRED ( fonction connect_splitted_groups() )
+%- CNX_GROUPS ( fonction split() )
+%
+%L'émetteur empile alors la requête sur async_answers puis, lorsque plusieurs requêtes ont été émises,
+%il appelle wait_for_completion() pour arrêter le déroulement du programme jusqu'à ce que l'ensemble
+%des accusés réception ait été reçu. (voir détails de wait_for_completion plus loin)
+%C'est cette fonction qui dépile les requêtes de async_answers au fur et à mesure de leur réception
+%et comme send_msg_sync(), elle traite aussi tout ce qu'elle reçoit entre temps.
+%
+%
+%2e cas : pas d'accusé réception
+%-------------------------------
+%
+%Dans ce cas, l'appelant ne fait qu'exécuter send_msg_async().
+%
+%
+%send_msg_sync() en détails:
+%***************************
+%
+%<Algo_send_msg_sync.png>
+%
+%La fonction send_msg_sync() est chargée d'envoyer une requête à un autre noeud, puis d'en attendre
+%la réponse.
+%
+%Introduction : Chaque process hébergé par un noeud possède deux files : sync_answers et async_answers.
+%**************
+%Ces deux files servent à stocker les requêtes synchrones et asynchrones (respectivement) en attente
+%de réponse, ainsi que leur réponse, dès qu'elle a été reçue. Ces requêtes sont dépilées dès que leur
+%réponse a été prise en compte.
+%Pour mémoire, la réponse à une requête synchrone contient les données demandées alors que la réponse
+%à une requête asynchrone est simplement un accusé réception.
+%
+%Lorqu'une réponse est reçue, il y a trois cas possibles :
+%- il s'agit de la réponse qu'on est en train d'attendre :
+%  Dans ce cas, la réponse est prise en compte, la requête correspondante est simplement dépilée et
+%  le traitement se poursuit.
+%
+%- il s'agit d'une autre réponse attendue :
+%  Elle est alors enregistrée dans la bonne pile, avec la requête correspondante
+%
+%- il ne s'agit d'aucune réponse attendue :
+%  Elle est simplement ignorée (cas de certains accusés réception, par exemple)
+%
+%Déroulement de l'algo:
+%**********************
+%
+%Première partie : envoi de la requête.
+%***************************************
+%
+%Après avoir construit la tâche contenant la requête, celle-ci est envoyée au moyen de la fonction
+%isend() de Simgrid, puis stockée dans la pile sync_answers du process courant.
+%On attend ensuite la fin de la communication.
+%
+%Deux traitements différents des cas d'échecs :
+%- la communication ne se termine pas (cas du process destinataire arrêté) ou elle a le statut
+%  MSG_TRANSFER_FAILURE (cas de l'hôte destinataire arrêté) :
+%  La fonction s'arrête en retourant une erreur de transmission.
+%
+%- la communication se termine avec le statut TIMEOUT ( cas d'un destinataire trop occupé, par
+%  exemple ) :
+%  On recommence l'émission un certain nombre de fois (loop_cpt).
+%  Si max_loops est atteint, la fonction est également arrêtée avec une erreur de transmission.
+%
+%
+%Deuxième partie : réception de la réponse
+%*****************************************
+%
+%Dans cette partie, le process courant se met en écoute de la réponse. En cas d'erreur de communication
+%( res != MSG_OK ), on la signale et on se remet en écoute, sauf s'il s'agit d'un TIMEOUT pour une
+%requête GET_REP. Dans ce cas, on arrête la fonction là en retournant simplement l'erreur pour la
+%signaler à l'appelant.
+%
+%GET_REP est traitée de cette façon pour supprimer une possibilité de deadlock. GET_REP demande à un
+%noeud de fournir un autre représentant moins chargé pour un étage donné. S'il met trop de temps à
+%répondre et qu'on abandonne, ça n'a pas d'autre conséquence que de conserver le même représentant.
+%L'équilibrage de charge n'est alors pas optimumn, mais on accepte de défaut pour l'instant.
+%
+%Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
+%
+%* Cas d'une requête :
+%  Si c'est une demande de connexion (CNX_REQ), elle est simplement stockée dans tasks_queue (
+%  rappel : cette file est hébergée par le noeud courant ).
+%  Sinon, on l'exécute avec handle_task. ( TODO : pourquoi pas launch_fork_process ? )
+%
+%  Ensuite, on regarde dans la pile sync_answers pour voir si la réponse attendue n'a pas été reçue
+%  entre temps. Si oui, elle est dépilée et on quitte la boucle de réception. Sinon, on se remet en
+%  écoute.
+%
+%* Cas d'une réponse :
+%  On commence par regarder s'il s'agit de la réponse synchrone attendue. Si oui, elle est dépilée et
+%  on quitte la boucle de réception.
+%  Sinon, il peut s'agir d'une autre réponse attendue (synchrone ou asynchrone). Autrement dit, la
+%  requête correspondante à cette réponse est trouvée dans une des deux piles sync_answers ou
+%  async_answers.
+%  Dans ce cas, la réponse est enregistrée avec sa requête dans sa pile et on se remet en écoute.
+%  S'il ne s'agit d'aucune réponse attendue, on peut l'ignorer simplement et se remettre en écoute.
+%
+%Remarques :
+%***********
+%
+%1)
+%Dans cette fonction, la requête en attente de réponse se trouve toujours au sommet de la pile :
+%un process donné ne peut exécuter qu'une seule instance de send_msg_sync() à la fois, send_msg_sync()
+%est la seule fonction susceptible d'empiler une requête dans sync_answers, et une pile sync_answers
+%n'est associée qu'à un seul process.
+%De ce fait, lorsqu'on reçoit une réponse à une requête synchrone attendue, il est facile de déterminer
+%s'il s'agit de la réponse attendue ou d'une autre : la requête est au sommet de la pile ou pas.
+%
+%2)
+%Si send_msg_sync() n'est pas appelée par le process principal, elle ne peut pas recevoir d'autre
+%message que celui qui est attendu.
+%
+%---------------------------------------------------
+%
+%
+%send_msg_async() en détails
+%***************************
+%
+%<Algo_send_msg_async.png>
+%
+%Cette fonction réalise la même chose que la première partie de send_msg_syn(), à la différence qu'on
+%n'empile pas la requête puisqu'on laisse le soin à l'émetteur de décider s'il faut le faire ou pas.
+%
+%Une autre différence est qu'on ignore un éventuel défaut d'émission (res != MSG_OK) alors que le
+%programme est arrêté dans send_msg_sync(). Ce n'est pas volontaire, je n'ai juste pas encore étudié
+%la tolérance aux pannes.
+%
+%
+%wait_for_completion() en détails
+%********************************
+%
+%<Algo_wait_for_completion.png>
+%
+%On attend ans_cpt réponses. Si max_wait est atteint avant que toutes les réponses aient été reçues
+%et traitées, on quitte sur erreur, ce cas ne devant pas se produire.
+%
+%wait_for_completion() pouvant s'appeler elle-même, il faut commencer par vérifier si des réponses
+%attendues ont déjà été traitées par ces appels récursifs, et si oui, s'il en reste encore à traiter.
+%C'est l'appel à check_async_nok() du début.
+%
+%Si oui, on se met en écoute, et comme dans send_msg_sync(), il faut traiter tout ce qui est reçu
+%dans l'intervalle.
+%
+%- Requête:
+%  ********
+%
+%  Si c'est CNX_REQ, on l'empile sur tasks_queue, sinon, on l'exécute avec launch_fork_process().
+%  On regarde ensuite si des réponses ont été reçues entre temps avec check_async_nok(), puis on se
+%  remet éventuellement en écoute.
+%
+%- Réponse:
+%  ********
+%
+%  - Réponse asynchrone correspondant à une requête empilée :
+%    - si elle fait partie de celles qui sont attendues, la requête correspondante est dépilée
+%    d'async_answers, après avoir mémorisé un éventuel échec de BROADCAST ou SET_UPDATE dans ret
+%    (pour du log)
+%    On se remet ensuite en écoute s'il reste des réponses à recevoir. (ans_cpt > 0)
+%
+%    - sinon, elle est enregistrée dans async_answers
+%
+%  - Réponse synchrone attendue :
+%    - si oui, elle est enregistrée dans sync_answers
+%    - sinon, elle est ignorée.
+%
+%
+%**************************************
+%TODO : faire algo de check_async_nok
+%**************************************
+
+
+\pagenumbering{Roman}
+\end{document}
