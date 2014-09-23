@@ -4915,7 +4915,13 @@ static int join(node_t me, int contact_id) {
         //TODO : ne pas oublier
         if (answer_data->answer.cnx_req.try > 10000) {
 
-            XBT_INFO("COUCOU");
+            XBT_INFO("Node %d: [%s:%d] cnx_req.try = %d",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    answer_data->answer.cnx_req.try);
+
+            xbt_assert(1 == 0);
         }
 
         xbt_assert(answer_data->answer.cnx_req.try < 10000,
@@ -5735,6 +5741,16 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             debug_ret_msg[val_ret],
             answer.cnx_req.try,
             answer.cnx_req.new_contact.id);
+
+    //TODO : ne pas oublier
+    if (answer.cnx_req.try > 10000) {
+
+        XBT_INFO("Node %d: [%s:%d] cnx_req.try = %d",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                answer.cnx_req.try);
+    }
 
     XBT_DEBUG("Node %d: [%s:%d] answer.cnx_req.add_stage = %d",
             me->self.id,
