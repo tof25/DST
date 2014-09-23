@@ -41,7 +41,8 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 1000                        // max number of attempts to run CNX_REQ (just to display a warning)
+//TODO : ne pas oublier
+#define MAX_CNX 10                        // max number of attempts to run CNX_REQ (just to display a warning)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
@@ -1460,55 +1461,6 @@ static u_ans_data_t is_brother(node_t me, int id, int new_node_id) {
 }
 
 /**
- ***  FONTION EXPERIMENTALE NON UTILISEE  ***
- * \brief Search a given object in a dynar
- * \param dynar the dynar to search into
- * \param elem the object to search for
- * \return The index where the object is found. -1 otherwise.
- */
-/*
-static int dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem) {
-
-    XBT_IN();
-
-    unsigned int iter = 0;
-    int idx = -1;
-    void *item = NULL;
-
-    xbt_dynar_foreach(dynar, iter, item) {
-
-        // TODO : sizeof(*elem) pas correct puisque void*
-        if (!memcmp(item, elem, sizeof(*elem)) && idx == -1) {
-
-            idx = iter;
-        }
-    }
-    return idx;
-
-    XBT_OUT();
-}
-*/
-
-/**
- ***  FONCTION EXPERIMENTALE NON UTILISEE  ***
- * \brief Check if an object is found in a dynar.
- * \param dynar the dynar to look in
- * \param elem a pointer to the object to search for
- * \return A boolean value (1 for yes)
- */
-/*
-static char dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem) {
-
-    XBT_IN();
-
-    int idx = dst_xbt_dynar_search_or_negative(dynar, elem);
-    return (idx > -1 ? 1 : 0);
-
-    XBT_OUT();
-}
-*/
-
-/**
  * \brief Some node asks for permission to get into Critical Section
  * \param me the current node
  * \param sender_id sender node's id
@@ -1531,7 +1483,6 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
     e_val_ret_t val_ret = OK;
     s_state_t state = get_state(me);
     char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
-    //char test = 1;
 
     /* to avoid dealocks : if CS has been requested and not answered for long
        ago, or if new node's priority is lower, cancel this request */
@@ -2099,8 +2050,12 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         /* No, this answer is then expected by one of parent calls:
                            just record it in the dynar */
 
-                        // TODO : Vérifier si cette branche a une utilité : comment peut-on arriver là si la réponse ne
-                        // trouve pas déjà dans le dynar ?
+                        // NOTE : comment peut-on arriver là si la réponse ne trouve pas déjà dans le dynar ?
+
+                        xbt_assert(1 == 0, "Node %d: [%s:%d] Check point",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__);
 
                         rec_async_answer(me, dynar_idx, ans);
                     }
@@ -2198,15 +2153,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         me->self.id);
             } // task_received is a request
         } // task reception OK
-
-        /*  TODO: Ne pas oublier
-        xbt_assert(ans == NULL && task_received == NULL,
-                "Node %d in wait_for_completion(): ans and task_received"
-                " should be NULL here ! ans = %p - task_received = %p",
-                me->self.id,
-                ans,
-                task_received);
-        */
     } // reception loop
 
     // Error if max_wait reached
@@ -2904,6 +2850,14 @@ static void run_tasks_queue(node_t me) {
                         // too many attempts
                         task_ptr = xbt_dynar_get_ptr(me->tasks_queue, 0);
 
+                        if (!strcmp(MSG_task_get_name(*task_ptr),"")) {
+                            xbt_assert(1 == 0,
+                                    "Node %d: [%s:%d] Name empty !",
+                                    me->self.id,
+                                    __FUNCTION__,
+                                    __LINE__);
+                        }
+
                         xbt_assert(task_ptr != NULL && *task_ptr != NULL,
                                 "Node %d: [%s:%d] task_ptr shouldn't be NULL here (1) !",
                                 me->self.id,
@@ -3224,7 +3178,6 @@ static void run_delayed_tasks(node_t me) {
                                 idx,
                                 debug_ret_msg[val_ret]);
 
-                        // next task        //TODO : erreur ?
                         idx++;
                     }
 
@@ -4958,6 +4911,20 @@ static int join(node_t me, int contact_id) {
 
         // join failure
         XBT_VERB("Node %d failed to join the DST", me->self.id);
+
+        //TODO : ne pas oublier
+        if (answer_data->answer.cnx_req.try > 10000) {
+
+            XBT_INFO("COUCOU");
+        }
+
+        xbt_assert(answer_data->answer.cnx_req.try < 10000,
+                    "Node %d: [%s:%d] number of attempts NOK !! (%d)",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    answer_data->answer.cnx_req.try);
+
         me->dst_infos.attempts += answer_data->answer.cnx_req.try;
 
         data_ans_free(me, &answer_data);
