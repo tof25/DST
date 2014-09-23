@@ -4913,7 +4913,7 @@ static int join(node_t me, int contact_id) {
         XBT_VERB("Node %d failed to join the DST", me->self.id);
 
         //TODO : ne pas oublier
-        if (answer_data->answer.cnx_req.try > 10000) {
+        if (abs(answer_data->answer.cnx_req.try) > 10000) {
 
             XBT_INFO("Node %d: [%s:%d] cnx_req.try = %d",
                     me->self.id,
@@ -5743,7 +5743,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             answer.cnx_req.new_contact.id);
 
     //TODO : ne pas oublier
-    if (answer.cnx_req.try > 10000) {
+    if (abs(answer.cnx_req.try) > 10000) {
 
         XBT_INFO("Node %d: [%s:%d] cnx_req.try = %d",
                 me->self.id,
