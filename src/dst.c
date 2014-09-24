@@ -41,8 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-//TODO : ne pas oublier
-#define MAX_CNX 10                        // max number of attempts to run CNX_REQ (just to display a warning)
+#define MAX_CNX 1000                        // max number of attempts to run CNX_REQ (just to display a warning)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
@@ -2878,19 +2877,21 @@ static void run_tasks_queue(node_t me) {
 
                         // shift queue to remove head task
 
-                        XBT_VERB("Node %d: [%s:%d] last run was '%s' : shift queue and answer sender %d - run_state = %s",
+                        XBT_VERB("Node %d: [%s:%d] last run was '%s' : shift queue and answer sender %d - run_state = %s - nb_attempts = %d",
                                 me->self.id,
                                 __FUNCTION__,
                                 __LINE__,
                                 debug_ret_msg[me->run_task.last_ret],
                                 req_data->sender_id,
-                                debug_run_msg[me->run_task.run_state]);
+                                debug_run_msg[me->run_task.run_state],
+                                req_data->args.cnx_req.try);
 
                         cpt = 0;
 
                         // tell sender to test another contact
                         answer.cnx_req.val_ret = UPDATE_NOK;
                         answer.cnx_req.new_contact.id = -1;
+                        answer.cnx_req.try = req_data->args.cnx_req.try;
 
                         send_ans_sync(me,
                                 req_data->args.cnx_req.new_node_id,
@@ -4008,8 +4009,15 @@ static msg_error_t send_msg_sync(node_t me,
                 } else {
 
                     // handle this received request
+                    //TODO : ne pas oublier (si du broadcast est reçu ici, il faut peut-être remplcer handle_task par launch_fork_process)
                     if (req->type == TASK_BROADCAST) {
-                        xbt_assert(1 == 0, "TASK_BROADCAST !!");
+                        XBT_INFO("Node %d: [%s:%d] TASK_BROADCAST received in '%s' : '%s'",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
+                                __FUNCTION__,
+                                debug_msg[req->args.broadcast.type]);
+                        xbt_assert(1 == 0);
                     }
                     handle_task(me, &task_received);
                 }
@@ -4912,26 +4920,7 @@ static int join(node_t me, int contact_id) {
         // join failure
         XBT_VERB("Node %d failed to join the DST", me->self.id);
 
-        //TODO : ne pas oublier
-        if (abs(answer_data->answer.cnx_req.try) > 10000) {
-
-            XBT_INFO("Node %d: [%s:%d] cnx_req.try = %d",
-                    me->self.id,
-                    __FUNCTION__,
-                    __LINE__,
-                    answer_data->answer.cnx_req.try);
-
-            xbt_assert(1 == 0);
-        }
-
-        xbt_assert(answer_data->answer.cnx_req.try < 10000,
-                    "Node %d: [%s:%d] number of attempts NOK !! (%d)",
-                    me->self.id,
-                    __FUNCTION__,
-                    __LINE__,
-                    answer_data->answer.cnx_req.try);
-
-        me->dst_infos.attempts += answer_data->answer.cnx_req.try;
+        me->dst_infos.attempts = answer_data->answer.cnx_req.try;
 
         data_ans_free(me, &answer_data);
         return 0;
@@ -4945,7 +4934,7 @@ static int join(node_t me, int contact_id) {
     /* get task answer data: new contact and its routing table */
 
     // records number of attempts
-    me->dst_infos.attempts += answer_data->answer.cnx_req.try;
+    me->dst_infos.attempts = answer_data->answer.cnx_req.try;
 
     state = get_state(me);
     XBT_INFO("Node %d: '%c'/%d - **** GETTING INFOS FROM ITS NEW CONTACT %d (needed %d attempts) ... ****",
@@ -5316,7 +5305,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         u_req_args_t args;
         args.cnx_req.new_node_id = new_node_id;
         args.cnx_req.cs_new_node_prio = cs_new_node_prio;
-        args.cnx_req.try = try;
+        args.cnx_req.try = try - 1;
 
         ans_data_t answer_data = NULL;
         msg_error_t res;
@@ -5584,7 +5573,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                             state.active,
                             state.new_id,
                             new_node_id,
-                            try);
+                            try + 1);
 
                     display_sc(me, 'V');
 
@@ -5728,7 +5717,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             me->cs_req_time = MSG_get_clock();
         }
         answer.cnx_req.val_ret = val_ret;
-        answer.cnx_req.try = try;
+        answer.cnx_req.try = try + 1;
     }
 
     state = get_state(me);
@@ -5741,16 +5730,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             debug_ret_msg[val_ret],
             answer.cnx_req.try,
             answer.cnx_req.new_contact.id);
-
-    //TODO : ne pas oublier
-    if (abs(answer.cnx_req.try) > 10000) {
-
-        XBT_INFO("Node %d: [%s:%d] cnx_req.try = %d",
-                me->self.id,
-                __FUNCTION__,
-                __LINE__,
-                answer.cnx_req.try);
-    }
 
     XBT_DEBUG("Node %d: [%s:%d] answer.cnx_req.add_stage = %d",
             me->self.id,
@@ -9087,7 +9066,7 @@ int node(int argc, char *argv[]) {
 
             XBT_INFO("Node %d: **** START JOINING DST *** (attempt number %d)",
                     node.self.id,
-                    node.dst_infos.attempts);
+                    node.dst_infos.attempts + 1);
 
             XBT_INFO("Node %d: Let's join the system ! (via contact %d) -"
                     " deadline = %f",
