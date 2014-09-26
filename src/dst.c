@@ -41,7 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 1000                        // max number of attempts to run CNX_REQ (just to display a warning)
+#define MAX_CNX 10                        // max number of attempts to run CNX_REQ (just to display a warning)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
@@ -2836,14 +2836,14 @@ static void run_tasks_queue(node_t me) {
                             debug_ret_msg[me->run_task.last_ret]);
                 } else {
 
-                    XBT_VERB("Node %d: something to do", me->self.id);
+                    XBT_VERB("Node %d: something to do - cpt = %d", me->self.id, cpt);
                 }
 
                 // no task running
                 if (me->run_task.last_ret == UPDATE_NOK) {
 
                     // last run was not OK
-                    cpt++;
+                    //cpt++;
                     if (cpt >= MAX_CNX) {
 
                         // too many attempts
@@ -2975,6 +2975,7 @@ static void run_tasks_queue(node_t me) {
                     }
 
                     xbt_assert(*task_ptr != NULL, "[%s:%d] STOP", __FUNCTION__, __LINE__);
+                    cpt++;
                     launch_fork_process(me, *task_ptr);
                 }
             }
@@ -4899,7 +4900,8 @@ static int join(node_t me, int contact_id) {
     u_req_args_t u_req_args;
     u_req_args.cnx_req.new_node_id = me->self.id;
     u_req_args.cnx_req.cs_new_node_prio = me->prio;
-    u_req_args.cnx_req.try = me->dst_infos.attempts;
+    //u_req_args.cnx_req.try = me->dst_infos.attempts;
+    u_req_args.cnx_req.try = 0;
 
     ans_data_t answer_data = NULL;
 
@@ -4915,12 +4917,16 @@ static int join(node_t me, int contact_id) {
             answer_data->answer.cnx_req.val_ret,
             answer_data->answer.cnx_req.new_contact.id);
 
+    if (res == MSG_OK) {
+
+        // records number of attempts
+        me->dst_infos.attempts += answer_data->answer.cnx_req.try;
+    }
+
     if (res != MSG_OK || answer_data->answer.cnx_req.val_ret == UPDATE_NOK) {
 
         // join failure
         XBT_VERB("Node %d failed to join the DST", me->self.id);
-
-        me->dst_infos.attempts = answer_data->answer.cnx_req.try;
 
         data_ans_free(me, &answer_data);
         return 0;
@@ -4932,9 +4938,6 @@ static int join(node_t me, int contact_id) {
             __LINE__);
 
     /* get task answer data: new contact and its routing table */
-
-    // records number of attempts
-    me->dst_infos.attempts = answer_data->answer.cnx_req.try;
 
     state = get_state(me);
     XBT_INFO("Node %d: '%c'/%d - **** GETTING INFOS FROM ITS NEW CONTACT %d (needed %d attempts) ... ****",
@@ -5305,7 +5308,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         u_req_args_t args;
         args.cnx_req.new_node_id = new_node_id;
         args.cnx_req.cs_new_node_prio = cs_new_node_prio;
-        args.cnx_req.try = try - 1;
+        args.cnx_req.try = try;
 
         ans_data_t answer_data = NULL;
         msg_error_t res;
@@ -5573,7 +5576,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                             state.active,
                             state.new_id,
                             new_node_id,
-                            try + 1);
+                            try);
 
                     display_sc(me, 'V');
 
@@ -5717,7 +5720,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             me->cs_req_time = MSG_get_clock();
         }
         answer.cnx_req.val_ret = val_ret;
-        answer.cnx_req.try = try + 1;
+        answer.cnx_req.try = try;
     }
 
     state = get_state(me);
