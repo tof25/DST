@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/09/12
+ *  Written by Christophe Enderlin on 2014/09/29
  *
  */
 
@@ -37,11 +37,11 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAILBOX_NAME_SIZE 50                // name size of a mailbox
 #define TYPE_NBR 38                         // number of task types
 #define MAX_WAIT_COMPL 20000                // won't wait longer for broadcast completion
-#define MAX_WAIT_GET_REP 500                // won't wait longer an answer to a GET_REP request
+#define MAX_WAIT_GET_REP 5000               // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 10                        // max number of attempts to run CNX_REQ (just to display a warning)
+#define MAX_CNX 500                        // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
@@ -3054,7 +3054,6 @@ static void run_delayed_tasks(node_t me) {
                     xbt_dynar_remove_at(me->delayed_tasks, cpt, &elem);
                     cpt--;
                     handle_task(me, &elem);
-                    //nb_elems = (int) xbt_dynar_length(me->delayed_tasks);
 
                     /*TODO : il semble qu'il y ait ici une possiblité de boucle infinie si les
                              CNX_GROUPS sont à nouveau stockées. Possible ? */
@@ -3942,6 +3941,7 @@ static msg_error_t send_msg_sync(node_t me,
 
         if (res != MSG_OK) {
 
+            // TODO : si TIMEOUT et GET_REP, il faut laisser tomber
             // reception failure
             xbt_assert(1 == 0, "Node %d: Failed to receive the answer to my '%s' request from %s"
                     " result : %s (line %d)",

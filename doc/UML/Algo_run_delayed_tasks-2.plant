@@ -2,26 +2,6 @@
 
 start
 
-:cpt <-- 0
-idx <-- 0
-val_ret <-- OK
-nb_elems <-- taille de delayed_tasks;
-
-if (state.active = 'u' && delayed_tasks non vide ?) then (yes)
-
-    while (cpt < nb_elems && state.active = 'u' ?)
-        :task <-- delayed_tasks(cpt);
-        if (task.type == CNX_GROUPS ?) then (yes)
-            if (task.args.new_node_id == state.new_node_id ?) then (yes)
-                :remove delayed_tasks(cpt);
-                :cpt--;
-                :handle_tasks(task);
-            endif
-        endif
-        :cpt++;
-    endwhile
-endif
-
 if (state.active = 'a' && delayed_tasks non vide ?) then (yes)
     if (nb_elems > 0 ?) then (yes)
         :is_contact <-- 0\nbuf_new_node_id <-- -1;
