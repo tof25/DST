@@ -2049,12 +2049,15 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         /* No, this answer is then expected by one of parent calls:
                            just record it in the dynar */
 
-                        // NOTE : comment peut-on arriver là si la réponse ne trouve pas déjà dans le dynar ?
+                        // NOTE : comment peut-on arriver là si la réponse ne se trouve pas déjà dans le dynar ?
+                        // TODO : check point rencontré
 
+                        /*
                         xbt_assert(1 == 0, "Node %d: [%s:%d] Check point",
                                 me->self.id,
                                 __FUNCTION__,
                                 __LINE__);
+                        */
 
                         rec_async_answer(me, dynar_idx, ans);
                     }
