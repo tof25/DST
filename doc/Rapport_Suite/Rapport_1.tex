@@ -137,6 +137,8 @@ tout à générer des {\ti deadlocks}, les deux sous-arbres se bloquant mutuellemen
 
 Il faut donc trouver des solutions pour ces deux problèmes.
 
+%TODO : parler du mécanisme de CS_REQ
+
 \section{Proposition de solutions}
 
 \paragraph {Solution au premier point,}principes de base
@@ -179,7 +181,7 @@ On utilise au plus trois process par n\oe ud:
     \begin{itemize}
     	\item il se charge des initialisations et de la création du process {\tt Tasks\_Queue} (qui tourne
           tout le temps de la simulation).
-    	\item il héberge les files {\ti tasks\_queue} (les {\tt CNX\_REQ} en attente) et {\ti delayed\_tasks} (les tâches
+    	\item il héberge les files {\ti tasks\_queue} (les tâches {\tt CNX\_REQ} en attente) et {\ti delayed\_tasks} (les tâches
           différées)
         \item
         \begin{inparaenum}[\itshape a\upshape)]
@@ -200,18 +202,18 @@ On utilise au plus trois process par n\oe ud:
 
     \item {\tt Handle\_Task}
     
-      C'est ce process qui est éventuellement créé par {\tt launch\_fork\_process()} pour traiter les
+      C'est ce process qui est éventuellement créé par {\tt launch\_fork\_process()} depuis {\tt run\_tasks\_queue()} pour traiter les
       requêtes concernées.
       Il héberge aussi ses propres files {\ti async\_answers} et {\ti sync\_answers}.
 \end{enumerate}
 
 \subsection{Dans le détail}
 
-\paragraph {run\_tasks\_queue()}\hfill \\
+\paragraph {run\_tasks\_queue()}\label{rtq}\hfill \\
 
 La file {\ti tasks\_queue} contient toutes les demandes de connection (c'est à dire toutes les tâches
 {\tt CNX\_REQ}) reçues par le n\oe ud qui héberge cette file. {\tt run\_tasks\_queue()} est donc chargée de traiter
-les requêtes présentes dans cette file, par ordre de priorité.
+les requêtes présentes dans cette file, par ordre de priorité. \footnote{voir plus loin les remarques à ce sujet}
 
 Après avoir traité les tâches différées (voir détails {\tt run\_delayed\_tasks()} plus loin), on s'occupe de
 la file {\ti tasks\_queue} proprement dite, à condition d'être actif (à l'état '{\tt a}').
@@ -226,11 +228,13 @@ séquentiellement. C'est la raison d'être de cette variable {\ti Run\_state} : po
 suivante, la tâche courante doit être terminée. (valeur {\ti IDLE})
 
 	\item{\ti Last\_return} :
+Cette variable contient la valeur de retour de l'exécution courante de {\tt connection\_request()}.
+
 Il y a deux sortes d'échec d'insertion possibles.
 Lors de l'arrivée d'un nouveau n\oe ud, on a la séquence d'appels suivante : {\ti nouveau n\oe ud} $\rightarrow
-contact \rightarrow leader$. En cas d'échec, le contact doit refaire une tentive plus tard, mais son leader
+contact \rightarrow leader$. En cas d'échec, le contact doit refaire une tentative plus tard, mais son leader
 peut avoir changé entre temps. Le leader doit donc dépiler la requête alors que le contact doit la
-conserver dans sa file. Deux valeurs de retour en cas d'échec sont alors requises : un leader
+conserver dans sa file {\ti tasks\_queue}. Deux valeurs de retour en cas d'échec sont alors requises : un leader
 retourne la valeur {\ti FAILED} alors qu'un contact retournera la valeur {\ti UPDATE\_NOK}.
 \end{itemize}
 
@@ -251,108 +255,136 @@ retour {\ti FAILED}, la requête est bien dépilée.)
 dans les cas où la requête est ici dépilée.
 
 Lors d'un échec, voici alors ce qu'il se passe dans la séquence de retour $leader \rightarrow contact \rightarrow$
-{\ti nouveau n\oe ud}: le leader reçoit {\ti FAILED}; il dépile sa requête et répond {\ti UPDATE\_NOK} à son contact.
-Celui-ci ne dépile rien et ne répond pas à nouveau n\oe ud. La requête restant dans la file s'exécutera
+{\ti nouveau n\oe ud}: le leader reçoit {\ti FAILED} comme valeur de retour de {\tt connection\_request()},
+il dépile donc sa requête et répond {\ti UPDATE\_NOK} à son contact.
+Celui-ci ne dépile rien et ne répond pas à {\ti nouveau n\oe ud}. La requête restant dans la file s'exécutera
 alors au plus {\ti MAX\_CNX} fois.
 
 Si ce nombre est atteint, on décide alors de dépiler tout de même la requête et de répondre
 {\ti UPDATE\_NOK} au nouveau n\oe ud. Il peut ainsi détecter l'échec et refaire d'autres tentatives avec
 d'autres contacts. (ces contacts sont alors choisis aléatoirement parmi les n\oe uds déjà intégrés au
 DST. Il s'agit d'un tableau global, donc introduisant un peu de centralisation dans cet algorithme.
-Voir commentaires en conclusion)
+\footnote {Voir commentaires en conclusion})
 
 Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité à ce moment-là. En
-effet, pendant le temps d'exécution de {\tt CNX\_REQ}, d'autres demandes d'insertion ont pu arriver dans la
+effet, pendant le temps d'exécution de {\tt connection\_request()}, d'autres demandes d'insertion ont pu arriver dans la
 file et il faut s'assurer que la prochaine à exécuter soit bien la suivante en termes de priorité.
 
-L'exécution d'une requête de la file est confiée à {\tt launch\_fork\_process()} (voir plus haut)
+L'exécution d'une requête de la file est confiée à {\tt launch\_fork\_process()} (voir plus haut)\hfill \\
 
 %TODO : Ecrire algo de la partie TASK_{\tt CNX\_REQ} de handle_task()
 
 
-%run_delayed_tasks
-%-----------------
-%
-%<Algo_run_delayed_tasks.png> TODO : image à couper en deux ?
-%
-%Cette fonction est chargée de traiter la file des tâches différées (delayed_tasks). Lorsqu'une tâche
-%ne peut pas être exécutée par un n\oe ud, soit elle est refusée (et retournée à l'émetteur), soit
-%elle est stockée dans cette file pour être exécutée plus tard. Cette fonction est donc appelée
-%périodiquement. (Voir run_tasks_queue)
-%
-%On distingue deux cas : soit le n\oe ud courant est à l'état 'u', soit il est à 'a'.
-%
-%1) état 'u'
-%-----------
-%Variables:
-%    - nb_elems : contient le nombre d'éléments de la file au lancement de run_delayed_tasks
-%
-%    - cpt      : itérateur (de 0 à nb_elems)
-%
-%Un nouveau n\oe ud est alors en cours d'insertion et il faut examiner ce cas en premier pour minimiser
-%les risques de blocages.
-%Les seules tâches exécutables ici sont celles qui pourraient permettre de terminer cette insertion,
-%c'est à dire les CNX_GROUPS pour le même nouveau n\oe ud que celui en cours d'insertion.
-%(c'est le test task_args.new_{\ti Node}_id == state.new_{\ti Node}_id)
-%
-%On parcourt donc la file à la recherche de ces tâches pour les exécuter. (handle_task(task))
-%
-%Lorsqu'on en trouve une, on peut l'ôter de la file sans s'assurer que son exécution a réussi ou pas
-%puisque si elle échoue, elle est à nouveau stockée dans la file.
-%
-%A noter : à l'issue de la fonction handle_tasks, le nombre de tâches de la file a pu augmenter.
-%Pourant, on choisi de ne pas mettre à jour la variable nb_elems ici pour ne pas risquer une boucle
-%sans fin. Si des tâches ont été ajoutées entre temps, elles seront traitées lors d'une prochaine
-%exécution de run_delayed_tasks.
-%
-%2) état 'a'
-%-----------
-%Ici, le n\oe ud courant est prêt à exécuter n'importe quelle autre tâche et on peut passer au reste de
-%la file.
-%
-%Variables:
-%    - nb_elems   :      le nombre d'éléments restants de la file.
-%                        N'est pas non plus remis à jour en cours de boucle.
-%
-%    - idx        :      itérateur (de 0 à nb_elems)
-%
-%    - is_contact :      vaut 1 si le n\oe ud courant est le contact direct du nouveau n\oe ud.
-%                        (autrement dit, si l'émetteur de la tâche à exécuter est le nouveau n\oe ud)
-%
-%    - buf_new_{\ti Node}_id : task_args.new_{\ti Node}_id est mémorisé dans cette variable parce qu'on en a besoin
-%                        après la destruction de task.
-%
-%    On ôte la tâche courante de la file dans les cas suivants :
-%        - l'exécution a réussi (OK et UPDATE_OK)
-%        - la tâche a à nouveau été stockée (STORED)
-%        - l'exécution a échoué mais le n\oe ud courant n'est pas le contact direct du nouveau n\oe ud.
-%          ({\ti UPDATE\_NOK} && !is_contact)
-%          Il s'agit du cas FAILED décrit plus haut.
-%
+\paragraph {run\_delayed\_tasks()}\hfill \\
+
+Cette fonction est chargée de traiter la file des tâches différées ({\ti delayed\_tasks}). Lorsqu'une tâche
+ne peut pas être exécutée par un n\oe ud, soit elle est refusée (et retournée à l'émetteur), soit
+elle est stockée dans cette file pour être exécutée plus tard. Cette fonction est donc appelée
+périodiquement. (Voir {\tt run\_tasks\_queue()})
+
+On distingue deux cas : soit le n\oe ud courant est à l'état '{\tt u}', soit il est à '{\tt a}'.
+
+%\begin{enumerate}
+
+\subparagraph {état '{\tt u}'} (voir partie 1 - figure \ref{del-1})
+
+
+Variables:
+\begin{itemize}
+	\item {\ti nb\_elems} : contient le nombre d'éléments de la file au lancement de {\tt run\_delayed\_tasks()}
+
+	\item {\ti cpt}      : itérateur (de $0$ à {\ti nb\_elems})
+\end{itemize}
+
+Un nouveau n\oe ud est alors en cours d'insertion et il faut examiner ce cas en premier pour minimiser
+les risques de blocages.
+Les seules tâches exécutables ici sont celles qui pourraient permettre de terminer cette insertion,
+c'est à dire les {\tt CNX\_GROUPS} pour le même nouveau n\oe ud que celui en cours d'insertion.
+(c'est le test {\tt task.args.new\_node\_id == state.new\_node\_id})
+
+On parcourt donc la file à la recherche de ces tâches pour les exécuter. ({\tt handle\_task(task)})
+
+\newgeometry{hmargin=1cm}
+  \begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{./Images/Algo_run_delayed_tasks-1.png}
+    \caption{Traitement des tâches différées - Partie 1}
+    \label{del-1}
+  \end{figure}
+\restoregeometry
+
+Lorsqu'on en trouve une, on peut l'ôter de la file sans s'assurer que son exécution a réussi ou pas
+puisque si elle échoue, elle est à nouveau stockée dans la file.
+
+\tb{À noter :} à l'issue de la fonction {\tt handle\_tasks()}, le nombre de tâches de la file a pu augmenter.
+Pourtant, on choisi de ne pas mettre à jour la variable {\ti nb\_elems} ici pour ne pas risquer une boucle
+sans fin. Si des tâches ont été ajoutées entre temps, elles seront traitées lors d'une prochaine
+exécution de {\tt run\_delayed\_tasks()}.
+
+
+\subparagraph {état 'a'} (voir partie 2 - figure \ref{del-2})
+
+
+Ici, le n\oe ud courant est prêt à exécuter n'importe quelle autre tâche et on peut traiter le reste de
+la file.
+
+Variables:
+\begin{itemize}
+	\item {\ti nb\_elems} : le nombre d'éléments restants de la file.
+                            %N'est pas non plus remis à jour en cours de boucle.
+
+    \item {\ti idx}       : itérateur (de 0 à {\ti nb\_elems})
+
+    \item {\ti is\_contact} : vaut 1 si le n\oe ud courant est le contact direct du nouveau n\oe ud.
+                              (autrement dit, si l'émetteur de la tâche à exécuter est le nouveau n\oe ud)
+
+    \item {\ti buf\_new\_node\_id} : {\tt task.args.new\_node\_id} est mémorisé dans cette variable parce qu'on en a besoin
+                                     après la destruction de task.
+\end{itemize}\hfill \\
+On ôte la tâche courante de la file dans les cas suivants :
+\begin{itemize}
+	\item l'exécution a réussi ({\ti OK} et {\ti UPDATE\_OK})
+    \item la tâche a été stockée à nouveau ({\ti STORED})
+    \item l'exécution a échoué mais le n\oe ud courant n'est pas le contact direct du nouveau n\oe ud.
+          ({\tt UPDATE\_NOK \&\& !is\_contact})
+          Il s'agit du cas {\ti FAILED} décrit plus haut.
+\end{itemize}
+
 %*********************************************************************
 %TODO : ne pourrait-on pas utiliser FAILED ici plutôt que is_contact ?
 %*********************************************************************
-%
-%A noter : si le n\oe ud courant était verrouillé pour le même nouveau n\oe ud que
-%celui dont la tâche vient d'échouer, alors on ôte le verrou.
-%
+
+\tb{À noter :} si le n\oe ud courant était verrouillé pour le même nouveau n\oe ud que
+celui dont la tâche vient d'échouer, alors on ôte le verrou.
+
 %*****************
 %TODO : pourquoi ?
 %*****************
-%
-%À l'issue de l'exécution de cette boucle (idx == nb_elems), la file n'est pas forcément vide. Elle
-%contient toutes les tâches dont l'exécution a échoué et celles qui ont été stockées par d'autres
-%process entre temps. Cette boucle est alors à nouveau exécutée jusqu'à ce que nb_elems soit à 0,
-%c'est dire jusqu'au succès de toutes les tâches qui se trouvaient dans cette file au moment de
-%cet appel de run_delayed_tasks. Comme indiqué précédemment, les tâches ajoutées entre temps ne
-%seront pas traitées lors de cette exécution.
-%
+
+À l'issue de l'exécution de cette boucle ({\tt idx == nb\_elems}), la file n'est pas forcément vide. Elle
+contient toutes les tâches dont l'exécution a échoué et celles qui ont été stockées -- y compris par d'autres
+process -- entre temps. Cette boucle est alors à nouveau exécutée jusqu'à ce que {\ti nb\_elems} soit à 0,
+c'est dire jusqu'au succès de toutes les tâches qui se trouvaient dans cette file au moment de
+cet appel de {\tt run\_delayed\_tasks()}. Comme indiqué précédemment, les tâches ajoutées entre temps ne
+seront pas traitées lors de cette exécution.
+
+%\end{enumerate}
+
+\newgeometry{hmargin=0.5cm}
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{./Images/Algo_run_delayed_tasks-2.png}
+    \caption{Traitement des tâches différées - Partie 2}
+    \label{del-2}
+  \end{figure}
+\restoregeometry
+
 %*************************************************************************************************
 %TODO : se pourrait-il qu'il y ait un nouveau risque de boucle ici si une tâche échoue toujours ?
 %       ne faudrait-il pas repérer ce cas ?
 %*************************************************************************************************
-%
-%
+
+
 %launch_fork_process
 %-------------------
 %
