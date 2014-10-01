@@ -4,8 +4,13 @@
 \usepackage[french]{babel}
 \usepackage[latin1]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[width=16cm,left=3cm,top=3.5cm]{geometry}
-\geometry{a4paper}
+
+\usepackage[a4paper,
+                          width=16cm,
+                          left=3cm,
+                          top=3.5cm,
+		       height=23cm]{geometry}
+
 \usepackage{color}
 \usepackage{graphicx}
 \usepackage{paralist}
@@ -13,6 +18,7 @@
 \usepackage{parskip}
 \usepackage{fancyhdr}
 \usepackage{hyperref}
+
 
 % some definitions
 \def\tb{\textbf}
@@ -63,9 +69,9 @@
 \end{titlepage}
 
 \cleardoublepage
-\chapter{CONTEXTE}
+\chapter{Contexte}
 
-\section{RAPPEL}
+\section{Rappel}
 
 
 Pour mémoire, voici une représentation graphique du déroulement des opérations lors de l'insertion d'un nouveau n\oe ud dans le DST, sans équilibrage de
@@ -98,7 +104,7 @@ Voici un exemple de cas de figure qui pose problème:
 
 	\item {\ti Node} 14 ne recevant pas la réponse de 121 reste en '{\tt b}'.
    À ce stade de l'intégration, il fait déjà partie du DST et il reçoit donc {\tt ADD\_STAGE/249} mais il
-   ne peut y répondre $\Longrightarrow$ {\ti deadlock}
+   ne peut y répondre $\Longrightarrow$ {\ti deadlock}.
    
    \end{itemize}
 
@@ -137,11 +143,13 @@ tout à générer des {\ti deadlocks}, les deux sous-arbres se bloquant mutuellemen
 
 Il faut donc trouver des solutions pour ces deux problèmes.
 
-%TODO : parler du mécanisme de CS_REQ
+%TODO : parler du mécanisme de CS_REQ et placer des liens dans le texte
 
-\section{Proposition de solutions}
+\chapter{Proposition de solutions}
 
-\paragraph {Solution au premier point,}principes de base
+\section {Solution au premier point}
+
+\paragraph {Principes de base:} 
 
 \begin{itemize}
 	\item Chaque demande d'insertion de nouveau n\oe ud est traitée par un process distinct créé pour
@@ -157,7 +165,7 @@ De plus, j'ai fait le choix d'utiliser aussi un tel sous-processus pour les diff
 de {\tt CS\_REQ} parce que là encore, cela semble être un avantage de ne pas mélanger les réponses
 attendues dans le cas de diffusions croisées.
 
-Le schéma général de cette solution à process multiples est présenté en figure \ref{call_seq}.
+Le schéma général de cette solution à process multiples est présenté figure \ref{call_seq} en page \pageref{call_seq}.
 
 %\newgeometry{margin=.5cm}
   \begin{figure}
@@ -168,21 +176,20 @@ Le schéma général de cette solution à process multiples est présenté en figure \
   \end{figure}
 %\restoregeometry
 
-\emph {Remarque préliminaire:}
+\paragraph {Remarque préliminaire:}
 {\tt launch\_fork\_process()} est une fonction chargée de choisir comment exécuter les requêtes qui lui
 sont transmises. Elle les confie soit à un nouveau process (cas de {\tt CNX\_REQ}, {\tt BR\_SPLIT}, {\tt BR\_CS\_REQ}),
 soit au process courant.
 
-On utilise au plus trois process par n\oe ud:
+\paragraph {Explications:}
+On utilise au plus trois process par n\oe ud.
 \begin{enumerate}
-	\item {\tt Main\_Proc}
-    	
+	\item {\tt Main\_Proc}    	
 	Comme son nom l'indique, c'est le process principal :
     \begin{itemize}
     	\item il se charge des initialisations et de la création du process {\tt Tasks\_Queue} (qui tourne
           tout le temps de la simulation).
-    	\item il héberge les files {\ti tasks\_queue} (les tâches {\tt CNX\_REQ} en attente) et {\ti delayed\_tasks} (les tâches
-          différées)
+    	\item il héberge les files {\ti tasks\_queue} (les tâches {\tt CNX\_REQ} reçues en attente de traitement) et {\ti delayed\_tasks} (les tâches différées)
         \item
         \begin{inparaenum}[\itshape a\upshape)]
         	lorsqu'il reçoit une requête,
@@ -209,7 +216,8 @@ On utilise au plus trois process par n\oe ud:
 
 \subsection{Dans le détail}
 
-\paragraph {run\_tasks\_queue()}\label{rtq}\hfill \\
+\label{rtq}
+\paragraph {run\_tasks\_queue()} (voir figure \ref{fig:rtq} en page \pageref{fig:rtq}) \hfill \\
 
 La file {\ti tasks\_queue} contient toutes les demandes de connection (c'est à dire toutes les tâches
 {\tt CNX\_REQ}) reçues par le n\oe ud qui héberge cette file. {\tt run\_tasks\_queue()} est donc chargée de traiter
@@ -243,10 +251,12 @@ laisse la requête dans la file pour une nouvelle tentative un peu plus tard ("\e
 Dans le cas contraire, on dépile pour passer à la requête suivante. (On voit donc qu'en cas de
 retour {\ti FAILED}, la requête est bien dépilée.)
 
-\newgeometry{margin=.5cm}
+\newgeometry{margin=.3cm}
   \begin{figure}
     \centering
-    \includegraphics[height=\textheight]{./Images/Algo_run_tasks_queue.png}
+    \includegraphics[height=.95\textheight]{./Images/Algo_run_tasks_queue.png}
+    \caption{{\tt run\_tasks\_queue()}}
+    \label{fig:rtq}
   \end{figure}
 \restoregeometry
 
@@ -270,12 +280,12 @@ Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité 
 effet, pendant le temps d'exécution de {\tt connection\_request()}, d'autres demandes d'insertion ont pu arriver dans la
 file et il faut s'assurer que la prochaine à exécuter soit bien la suivante en termes de priorité.
 
-L'exécution d'une requête de la file est confiée à {\tt launch\_fork\_process()} (voir plus haut)\hfill \\
+L'exécution d'une requête de la file est confiée à {\tt launch\_fork\_process()} (voir plus haut)\hfill
 
 %TODO : Ecrire algo de la partie TASK_{\tt CNX\_REQ} de handle_task()
 
 
-\paragraph {run\_delayed\_tasks()}\hfill \\
+\paragraph {run\_delayed\_tasks()} (voir figures \ref{del-1} et \ref{del-2} en pages  \pageref{del-1} et \pageref{del-2}) \hfill \\
 
 Cette fonction est chargée de traiter la file des tâches différées ({\ti delayed\_tasks}). Lorsqu'une tâche
 ne peut pas être exécutée par un n\oe ud, soit elle est refusée (et retournée à l'émetteur), soit
@@ -286,7 +296,7 @@ On distingue deux cas : soit le n\oe ud courant est à l'état '{\tt u}', soit il 
 
 %\begin{enumerate}
 
-\subparagraph {état '{\tt u}'} (voir partie 1 - figure \ref{del-1})
+\subparagraph {état '{\tt u}'} (voir partie 1 - figure \ref{del-1} en page \pageref{del-1})
 
 
 Variables:
@@ -304,7 +314,7 @@ c'est à dire les {\tt CNX\_GROUPS} pour le même nouveau n\oe ud que celui en cou
 
 On parcourt donc la file à la recherche de ces tâches pour les exécuter. ({\tt handle\_task(task)})
 
-\newgeometry{hmargin=1cm}
+\newgeometry{hmargin=1cm, top=3.5cm, height=23cm}
   \begin{figure}[t]
     \centering
     \includegraphics[width=\textwidth]{./Images/Algo_run_delayed_tasks-1.png}
@@ -322,7 +332,7 @@ sans fin. Si des tâches ont été ajoutées entre temps, elles seront traitées lors
 exécution de {\tt run\_delayed\_tasks()}.
 
 
-\subparagraph {état 'a'} (voir partie 2 - figure \ref{del-2})
+\subparagraph {état 'a'} (voir partie 2 - figure \ref{del-2} en page \pageref{del-2})
 
 
 Ici, le n\oe ud courant est prêt à exécuter n'importe quelle autre tâche et on peut traiter le reste de
@@ -348,12 +358,10 @@ On ôte la tâche courante de la file dans les cas suivants :
     \item l'exécution a échoué mais le n\oe ud courant n'est pas le contact direct du nouveau n\oe ud.
           ({\tt UPDATE\_NOK \&\& !is\_contact})
           Il s'agit du cas {\ti FAILED} décrit plus haut.
-\end{itemize}
-
+\end{itemize}\hfill \\
 %*********************************************************************
 %TODO : ne pourrait-on pas utiliser FAILED ici plutôt que is_contact ?
 %*********************************************************************
-
 \tb{À noter :} si le n\oe ud courant était verrouillé pour le même nouveau n\oe ud que
 celui dont la tâche vient d'échouer, alors on ôte le verrou.
 
@@ -370,7 +378,7 @@ seront pas traitées lors de cette exécution.
 
 %\end{enumerate}
 
-\newgeometry{hmargin=0.5cm}
+\newgeometry{hmargin=0.5cm, top=.5cm, height=26cm}
   \begin{figure}[ht]
     \centering
     \includegraphics[width=\textwidth]{./Images/Algo_run_delayed_tasks-2.png}
@@ -383,112 +391,111 @@ seront pas traitées lors de cette exécution.
 %TODO : se pourrait-il qu'il y ait un nouveau risque de boucle ici si une tâche échoue toujours ?
 %       ne faudrait-il pas repérer ce cas ?
 %*************************************************************************************************
+\newgeometry{top=2cm}
+  \paragraph{launch\_fork\_process} (voir figure \ref{lfp})\hfill \\
+  \begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{./Images/Algo_launch_fork_process.png}
+    \caption{Launch Fork Process}
+    \label{lfp}
+  \end{figure}
+%\restoregeometry
+
+Si la tâche transmise à cette fonction n'est ni une demande de connexion ({\tt CNX\_REQ}), ni une
+diffusion de {\tt SPLIT} ou de {\tt CS\_REQ}, alors elle est exécutée localement, c'est à dire par le process
+courant. Sinon, elle est confiée à un nouveau process créé pour l'occasion.
+
+Ce nouveau process doit posséder ses propres files d'attente de réponses attendues ({\ti async\_answers} et
+{\ti sync\_answers}) de sorte qu'elles ne puissent plus être mélangées avec celles requises pour l'insertion
+d'un autre nouveau n\oe ud.
+\restoregeometry
+
+Il est labelisé ainsi : {\tt xxx-nom\_process-yyy} où :
+\begin{itemize}
+	\item {\tt xxx} est l'id du n\oe ud courant
+	\item {\tt nom\_process} est le nom attribué par cette fonction (tel que "{\tt Cnx\_req}" ou "{\tt Br\_split}", etc)
+	\item {\tt yyy} est l'id du nouveau n\oe ud en cours d'insertion
+\end{itemize}
+On s'assure ainsi de l'unicité de l'étiquette de ce process.
+
+Dans le cas où la tâche est une diffusion de {\tt CS\_REQ} (demande d'entrée en section critique), on
+commence par s'assurer que le n\oe ud courant est disponible (c'est à dire répondrait favorablement à
+un {\tt CS\_REQ}) pour ne pas créer de process fils inutilement. En cas de non-disponibilité, il faut en
+informer l'émetteur de la requête.
+
+\chapter{Description des fonctions de communication}
+
+\section{Différence entre requêtes synchrones et asynchrones}
+
+\subsection{Synchrone}
+
+La requête synchrone est utilisée lorsqu'une réponse est attendue pour poursuivre l'exécution du
+programme.
+
+Cas d'emplois principaux: \footnote{Pour simplifier, la phase d'équilibrage de charge est ignorée ici.}
+\begin{itemize}
+	\item {\tt CNX\_REQ} ( fonction {\tt join()} )
+  La réponse attendue est la table de routage du contact qui a réussi l'insertion du nouveau n\oe ud
+
+	\item {\tt BROADCAST} ( fonction {\tt handle\_task():BROADCAST} )
+  La réponse attendue ici est la valeur de retour de la fonction {\tt handle\_task()}, c'est à dire le succès  ou l'échec de la requête diffusée.
+\end{itemize}
+
+De plus, on utilise aussi ce type de requête pour retransmettre au leader les requêtes {\tt CNX\_REQ} et {\tt SPLIT\_REQ}. \footnote{Pas forcément utile dans le cas de {\tt SPLIT\_REQ}, à voir}
+
+L'attente de la réponse ne devant pas être bloquante, toutes les requêtes ou autres réponses
+arrivant dans l'intervalle doivent être traitées.
+
+\paragraph{Déroulement simplifié des opérations}
+L'émetteur de la requête appelle {\tt send\_msg\_sync()} qui exécute les tâches suivantes :
+\begin{itemize}
+	\item crée la requête
+	\item encapsule la requête dans une tâche
+	\item empile la requête sur {\ti sync\_answers}
+	\item envoie la tâche au destinataire
+	\item attend la réponse
+	\item traite tout ce qui est reçu qui n'est pas la réponse
+	\item dès que la réponse est reçue, dépile la requête de {\ti sync\_answers}
+	\item retourne la réponse à l'appelant
+\end{itemize}
+
+\subsection{Asynchrone}
+
+Dans ce type de requête, le destinataire renvoie un simple accusé réception à l'émetteur une fois la
+requête demandée effectuée. Ces accusés réception seront pris en compte ou pas selon les besoins de synchronisation.
+
+Dans les deux cas, les opération se déroulent de cette façon :
+L'émetteur appelle {\tt send\_msg\_async(}) qui exécute les tâches suivantes :
+\begin{itemize}
+	\item crée la requête
+	\item encapsule la requête dans une tâche
+	\item envoie la tâche au destinataire
+\end{itemize}
+
+Puis deux cas se présentent :
+\begin{description}
+\item[Un accusé réception est attendu]
+Cas des requêtes suivantes :
+\begin{itemize}
+	\item {\tt BROADCAST} ( fonction {\tt broadcast()} )
+	\item {\tt NEW\_BROTHER\_RCV} ( fonction {\tt connection\_request()} )
+	\item {\tt DEL\_PRED} ( fonctions {\tt connect\_splitted\_groups()}, {\tt split()} )
+	\item {\tt ADD\_PRED} ( fonction {\tt connect\_splitted\_groups()} )
+	\item {\tt CNX\_GROUPS} ( fonction {\tt split()} )
+\end{itemize}
+
+L'émetteur empile alors la requête sur {\ti async\_answers} puis, lorsque plusieurs requêtes ont été émises,
+il appelle {\tt wait\_for\_completion()} pour arrêter le déroulement du programme jusqu'à ce que l'ensemble
+des accusés réception ait été reçu. \footnote{voir détails de {\tt wait\_for\_completion()} plus loin}
+C'est cette fonction qui dépile les requêtes de {\ti async\_answers} au fur et à mesure de leur réception
+et comme {\tt send\_msg\_sync()}, elle traite aussi tout ce qu'elle reçoit entre temps.
 
 
-%launch_fork_process
-%-------------------
-%
-%<Algo_launch_fork_process.png>
-%
-%Si la tâche transmise à cette fonction n'est ni une demande de connexion (CNX_REQ), ni une
-%diffusion de SPLIT ou de CS_REQ, alors elle est exécutée localement, c'est à dire par le process
-%courant. Sinon, elle est confiée à un nouveau process créé pour l'occasion.
-%
-%Ce nouveau process doit possèder ses propres files d'attente de réponses attendues (async_answers et
-%sync_answers) de sorte qu'elles ne puissent plus être mélangées avec celles requises pour l'insertion
-%d'un autre nouveau n\oe ud.
-%
-%Il est labelisé ainsi : xxx-nom_process-yyy où :
-%  - xxx est l'id du n\oe ud courant
-%  - nom_process est le nom attribué par cette fonction (tel que "Cnx_req" ou "Br_split", etc)
-%  - yyy est l'id du nouveau n\oe ud en cours d'insertion
-%On s'assure ainsi de l'unicité de l'étiquette de ce process.
-%
-%Dans le cas où la tâche est une diffusion de CS_REQ (demande d'entrée en section critique), on
-%commence par s'assurer que le n\oe ud courant est disponible (c'est à dire répondrait favorablement à
-%un CS_REQ) pour ne pas créer de process fils inutilement. En cas de non-disponibilité, il faut en
-%informer l'émetteur de la requête.
-%
-%Description des fonctions de communication:
-%*******************************************
-%
-%Différence entre requêtes synchrones et asynchrones :
-%*****************************************************
-%
-%Synchrone :
-%***********
-%
-%La requête synchrone est utilisée lorsqu'une réponse est attendue pour poursuivre l'exécution du
-%programme.
-%
-%Cas d'emplois principaux:
-%(pour simplifier, la phase d'équilibrage de charge est ignorée ici)
-%
-%- CNX_REQ ( fonction join() )
-%  La réponse attendue est la table de routage du contact qui a réussi l'insertion du nouveau n\oe ud
-%
-%- BROADCAST ( fonction handle_task():BROADCAST )
-%  La réponse attendue ici est la valeur de retour de la fonction handle_task(), c'est à dire le succès
-%  ou l'échec de la requête diffusée.
-%
-%De plus, on utilise aussi ce type de requête pour retransmettre au leader les requêtes CNX_REQ et
-%SPLIT_REQ. (pas forcément utile dans le cas de SPLIT_REQ, à voir)
-%
-%L'attente de la réponse ne devant pas être bloquante, toutes les requêtes ou autres réponses
-%arrivant dans l'intervalle doivent être traitées.
-%
-%Déroulement simplifié des opérations : (voir détails plus loin)
-%L'émetteur de la requête appelle send_msg_sync() qui exécute les tâches suivantes :
-%- crée la requête
-%- encapsule la requête dans une tâche
-%- empile la requête sur sync_answers
-%- envoie la tâche au destinataire
-%- attend la réponse
-%- traite tout ce qui est reçu qui n'est pas la réponse
-%- dès que la réponse est reçue, dépile la requête de sync_answers
-%- retourne la réponse à l'appelant
-%
-%
-%Asynchrone :
-%************
-%
-%Dans ce type de requête, le destinataire renvoie un simple accusé réception à l'émetteur une fois la
-%requête demandée effectuée. Ces accusés réception seront pris en compte ou pas selon les besoins de
-%synchronisation.
-%
-%Dans les deux cas, les opération se déroulent de cette façon :
-%
-%L'émetteur appelle send_msg_async() qui exécute les tâches suivantes : (voir détails plus loin)
-%- crée la requête
-%- encapsule la requête dans une tâche
-%- envoie la tâche au destinataire
-%
-%Puis deux cas se présentent :
-%
-%1er cas : Un accusé réception est attendu
-%-----------------------------------------
-%
-%Cas des requêtes suivantes :
-%
-%- BROADCAST ( fonction broadcast() )
-%- NEW_BROTHER_RCV ( fonction {\tt connection\_request()} )
-%- DEL_PRED ( fonctions connect_splitted_groups(), split() )
-%- ADD_PRED ( fonction connect_splitted_groups() )
-%- CNX_GROUPS ( fonction split() )
-%
-%L'émetteur empile alors la requête sur async_answers puis, lorsque plusieurs requêtes ont été émises,
-%il appelle wait_for_completion() pour arrêter le déroulement du programme jusqu'à ce que l'ensemble
-%des accusés réception ait été reçu. (voir détails de wait_for_completion plus loin)
-%C'est cette fonction qui dépile les requêtes de async_answers au fur et à mesure de leur réception
-%et comme send_msg_sync(), elle traite aussi tout ce qu'elle reçoit entre temps.
-%
-%
-%2e cas : pas d'accusé réception
-%-------------------------------
-%
-%Dans ce cas, l'appelant ne fait qu'exécuter send_msg_async().
-%
-%
+\item[Pas d'accusé réception]
+Dans ce cas, l'appelant ne fait qu'exécuter {\tt send\_msg\_async()}.
+\end{description}
+
+
 %send_msg_sync() en détails:
 %***************************
 %
@@ -553,7 +560,7 @@ seront pas traitées lors de cette exécution.
 %Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
 %
 %* Cas d'une requête :
-%  Si c'est une demande de connexion (CNX_REQ), elle est simplement stockée dans tasks_queue (
+%  Si c'est une demande de connexion ({\tt CNX_REQ}), elle est simplement stockée dans tasks_queue (
 %  rappel : cette file est hébergée par le n\oe ud courant ).
 %  Sinon, on l'exécute avec handle_task. ( TODO : pourquoi pas launch_fork_process ? )
 %
@@ -593,7 +600,7 @@ seront pas traitées lors de cette exécution.
 %
 %<Algo_send_msg_async.png>
 %
-%Cette fonction réalise la même chose que la première partie de send_msg_syn(), à la différence qu'on
+%Cette fonction réalise la même chose que la première partie de send_msg_sync(), à la différence qu'on
 %n'empile pas la requête puisqu'on laisse le soin à l'émetteur de décider s'il faut le faire ou pas.
 %
 %Une autre différence est qu'on ignore un éventuel défaut d'émission (res != MSG_OK) alors que le
@@ -619,7 +626,7 @@ seront pas traitées lors de cette exécution.
 %- Requête:
 %  ********
 %
-%  Si c'est CNX_REQ, on l'empile sur tasks_queue, sinon, on l'exécute avec launch_fork_process().
+%  Si c'est {\tt CNX_REQ}, on l'empile sur tasks_queue, sinon, on l'exécute avec launch_fork_process().
 %  On regarde ensuite si des réponses ont été reçues entre temps avec check_async_nok(), puis on se
 %  remet éventuellement en écoute.
 %
