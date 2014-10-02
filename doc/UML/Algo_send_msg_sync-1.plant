@@ -1,0 +1,35 @@
+@startuml
+
+title
+send_msg_sync()
+
+end title
+
+start
+
+partition Send_Request {
+:init req data;
+:create task containing req;
+:loop_cpt <-- 0;
+
+repeat
+    :send task (with isend);
+    :push req onto sync_answers\n(if not already done);
+    while (communication not finished &&\nmax_wait not reached ?) is (yes)
+        :sleep for a while;
+    endwhile
+    if (max_wait reached || comm_status == MSG_TRANSFER_FAILURE ?) then (yes)
+        :res <-- MSG_TRANSFER_FAILURE;
+        stop
+    else (no)
+        :res <-- comm_status;
+    endif
+    if (res == MSG_TIMEOUT ?) then (yes)
+        :loop_cpt++;
+    else (no)
+    endif
+
+repeat while (res == MSG_TIMEOUT && loop_cpt < max_loops ?) is (try again)
+}
+stop
+@enduml

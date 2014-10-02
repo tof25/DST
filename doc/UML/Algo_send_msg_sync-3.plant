@@ -1,0 +1,17 @@
+@startuml
+
+start
+
+    if (res == MSG_TIMEOUT &&\ncpy_req.type == GET_REP) then (GET_REP timeout)
+        if (sync_answers is empty ?) then (no)
+            :pop GET_REP task from proc sync_answers dynar;
+        else (yes)
+        endif
+    else (no)
+    endif
+
+:return res;
+
+stop
+
+@enduml
