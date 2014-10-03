@@ -146,9 +146,7 @@ Il faut donc trouver des solutions pour ces deux problèmes.
 
 %TODO : parler du mécanisme de CS_REQ et placer des liens dans le texte
 
-\chapter{Proposition de solutions}
-
-\section {Solution au premier point}
+\chapter{Foisonnement des messages : solution}
 
 \paragraph {Principes de base:} 
 
@@ -185,8 +183,7 @@ soit au process courant.
 \paragraph {Explications:}
 On utilise au plus trois process par n\oe ud.
 \begin{enumerate}
-	\item {\tt Main\_Proc}    	
-	Comme son nom l'indique, c'est le process principal :
+	\item {\tt Main\_Proc}
     \begin{itemize}
     	\item il se charge des initialisations et de la création du process {\tt Tasks\_Queue} (qui tourne
           tout le temps de la simulation).
@@ -215,10 +212,11 @@ On utilise au plus trois process par n\oe ud.
       Il héberge aussi ses propres files {\ti async\_answers} et {\ti sync\_answers}.
 \end{enumerate}
 
-\subsection{Dans le détail}
+\section{Les fonctions de base}
 
 \label{rtq}
-\paragraph {run\_tasks\_queue()} (voir figure \ref{fig:rtq} en page \pageref{fig:rtq}) \hfill \\
+\subsection {run\_tasks\_queue()}
+Voir figure \ref{fig:rtq} en page \pageref{fig:rtq}.
 
 La file {\ti tasks\_queue} contient toutes les demandes de connection (c'est à dire toutes les tâches
 {\tt CNX\_REQ}) reçues par le n\oe ud qui héberge cette file. {\tt run\_tasks\_queue()} est donc chargée de traiter
@@ -261,7 +259,7 @@ retour {\ti FAILED}, la requête est bien dépilée.)
   \end{figure}
 \restoregeometry
 
-\subparagraph{En détails :}
+\paragraph{En détails :}
 À l'issue de l'exécution de {\tt connection\_request()}, une réponse est envoyée à l'émetteur seulement
 dans les cas où la requête est ici dépilée.
 
@@ -286,7 +284,8 @@ L'exécution d'une requête de la file est confiée à {\tt launch\_fork\_process()}
 %TODO : Ecrire algo de la partie TASK_{\tt CNX\_REQ} de handle_task()
 
 
-\paragraph {run\_delayed\_tasks()} (voir figures \ref{del-1} et \ref{del-2} en pages  \pageref{del-1} et \pageref{del-2}) \hfill \\
+\subsection {run\_delayed\_tasks()}
+Voir figures \ref{del-1} et \ref{del-2} en pages  \pageref{del-1} et \pageref{del-2}.
 
 Cette fonction est chargée de traiter la file des tâches différées ({\ti delayed\_tasks}). Lorsqu'une tâche
 ne peut pas être exécutée par un n\oe ud, soit elle est refusée (et retournée à l'émetteur), soit
@@ -297,7 +296,7 @@ On distingue deux cas : soit le n\oe ud courant est à l'état '{\tt u}', soit il 
 
 %\begin{enumerate}
 
-\subparagraph {état '{\tt u}'} (voir partie 1 - figure \ref{del-1} en page \pageref{del-1})
+\paragraph {état '{\tt u}'} (voir partie 1 - figure \ref{del-1} en page \pageref{del-1})
 
 
 Variables:
@@ -333,7 +332,7 @@ sans fin. Si des tâches ont été ajoutées entre temps, elles seront traitées lors
 exécution de {\tt run\_delayed\_tasks()}.
 
 
-\subparagraph {état 'a'} (voir partie 2 - figure \ref{del-2} en page \pageref{del-2})
+\paragraph {état 'a'} (voir partie 2 - figure \ref{del-2} en page \pageref{del-2})
 
 
 Ici, le n\oe ud courant est prêt à exécuter n'importe quelle autre tâche et on peut traiter le reste de
@@ -377,8 +376,6 @@ c'est dire jusqu'au succès de toutes les tâches qui se trouvaient dans cette fil
 cet appel de {\tt run\_delayed\_tasks()}. Comme indiqué précédemment, les tâches ajoutées entre temps ne
 seront pas traitées lors de cette exécution.
 
-%\end{enumerate}
-
 \newgeometry{hmargin=0.5cm, top=.5cm, height=26cm}
   \begin{figure}[ht]
     \centering
@@ -393,14 +390,13 @@ seront pas traitées lors de cette exécution.
 %       ne faudrait-il pas repérer ce cas ?
 %*************************************************************************************************
 \newgeometry{top=2cm}
-  \paragraph{launch\_fork\_process} (voir figure \ref{lfp})\hfill \\
+  \subsection{launch\_fork\_process()} 
   \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{./Images/Algo_launch_fork_process.png}
     \caption{Launch Fork Process}
     \label{lfp}
   \end{figure}
-%\restoregeometry
 
 Si la tâche transmise à cette fonction n'est ni une demande de connexion ({\tt CNX\_REQ}), ni une
 diffusion de {\tt SPLIT} ou de {\tt CS\_REQ}, alors elle est exécutée localement, c'est à dire par le process
@@ -424,15 +420,9 @@ commence par s'assurer que le n\oe ud courant est disponible (c'est à dire répon
 un {\tt CS\_REQ}) pour ne pas créer de process fils inutilement. En cas de non-disponibilité, il faut en
 informer l'émetteur de la requête.
 
-\section{Solution au deuxième point}
+\section{Les fonctions de communication}
 
-Parler du mécanisme de {\tt CS\_REQ}.
-
-\chapter{Les fonctions de communication}
-
-\section{Comparaison des requêtes synchrones et asynchrones}
-
-\subsection{Synchrone}
+\subsection{envoi synchrone - {\tt send\_msg\_sync()}}
 
 La requête synchrone est utilisée lorsqu'une réponse est attendue pour poursuivre l'exécution du
 programme.
@@ -442,7 +432,7 @@ Cas d'emplois principaux: \footnote{Pour simplifier, la phase d'équilibrage de c
 	\item {\tt CNX\_REQ} ( fonction {\tt join()} )
   La réponse attendue est la table de routage du contact qui a réussi l'insertion du nouveau n\oe ud
 
-	\item {\tt BROADCAST} ( fonction {\tt handle\_task():BROADCAST} )
+	\item {\tt BROADCAST} ( fonction {\tt handle\_task(): BROADCAST} )
   La réponse attendue ici est la valeur de retour de la fonction {\tt handle\_task()}, c'est à dire le succès  ou l'échec de la requête diffusée.
 \end{itemize}
 
@@ -451,12 +441,13 @@ De plus, on utilise aussi ce type de requête pour retransmettre au leader les re
 L'attente de la réponse ne devant pas être bloquante, toutes les requêtes ou autres réponses
 arrivant dans l'intervalle doivent être traitées.
 
-\paragraph{Déroulement simplifié des opérations}
+\subsubsection{Déroulement simplifié des opérations}
+
 L'émetteur de la requête appelle {\tt send\_msg\_sync()} qui exécute les tâches suivantes :
 \begin{itemize}
 	\item crée la requête
 	\item encapsule la requête dans une tâche
-	\item empile la requête sur {\ti sync\_answers}
+	\item empile la requête sur {\ti sync\_answers}	%TODO: c'est pas la tâche plutôt ?
 	\item envoie la tâche au destinataire
 	\item attend la réponse
 	\item traite tout ce qui est reçu qui n'est pas la réponse
@@ -464,7 +455,127 @@ L'émetteur de la requête appelle {\tt send\_msg\_sync()} qui exécute les tâches 
 	\item retourne la réponse à l'appelant
 \end{itemize}
 
-\subsection{Asynchrone}
+\subsubsection{Dans le détail}
+
+La fonction {\tt send\_msg\_sync()} est chargée d'envoyer une requête à un autre n\oe ud, puis d'en attendre
+la réponse.
+
+Chaque process hébergé par un n\oe ud possède deux files : {\ti sync\_answers} et {\ti async\_answers}.
+
+Ces deux files servent à stocker les requêtes synchrones et asynchrones (respectivement) émises, le temps qu'elles reçoivent une réponse et qu'elle soit lue. Ces requêtes sont dépilées dès que leur
+réponse a été prise en compte.
+\footnote{Pour mémoire, la réponse à une requête synchrone contient les données demandées alors que la réponse
+à une requête asynchrone est simplement un accusé réception.}
+
+Lorsqu'une réponse est reçue, il y a trois possibilités :
+\begin{enumerate}
+	\item il s'agit de \tb {la réponse attendue} :
+  Dans ce cas, la réponse est prise en compte, la requête correspondante est dépilée et
+  le traitement se poursuit.
+
+	\item il s'agit d'\tb {une autre réponse attendue} :
+  Elle est alors enregistrée dans la bonne pile, avec la requête correspondante, et on se remet en écoute.
+
+	\item il ne s'agit d'\tb {aucune réponse attendue} :
+  Elle est simplement ignorée (cas de certains accusés réception, par exemple)
+\end{enumerate}
+
+\paragraph{Première partie}envoi de la requête (Voir figure \ref{sms1} - page \pageref{sms1})
+
+Après avoir construit la tâche contenant la requête, celle-ci est envoyée au moyen de la fonction
+{\tt isend()} de Simgrid, puis stockée dans la pile {\ti sync\_answers} du process courant.
+On attend ensuite la fin de la communication.
+
+Deux traitements différents des cas d'échecs :
+\begin{itemize}
+	\item la communication ne se termine pas (cas du \tb{process} destinataire arrêté) ou elle a le statut
+  {\tt MSG\_TRANSFER\_FAILURE} (cas de l'\tb{hôte} destinataire arrêté) :
+  La fonction s'arrête en retourant une erreur de transmission.
+
+	\item la communication se termine avec le statut {\tt TIMEOUT} ( cas d'un destinataire trop occupé, par
+  exemple ) :
+  On recommence l'émission un certain nombre de fois ({\ti loop\_cpt}).
+  Si {\ti max\_loops} est atteint, la fonction est également arrêtée avec une erreur de transmission.
+\end{itemize}
+
+\newgeometry{top=.5cm, height=26cm}
+\begin{figure}[ht]
+    \centering
+    \includegraphics[scale=.43]{./Images/Algo_send_msg_sync-1.png}
+    \caption{Algo {\tt send\_msg\_sync} - Partie 1}
+    \label{sms1}
+\end{figure}
+
+\paragraph{Deuxième partie} réception de la réponse\\
+(Voir figures \ref{sms2} et \ref{sms3} - pages \pageref{sms2} et \pageref{sms3})
+
+Dans cette partie, le process courant se met en écoute de la réponse. En cas d'erreur de communication
+( {\tt res != MSG\_OK} ), on la signale et on se remet en écoute, sauf s'il s'agit d'un {\tt TIMEOUT} pour une
+requête {\tt GET\_REP}.  \footnote{{\tt GET\_REP} demande à un
+n\oe ud de fournir un autre représentant moins chargé pour un étage donné. S'il met trop de temps à
+répondre et qu'on abandonne, ça n'a pas d'autre conséquence que de conserver le même représentant. On évite ainsi un éventuel {\ti deadlock}}
+Dans ce cas, on arrête la fonction là en retournant simplement l'erreur pour la
+signaler à l'appelant.
+\restoregeometry
+
+\newgeometry{top=0cm, right=0cm, width=21cm, height=29.7cm}
+\begin{landscape}
+  \begin{figure}[h]
+    \centering
+    \includegraphics[height=.91\textheight]{./Images/Algo_send_msg_sync-2.png}
+    %\caption{Algo {\tt send\_msg\_sync} - Partie 2}
+    \label{sms2}
+  \end{figure}
+\end{landscape}
+\restoregeometry
+
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[scale=.5]{./Images/Algo_send_msg_sync-3.png}
+    \caption{Algo {\tt send\_msg\_sync} - Partie 3}
+    \label{sms3}
+  \end{figure}
+
+Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
+\begin{description}
+
+ \item [Requête:]
+  Si c'est une demande de connexion ({\tt CNX\_REQ}), elle est simplement stockée dans {\ti tasks\_queue}. \footnote{On rappelle que cette file est hébergée par le n\oe ud courant.}
+  Sinon, on l'exécute avec {\tt handle\_task()}.% ( TODO : pourquoi pas {\tt launch\_fork\_process} ? )
+
+  Ensuite, on regarde dans la pile {\ti sync\_answers} pour voir si la réponse attendue n'a pas été reçue
+  entre temps. Si oui, elle est dépilée et on quitte la boucle de réception. Sinon, on se remet en
+  écoute.
+
+\item [Réponse :]
+  On commence par regarder s'il s'agit de la réponse synchrone attendue. Si oui, elle est dépilée et
+  on quitte la boucle de réception.
+  Sinon, il peut s'agir d'une autre réponse attendue (synchrone ou asynchrone). Autrement dit, la
+  requête correspondante à cette réponse est trouvée dans une des deux piles {\ti sync\_answers} ou
+  {\ti async\_answers}.
+  Dans ce cas, la réponse est enregistrée avec sa requête dans sa pile et on se remet en écoute.
+  S'il ne s'agit d'aucune réponse attendue, on peut l'ignorer simplement et se remettre en écoute.
+\end{description}
+
+\paragraph{Remarques}
+\begin{enumerate}
+\item Dans cette fonction, la requête en attente de réponse se trouve toujours au sommet de la pile du fait de ces trois éléments :
+\begin{itemize}
+\item un process donné ne peut exécuter qu'une seule instance de {\tt send\_msg\_sync()} à la fois
+\item {\tt send\_msg\_sync()}
+est la seule fonction susceptible d'empiler une requête dans {\ti sync\_answers}
+\item une pile {\ti sync\_answers} n'est associée qu'à un seul process.
+\end{itemize}
+De ce fait, lorsqu'on reçoit une réponse à une requête synchrone attendue, il est facile de déterminer
+s'il s'agit de la réponse attendue ou d'une autre : la requête est au sommet de la pile ou pas.
+
+\item Si {\tt send\_msg\_sync()} n'est pas appelée par le process principal, elle ne peut pas recevoir d'autre
+message que celui qui est attendu.
+\end{enumerate}
+
+---------------------------------------------------
+
+\subsection{envoi asynchrone - {\tt send\_msg\_async()}}
 
 Dans ce type de requête, le destinataire renvoie un simple accusé réception à l'émetteur une fois la
 requête demandée effectuée. Ces accusés réception seront pris en compte ou pas selon les besoins de synchronisation.
@@ -499,133 +610,6 @@ et comme {\tt send\_msg\_sync()}, elle traite aussi tout ce qu'elle reçoit entre
 \item[Pas d'accusé réception]
 Dans ce cas, l'appelant ne fait qu'exécuter {\tt send\_msg\_async()}.
 \end{description}
-
-
-\section{{\tt send\_msg\_sync()} - envoi synchrone}
-
-La fonction {\tt send\_msg\_sync()} est chargée d'envoyer une requête à un autre n\oe ud, puis d'en attendre
-la réponse.
-
-Chaque process hébergé par un n\oe ud possède deux files : {\ti sync\_answers} et {\ti async\_answers}.
-
-Ces deux files servent à stocker les requêtes synchrones et asynchrones (respectivement) émises, le temps qu'elles reçoivent une réponse et qu'elle soit lue. Ces requêtes sont dépilées dès que leur
-réponse a été prise en compte.
-\footnote{Pour mémoire, la réponse à une requête synchrone contient les données demandées alors que la réponse
-à une requête asynchrone est simplement un accusé réception.}
-
-Lorsqu'une réponse est reçue, il y a trois cas possibles :
-\begin{enumerate}
-	\item il s'agit de la réponse qu'on est en train d'attendre :
-  Dans ce cas, la réponse est prise en compte, la requête correspondante est simplement dépilée et
-  le traitement se poursuit.
-
-	\item il s'agit d'une autre réponse attendue :
-  Elle est alors enregistrée dans la bonne pile, avec la requête correspondante
-
-	\item il ne s'agit d'aucune réponse attendue :
-  Elle est simplement ignorée (cas de certains accusés réception, par exemple)
-\end{enumerate}
-
-\subsection{Déroulement de l'algo}
-
-Voir figures {\tt send\_msg\_sync()} - pages \pageref{sms1}, \pageref{sms2} et \pageref{sms3}.
-
-\paragraph{Première partie}envoi de la requête
-
-%\newgeometry{margin=.5cm}
-  \begin{figure}[!h]
-    \centering
-    \includegraphics[width=.9\textwidth]{./Images/Algo_send_msg_sync-1.png}
-    \caption{Algo {\tt send\_msg\_sync} - Partie 1}
-    \label{sms1}
-  \end{figure}
-%\restoregeometry
-
-Après avoir construit la tâche contenant la requête, celle-ci est envoyée au moyen de la fonction
-{\tt isend()} de Simgrid, puis stockée dans la pile {\ti sync\_answers} du process courant.
-On attend ensuite la fin de la communication.
-
-Deux traitements différents des cas d'échecs :
-\begin{itemize}
-	\item la communication ne se termine pas (cas du process destinataire arrêté) ou elle a le statut
-  {\tt MSG\_TRANSFER\_FAILURE} (cas de l'hôte destinataire arrêté) :
-  La fonction s'arrête en retourant une erreur de transmission.
-
-	\item la communication se termine avec le statut {\tt TIMEOUT} ( cas d'un destinataire trop occupé, par
-  exemple ) :
-  On recommence l'émission un certain nombre de fois ({\ti loop\_cpt}).
-  Si {max\_loops} est atteint, la fonction est également arrêtée avec une erreur de transmission.
-\end{itemize}
-
-\paragraph{Deuxième partie} réception de la réponse
-
-\newgeometry{top=0cm, right=0cm, width=21cm, height=29cm}
-\begin{landscape}
-  \begin{figure}[h]
-    \centering
-    \includegraphics[height=\textheight]{./Images/Algo_send_msg_sync-2.png}
-    %\caption{Algo {\tt send\_msg\_sync} - Partie 2}
-    \label{sms2}
-  \end{figure}
-\end{landscape}
-\restoregeometry
-
-\newgeometry{top=2cm}
-  \begin{figure}[h]
-    \centering
-    \includegraphics[width=\textwidth]{./Images/Algo_send_msg_sync-3.png}
-    \caption{Algo {\tt send\_msg\_sync} - Partie 3}
-    \label{sms3}
-  \end{figure}
-\restoregeometry
-
-
-Dans cette partie, le process courant se met en écoute de la réponse. En cas d'erreur de communication
-( {\tt res != MSG\_OK} ), on la signale et on se remet en écoute, sauf s'il s'agit d'un {\tt TIMEOUT} pour une
-requête {\tt GET\_REP}. Dans ce cas, on arrête la fonction là en retournant simplement l'erreur pour la
-signaler à l'appelant.
-
-{\tt GET\_REP} est traitée de cette façon pour supprimer une possibilité de \emph{deadlock}. {\tt GET\_REP} demande à un
-n\oe ud de fournir un autre représentant moins chargé pour un étage donné. S'il met trop de temps à
-répondre et qu'on abandonne, ça n'a pas d'autre conséquence que de conserver le même représentant.
-L'équilibrage de charge n'est alors pas optimum, mais on accepte le défaut pour l'instant.
-
-Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
-
-* Cas d'une requête :
-  Si c'est une demande de connexion ({\tt CNX\_REQ}), elle est simplement stockée dans {\ti tasks\_queue} (
-  rappel : cette file est hébergée par le n\oe ud courant ).
-  Sinon, on l'exécute avec {\tt handle\_task()}.% ( TODO : pourquoi pas {\tt launch\_fork\_process} ? )
-
-  Ensuite, on regarde dans la pile {\ti sync\_answers} pour voir si la réponse attendue n'a pas été reçue
-  entre temps. Si oui, elle est dépilée et on quitte la boucle de réception. Sinon, on se remet en
-  écoute.
-
-* Cas d'une réponse :
-  On commence par regarder s'il s'agit de la réponse synchrone attendue. Si oui, elle est dépilée et
-  on quitte la boucle de réception.
-  Sinon, il peut s'agir d'une autre réponse attendue (synchrone ou asynchrone). Autrement dit, la
-  requête correspondante à cette réponse est trouvée dans une des deux piles {\ti sync\_answers} ou
-  {\ti async\_answers}.
-  Dans ce cas, la réponse est enregistrée avec sa requête dans sa pile et on se remet en écoute.
-  S'il ne s'agit d'aucune réponse attendue, on peut l'ignorer simplement et se remettre en écoute.
-
-Remarques :
-***********
-
-1)
-Dans cette fonction, la requête en attente de réponse se trouve toujours au sommet de la pile :
-un process donné ne peut exécuter qu'une seule instance de {\tt send\_msg\_sync()} à la fois, {\tt send\_msg\_sync()}
-est la seule fonction susceptible d'empiler une requête dans {\ti sync\_answers}, et une pile {\ti sync\_answers}
-n'est associée qu'à un seul process.
-De ce fait, lorsqu'on reçoit une réponse à une requête synchrone attendue, il est facile de déterminer
-s'il s'agit de la réponse attendue ou d'une autre : la requête est au sommet de la pile ou pas.
-
-2)
-Si {\tt send\_msg\_sync()} n'est pas appelée par le process principal, elle ne peut pas recevoir d'autre
-message que celui qui est attendu.
-
----------------------------------------------------
 
 
 {\tt send\_msg\_async()} en détails
@@ -683,6 +667,9 @@ dans l'intervalle.
 %TODO : faire algo de check_async_nok
 %**************************************
 
+\chapter{Échec d'une diffusion d'un verrou : solution}
+
+Parler du mécanisme de {\tt CS\_REQ}.
 
 \pagenumbering{Roman}
 \end{document}
