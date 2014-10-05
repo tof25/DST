@@ -1,10 +1,5 @@
 @startuml
 
-title
-send_msg_async()
-
-end title
-
 start
 
 :init req data;

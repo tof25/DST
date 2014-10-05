@@ -25,20 +25,24 @@ partition Answer_Receive {
                 endif
                 :look into sync_answers;
                 if (answer received meanwhile ?) then (yes)
-                    :pop record from sync_answers;
+                    :pop record
+                    from sync_answers;
                     :success <-- true;
                 else (no)
                 endif
             else (answer)
                 if (expected sync answer ?) then (yes)
-                    :pop record from sync_answers;
+                    :pop record
+                    from sync_answers;
                     :success <-- true;
                 else (no)
                     if (other sync answer ?) then (yes)
-                        :record rcv_ans into sync_answers;
+                        :record rcv_ans
+                        into sync_answers;
                     else (not a sync expected answer)
                         if (async expected answer ?) then (yes)
-                            :record rcv_ans into async_answers;
+                            :record rcv_ans
+                            into async_answers;
                         else (not expected answer)
                             :discard rcv_ans;
                         endif

@@ -1,16 +1,11 @@
 @startuml
 
-title
-wait_for_completion()
-
-endtitle
-
 start
 
-:ret <-- OK;
-:dynar_size <-- size of async_answers;
-:res <-- MSG_OK;
-:check if async answers have already been received:\ncheck_async_nok();
+:ret <-- OK
+dynar_size <-- size of async_answers
+res <-- MSG_OK;
+:check if async answers have already been received:check_async_nok();
 :dynar_size <-- size of async_answers;
 
 while (max_wait not reached && ans_cpt > 0 ?) is (yes)
@@ -27,6 +22,7 @@ while (max_wait not reached && ans_cpt > 0 ?) is (yes)
                 :launch_fork_process(task);
             endif
             :check if async answers have been received meanwhile:\ncheck_async_nok();
+            :dynar_size <-- size of async_answers;
         else (answer)
             if (answer is one of the expected async answers ?) then (yes)
                 if (answer is the expected answer ?) then (yes)
@@ -42,11 +38,13 @@ while (max_wait not reached && ans_cpt > 0 ?) is (yes)
                     :pop record from async_answers;
                     :dynar_size <-- size of async_answers;
                 else (no)
-                    :record answer into async_answers;
+                    :record answer
+                    into async_answers;
                 endif
             else (no)
                 if (answer is a sync expected one ?) then (yes)
-                    :record answer into sync_answers;
+                    :record answer
+                    into sync_answers;
                 else (no)
                     :discard answer;
                 endif
@@ -59,9 +57,8 @@ if (max_wait reached ?) then (yes)
     :display error message;
     stop
 else (no)
-endif
 :return ret;
-
 stop
+endif
 
 @enduml

@@ -2146,6 +2146,8 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         ans_cpt, (int) xbt_dynar_length(proc_data->async_answers));
 
                 check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
+                dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
+                // TODO : ajout de l'ajustement de dynar_size. Vérifier que ça ne pose pas problème
 
                 XBT_DEBUG("After check : ans_cpt = %d - dynar_size = %d",
                         ans_cpt, (int) xbt_dynar_length(proc_data->async_answers));

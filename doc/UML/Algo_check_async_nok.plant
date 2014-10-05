@@ -1,10 +1,5 @@
 @startuml
 
-title
-check_async_nok()
-
-end title
-
 start
 
 :idx <-- dynar_size - 1;
