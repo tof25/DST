@@ -41,7 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 500                        // max number of attempts to run CNX_REQ (before trying another contact)
+#define MAX_CNX 1000                        // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
@@ -4015,7 +4015,7 @@ static msg_error_t send_msg_sync(node_t me,
                 } else {
 
                     // handle this received request
-                    //TODO : ne pas oublier (si du broadcast est reçu ici, il faut peut-être remplcer handle_task par launch_fork_process)
+                    //TODO : ne pas oublier (si du broadcast est reçu ici, il faut peut-être remplacer handle_task par launch_fork_process)
                     if (req->type == TASK_BROADCAST) {
                         XBT_INFO("Node %d: [%s:%d] TASK_BROADCAST received in '%s' : '%s'",
                                 me->self.id,
@@ -4023,7 +4023,7 @@ static msg_error_t send_msg_sync(node_t me,
                                 __LINE__,
                                 __FUNCTION__,
                                 debug_msg[req->args.broadcast.type]);
-                        xbt_assert(1 == 0);
+                        //xbt_assert(1 == 0);
                     }
                     handle_task(me, &task_received);
                 }
