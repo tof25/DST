@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/09/29
+ *  Written by Christophe Enderlin on 2014/10/07
  *
  */
 
@@ -41,7 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 1000                        // max number of attempts to run CNX_REQ (before trying another contact)
+#define MAX_CNX 500                         // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
@@ -2762,7 +2762,7 @@ static void run_tasks_queue(node_t me) {
     // sort queue by priority order
     sort_tasks_queue(me);
 
-    float max = 4.3;
+    float max = 14.3;
     float min = 1.2;
     double sleep_time = 0;
     int mem_head_id = -1;
@@ -8832,7 +8832,6 @@ static void load_balance(node_t me, int contact_id) {
                     u_req_args.get_rep.stage = i;
                     u_req_args.get_rep.new_node_id = me->self.id;
 
-                    // TODO : ne pas oublier
                     res = send_msg_sync(me,
                             TASK_GET_REP,
                             me->brothers[i][j].id,
@@ -9051,7 +9050,7 @@ int node(int argc, char *argv[]) {
     if (argc == 5) {            // all nodes but first one need to join
 
         double sleep_time = atof(argv[3]);
-        node.prio = atoi(argv[3]);       //TODO : ne pas oublier // sleep time can be used to set priority
+        node.prio = atoi(argv[3]);       // sleep time can be used to set priority
         node.deadline = atof(argv[4]);
         int contact_id = atoi(argv[2]);
         u_req_args_t u_req_args;
@@ -9097,7 +9096,10 @@ int node(int argc, char *argv[]) {
 
             if (!join_success) {
 
-                XBT_INFO("Node %d: Join failure !", node.self.id);
+                XBT_INFO("Node %d: [%s:%d] Join failure !",
+                        node.self.id,
+                        __FUNCTION__,
+                        __LINE__);
 
                 // randomly choose another contact
                 srand(time(NULL));
@@ -9107,8 +9109,10 @@ int node(int argc, char *argv[]) {
 
                 contact_id = inserted_nodes[index];
 
-                XBT_INFO("Node %d: Try with another contact : %d",
+                XBT_INFO("Node %d: [%s:%d] Try with another contact : %d",
                         node.self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         contact_id);
 
                 //xbt_assert(1 == 0);
