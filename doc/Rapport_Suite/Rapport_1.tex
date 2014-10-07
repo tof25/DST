@@ -19,7 +19,7 @@
 \usepackage{parskip}
 \usepackage{fancyhdr}
 \usepackage{hyperref}
-\usepackage{pdflscape}
+\usepackage{lscape}
 
 
 % some definitions
@@ -289,9 +289,9 @@ qu'ils soient déjà intégrés au DST. S'ils ne le sont pas, les demandes d'inserti
 ne pourront aboutir que lorsque le contact fera lui-même partie du DST.
 
 Pour une file donnée, il est donc important de respecter l'ordre d'arrivée des demandes de connexion des
-nouveaux n\oe uds pour ne pas courir le risque de trop empiler toutes les demandes. Pour réaliser cela, un
-numéro de priorité est attribué à chaque nouveau n\oe ud lors de son arrivée, et cette priorité est prise en
-compte de deux fa\c cons : en triant les files {\ti tasks\_queue} selon cet ordre, et lors d'un conflit
+nouveaux n\oe uds pour ne pas courir le risque de trop empiler ces demandes. Pour réaliser cela, un
+numéro de priorité est attribué à chaque nouveau n\oe ud lors de son arrivée. Cette priorité est utilisée à deux moments :
+lors du tri des files {\ti tasks\_queue} selon cet ordre, et lors d'un conflit
 (deux requêtes pour deux nouveaux n\oe uds différents sont re\c cues par le même n\oe ud), on laisse passer
 en priorité celui qui a le numéro le plus petit.
 
@@ -384,7 +384,8 @@ On ôte la tâche courante de la file dans les cas suivants :
 %TODO : ne pourrait-on pas utiliser FAILED ici plutôt que is_contact ?
 %*********************************************************************
 \tb{À noter :} si le n\oe ud courant était verrouillé pour le même nouveau n\oe ud que
-celui dont la tâche vient d'échouer, alors on ôte le verrou.
+celui dont la tâche vient d'échouer, alors on ôte le verrou.\footnote{Il s'agit d'ôter ce verrou au plus tôt,
+voir explications sur le verrou plus loin.}
 
 %*****************
 %TODO : pourquoi ?
@@ -440,8 +441,8 @@ On s'assure ainsi de l'unicité de l'étiquette de ce process.
 
 Dans le cas où la tâche est une diffusion de {\tt CS\_REQ} (demande d'entrée en section critique), on
 commence par s'assurer que le n\oe ud courant est disponible (c'est à dire répondrait favorablement à
-un {\tt CS\_REQ}) pour ne pas créer de process fils inutilement. En cas de non-disponibilité, il faut en
-informer l'émetteur de la requête.
+un {\tt CS\_REQ}\footnote{Voir explications sur les verrous plus loin.}) pour ne pas créer de process
+fils inutilement. En cas de non-disponibilité, il faut en informer l'émetteur de la requête.
 
 \section{Les fonctions de communication}
 
@@ -459,7 +460,7 @@ Cas d'emplois principaux: \footnote{Pour simplifier, la phase d'équilibrage de c
   La réponse attendue ici est la valeur de retour de la fonction {\tt handle\_task()}, c'est à dire le succès  ou l'échec de la requête diffusée.
 \end{itemize}
 
-De plus, on utilise aussi ce type de requête pour retransmettre au leader les requêtes {\tt CNX\_REQ} et {\tt SPLIT\_REQ}. \footnote{Pas forcément utile dans le cas de {\tt SPLIT\_REQ}, à voir}
+De plus, on utilise aussi ce type de requête pour retransmettre au leader les requêtes {\tt CNX\_REQ} et {\tt SPLIT\_REQ}. \footnote{Pas forcément utile dans le cas de {\tt SPLIT\_REQ}, à voir.}
 
 L'attente de la réponse ne devant pas être bloquante, toutes les requêtes ou autres réponses
 arrivant dans l'intervalle doivent être traitées.
@@ -494,7 +495,7 @@ Lorsqu'une réponse est reçue, il y a trois possibilités :
 \begin{enumerate}
 	\item il s'agit de \tb {la réponse attendue} :
   Dans ce cas, la réponse est prise en compte, la requête correspondante est dépilée et
-  le traitement se poursuit.
+  le process se poursuit.
 
 	\item il s'agit d'\tb {une autre réponse attendue} :
   Elle est alors enregistrée dans la bonne pile, avec la requête correspondante, et on se remet en écoute.
