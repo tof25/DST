@@ -152,7 +152,7 @@ Il faut donc trouver des solutions pour ces deux problèmes.
 \paragraph {Principes de base:} 
 
 \begin{itemize}
-	\item Chaque demande d'insertion de nouveau n\oe ud est traitée par un process distinct créé pour
+	\item Chaque demande d'insertion de nouveau n\oe ud ({\tt CNX\_REQ}) est traitée par un process distinct créé pour
     l'occasion
 	\item Ce sous-process ne peut pas recevoir de réponses à des requêtes qu'il n'a pas émises.
     Dit autrement, il doit (et peut) traiter immédiatement toutes les réponses reçues.
@@ -258,7 +258,8 @@ retour {\ti FAILED}, la requête est bien dépilée.)
   \end{figure}
 \restoregeometry
 
-\paragraph{En détails :}
+\paragraph{En détails}\hfill
+
 À l'issue de l'exécution de {\tt connection\_request()}, une réponse est envoyée à l'émetteur seulement
 dans les cas où la requête est ici dépilée.
 
@@ -278,7 +279,32 @@ Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité 
 effet, pendant le temps d'exécution de {\tt connection\_request()}, d'autres demandes d'insertion ont pu arriver dans la
 file et il faut s'assurer que la prochaine à exécuter soit bien la suivante en termes de priorité.
 
-L'exécution d'une requête de la file est confiée à {\tt launch\_fork\_process()} (voir plus haut)\hfill
+L'exécution d'une requête de la file est confiée à {\tt launch\_fork\_process()} (voir plus haut)
+
+\paragraph{À propos de l'ordre d'exécution des tâches dans {\ti tasks\_queue}}\hfill
+
+Dans le cas particulier de la simulation réalisée avec Simgrid, le contact de chaque nouveau n\oe ud est choisi
+aléatoirement parmi les nouveaux n\oe uds précédents. Au moment où ils sont utilisés comme contact, rien ne garanti
+qu'ils soient déjà intégrés au DST. S'ils ne le sont pas, les demandes d'insertion sont remises à plus tard; elles 
+ne pourront aboutir que lorsque le contact fera lui-même partie du DST.
+
+Pour une file donnée, il est donc important de respecter l'ordre d'arrivée des demandes de connexion des
+nouveaux n\oe uds pour ne pas courir le risque de trop empiler toutes les demandes. Pour réaliser cela, un
+numéro de priorité est attribué à chaque nouveau n\oe ud lors de son arrivée, et cette priorité est prise en
+compte de deux fa\c cons : en triant les files {\ti tasks\_queue} selon cet ordre, et lors d'un conflit
+(deux requêtes pour deux nouveaux n\oe uds différents sont re\c cues par le même n\oe ud), on laisse passer
+en priorité celui qui a le numéro le plus petit.
+
+\paragraph{Un peu de centralisation}\hfill
+
+Dans le même ordre d'idée, on surveille le nombre de tentatives d'insertion d'un nouveau n\oe ud.
+S'il devient trop important, on fourni au nouveau n\oe ud un nouveau contact, choisi, cette fois, dans une
+liste de n\oe uds déjà intégrés au DST. Cette liste est pour l'instant accessible à l'ensemble des n\oe uds et
+il s'agit d'une variable globale, donc centralisée.
+
+Le but de cette man\oe uvre étant juste d'éviter un blocage du simulateur même, et pas de faire fonctionner les
+algorithmes du DST proprement dit, je pense qu'on peut raisonnablement le laisser sans remettre en cause le
+caractère décentralisé de ces algorithmes.
 
 %TODO : Ecrire algo de la partie TASK_{\tt CNX\_REQ} de handle_task()
 
