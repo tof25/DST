@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/09/29
+ *  Written by Christophe Enderlin on 2014/10/07
  *
  */
 
@@ -8832,7 +8832,6 @@ static void load_balance(node_t me, int contact_id) {
                     u_req_args.get_rep.stage = i;
                     u_req_args.get_rep.new_node_id = me->self.id;
 
-                    // TODO : ne pas oublier
                     res = send_msg_sync(me,
                             TASK_GET_REP,
                             me->brothers[i][j].id,
@@ -9051,7 +9050,7 @@ int node(int argc, char *argv[]) {
     if (argc == 5) {            // all nodes but first one need to join
 
         double sleep_time = atof(argv[3]);
-        node.prio = atoi(argv[3]);       //TODO : ne pas oublier // sleep time can be used to set priority
+        node.prio = atoi(argv[3]);       // sleep time can be used to set priority
         node.deadline = atof(argv[4]);
         int contact_id = atoi(argv[2]);
         u_req_args_t u_req_args;
