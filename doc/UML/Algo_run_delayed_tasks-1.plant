@@ -9,7 +9,7 @@ nb_elems <-- taille de delayed_tasks;
 
 if (state.active = 'u' && delayed_tasks non vide ?) then (yes)
 
-    while (cpt < nb_elems && state.active = 'u' ?)
+    while (cpt < nb_elems && state.active = 'u' ?) is (yes)
         :task <-- delayed_tasks(cpt);
         if (task.type == CNX_GROUPS ?) then (yes)
             if (task.args.new_node_id == state.new_node_id ?) then (yes)

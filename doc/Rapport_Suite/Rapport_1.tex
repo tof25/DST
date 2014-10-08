@@ -1,5 +1,5 @@
 %\documentclass[12pt,twoside,openright]{report}
-\documentclass[12pt, openright]{report}
+\documentclass[11pt, openright]{report}
 
 % packages
 \usepackage[french]{babel}
@@ -9,8 +9,8 @@
 \usepackage[a4paper,
 	        width=16cm,
             left=2.5cm,
-            top=3.5cm,
-		    height=23cm]{geometry}
+            top=3cm,
+		    height=23.5cm]{geometry}
 
 \usepackage{color}
 \usepackage{graphicx}
@@ -18,7 +18,7 @@
 \usepackage{tabularx}
 \usepackage{parskip}
 \usepackage{fancyhdr}
-\usepackage{hyperref}
+\usepackage[colorlinks=true, linkcolor=blue]{hyperref}
 \usepackage{lscape}
 
 
@@ -135,13 +135,12 @@ ses n\oe uds. Ainsi, les seules requêtes qu'ils accepteront seront celles qui co
 sont soit refusées, soit différées).
 
 Lorsque cette diffusion échoue (parce qu'on tombe sur une partie déjà verrouillée pour un autre
-arrivant, par exemple), on se retrouve dans la situation où une partie du sous-arbre a été
+arrivant, par ex.), on se retrouve dans la situation où une partie du sous-arbre a été
 verrouillée pour le nouveau n\oe ud courant, et une autre pour un autre nouveau n\oe ud. Il est donc
 important de remettre les choses en état (ôter les verrous posés par la diffusion en échec) pour ne
 pas bloquer les choses.
 
-Les tests ont montré que la méthode utilisée pour cela n'est pas correcte puisqu'on arrive malgré
-tout à générer des {\ti deadlocks}, les deux sous-arbres se bloquant mutuellement.
+Les tests ont montré que la méthode utilisée pour cela n'est pas correcte puisqu'on arrive à générer des {\ti deadlocks}, les deux sous-arbres se bloquant mutuellement.
 
 Il faut donc trouver des solutions pour ces deux problèmes.
 
@@ -200,7 +199,7 @@ On utilise au plus trois process par n\oe ud.
 
     \item {\tt Tasks\_Queue}
 
-      Ce process est chargé d'exécuter la fonction {\tt run\_tasks\_queue()} qui traite les files
+      Ce process est chargé d'exécuter la fonction \hyperlink{RunTaskQueue}{{\tt run\_tasks\_queue()}} qui traite les files
       {\ti tasks\_queue} et {\ti delayed\_tasks}.
       Il héberge aussi ses propres files {\ti async\_answers} et {\ti sync\_answers}.
 
@@ -217,7 +216,7 @@ On utilise au plus trois process par n\oe ud.
 \subsection {run\_tasks\_queue()}
 Voir figure \ref{fig:rtq} - page \pageref{fig:rtq}.
 
-La file {\ti tasks\_queue} contient toutes les demandes de connection (c'est à dire toutes les tâches
+\hypertarget{RunTaskQueue}{La} file {\ti tasks\_queue} contient toutes les demandes de connection (c'est à dire toutes les tâches
 {\tt CNX\_REQ}) reçues par le n\oe ud qui héberge cette file. {\tt run\_tasks\_queue()} est donc chargée de traiter
 les requêtes présentes dans cette file, par ordre de priorité. \footnote{voir plus loin les remarques à ce sujet}
 
@@ -234,7 +233,7 @@ séquentiellement. C'est la raison d'être de cette variable {\ti Run\_state} : po
 suivante, la tâche courante doit être terminée. (valeur {\ti IDLE})
 
 	\item{\ti Last\_return} :
-Cette variable contient la valeur de retour de l'exécution courante de {\tt connection\_request()}.
+Cette variable contient la valeur de retour de l'exécution courante de\\{\tt connection\_request()}.
 
 Il y a deux sortes d'échec d'insertion possibles.
 Lors de l'arrivée d'un nouveau n\oe ud, on a la séquence d'appels suivante : {\ti nouveau n\oe ud} $\rightarrow
@@ -273,7 +272,7 @@ Si ce nombre est atteint, on décide alors de dépiler tout de même la requête et 
 {\ti UPDATE\_NOK} au nouveau n\oe ud. Il peut ainsi détecter l'échec et refaire d'autres tentatives avec
 d'autres contacts. (ces contacts sont alors choisis aléatoirement parmi les n\oe uds déjà intégrés au
 DST. Il s'agit d'un tableau global, donc introduisant un peu de centralisation dans cet algorithme.
-\footnote {Voir commentaires en conclusion})
+\footnote {Voir détails plus loin})
 
 Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité à ce moment-là. En
 effet, pendant le temps d'exécution de {\tt connection\_request()}, d'autres demandes d'insertion ont pu arriver dans la
@@ -284,12 +283,11 @@ L'exécution d'une requête de la file est confiée à {\tt launch\_fork\_process()}
 \paragraph{À propos de l'ordre d'exécution des tâches dans {\ti tasks\_queue}}\hfill
 
 Dans le cas particulier de la simulation réalisée avec Simgrid, le contact de chaque nouveau n\oe ud est choisi
-aléatoirement parmi les nouveaux n\oe uds précédents. Au moment où ils sont utilisés comme contact, rien ne garanti
-qu'ils soient déjà intégrés au DST. S'ils ne le sont pas, les demandes d'insertion sont remises à plus tard; elles 
-ne pourront aboutir que lorsque le contact fera lui-même partie du DST.
+aléatoirement parmi les nouveaux n\oe uds précédents. Mais au moment où ils sont utilisés comme contact, rien ne garanti
+qu'ils soient déjà intégrés au DST. S'ils ne le sont pas, les demandes d'insertion sont remises à plus tard et chaque insertion retardée retarde d'autant l'insertion des n\oe uds qui en dépendent. On aboutit alors à un empilement important des requêtes qui peut se traduire par un temps de simulation trop long, voire même à des blocages.
 
-Pour une file donnée, il est donc important de respecter l'ordre d'arrivée des demandes de connexion des
-nouveaux n\oe uds pour ne pas courir le risque de trop empiler ces demandes. Pour réaliser cela, un
+Afin d'éviter au maximum ce cas de figure, il est donc important, pour une file donnée, de traiter les demandes de connexion des
+nouveaux n\oe uds par ordre de priorité. Pour réaliser cela, un
 numéro de priorité est attribué à chaque nouveau n\oe ud lors de son arrivée. Cette priorité est utilisée à deux moments :
 lors du tri des files {\ti tasks\_queue} selon cet ordre, et lors d'un conflit
 (deux requêtes pour deux nouveaux n\oe uds différents sont re\c cues par le même n\oe ud), on laisse passer
@@ -298,12 +296,11 @@ en priorité celui qui a le numéro le plus petit.
 \paragraph{Un peu de centralisation}\hfill
 
 Dans le même ordre d'idée, on surveille le nombre de tentatives d'insertion d'un nouveau n\oe ud.
-S'il devient trop important, on fourni au nouveau n\oe ud un nouveau contact, choisi, cette fois, dans une
-liste de n\oe uds déjà intégrés au DST. Cette liste est pour l'instant accessible à l'ensemble des n\oe uds et
-il s'agit d'une variable globale, donc centralisée.
+S'il devient trop important, on fourni à ce nouveau n\oe ud un nouveau contact, provenant, cette fois, d'une
+liste de n\oe uds déjà intégrés au DST. Cette liste devant être accessible à l'ensemble des n\oe uds, il s'agit d'une donnée globale, donc centralisée.
 
-Le but de cette man\oe uvre étant juste d'éviter un blocage du simulateur même, et pas de faire fonctionner les
-algorithmes du DST proprement dit, je pense qu'on peut raisonnablement le laisser sans remettre en cause le
+Le but de cette man\oe uvre étant juste d'éviter un blocage du simulateur même, et pas de valider les
+algorithmes du DST proprement dits, je pense qu'on peut raisonnablement la laisser sans remettre en cause le
 caractère décentralisé de ces algorithmes.
 
 %TODO : Ecrire algo de la partie TASK_{\tt CNX\_REQ} de handle_task()
@@ -313,9 +310,9 @@ caractère décentralisé de ces algorithmes.
 Voir figures \ref{del-1} et \ref{del-2} - pages \pageref{del-1} et \pageref{del-2}.
 
 Cette fonction est chargée de traiter la file des tâches différées ({\ti delayed\_tasks}). Lorsqu'une tâche
-ne peut pas être exécutée par un n\oe ud, soit elle est refusée (et retournée à l'émetteur), soit
+ne peut pas être exécutée par un n\oe ud, soit elle est refusée (charge alors à l'émetteur de réitérer sa demande plus tard), soit
 elle est stockée dans cette file pour être exécutée plus tard. Cette fonction est donc appelée
-périodiquement. (Voir {\tt run\_tasks\_queue()})
+périodiquement. (depuis {\tt run\_tasks\_queue()})
 
 On distingue deux cas : soit le n\oe ud courant est à l'état '{\tt u}', soit il est à '{\tt a}'.
 
@@ -336,22 +333,20 @@ c'est à dire les {\tt CNX\_GROUPS} pour le même nouveau n\oe ud que celui en cou
 
 On parcourt donc la file à la recherche de ces tâches pour les exécuter. ({\tt handle\_task(task)})
 
-\newgeometry{hmargin=1cm, top=3.5cm, height=23cm}
-  \begin{figure}[t]
+  \begin{figure}[ht]
     \centering
     \includegraphics[width=\textwidth]{./Images/Algo_run_delayed_tasks-1.png}
     \caption{Algo {\tt run\_delayed\_tasks()} - Partie 1}
     \label{del-1}
   \end{figure}
 
-Lorsqu'on en trouve une, on peut l'ôter de la file sans s'assurer que son exécution a réussi ou pas
+Lorsqu'on en trouve une, on peut l'ôter de la file sans se soucier si son exécution a réussi ou pas
 puisque si elle échoue, elle est à nouveau stockée dans la file.
 
 \tb{À noter :} à l'issue de la fonction {\tt handle\_tasks()}, le nombre de tâches de la file a pu augmenter.
 Pourtant, on choisi de ne pas mettre à jour la variable {\ti nb\_elems} ici pour ne pas risquer une boucle
 sans fin. Si des tâches ont été ajoutées entre temps, elles seront traitées lors d'une prochaine
 exécution de {\tt run\_delayed\_tasks()}.
-\restoregeometry
 
 \paragraph {état 'a'} (voir partie 2 - figure \ref{del-2} - page \pageref{del-2})
 
@@ -391,12 +386,8 @@ voir explications sur le verrou plus loin.}
 %TODO : pourquoi ?
 %*****************
 
-À l'issue de l'exécution de cette boucle ({\tt idx == nb\_elems}), la file n'est pas forcément vide. Elle
-contient toutes les tâches dont l'exécution a échoué et celles qui ont été stockées -- y compris par d'autres
-process -- entre temps. Cette boucle est alors à nouveau exécutée jusqu'à ce que {\ti nb\_elems} soit à 0,
-c'est dire jusqu'au succès de toutes les tâches qui se trouvaient dans cette file au moment de
-cet appel de {\tt run\_delayed\_tasks()}. Comme indiqué précédemment, les tâches ajoutées entre temps ne
-seront pas traitées lors de cette exécution.
+À l'issue de l'exécution de cette boucle ({\tt idx == nb\_elems}), si tout s'est bien passé ({\tt val\_ret == OK}), on choisi de parcourir à nouveau la file jusqu'à ce que {\ti nb\_elems} soit nul. C'est à dire jusqu'à ce qu'on ait ôté de la file autant de requêtes qu'elle en contenait au début de l'exécution de {\tt run\_delayed\_tasks()}.
+Comme déjà indiqué, les tâches qui auraient éventuellement été stockées dans la file entre temps seront traitées lors d'une prochaine exécution de {\tt run\_delayed\_tasks()}.
 
 \newgeometry{hmargin=0.5cm, top=.5cm, height=26cm}
   \begin{figure}[ht]
@@ -472,8 +463,8 @@ L'émetteur de la requête appelle {\tt send\_msg\_sync()} qui exécute les tâches 
 	\item crée la requête
 	\item encapsule la requête dans une tâche
 	\item empile la requête sur {\ti sync\_answers}	%TODO: c'est pas la tâche plutôt ?
-	\item envoie la tâche au destinataire
-	\item attend la réponse
+	\item envoie la tâche au destinataire\\(c'est à dire au process principal {\ti Main proc}  \footnote{voir figure \ref{call_seq}, page \pageref{call_seq}} du n\oe ud destinataire)
+	\item attend la réponse\\(sur le process courant qui peut être l'un des process présentés sur la figure \ref{call_seq}, page \pageref{call_seq})
 	\item traite tout ce qui est reçu qui n'est pas la réponse
 	\item dès que la réponse est reçue, dépile la requête de {\ti sync\_answers}
 	\item retourne la réponse à l'appelant
@@ -495,7 +486,7 @@ Lorsqu'une réponse est reçue, il y a trois possibilités :
 \begin{enumerate}
 	\item il s'agit de \tb {la réponse attendue} :
   Dans ce cas, la réponse est prise en compte, la requête correspondante est dépilée et
-  le process se poursuit.
+  le programme se poursuit.
 
 	\item il s'agit d'\tb {une autre réponse attendue} :
   Elle est alors enregistrée dans la bonne pile, avec la requête correspondante, et on se remet en écoute.
@@ -514,7 +505,7 @@ Deux traitements différents des cas d'échecs :
 \begin{itemize}
 	\item la communication ne se termine pas (cas du \tb{process} destinataire arrêté) ou elle a le statut
   {\tt MSG\_TRANSFER\_FAILURE} (cas de l'\tb{hôte} destinataire arrêté) :
-  La fonction s'arrête en retourant une erreur de transmission.
+  La fonction s'arrête en retournant une erreur de transmission.
 
 	\item la communication se termine avec le statut {\tt TIMEOUT} ( cas d'un destinataire trop occupé, par
   exemple ) :
@@ -532,7 +523,7 @@ Deux traitements différents des cas d'échecs :
 \paragraph{Deuxième partie} réception de la réponse\\
 (Voir figures \ref{sms2} et \ref{sms3} - pages \pageref{sms2} et \pageref{sms3})
 
-Dans cette partie, le process courant se met en écoute de la réponse. En cas d'erreur de communication
+Dans cette partie, le \emph{process courant} se met en écoute de la réponse. En cas d'erreur de communication
 ( {\tt res != MSG\_OK} ), on la signale et on se remet en écoute, sauf s'il s'agit d'un {\tt TIMEOUT} pour une
 requête {\tt GET\_REP}.  \footnote{{\tt GET\_REP} demande à un
 n\oe ud de fournir un autre représentant moins chargé pour un étage donné. S'il met trop de temps à
@@ -551,7 +542,7 @@ Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
 	entre temps. Si oui, elle est dépilée et on quitte la boucle de réception. Sinon, on se remet en écoute.
 
 	\item [Réponse :]
-  	On commence par regarder s'il s'agit de la réponse synchrone attendue. Si oui, elle est dépilée et on
+  	On commence par regarder s'il s'agit de la réponse synchrone attendue. Si oui, la requête correspondante est dépilée et on
 	quitte la boucle de réception.
 	Sinon, il peut s'agir d'une autre réponse attendue (synchrone ou asynchrone). Autrement dit, la requête
 	correspondante à cette réponse est trouvée dans une des deux piles {\ti sync\_answers} ou {\ti async\_answers}.
@@ -563,7 +554,7 @@ Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
 \begin{enumerate}
 	\item Dans cette fonction, la requête en attente de réponse se trouve toujours au sommet de la pile du fait de ces trois éléments :
 	\begin{itemize}
-		\item une pile {\ti sync\_answers} n'est associée qu'à un seul process.
+		\item une pile {\ti sync\_answers} donnée n'est associée qu'à un seul process.
 		\item un process donné ne peut exécuter qu'une seule instance de {\tt send\_msg\_sync()} à la fois
 		\item {\tt send\_msg\_sync()} est la seule fonction susceptible d'empiler une requête dans {\ti sync\_answers}
 	\end{itemize}
@@ -602,7 +593,7 @@ l'émetteur appelle {\tt send\_msg\_async(}) qui exécute les tâches suivantes :
 \begin{itemize}
 	\item crée la requête
 	\item encapsule la requête dans une tâche
-	\item envoie la tâche au destinataire
+	\item envoie la tâche au destinataire (\emph {i.e.} au process principal du destinataire, comme {\tt send\_msg\_sync()})
 \end{itemize}
 
 Puis deux cas se présentent :
@@ -651,7 +642,7 @@ la tolérance aux pannes.
 
 Voir figure \ref{wfc} - page \pageref{wfc}.
 
-On attend {\ti ans\_cpt} réponses. Si {\ti max\_wait} est atteint avant que toutes les réponses aient été reçues
+On attend {\ti ans\_cpt} réponses\footnote{Sur le process courant qui peut être l'un de ceux qui est présenté sur la figure \ref{call_seq} page \pageref{call_seq}}. Si {\ti max\_wait} est atteint avant que toutes les réponses aient été reçues
 et traitées, on quitte sur erreur, ce cas ne devant pas se produire.
 
 {\tt wait\_for\_completion()} pouvant s'appeler elle-même, il faut commencer par vérifier si des réponses
@@ -686,7 +677,7 @@ dans l'intervalle:
 		\item Réponse synchrone attendue :
 		\begin{itemize}
 	    	\item si oui, elle est enregistrée dans {\ti sync\_answers}
- 			\item sinon, elle est ignorée.
+ 			\item sinon, elle est ignorée.  %TODO : ce cas ne devrait pas se produire
     	\end{itemize}
     
     \end{itemize}

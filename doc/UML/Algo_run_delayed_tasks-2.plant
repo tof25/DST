@@ -24,7 +24,7 @@ if (state.active = 'a' && delayed_tasks non vide ?) then (yes)
                     :idx++;
                 endif
             endwhile
-        repeatwhile (val_ret == OK &&\nnb_elems > 0 &&\nstate.active == 'a' ?)
+        repeatwhile (val_ret == OK &&\nnb_elems > 0 &&\nstate.active == 'a' ?) is (yes)
     endif
 endif
 
