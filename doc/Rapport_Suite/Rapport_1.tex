@@ -18,7 +18,7 @@
 \usepackage{tabularx}
 \usepackage{parskip}
 \usepackage{fancyhdr}
-\usepackage[colorlinks=true, linkcolor=blue]{hyperref}
+\usepackage{hyperref}
 \usepackage{lscape}
 
 
@@ -42,7 +42,7 @@
     colorlinks=true,
     breaklinks=true,
     urlcolor=blue,
-    linkcolor=black,
+    linkcolor=red,
     citecolor=black,
     bookmarks=true,
     bookmarksopen=true
@@ -154,7 +154,7 @@ Il faut donc trouver des solutions pour ces deux problèmes.
 	\item Chaque demande d'insertion de nouveau n\oe ud ({\tt CNX\_REQ}) est traitée par un process distinct créé pour
     l'occasion
 	\item Ce sous-process ne peut pas recevoir de réponses à des requêtes qu'il n'a pas émises.
-    Dit autrement, il doit (et peut) traiter immédiatement toutes les réponses reçues.
+    Dit autrement, il peut (et doit) traiter immédiatement toutes les réponses reçues.
     (plus besoin de différer ou de refuser)
 	\item Plusieurs nouveaux n\oe uds utilisant le même contact ne pouvant pas être traités simultanément,
     un mécanisme de file d'attente pour les traiter séquentiellement est mis en place.
@@ -174,7 +174,7 @@ Le schéma général de cette solution à process multiples est présenté figure \ref
 \end{figure}
 
 \paragraph {Remarque préliminaire:}
-{\tt launch\_fork\_process()} est une fonction chargée de choisir comment exécuter les requêtes qui lui
+\hyperlink{LaunchForkProcess}{{\tt launch\_fork\_process()}} est une fonction chargée de choisir comment exécuter les requêtes qui lui
 sont transmises. Elle les confie soit à un nouveau process (cas de {\tt CNX\_REQ}, {\tt BR\_SPLIT}, {\tt BR\_CS\_REQ}),
 soit au process courant.
 
@@ -190,7 +190,7 @@ On utilise au plus trois process par n\oe ud.
         \begin{inparaenum}[\itshape a\upshape)]
         	lorsqu'il reçoit une requête,
         	\item soit il la place dans la file {\ti tasks\_queue} (cas des {\tt CNX\_REQ}),
-        	\item soit il la transmet à {\tt launch\_fork\_process()},
+        	\item soit il la transmet à \hyperlink{LaunchForkProcess}{{\tt launch\_fork\_process()}},
         	\item soit il la place dans la file {\ti delayed\_tasks}. %(TODO : à vérifier)
         \end{inparaenum}
         \item il héberge ses propres files {\ti async\_answers} et {\ti sync\_answers} (les réponses asynchrones et
@@ -199,28 +199,28 @@ On utilise au plus trois process par n\oe ud.
 
     \item {\tt Tasks\_Queue}
 
-      Ce process est chargé d'exécuter la fonction \hyperlink{RunTaskQueue}{{\tt run\_tasks\_queue()}} qui traite les files
+      Ce process est chargé d'exécuter la fonction \hyperlink{RunTasksQueue}{{\tt run\_tasks\_queue()}} qui traite les files
       {\ti tasks\_queue} et {\ti delayed\_tasks}.
       Il héberge aussi ses propres files {\ti async\_answers} et {\ti sync\_answers}.
 
     \item {\tt Handle\_Task}
     
-      C'est ce process qui est éventuellement créé par {\tt launch\_fork\_process()} depuis {\tt run\_tasks\_queue()} pour traiter les
+      C'est ce process qui est éventuellement créé par \hyperlink{LaunchForkProcess}{{\tt launch\_fork\_process()}} depuis \hyperlink{RunTasksQueue}{{\tt run\_tasks\_queue()}} pour traiter les
       requêtes concernées.
       Il héberge aussi ses propres files {\ti async\_answers} et {\ti sync\_answers}.
 \end{enumerate}
 
 \section{Les fonctions de base}
 
-\label{rtq}
+\hypertarget{RunTasksQueue}{}
 \subsection {run\_tasks\_queue()}
 Voir figure \ref{fig:rtq} - page \pageref{fig:rtq}.
 
-\hypertarget{RunTaskQueue}{La} file {\ti tasks\_queue} contient toutes les demandes de connection (c'est à dire toutes les tâches
+La file {\ti tasks\_queue} contient toutes les demandes de connection (c'est à dire toutes les tâches
 {\tt CNX\_REQ}) reçues par le n\oe ud qui héberge cette file. {\tt run\_tasks\_queue()} est donc chargée de traiter
-les requêtes présentes dans cette file, par ordre de priorité. \footnote{voir plus loin les remarques à ce sujet}
+les requêtes présentes dans cette file, par ordre de priorité. \footnote{voir plus loin les \hyperlink{Priorite}{remarques} à ce sujet}
 
-Après avoir traité les tâches différées (voir détails {\tt run\_delayed\_tasks()} plus loin), on s'occupe de
+Après avoir traité les tâches différées (voir détails \hyperlink{RunDelayedTasks}{{\tt run\_delayed\_tasks()}} plus loin), on s'occupe de
 la file {\ti tasks\_queue} proprement dite, à condition d'être actif (à l'état '{\tt a}').
 
 Le n\oe ud courant possède deux variables "de n\oe ud" (c'est à dire globales à tous les process
@@ -272,14 +272,15 @@ Si ce nombre est atteint, on décide alors de dépiler tout de même la requête et 
 {\ti UPDATE\_NOK} au nouveau n\oe ud. Il peut ainsi détecter l'échec et refaire d'autres tentatives avec
 d'autres contacts. (ces contacts sont alors choisis aléatoirement parmi les n\oe uds déjà intégrés au
 DST. Il s'agit d'un tableau global, donc introduisant un peu de centralisation dans cet algorithme.
-\footnote {Voir détails plus loin})
+\footnote {Voir détails plus bas})
 
 Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité à ce moment-là. En
 effet, pendant le temps d'exécution de {\tt connection\_request()}, d'autres demandes d'insertion ont pu arriver dans la
 file et il faut s'assurer que la prochaine à exécuter soit bien la suivante en termes de priorité.
 
-L'exécution d'une requête de la file est confiée à {\tt launch\_fork\_process()} (voir plus haut)
+L'exécution d'une requête de la file est confiée à \hyperlink{LaunchForkProcess}{{\tt launch\_fork\_process()}} (voir plus haut)
 
+\hypertarget{Priorite}{}
 \paragraph{À propos de l'ordre d'exécution des tâches dans {\ti tasks\_queue}}\hfill
 
 Dans le cas particulier de la simulation réalisée avec Simgrid, le contact de chaque nouveau n\oe ud est choisi
@@ -299,20 +300,21 @@ Dans le même ordre d'idée, on surveille le nombre de tentatives d'insertion d'un
 S'il devient trop important, on fourni à ce nouveau n\oe ud un nouveau contact, provenant, cette fois, d'une
 liste de n\oe uds déjà intégrés au DST. Cette liste devant être accessible à l'ensemble des n\oe uds, il s'agit d'une donnée globale, donc centralisée.
 
-Le but de cette man\oe uvre étant juste d'éviter un blocage du simulateur même, et pas de valider les
-algorithmes du DST proprement dits, je pense qu'on peut raisonnablement la laisser sans remettre en cause le
+Le but de ce mécanisme étant juste d'améliorer le comportement du simulateur même et pas de valider les
+algorithmes du DST proprement dits, je pense qu'on peut raisonnablement le laisser en place sans remettre en cause le
 caractère décentralisé de ces algorithmes.
 
 %TODO : Ecrire algo de la partie TASK_{\tt CNX\_REQ} de handle_task()
 
-
+\hypertarget{RunDelayedTasks}{}
 \subsection {run\_delayed\_tasks()}
+
 Voir figures \ref{del-1} et \ref{del-2} - pages \pageref{del-1} et \pageref{del-2}.
 
 Cette fonction est chargée de traiter la file des tâches différées ({\ti delayed\_tasks}). Lorsqu'une tâche
 ne peut pas être exécutée par un n\oe ud, soit elle est refusée (charge alors à l'émetteur de réitérer sa demande plus tard), soit
 elle est stockée dans cette file pour être exécutée plus tard. Cette fonction est donc appelée
-périodiquement. (depuis {\tt run\_tasks\_queue()})
+périodiquement. (depuis \hyperlink{RunTasksQueue}{{\tt run\_tasks\_queue()}})
 
 On distingue deux cas : soit le n\oe ud courant est à l'état '{\tt u}', soit il est à '{\tt a}'.
 
@@ -380,7 +382,7 @@ On ôte la tâche courante de la file dans les cas suivants :
 %*********************************************************************
 \tb{À noter :} si le n\oe ud courant était verrouillé pour le même nouveau n\oe ud que
 celui dont la tâche vient d'échouer, alors on ôte le verrou.\footnote{Il s'agit d'ôter ce verrou au plus tôt,
-voir explications sur le verrou plus loin.}
+voir explications sur le \hyperlink{CsReq}{verrou} plus loin.}
 
 %*****************
 %TODO : pourquoi ?
@@ -402,7 +404,8 @@ Comme déjà indiqué, les tâches qui auraient éventuellement été stockées dans la 
 %TODO : se pourrait-il qu'il y ait un nouveau risque de boucle ici si une tâche échoue toujours ?
 %       ne faudrait-il pas repérer ce cas ?
 %*************************************************************************************************
-\subsection{launch\_fork\_process()} 
+\hypertarget{LaunchForkProcess}{}
+\subsection{launch\_fork\_process()}
 
 Voir figure \ref{lfp} - page \pageref{lfp}.
 
@@ -432,11 +435,12 @@ On s'assure ainsi de l'unicité de l'étiquette de ce process.
 
 Dans le cas où la tâche est une diffusion de {\tt CS\_REQ} (demande d'entrée en section critique), on
 commence par s'assurer que le n\oe ud courant est disponible (c'est à dire répondrait favorablement à
-un {\tt CS\_REQ}\footnote{Voir explications sur les verrous plus loin.}) pour ne pas créer de process
+un {\tt CS\_REQ}\footnote{Voir explications sur les \hyperlink{CsReq}{verrous} plus loin.}) pour ne pas créer de process
 fils inutilement. En cas de non-disponibilité, il faut en informer l'émetteur de la requête.
 
 \section{Les fonctions de communication}
 
+\hypertarget{SendMsgSync}{}
 \subsection{synchrone - {\tt send\_msg\_sync()}}
 
 La requête synchrone est utilisée lorsqu'une réponse est attendue pour poursuivre l'exécution du
@@ -462,7 +466,7 @@ L'émetteur de la requête appelle {\tt send\_msg\_sync()} qui exécute les tâches 
 \begin{itemize}
 	\item crée la requête
 	\item encapsule la requête dans une tâche
-	\item empile la requête sur {\ti sync\_answers}	%TODO: c'est pas la tâche plutôt ?
+	\item empile la requête sur {\ti sync\_answers}
 	\item envoie la tâche au destinataire\\(c'est à dire au process principal {\ti Main proc}  \footnote{voir figure \ref{call_seq}, page \pageref{call_seq}} du n\oe ud destinataire)
 	\item attend la réponse\\(sur le process courant qui peut être l'un des process présentés sur la figure \ref{call_seq}, page \pageref{call_seq})
 	\item traite tout ce qui est reçu qui n'est pas la réponse
@@ -583,6 +587,7 @@ Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
     \label{sms3}
 \end{figure}
 
+\hypertarget{SendMsgAsync}{}
 \subsection{asynchrone - {\tt send\_msg\_async()}}
 
 Dans ce type de requête, le destinataire renvoie un simple accusé réception à l'émetteur une fois la
@@ -609,10 +614,10 @@ Puis deux cas se présentent :
 	\end{itemize}
 
 	L'émetteur empile alors la requête sur {\ti async\_answers} puis, lorsque plusieurs requêtes ont été émises,
-	il appelle {\tt wait\_for\_completion()} pour arrêter le déroulement du programme jusqu'à ce que l'ensemble
+	il appelle \hyperlink{WaitForCompletion}{{\tt wait\_for\_completion()}} pour arrêter le déroulement du programme jusqu'à ce que l'ensemble
 	des accusés réception ait été reçu. \footnote{voir détails de {\tt wait\_for\_completion()} plus loin}
 	C'est cette fonction qui dépile les requêtes de {\ti async\_answers} au fur et à mesure de leur réception
-	et comme {\tt send\_msg\_sync()}, elle traite aussi tout ce qu'elle reçoit entre temps.
+	et comme \hyperlink{SendMsgSync}{{\tt send\_msg\_sync()}}, elle traite aussi tout ce qu'elle reçoit entre temps.
 
 
 	\item[Pas d'accusé réception -]
@@ -623,11 +628,11 @@ Puis deux cas se présentent :
 \subsubsection{En détails}
 Voir figure \ref{sma} - page \pageref{sma}.
 
-Cette fonction réalise la même chose que la première partie de {\tt send\_msg\_sync()}, à la différence qu'on
+Cette fonction réalise la même chose que la première partie de  \hyperlink{SendMsgSync}{{\tt send\_msg\_sync()}}, à la différence qu'on
 n'empile pas la requête puisqu'on laisse le soin à l'émetteur de décider s'il faut le faire ou pas.
 
 Une autre différence est qu'on ignore un éventuel défaut d'émission ({\tt res != MSG\_OK}) alors que le
-programme est arrêté dans {\tt send\_msg\_sync()}. Ce n'est pas volontaire, je n'ai juste pas encore étudié
+programme est arrêté dans  \hyperlink{SendMsgSync}{{\tt send\_msg\_sync()}}. Ce n'est pas volontaire, je n'ai juste pas encore étudié
 la tolérance aux pannes.
 
 \begin{figure}
@@ -638,6 +643,7 @@ la tolérance aux pannes.
 \end{figure}
 
 
+\hypertarget{WaitForCompletion}{}
 \subsection{asynchrone - {\tt wait\_for\_completion()}}
 
 Voir figure \ref{wfc} - page \pageref{wfc}.
@@ -646,18 +652,18 @@ On attend {\ti ans\_cpt} réponses\footnote{Sur le process courant qui peut être 
 et traitées, on quitte sur erreur, ce cas ne devant pas se produire.
 
 {\tt wait\_for\_completion()} pouvant s'appeler elle-même, il faut commencer par vérifier si des réponses
-attendues ont déjà été traitées par ces appels récursifs, et si oui, s'il en reste encore à traiter.
-C'est l'appel à {\tt check\_async\_nok()} du début.
+attendues ont déjà été traitées par ces appels récursifs, et s'il en reste encore à traiter.
+C'est l'appel à \hyperlink{CheckAsyncNok}{{\tt check\_async\_nok()}} du début.
 
-Si oui, on se met en écoute, et comme dans {\tt send\_msg\_sync()}, il faut traiter tout ce qui est reçu
+Si oui, on se met en écoute, et comme dans  \hyperlink{SendMsgSync}{{\tt send\_msg\_sync()}}, il faut traiter tout ce qui est reçu
 dans l'intervalle:
 
 \begin{description}
 
 	\item[Requête:]
 
-  Si c'est {\tt CNX\_REQ}, on l'empile sur {\ti tasks\_queue}, sinon, on l'exécute avec\\{\tt launch\_fork\_process()}.
-  On regarde ensuite si des réponses ont été reçues entre temps avec {\tt check\_async\_nok()}, puis on se
+  Si c'est {\tt CNX\_REQ}, on l'empile sur {\ti tasks\_queue}, sinon, on l'exécute avec\\\hyperlink{LaunchForkProcess}{{\tt launch\_fork\_process()}}.
+  On regarde ensuite si des réponses ont été reçues entre temps avec \hyperlink{CheckAsyncNok}{{\tt check\_async\_nok()}}, puis on se
   remet éventuellement en écoute.
 
 	\item[Réponse:]\hfill
@@ -687,13 +693,14 @@ dans l'intervalle:
 \newgeometry{top=0cm, left=0cm, width=29.7cm, height=21cm}
 \begin{figure}
     \centering
-    \includegraphics[height=.99\textheight]{./Images/Algo_wait_for_completion.png}
+    \includegraphics[height=.93\textheight]{./Images/Algo_wait_for_completion.png}
     \caption{Algo {\tt wait\_for\_completion()}}
     \label{wfc}
 \end{figure}
 \restoregeometry
 \end{landscape}
 
+\hypertarget{CheckAsyncNok}{}
 \subsection{asynchrone - {\tt check\_async\_nok()}}
 
 Voir figure \ref{can} - page \pageref{can}
@@ -705,7 +712,7 @@ Voir figure \ref{can} - page \pageref{can}
     \label{can}
 \end{figure}
 
-Cette fonction auxiliaire est appelée par {\tt wait\_for\_completion()}. Elle est chargée de parcourir la file
+Cette fonction auxiliaire est appelée par \hyperlink{WaitForCompletion}{{\tt wait\_for\_completion()}}. Elle est chargée de parcourir la file
 {\ti async\_answers} à la recherche de réponses re\c cues.
 Le cas échéant, la requête correspondante est retirée de la pile, le compteur de réponses attendues
 {\ti ans\_cpt} est ajusté et on retourne également la dernière erreur re\c cue.
@@ -713,7 +720,29 @@ Le cas échéant, la requête correspondante est retirée de la pile, le compteur de
 %***********************************************************************************************************************************
 
 \chapter{Échec d'une diffusion d'un verrou : solution}
+\hypertarget{CsReq}{}
 
-Parler du mécanisme de {\tt CS\_REQ}.
+\paragraph{Rappel du problème}\hfill
+
+Lorsqu'il est nécessaire de faire de la place pour un nouveau n\oe ud, on diffuse
+une requête sur l'ensemble du sous-arbre impacté pour y poser un verrou.
+Cette diffusion peut échouer pour différentes raisons (si elle rencontre une autre
+diffusion semblable pour un autre nouveau n\oe ud, par exemple). Dans ce cas,
+cette diffusion doit s'arrêter, mais il faut ôter les verrous qu'elle a déjà
+posés sous peine de blocage mutuel des diffusions en conflit.
+
+La solution proposée dans la version précédente du simulateur consistait à relancer
+une nouvelle diffusion destinée cette fois à ôter les verrous posés. Dans la pratique,
+on constate que cette façon de faire n'est pas la bonne : elle génère un grand nombre
+de diffusions qui s'entrecroisent et peuvent causer des blocages, sans parler du nombre
+de messages que cela génère. Il faut donc trouver une autre solution.
+
+\paragraph{Principes de base}\hfill
+
+L'idée générale de cette nouvelle proposition est de procéder en deux temps:
+\begin{enumerate}
+	\item diffuser une première requête que j'appelle {\tt CS\_REQ}\footnote{Demande
+d'entrée en section critique}
+\end{enumerate}
 
 \end{document}
