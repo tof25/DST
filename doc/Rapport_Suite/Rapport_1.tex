@@ -742,7 +742,24 @@ de messages que cela génère. Il faut donc trouver une autre solution.
 L'idée générale de cette nouvelle proposition est de procéder en deux temps:
 \begin{enumerate}
 	\item diffuser une première requête que j'appelle {\tt CS\_REQ}\footnote{Demande
-d'entrée en section critique}
+d'entrée en section critique}\\
+	En cas d'échec, cette diffusion ne posant pas de verrou mais positionnant des variables qui peuvent
+éventuellement revenir à leur état antérieur sans nouvelle diffusion.
+
+	\item si cette diffusion s'est bien passée, diffuser la pose de verrou proprement
+dit -- requête {\tt SET\_UPDATE}
 \end{enumerate}
+
+\paragraph{Fonction cs\_req()}\hfill
+
+Chaque n\oe ud possède un ensemble de variables d'état pour ce mécanisme:
+\begin{quote}
+\begin{description}
+	\item [{\ti cs\_req}:] Flag qui indique si une demande a été reçue ou pas
+	\item [{\ti cs\_req\_time}:] Heure à laquelle la demande a été reçue
+	\item [{\ti cs\_new\_id}:] Id du nouveau n\oe ud pour lequel la demande a été faite
+	\item [{\ti cs\_new\_node\_prio}:] Niveau de priorité du nouveau n\oe ud
+\end{description}
+\end{quote}
 
 \end{document}

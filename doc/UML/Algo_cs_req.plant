@@ -1,0 +1,40 @@
+@startuml
+
+start
+
+:val_ret <-- OK;
+:test <-- MSG_get_clock() - me.cs_req_time > MAX_CS_REQ;
+
+if (me.cs_req == 1 &&
+    me.cs_new_id != new_node_id &&
+    state.active == 'a' &&
+    (cs_new_node_prio < me.cs_new_node_prio || test == 1)) then (yes)
+    :me.cs_req <-- 0;
+else (no)
+endif
+
+if (me.cs_req == 1) then (yes)
+    if (me.cs_new_id != new_node_id ||
+        state.active != 'a') then (yes)
+        :val_ret <-- UPDATE_NOK;
+    else (no)
+        :val_ret <-- OK;
+    endif
+else (no)
+    if (state.active == 'a') then (yes)
+        :me.cs_req <-- 1
+        me.cs_new_id <-- new_node_id
+        me.cs_req_time <-- MSG_get_clock()
+        me.cs_new_node_prio <-- cs_new_node_prio;
+
+        :val_ret <-- OK;
+    else (no)
+        :val_ret <-- UPDATE_NOK;
+    endif
+endif
+
+:return val_ret;
+
+stop
+
+@enduml
