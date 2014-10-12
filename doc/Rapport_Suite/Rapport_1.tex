@@ -728,7 +728,7 @@ Lorsqu'il est nécessaire de faire de la place pour un nouveau n\oe ud, on diffus
 une requête sur l'ensemble du sous-arbre impacté pour y poser un verrou.
 Cette diffusion peut échouer pour différentes raisons (si elle rencontre une autre
 diffusion semblable pour un autre nouveau n\oe ud, par exemple). Dans ce cas,
-cette diffusion doit s'arrêter, mais il faut ôter les verrous qu'elle a déjà
+cette diffusion doit non seulement s'arrêter, mais il faut aussi ôter les verrous qu'elle a déjà
 posés sous peine de blocage mutuel des diffusions en conflit.
 
 La solution proposée dans la version précédente du simulateur consistait à relancer
@@ -737,20 +737,25 @@ on constate que cette façon de faire n'est pas la bonne : elle génère un grand n
 de diffusions qui s'entrecroisent et peuvent causer des blocages, sans parler du nombre
 de messages que cela génère. Il faut donc trouver une autre solution.
 
-\paragraph{Principes de base}\hfill
+\paragraph{Idée de solution}\hfill
 
-L'idée générale de cette nouvelle proposition est de procéder en deux temps:
+En premier lieu, pour diminuer le nombre de messages échangés lors de ces diffusions,
+elles ne vont plus couvrir que les leaders. En effet, il suffit d'interroger un leader
+pour savoir si la voie est libre ou pas.
+
+Ensuite, l'idée générale de cette nouvelle proposition est de procéder en deux temps:
 \begin{enumerate}
 	\item diffuser une première requête que j'appelle {\tt CS\_REQ}\footnote{Demande
 d'entrée en section critique}\\
-	En cas d'échec, cette diffusion ne posant pas de verrou mais positionnant des variables qui peuvent
-éventuellement revenir à leur état antérieur sans nouvelle diffusion.
+	Cette diffusion ne pose pas de verrou mais positionne simplement des variables qui sont
+	capables de revenir à leur état initial en cas d'échec, sans nouvelle diffusion.
 
 	\item si cette diffusion s'est bien passée, diffuser la pose de verrou proprement
 dit -- requête {\tt SET\_UPDATE}
 \end{enumerate}
 
-\paragraph{Fonction cs\_req()}\hfill
+\section{Solution détaillée}
+\subsection{Fonction {\tt cs\_req()}}
 
 Chaque n\oe ud possède un ensemble de variables d'état pour ce mécanisme:
 \begin{quote}
@@ -760,6 +765,106 @@ Chaque n\oe ud possède un ensemble de variables d'état pour ce mécanisme:
 	\item [{\ti cs\_new\_id}:] Id du nouveau n\oe ud pour lequel la demande a été faite
 	\item [{\ti cs\_new\_node\_prio}:] Niveau de priorité du nouveau n\oe ud
 \end{description}
+\end{quote}\hfill
+
+Cette fonction prend les arguments suivants:
+\begin{quote}
+\begin{description}
+	\item [{\ti new\_node\_id}:] C'est l'id du nouveau n\oe ud en cours d'insertion
+	\item [{\ti cs\_new\_node\_prio}:] La priorité de ce nouveau n\oe ud
+\end{description}
 \end{quote}
+Et elle est décrite à la figure \ref{csr} page \pageref{csr}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{./Images/Algo_cs_req.png}
+    \caption{Algo {\tt cs\_req()}}
+    \label{csr}
+\end{figure}
+
+{\ti test} est un flag qui passe à 1 s'il s'est écoulé plus de {\tt MAX\_CS\_REQ} unités de temps
+depuis la dernière fois qu'une demande a été vue.
+
+\begin{itemize}[$\bullet$]
+
+	\item Pla\c cons nous dans le cas où aucune demande n'a été re\c cue : {\tt me.cs\_req} vaut alors {\tt 0}.
+Les deux premiers tests valent {\tt non} et si on est à l'état {\tt 'a'}, on va
+positionner les variables de n\oe ud indiquant qu'une demande a été re\c cue\footnote{Autrement dit, on se met en situation
+d'accepter la pose de verrou qui suivra, qui doit arriver avant que {\tt MAX\_CS\_REQ} soit écoulé}:
+	\begin{itemize}
+		\item {\tt me.cs\_req} passe à 1
+		\item {\tt me.cs\_new\_id} re\c coit l'argument {\tt new\_node\_id} pour mémoriser le nouveau n\oe ud qui
+		a causé cette demande
+		\item {\tt me.cs\_req\_time} re\c coit l'heure courante
+		\item {\tt me.cs\_new\_node\_prio} mémorise la priorité du nouveau n\oe ud
+	\end{itemize} 
+	On retourne alors {\tt OK} pour indiquer que tout s'est bien passé, la demande a été acceptée, on est prêt
+	à recevoir le verrou correspondant.\\
+
+	\item Si une autre demande est re\c cue avant ce verrou,	voici ce qu'il se passe :\\
+	{\tt me.cs\_req} vaut alors {\tt 1} et	on commence par regarder si ce flag doit être remis à {\tt 0}, c'est à dire si:
+	\begin{itemize}
+		\item cette demande en cours concerne un autre nouveau n\oe ud
+		\item on est toujours à l'état {\tt 'a'}\footnote{Si un verrou avait été posé entre temps, on serait à l'état {\tt 'u'}.}
+		\item soit le nouveau n\oe ud courant est prioritaire sur celui qui a fait cette demande,
+		soit elle est trop ancienne.
+	\end{itemize}
+	
+	Dans ce cas, le flag est à nouveau positionné, mais pour ce nouveau n\oe ud courant. La diffusion du verrou pour le nouveau
+	n\oe ud précédent échouera donc.\footnote{Voir détails plus loin}\\
+	
+	Sinon, si le flag est maintenu à {\tt 1}, on se contente de lire les variables associées pour retourner la bonne réponse :
+	on répond {\tt UPDATE\_NOK} si la demande en cours concerne un autre nouveau n\oe ud ou si on n'est plus 
+	à l'état {\tt 'a'}. Sinon, on répond {\tt OK} pour dire que tout va bien.
+
+\end{itemize}
+
+\subsection{Diffusion du verrou {\tt SET\_UPDATE}}
+
+Tout d'abord, pour que la diffusion de {\tt SET\_UPDATE} ait lieu, la diffusion de {\tt CS\_REQ}
+doit avoir retourné {\tt OK}. Ce qui signifie que l'ensemble des leaders du sous-arbre concerné doit avoir
+ses variables {\tt cs\_req} correctement positionnées pour qu'un {\tt SET\_UPDATE} soit accepté.
+\footnote{Si le {\tt SET\_UPDATE} re\c cu n'est pas celui qui était attendu, on exécute la fonction
+{\tt cs\_req()} localement pour éventuellement positionner différemment les variables {\tt cs\_req}.
+Il s'agit de vérifier si on peut l'accepter ou pas.}
+
+Si la diffusion de {\tt CS\_REQ} échoue, aucun verrou n'est posé et comme on l'a vu plus haut,
+le fait que les flags aient été positionnés pour une diffusion qui n'aura finalement pas lieu n'est pas bloquant.
+
+Mais on a également vu qu'entre la diffusion de {\tt CS\_REQ} et celle du {\tt SET\_UPDATE}
+correspondant, des flags pouvaient avoir changé, ce qui provoquera l'échec de la diffusion de ce {\tt SET\_UPDATE}.
+Dans ce cas, il faut tout de même refaire une diffusion d'une tâche {\tt REMOVE\_STATE} chargée de remettre
+les leaders en question dans l'état où ils étaient avant la pose du verrou.
+
+Cette diffusion ressemble à celle de la première solution dont on avait dit qu'elle était à éviter.
+Mais dans les faits, il me semble que la diffusion de {\tt CS\_REQ} échoue bien plus souvent
+que celle de {\tt SET\_UPDATE}. On peut donc penser que si ce nouveau mécanisme de {\tt CS\_REQ} n'était pas
+utilisé, on aurait beaucoup plus de diffusions de {\tt REMOVE\_STATE}. Il faut encore que je quantifie ces cas
+pour vérifier mon intuition. Si elle est juste, alors cette nouvelle solution permet effectivement d'économiser 
+des diffusions, et donc, de la bande passante.
+
+\chapter{Comparaison avec la première solution}
+
+Avec ces nouveaux algorithmes, j'ai pu construire des DST jusqu'à 40 000 n\oe uds (je n'ai pas pu aller plus loin à
+cause de la mémoire nécessaire) et je n'ai pas constaté de \emph{deadlocks}.
+
+Contrairement à ma première solution, le simulateur réussi aussi ces constructions même si je change les paramètres
+du réseau (augmentation de la latence, par exemple, pour dégrader les performances).
+
+Les performances du simulateurs même sont moins bonnes : durée d'exécution plus longue et mémoire nécessaire plus
+importante. Cela me paraît normal dans la mesure où les n\oe uds doivent maintenant héberger plusieurs
+process en parallèle. De plus, dans l'ancien simulateur, il était très fréquent (bien que j'aie cru le contraire)
+que lors de l'arrivée d'un nouveau n\oe ud, les n\oe uds précédents avaient déjà terminé leur intégration.
+On était alors souvent dans un cas quasi-séquentiel ou les n\oe uds arrivent les uns derrière les autres.
+Ici, on simule bien mieux le cas de n\oe uds arrivant simultanément.
+
+\paragraph{Reste à faire}\hfill
+\begin{itemize}
+	\item Comparer le nombre de fois où on doit diffuser un {\tt REMOVE\_STATE} avec le nombre d'échecs	de diffusions de {\tt CS\_REQ}
+	pour vérifier effectivement si cette nouvelle solution est meilleure que l'ancienne.
+	\item voir s'il ne serait pas possible de diminuer la mémoire requise
+	\item inclure les algorithmes de départ de n\oe uds dans ces mécanismes
+\end{itemize}
 
 \end{document}
