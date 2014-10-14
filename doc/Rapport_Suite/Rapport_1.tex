@@ -436,7 +436,7 @@ On s'assure ainsi de l'unicité de l'étiquette de ce process.
 Dans le cas où la tâche est une diffusion de {\tt CS\_REQ} (demande d'entrée en section critique), on
 commence par s'assurer que le n\oe ud courant est disponible (c'est à dire répondrait favorablement à
 un {\tt CS\_REQ}\footnote{Voir explications sur les \hyperlink{CsReq}{verrous} plus loin.}) pour ne pas créer de process
-fils inutilement. En cas de non-disponibilité, il faut en informer l'émetteur de la requête.
+fils inutilement. En cas de non disponibilité, il faut en informer l'émetteur de la requête.
 
 \section{Les fonctions de communication}
 
@@ -838,11 +838,14 @@ Dans ce cas, il faut tout de même refaire une diffusion d'une tâche {\tt REMOVE\
 les leaders en question dans l'état où ils étaient avant la pose du verrou.
 
 Cette diffusion ressemble à celle de la première solution dont on avait dit qu'elle était à éviter.
-Mais dans les faits, il me semble que la diffusion de {\tt CS\_REQ} échoue bien plus souvent
-que celle de {\tt SET\_UPDATE}. On peut donc penser que si ce nouveau mécanisme de {\tt CS\_REQ} n'était pas
-utilisé, on aurait beaucoup plus de diffusions de {\tt REMOVE\_STATE}. Il faut encore que je quantifie ces cas
-pour vérifier mon intuition. Si elle est juste, alors cette nouvelle solution permet effectivement d'économiser 
-des diffusions, et donc, de la bande passante.
+Mais dans les faits, on constate que la diffusion de {\tt CS\_REQ} échoue bien plus souvent
+que celle de {\tt SET\_UPDATE}. Par exemple, sur plusieurs constructions de DST de 4 000 n\oe uds,
+on compte environ quelques dizaines de milliers d'échecs de diffusions de {\tt CS\_REQ} contre quelques centaines
+d'échecs de diffusion de {\tt REMOVE\_STATE}.
+
+On peut donc penser que si ce nouveau mécanisme de {\tt CS\_REQ} n'était pas
+utilisé, on aurait beaucoup plus de diffusions de {\tt REMOVE\_STATE}. Cette nouvelle solution semble permettre
+effectivement d'économiser des diffusions, et donc, de la bande passante.
 
 \chapter{Comparaison avec la première solution}
 
@@ -856,7 +859,7 @@ Les performances du simulateurs même sont moins bonnes : durée d'exécution plus 
 importante. Cela me paraît normal dans la mesure où les n\oe uds doivent maintenant héberger plusieurs
 process en parallèle. De plus, dans l'ancien simulateur, il était très fréquent (bien que j'aie cru le contraire)
 que lors de l'arrivée d'un nouveau n\oe ud, les n\oe uds précédents avaient déjà terminé leur intégration.
-On était alors souvent dans un cas quasi-séquentiel ou les n\oe uds arrivent les uns derrière les autres.
+On était alors souvent dans un cas quasi séquentiel ou les n\oe uds arrivent les uns derrière les autres.
 Ici, on simule bien mieux le cas de n\oe uds arrivant simultanément.
 
 \paragraph{Reste à faire}\hfill

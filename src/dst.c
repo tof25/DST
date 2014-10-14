@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/10/07
+ *  Written by Christophe Enderlin on 2014/10/13
  *
  */
 
@@ -91,6 +91,9 @@ typedef struct s_dst_info {
     int  *load;                             /* load table (number of predecessors
                                                per stage) */
     int  *size;                             // number of brothers for each stage
+    int   nb_cs_req_fail;                   // number of failed BR_CS_REQ
+    int   nb_task_remove;                   // number of BR_TASK_REMOVE
+    int   nb_chg_contact;                   // number of contact changes
 } s_dst_infos_t, *dst_infos_t;
 
 /**
@@ -4845,6 +4848,9 @@ static void init(node_t me) {
     me->dst_infos.nbr_split_stages = 0;
     me->dst_infos.load = xbt_new0(int, me->height);
     me->dst_infos.size = NULL;
+    me->dst_infos.nb_cs_req_fail = 0;
+    me->dst_infos.nb_task_remove = 0;
+    me->dst_infos.nb_chg_contact = 0;
 
     // routing table initialization
     me->bro_index = xbt_new0(int, me->height);
@@ -5449,6 +5455,9 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                 val_ret = handle_task(me, &task_sent);
 
+                // failures counting
+                if (val_ret == UPDATE_NOK) me->dst_infos.nb_cs_req_fail++;
+
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
 
@@ -5485,6 +5494,9 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     args.broadcast.args = NULL;
 
                     if (val_ret == UPDATE_NOK) {
+
+                        // counts
+                        me->dst_infos.nb_task_remove++;
 
                         /* Set_Update broadcast failed (probably because a cs_req has been reset meanwhile)
                            'u' leaders have to be reset to their former state */
@@ -9101,22 +9113,32 @@ int node(int argc, char *argv[]) {
                         __FUNCTION__,
                         __LINE__);
 
-                // randomly choose another contact
-                srand(time(NULL));
-                index = (double)rand() * (double)(nb_ins_nodes) / (double)RAND_MAX;
+                if (node.dst_infos.nb_chg_contact == 0) {
 
-                xbt_assert(index < nb_ins_nodes, "index = %d - nb_ins_nodes = %d", index, nb_ins_nodes);
+                    // randomly choose another contact
+                    srand(time(NULL));
+                    index = (double)rand() * (double)(nb_ins_nodes) / (double)RAND_MAX;
 
-                contact_id = inserted_nodes[index];
+                    xbt_assert(index < nb_ins_nodes, "index = %d - nb_ins_nodes = %d", index, nb_ins_nodes);
 
-                XBT_INFO("Node %d: [%s:%d] Try with another contact : %d",
-                        node.self.id,
-                        __FUNCTION__,
-                        __LINE__,
-                        contact_id);
+                    contact_id = inserted_nodes[index];
 
-                //xbt_assert(1 == 0);
+                    // counts
+                    node.dst_infos.nb_chg_contact++;
 
+                    XBT_INFO("Node %d: [%s:%d] Try with another contact : %d",
+                            node.self.id,
+                            __FUNCTION__,
+                            __LINE__,
+                            contact_id);
+                } else {
+
+                    XBT_INFO("Node %d: [%s:%d] Contact already changed. Keep contact %d",
+                            node.self.id,
+                            __FUNCTION__,
+                            __LINE__,
+                            contact_id);
+                }
             } else {
 
                 //xbt_assert(node.self.id != 1521, "Node %d", node.self.id);
@@ -10698,6 +10720,9 @@ int main(int argc, char *argv[]) {
     int nb_br_msg[TYPE_NBR] = {0};      // total number of messages per broadcasted task type
     int max_msg_nodes = -1;             // max number of messages for one node
     int max_node;                       // node that needed max number
+    int tot_cs_req_fail = 0;            // total number of cs_req broadcasts failures
+    int tot_task_remove = 0;            // total number of task_remove broadcasts
+    int tot_chg_contact = 0;            // total number of times contact have been changed
 
     /*
     // write it down to a file
@@ -10715,6 +10740,10 @@ int main(int argc, char *argv[]) {
         if (elem != NULL) {
 
             loc_nb_nodes_tot++;
+
+            tot_cs_req_fail += elem->nb_cs_req_fail;
+            tot_task_remove += elem->nb_task_remove;
+            tot_chg_contact += elem->nb_chg_contact;
 
             // sum messages counters
             tot_msg = 0;
@@ -10851,7 +10880,11 @@ int main(int argc, char *argv[]) {
        xbt_free(g_cpt);
     */
 
-    XBT_INFO("Total number of messages: %d\n", tot_msg_nodes);
+    XBT_INFO("Total number of BR_CS_REQ failures : %d", tot_cs_req_fail);
+    XBT_INFO("Total number of BR_TASK_REMOVE : %d", tot_task_remove);
+    XBT_INFO("Total number of contact changes : %d", tot_chg_contact);
+
+    XBT_INFO("\nTotal number of messages: %d\n", tot_msg_nodes);
     XBT_INFO("Max messages needed by node %d: %d\n",
             max_node,
             max_msg_nodes);
