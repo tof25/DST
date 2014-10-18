@@ -41,7 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
 #define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 500                         // max number of attempts to run CNX_REQ (before trying another contact)
+#define MAX_CNX 200                         // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
@@ -9113,32 +9113,22 @@ int node(int argc, char *argv[]) {
                         __FUNCTION__,
                         __LINE__);
 
-                if (node.dst_infos.nb_chg_contact == 0) {
+                // randomly choose another contact
+                srand(time(NULL));
+                index = (double)rand() * (double)(nb_ins_nodes) / (double)RAND_MAX;
 
-                    // randomly choose another contact
-                    srand(time(NULL));
-                    index = (double)rand() * (double)(nb_ins_nodes) / (double)RAND_MAX;
+                xbt_assert(index < nb_ins_nodes, "index = %d - nb_ins_nodes = %d", index, nb_ins_nodes);
 
-                    xbt_assert(index < nb_ins_nodes, "index = %d - nb_ins_nodes = %d", index, nb_ins_nodes);
+                contact_id = inserted_nodes[index];
 
-                    contact_id = inserted_nodes[index];
+                // counts
+                node.dst_infos.nb_chg_contact++;
 
-                    // counts
-                    node.dst_infos.nb_chg_contact++;
-
-                    XBT_INFO("Node %d: [%s:%d] Try with another contact : %d",
-                            node.self.id,
-                            __FUNCTION__,
-                            __LINE__,
-                            contact_id);
-                } else {
-
-                    XBT_INFO("Node %d: [%s:%d] Contact already changed. Keep contact %d",
-                            node.self.id,
-                            __FUNCTION__,
-                            __LINE__,
-                            contact_id);
-                }
+                XBT_INFO("Node %d: [%s:%d] Try with another contact : %d",
+                        node.self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        contact_id);
             } else {
 
                 //xbt_assert(node.self.id != 1521, "Node %d", node.self.id);
