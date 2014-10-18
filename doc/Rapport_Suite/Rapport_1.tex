@@ -835,21 +835,35 @@ le fait que les flags aient été positionnés pour une diffusion qui n'aura finale
 Mais on a également vu qu'entre la diffusion de {\tt CS\_REQ} et celle du {\tt SET\_UPDATE}
 correspondant, des flags pouvaient avoir changé, ce qui provoquera l'échec de la diffusion de ce {\tt SET\_UPDATE}.
 Dans ce cas, il faut tout de même refaire une diffusion d'une tâche {\tt REMOVE\_STATE} chargée de remettre
-les leaders en question dans l'état où ils étaient avant la pose du verrou.
+les leaders concernés dans l'état où ils étaient avant la pose du verrou.
 
-Cette diffusion ressemble à celle de la première solution dont on avait dit qu'elle était à éviter.
+\chapter{Comparaison avec la première solution}
+
+\section{Pose des verrous}
+
+La diffusion de {\tt REMOVE\_STATE} ressemble à celle de la première solution dont on avait dit qu'elle était à éviter.
 Mais dans les faits, on constate que la diffusion de {\tt CS\_REQ} échoue bien plus souvent
 que celle de {\tt SET\_UPDATE}. Par exemple, sur plusieurs constructions de DST de 4 000 n\oe uds,
 on compte environ quelques dizaines de milliers d'échecs de diffusions de {\tt CS\_REQ} contre quelques centaines
 d'échecs de diffusion de {\tt REMOVE\_STATE}.
 
-On peut donc penser que si ce nouveau mécanisme de {\tt CS\_REQ} n'était pas
-utilisé, on aurait beaucoup plus de diffusions de {\tt REMOVE\_STATE}. Cette nouvelle solution semble permettre
-effectivement d'économiser des diffusions, et donc, de la bande passante.
+On peut donc penser que si ce nouveau mécanisme de {\tt CS\_REQ} n'était pas utilisé, on aurait beaucoup
+plus de diffusions de {\tt REMOVE\_STATE}. Cette nouvelle solution semble permettre effectivement d'économiser
+des diffusions, et donc, de la bande passante.
 
-\chapter{Comparaison avec la première solution}
+Dans l'ancienne solution, chaque succès ``coûte'' une diffusion ({\tt SET\_UPDATE}) et chaque échec en
+coûte 2 : {\tt SET\_UPDATE} et {\tt REMOVE\_STATE}.\\
+Dans la nouvelle proposition, chaque succès ``coûte'' deux diffusions ({\tt CS\_REQ} et {\tt SET\_UPDATE}) et
+chaque échec coûte soit une diffusion ({\tt CS\_REQ}), soit 2 : {\tt CS\_REQ} et {\tt REMOVE\_STATE}.
 
-Avec ces nouveaux algorithmes, j'ai pu construire des DST jusqu'à 40 000 n\oe uds (je n'ai pas pu aller plus loin à
+Pour les cas de succès, on lance deux fois plus de diffusions.
+Pour les cas d'échecs, soit on lance autant de diffusions (cas le moins fréquent), soit on en lance 2 fois moins.
+Les mesures montrant qu'il y a bien plus d'échecs que de succès, on a moins de diffusions au global.
+A confirmer par la mesure.
+
+\section{Nouveaux algorithmes}
+
+J'ai pu construire avec ces nouvelles solutions des DST jusqu'à 40 000 n\oe uds (je n'ai pas pu aller plus loin à
 cause de la mémoire nécessaire) et je n'ai pas constaté de \emph{deadlocks}.
 
 Contrairement à ma première solution, le simulateur réussi aussi ces constructions même si je change les paramètres
@@ -864,8 +878,7 @@ Ici, on simule bien mieux le cas de n\oe uds arrivant simultanément.
 
 \paragraph{Reste à faire}\hfill
 \begin{itemize}
-	\item Comparer le nombre de fois où on doit diffuser un {\tt REMOVE\_STATE} avec le nombre d'échecs	de diffusions de {\tt CS\_REQ}
-	pour vérifier effectivement si cette nouvelle solution est meilleure que l'ancienne.
+	\item compter précisément les diffusions succès/échecs
 	\item voir s'il ne serait pas possible de diminuer la mémoire requise
 	\item inclure les algorithmes de départ de n\oe uds dans ces mécanismes
 \end{itemize}
