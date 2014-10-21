@@ -20,6 +20,7 @@
 \usepackage{fancyhdr}
 \usepackage{hyperref}
 \usepackage{lscape}
+\usepackage{array}
 
 
 % some definitions
@@ -882,5 +883,25 @@ Ici, on simule bien mieux le cas de n\oe uds arrivant simultanément.
 	\item voir s'il ne serait pas possible de diminuer la mémoire requise
 	\item inclure les algorithmes de départ de n\oe uds dans ces mécanismes
 \end{itemize}
+
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+\hline
+	\multicolumn{2}{|c|}{}& \multicolumn{4}{c|}{1000 n\oe uds} & \multicolumn{4}{c|}{4000 n\oe uds} &  \multicolumn{4}{c|}{10000 n\oe uds}\\
+\hline
+	\multicolumn{2}{|c|}{}& 1 & 2 & 3 & 4 & 1 & 2 & 3 & 4 & 1 & 2 & 3 & 4\\
+\hline
+	BR\_CS\_REQ & Échecs & 6989 & 6417 & 8653 & 7424 &&&&&&&&\\
+\hline
+                                  & Succès &   273 &   275  & 277 & 272 &&&&&&&&\\
+\hline
+	BR\_SET\_UPDATE & Échecs & 49 & 52 & 57 & 51 &&&&&&&&\\
+\hline
+                                            & Succès & 224 & 223 & 220 & 221 &&&&&&&&\\
+\hline
+	BR\_TASK\_REMOVE & & 49 & 52 & 57 & 51 &&&&&&&&\\
+\hline
+	Nouveau Contact & & 92 & 61 & 147 & 111 &&&&&&&&\\ 
+\hline
+\end{tabular}
 
 \end{document}
