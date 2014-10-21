@@ -21,6 +21,7 @@
 \usepackage{hyperref}
 \usepackage{lscape}
 \usepackage{array}
+\usepackage{multirow}
 
 
 % some definitions
@@ -28,6 +29,7 @@
 \def\ti{\em}
 \def\sc{\textsc}
 \definecolor{dark_green}{rgb}{0,0.6,0}
+\renewcommand{\arraystretch}{1.5}
 
 %customize lists
 \frenchbsetup{ReduceListSpacing=true, CompactItemize=false}
@@ -836,31 +838,57 @@ le fait que les flags aient été positionnés pour une diffusion qui n'aura finale
 Mais on a également vu qu'entre la diffusion de {\tt CS\_REQ} et celle du {\tt SET\_UPDATE}
 correspondant, des flags pouvaient avoir changé, ce qui provoquera l'échec de la diffusion de ce {\tt SET\_UPDATE}.
 Dans ce cas, il faut tout de même refaire une diffusion d'une tâche {\tt REMOVE\_STATE} chargée de remettre
-les leaders concernés dans l'état où ils étaient avant la pose du verrou.
+les leaders concernés dans l'état où ils étaient avant la pose du verrou, tout comme dans la première solution.
 
 \chapter{Comparaison avec la première solution}
 
 \section{Pose des verrous}
 
-La diffusion de {\tt REMOVE\_STATE} ressemble à celle de la première solution dont on avait dit qu'elle était à éviter.
-Mais dans les faits, on constate que la diffusion de {\tt CS\_REQ} échoue bien plus souvent
-que celle de {\tt SET\_UPDATE}. Par exemple, sur plusieurs constructions de DST de 4 000 n\oe uds,
-on compte environ quelques dizaines de milliers d'échecs de diffusions de {\tt CS\_REQ} contre quelques centaines
-d'échecs de diffusion de {\tt REMOVE\_STATE}.
+Dans la nouvelle solution, il faut deux diffusions ({\tt CS\_REQ} et {\tt SET\_UPDATE}) pour une pose de verrou réussie
+contre une seule auparavant. Mais pour un échec, on utilise maintenant soit une seule diffusion ({\tt CS\_REQ}), soit trois
+({\tt CS\_REQ}, puis {\tt SET\_UPDATE} et enfin {\tt REMOVE\_STATE}).
+\footnote{Il faut tout de même rappeler que ces diffusions sont de toutes fa\c cons moins coûteuses que celles de
+l'ancienne version puisque maintenant, on ne diffuse plus qu'aux leaders, au lieu de diffuser à tous les membres
+du sous-arbre comme avant.}
 
-On peut donc penser que si ce nouveau mécanisme de {\tt CS\_REQ} n'était pas utilisé, on aurait beaucoup
-plus de diffusions de {\tt REMOVE\_STATE}. Cette nouvelle solution semble permettre effectivement d'économiser
-des diffusions, et donc, de la bande passante.
+Au final, est-ce que cette nouvelle solution consomme moins de bande passante qu'avant ou pas ?
 
-Dans l'ancienne solution, chaque succès ``coûte'' une diffusion ({\tt SET\_UPDATE}) et chaque échec en
-coûte 2 : {\tt SET\_UPDATE} et {\tt REMOVE\_STATE}.\\
-Dans la nouvelle proposition, chaque succès ``coûte'' deux diffusions ({\tt CS\_REQ} et {\tt SET\_UPDATE}) et
-chaque échec coûte soit une diffusion ({\tt CS\_REQ}), soit 2 : {\tt CS\_REQ} et {\tt REMOVE\_STATE}.
+Pour le déterminer, j'ai réalisé les mesures présentées dans le tableau \ref{tab-cpt} : 
+\begin{table}[ht]
+	\centering
+	\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+		\cline{3-14}
+		\multicolumn{2}{c|}{}& \multicolumn{4}{c|}{1000 n\oe uds} & \multicolumn{4}{c|}{4000 n\oe uds} &  \multicolumn{4}{c|}{10000 n\oe uds}\\
+		\cline{3-14}
+		\multicolumn{2}{c|}{}& 1 & 2 & 3 & 4 & 1 & 2 & 3 & 4 & 1 & 2 & 3 & 4\\
+		\hline
+		\multirow{2}{*}{BR\_CS\_REQ} & Échecs & 6989 & 6417 & 8653 & 7424 &&&&&&&&\\
+		\cline{2-14}                 & Succès &   273 &   275  & 277 & 272 &&&&&&&&\\
+		\hline
+		\multirow{2}{*}{BR\_SET\_UPDATE} & Échecs & 49 & 52 & 57 & 51 &&&&&&&&\\
+		\cline{2-14}                     & Succès & 224 & 223 & 220 & 221 &&&&&&&&\\
+		\hline
+		\multicolumn{2}{|c|}{BR\_REMOVE\_STATE} & 49 & 52 & 57 & 51 &&&&&&&&\\
+		\hline
+		\multicolumn{2}{|c|}{Nouveau Contact} & 92 & 61 & 147 & 111 &&&&&&&&\\ 
+		\hline
+	\end{tabular}
+	\caption{Comptage des Diffusions de Verrou}
+	\label{tab-cpt}
+\end{table}
 
-Pour les cas de succès, on lance deux fois plus de diffusions.
-Pour les cas d'échecs, soit on lance autant de diffusions (cas le moins fréquent), soit on en lance 2 fois moins.
-Les mesures montrant qu'il y a bien plus d'échecs que de succès, on a moins de diffusions au global.
-A confirmer par la mesure.
+J'appelle \emph{échecs coûteux} les échecs de {\tt BR\_SET\_UPDATE} puisqu'ils coûtent 3 diffusions et
+\emph{échecs non coûteux} les échecs de {\tt BR\_CS\_REQ} qui ne coûtent qu'une seule diffusion.
+
+On constate alors que les échecs coûteux sont bien moins fréquents que les échecs non coûteux.
+D'autre part, ces échecs non coûteux coûtent deux fois moins que ceux de l'ancienne version.
+
+On peut donc penser que cette nouvelle solution consomme moins de bande passante que la précédente.
+
+À noter que j'ai aussi compté le nombre de fois qu'on changeait de contact lors de ces opérations.
+Je n'en conclus rien de particulier, si ce n'est le fait que plus on a d'échecs, et plus on tente
+avec un autre contact, ce qui est cohérent.
+
 
 \section{Nouveaux algorithmes}
 
@@ -870,7 +898,7 @@ cause de la mémoire nécessaire) et je n'ai pas constaté de \emph{deadlocks}.
 Contrairement à ma première solution, le simulateur réussi aussi ces constructions même si je change les paramètres
 du réseau (augmentation de la latence, par exemple, pour dégrader les performances).
 
-Les performances du simulateurs même sont moins bonnes : durée d'exécution plus longue et mémoire nécessaire plus
+Les performances du simulateur même sont moins bonnes : durée d'exécution plus longue et mémoire nécessaire plus
 importante. Cela me paraît normal dans la mesure où les n\oe uds doivent maintenant héberger plusieurs
 process en parallèle. De plus, dans l'ancien simulateur, il était très fréquent (bien que j'aie cru le contraire)
 que lors de l'arrivée d'un nouveau n\oe ud, les n\oe uds précédents avaient déjà terminé leur intégration.
@@ -879,29 +907,11 @@ Ici, on simule bien mieux le cas de n\oe uds arrivant simultanément.
 
 \paragraph{Reste à faire}\hfill
 \begin{itemize}
-	\item compter précisément les diffusions succès/échecs
 	\item voir s'il ne serait pas possible de diminuer la mémoire requise
 	\item inclure les algorithmes de départ de n\oe uds dans ces mécanismes
+	\item étudier la possibilité, en fin d'exécution de la simulation, de sortir l'ensemble des tables de routage sous la forme d'un fichier (XML, par exemple)
+	qui décrirait notre DST et qui pourrait servir de source pour un autre simulateur qui cette fois, simulerait un DST en fonctionnement, et pas
+	simplement en construction.
 \end{itemize}
-
-\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
-\hline
-	\multicolumn{2}{|c|}{}& \multicolumn{4}{c|}{1000 n\oe uds} & \multicolumn{4}{c|}{4000 n\oe uds} &  \multicolumn{4}{c|}{10000 n\oe uds}\\
-\hline
-	\multicolumn{2}{|c|}{}& 1 & 2 & 3 & 4 & 1 & 2 & 3 & 4 & 1 & 2 & 3 & 4\\
-\hline
-	BR\_CS\_REQ & Échecs & 6989 & 6417 & 8653 & 7424 &&&&&&&&\\
-\hline
-                                  & Succès &   273 &   275  & 277 & 272 &&&&&&&&\\
-\hline
-	BR\_SET\_UPDATE & Échecs & 49 & 52 & 57 & 51 &&&&&&&&\\
-\hline
-                                            & Succès & 224 & 223 & 220 & 221 &&&&&&&&\\
-\hline
-	BR\_TASK\_REMOVE & & 49 & 52 & 57 & 51 &&&&&&&&\\
-\hline
-	Nouveau Contact & & 92 & 61 & 147 & 111 &&&&&&&&\\ 
-\hline
-\end{tabular}
 
 \end{document}
