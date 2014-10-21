@@ -92,6 +92,9 @@ typedef struct s_dst_info {
                                                per stage) */
     int  *size;                             // number of brothers for each stage
     int   nb_cs_req_fail;                   // number of failed BR_CS_REQ
+    int   nb_cs_req_success;                // number of successful BR_CS_REQ
+    int   nb_set_update_fail;               // number of failed BR_SET_UPDATE
+    int   nb_set_update_success;            // number of sucessful BR_SET_UPDATE
     int   nb_task_remove;                   // number of BR_TASK_REMOVE
     int   nb_chg_contact;                   // number of contact changes
 } s_dst_infos_t, *dst_infos_t;
@@ -4849,6 +4852,9 @@ static void init(node_t me) {
     me->dst_infos.load = xbt_new0(int, me->height);
     me->dst_infos.size = NULL;
     me->dst_infos.nb_cs_req_fail = 0;
+    me->dst_infos.nb_cs_req_success = 0;
+    me->dst_infos.nb_set_update_fail = 0;
+    me->dst_infos.nb_set_update_success = 0;
     me->dst_infos.nb_task_remove = 0;
     me->dst_infos.nb_chg_contact = 0;
 
@@ -5455,8 +5461,12 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                 val_ret = handle_task(me, &task_sent);
 
-                // failures counting
-                if (val_ret == UPDATE_NOK) me->dst_infos.nb_cs_req_fail++;
+                // counting
+                if (val_ret == UPDATE_NOK) {
+                    me->dst_infos.nb_cs_req_fail++;
+                } else {
+                    me->dst_infos.nb_cs_req_success++;
+                }
 
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
@@ -5490,13 +5500,17 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                     val_ret = handle_task(me, &task_sent);
 
+                    // counting
+                    if (val_ret == UPDATE_NOK) {
+                        me->dst_infos.nb_set_update_fail++;
+                    } else {
+                        me->dst_infos.nb_set_update_success++;
+                    }
+
                     xbt_free(args.broadcast.args);
                     args.broadcast.args = NULL;
 
                     if (val_ret == UPDATE_NOK) {
-
-                        // counts
-                        me->dst_infos.nb_task_remove++;
 
                         /* Set_Update broadcast failed (probably because a cs_req has been reset meanwhile)
                            'u' leaders have to be reset to their former state */
@@ -5526,6 +5540,9 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         make_broadcast_task(me, args, &task_sent);
 
                         handle_task(me, &task_sent);
+
+                        // counts
+                        me->dst_infos.nb_task_remove++;
 
                         xbt_free(args.broadcast.args);
                         args.broadcast.args = NULL;
@@ -10711,6 +10728,9 @@ int main(int argc, char *argv[]) {
     int max_msg_nodes = -1;             // max number of messages for one node
     int max_node;                       // node that needed max number
     int tot_cs_req_fail = 0;            // total number of cs_req broadcasts failures
+    int tot_cs_req_success = 0;         // total number of cs_req broadcasts sucess
+    int tot_set_update_fail = 0;        // total number of set_update broadcasts failures
+    int tot_set_update_success = 0;     // total number of set_update broadcasts sucess
     int tot_task_remove = 0;            // total number of task_remove broadcasts
     int tot_chg_contact = 0;            // total number of times contact have been changed
 
@@ -10732,6 +10752,9 @@ int main(int argc, char *argv[]) {
             loc_nb_nodes_tot++;
 
             tot_cs_req_fail += elem->nb_cs_req_fail;
+            tot_cs_req_success += elem->nb_cs_req_success;
+            tot_set_update_fail += elem->nb_set_update_fail;
+            tot_set_update_success += elem->nb_set_update_success;
             tot_task_remove += elem->nb_task_remove;
             tot_chg_contact += elem->nb_chg_contact;
 
@@ -10871,6 +10894,9 @@ int main(int argc, char *argv[]) {
     */
 
     XBT_INFO("Total number of BR_CS_REQ failures : %d", tot_cs_req_fail);
+    XBT_INFO("Total number of BR_CS_REQ success : %d", tot_cs_req_success);
+    XBT_INFO("Total number of BR_SET_UPDATE failures : %d", tot_set_update_fail);
+    XBT_INFO("Total number of BR_SET_UPDATE success : %d", tot_set_update_success);
     XBT_INFO("Total number of BR_TASK_REMOVE : %d", tot_task_remove);
     XBT_INFO("Total number of contact changes : %d", tot_chg_contact);
 
