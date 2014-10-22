@@ -853,26 +853,45 @@ du sous-arbre comme avant.}
 
 Au final, est-ce que cette nouvelle solution consomme moins de bande passante qu'avant ou pas ?
 
-Pour le déterminer, j'ai réalisé les mesures présentées dans le tableau \ref{tab-cpt} : 
+Pour le déterminer, j'ai réalisé les mesures présentées dans le tableau \ref{tab-cpt}, page \pageref{tab-cpt}.
 \begin{table}[ht]
-	\centering
-	\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
-		\cline{3-14}
-		\multicolumn{2}{c|}{}& \multicolumn{4}{c|}{1 000 n\oe uds} & \multicolumn{4}{c|}{4 000 n\oe uds} &  \multicolumn{4}{c|}{10 000 n\oe uds}\\
-		\cline{3-14}
-		\multicolumn{2}{c|}{}& 1 & 2 & 3 & 4 & 1 & 2 & 3 & 4 & 1 & 2 & 3 & 4\\
+	%\centering
+	\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+		\cline{3-10}
+		\multicolumn{2}{c|}{}& \multicolumn{4}{c|}{1 000 n\oe uds} & \multicolumn{4}{c|}{4 000 n\oe uds} \\
+		\cline{3-10}
+		\multicolumn{2}{c|}{}& 1 & 2 & 3 & 4 & 1 & 2 & 3 & 4 \\
 		\hline
-		\multirow{2}{*}{BR\_CS\_REQ} & Échecs & 6 989 & 6 417 & 8 653 & 7 424 & 46 926 & 107 691 & 86 602 && 292 025 &&&\\
-		\cline{2-14}                 & Succès &   273 &   275  & 277 & 272 & 1 040 & 1 080 & 1 072 && 2 481 &&&\\
+		\multirow{2}{*}{BR\_CS\_REQ} & Échecs & 6 989 & 6 417 & 8 653 & 7 424 & 46 926 & 107 691 & 86 602 & \\
+		\cline{2-10}                 & Succès &   273 &   275  & 277 & 272 & 1 040 & 1 080 & 1 072 & \\
 		\hline
-		\multirow{2}{*}{BR\_SET\_UPDATE} & Échecs & 49 & 52 & 57 & 51 & 174 & 264 & 235 && 508 &&&\\
-		\cline{2-14}                     & Succès & 224 & 223 & 220 & 221 & 866 & 816 & 837 && 1 973 &&&\\
+		\multirow{2}{*}{BR\_SET\_UPDATE} & Échecs & 49 & 52 & 57 & 51 & 174 & 264 & 235 & \\
+		\cline{2-10}                     & Succès & 224 & 223 & 220 & 221 & 866 & 816 & 837 & \\
 		\hline
-		\multicolumn{2}{|c|}{BR\_REMOVE\_STATE} & 49 & 52 & 57 & 51 & 174 & 264 & 235  && 508 &&&\\
+		\multicolumn{2}{|c|}{BR\_REMOVE\_STATE} & 49 & 52 & 57 & 51 & 174 & 264 & 235  & \\
 		\hline
-		\multicolumn{2}{|c|}{Nouveau Contact} & 92 & 61 & 147 & 111 & 936 & 3 427 & 2 560 && 12 063 &&&\\ 
+		\multicolumn{2}{|c|}{Nouveau Contact} & 92 & 61 & 147 & 111 & 936 & 3 427 & 2 560 & \\ 
 		\hline
 	\end{tabular}
+  \vspace{0.5cm}\\
+	\begin{tabular}{|c|c|c|c|c|c|}
+  	\cline{3-6}
+		\multicolumn{2}{c|}{}& \multicolumn{4}{c|}{10 000 n\oe uds}\\
+		\cline{3-6}
+		\multicolumn{2}{c|}{}& 1 & 2 & 3 & 4 \\
+		\hline
+		\multirow{2}{*}{BR\_CS\_REQ} & Échecs & 292 025 & 343 798 &&\\
+		\cline{2-6}                 & Succès & 2 481 & 2 668 &&\\
+		\hline
+		\multirow{2}{*}{BR\_SET\_UPDATE} & Échecs & 508 & 608 &&\\
+		\cline{2-6}                     & Succès & 1 973 & 2 060 &&\\
+		\hline
+		\multicolumn{2}{|c|}{BR\_REMOVE\_STATE} & 508 & 608 &&\\
+		\hline
+		\multicolumn{2}{|c|}{Nouveau Contact} & 12 063 & 11 363 &&\\ 
+		\hline
+	\end{tabular}
+	
 	\caption{Comptage des Diffusions de Verrou}
 	\label{tab-cpt}
 \end{table}
@@ -905,7 +924,7 @@ que lors de l'arrivée d'un nouveau n\oe ud, les n\oe uds précédents avaient déjà
 On était alors souvent dans un cas quasi séquentiel ou les n\oe uds arrivent les uns derrière les autres.
 Ici, on simule bien mieux le cas de n\oe uds arrivant simultanément.
 
-\paragraph{Reste à faire}\hfill
+\section{Reste à faire}
 \begin{itemize}
 	\item voir s'il ne serait pas possible de diminuer la mémoire requise
 	\item inclure les algorithmes de départ de n\oe uds dans ces mécanismes
