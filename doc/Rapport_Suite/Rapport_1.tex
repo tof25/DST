@@ -156,6 +156,7 @@ Il faut donc trouver des solutions pour ces deux problèmes.
 \begin{itemize}
 	\item Chaque demande d'insertion de nouveau n\oe ud ({\tt CNX\_REQ}) est traitée par un process distinct créé pour
     l'occasion
+	\hypertarget{ss_proc}{}
 	\item Ce sous-process ne peut pas recevoir de réponses à des requêtes qu'il n'a pas émises.
     Dit autrement, il peut (et doit) traiter immédiatement toutes les réponses reçues.
     (plus besoin de différer ou de refuser)
@@ -165,7 +166,7 @@ Il faut donc trouver des solutions pour ces deux problèmes.
 
 De plus, j'ai fait le choix d'utiliser aussi un tel sous-processus pour les diffusions de {\tt SPLIT} et
 de {\tt CS\_REQ} parce que là encore, cela semble être un avantage de ne pas mélanger les réponses
-attendues dans le cas de diffusions croisées.
+attendues dans le cas de diffusions croisées.\footnote{Pour mémoire, les diffusions ont besoin de synchronisation à chaque étage, et utilisent donc aussi des accusés réception.}
 
 Le schéma général de cette solution à process multiples est présenté figure \ref{call_seq} - page \pageref{call_seq}.
 
@@ -197,7 +198,7 @@ On utilise au plus trois process par n\oe ud.
         	\item soit il la place dans la file {\ti delayed\_tasks}. %(TODO : à vérifier)
         \end{inparaenum}
         \item il héberge ses propres files {\ti async\_answers} et {\ti sync\_answers} (les réponses asynchrones et
-          synchrones attendues aux requêtes qu'il a émises)
+          synchrones attendues aux requêtes qu'il a émises)\footnote{C'est pour ce process qu'on maintient le mécanisme permettant de gérer les messages non attendus. Les autres n'en ont plus besoin, comme expliqué \hyperlink{ss_proc}{plus haut}.}
       \end{itemize}
 
     \item {\tt Tasks\_Queue}
@@ -241,7 +242,7 @@ Cette variable contient la valeur de retour de l'exécution courante de\\{\tt con
 Il y a deux sortes d'échec d'insertion possibles.
 Lors de l'arrivée d'un nouveau n\oe ud, on a la séquence d'appels suivante : {\ti nouveau n\oe ud} $\rightarrow
 contact \rightarrow leader$. En cas d'échec, le contact doit refaire une tentative plus tard, mais son leader
-peut avoir changé entre temps. Le leader doit donc dépiler la requête alors que le contact doit la
+peut avoir changé entre temps. Le leader doit donc dépiler la requête après exécution alors que le contact doit la
 conserver dans sa file {\ti tasks\_queue}. Deux valeurs de retour en cas d'échec sont alors requises : un leader
 retourne la valeur {\ti FAILED} alors qu'un contact retournera la valeur {\ti UPDATE\_NOK}.
 \end{itemize}
@@ -281,7 +282,7 @@ Que la file soit dépilée ou pas, elle est à nouveau triée par ordre de priorité 
 effet, pendant le temps d'exécution de {\tt connection\_request()}, d'autres demandes d'insertion ont pu arriver dans la
 file et il faut s'assurer que la prochaine à exécuter soit bien la suivante en termes de priorité.
 
-L'exécution d'une requête de la file est confiée à \hyperlink{LaunchForkProcess}{{\tt launch\_fork\_process()}} (voir plus haut)
+L'exécution d'une requête de la file est confiée à \hyperlink{LaunchForkProcess}{{\tt launch\_fork\_process()}}
 
 \hypertarget{Priorite}{}
 \paragraph{À propos de l'ordre d'exécution des tâches dans {\ti tasks\_queue}}\hfill
@@ -618,7 +619,7 @@ Puis deux cas se présentent :
 
 	L'émetteur empile alors la requête sur {\ti async\_answers} puis, lorsque plusieurs requêtes ont été émises,
 	il appelle \hyperlink{WaitForCompletion}{{\tt wait\_for\_completion()}} pour arrêter le déroulement du programme jusqu'à ce que l'ensemble
-	des accusés réception ait été reçu. \footnote{voir détails de {\tt wait\_for\_completion()} plus loin}
+	des accusés réception ait été reçu. \footnote{voir détails de \hyperlink{WaitForCompletion}{\tt wait\_for\_completion()} plus loin}
 	C'est cette fonction qui dépile les requêtes de {\ti async\_answers} au fur et à mesure de leur réception
 	et comme \hyperlink{SendMsgSync}{{\tt send\_msg\_sync()}}, elle traite aussi tout ce qu'elle reçoit entre temps.
 
