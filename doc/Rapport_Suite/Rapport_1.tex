@@ -149,7 +149,7 @@ Il faut donc trouver des solutions pour ces deux problèmes.
 
 %TODO : parler du mécanisme de CS_REQ et placer des liens dans le texte
 
-\chapter{Foisonnement des messages : solution}
+\chapter{Foisonnement des messages : solution proposée}
 
 \paragraph {Principes de base:} 
 
@@ -209,7 +209,7 @@ On utilise au plus trois process par n\oe ud.
 
     \item {\tt Handle\_Task}
     
-      C'est ce process qui est éventuellement créé par \hyperlink{LaunchForkProcess}{{\tt launch\_fork\_process()}} depuis \hyperlink{RunTasksQueue}{{\tt run\_tasks\_queue()}} pour traiter les
+      C'est ce process qui est éventuellement créé par \hyperlink{LaunchForkProcess}{{\tt launch\_fork\_process()}} depuis\\ \hyperlink{RunTasksQueue}{{\tt run\_tasks\_queue()}} pour traiter les
       requêtes concernées.
       Il héberge aussi ses propres files {\ti async\_answers} et {\ti sync\_answers}.
 \end{enumerate}
@@ -239,7 +239,7 @@ suivante, la tâche courante doit être terminée. (valeur {\ti IDLE})
 	\item{\ti Last\_return} :
 Cette variable contient la valeur de retour de l'exécution courante de\\{\tt connection\_request()}.
 
-Il y a deux sortes d'échec d'insertion possibles.
+\hypertarget{Failed}{}Il y a deux sortes d'échec d'insertion possibles.
 Lors de l'arrivée d'un nouveau n\oe ud, on a la séquence d'appels suivante : {\ti nouveau n\oe ud} $\rightarrow
 contact \rightarrow leader$. En cas d'échec, le contact doit refaire une tentative plus tard, mais son leader
 peut avoir changé entre temps. Le leader doit donc dépiler la requête après exécution alors que le contact doit la
@@ -310,8 +310,8 @@ caractère décentralisé de ces algorithmes.
 
 %TODO : Ecrire algo de la partie TASK_{\tt CNX\_REQ} de handle_task()
 
-\hypertarget{RunDelayedTasks}{}
 \subsection {run\_delayed\_tasks()}
+\hypertarget{RunDelayedTasks}{}
 
 Voir figures \ref{del-1} et \ref{del-2} - pages \pageref{del-1} et \pageref{del-2}.
 
@@ -371,15 +371,15 @@ Variables:
                               (autrement dit, si l'émetteur de la tâche à exécuter est le nouveau n\oe ud)
 
     \item {\ti buf\_new\_node\_id} : {\tt task.args.new\_node\_id} est mémorisé dans cette variable parce qu'on en a besoin
-                                     après la destruction de task.
+                                     après la destruction de {\ti task}.
 \end{itemize}\hfill \\
 On ôte la tâche courante de la file dans les cas suivants :
 \begin{itemize}
-	\item l'exécution a réussi ({\ti OK} et {\ti UPDATE\_OK})
+	\item l'exécution a réussi ({\ti OK} ou {\ti UPDATE\_OK})
     \item la tâche a été stockée à nouveau ({\ti STORED})
     \item l'exécution a échoué mais le n\oe ud courant n'est pas le contact direct du nouveau n\oe ud.
           ({\tt UPDATE\_NOK \&\& !is\_contact})
-          Il s'agit du cas {\ti FAILED} décrit plus haut.
+          Il s'agit du cas \hyperlink{Failed}{{\ti FAILED}} décrit plus haut.
 \end{itemize}\hfill \\
 %*********************************************************************
 %TODO : ne pourrait-on pas utiliser FAILED ici plutôt que is_contact ?
@@ -559,7 +559,7 @@ Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
 \end{description}
 
 \paragraph{Remarques}
-\begin{enumerate}
+\begin{itemize}[$\bullet$]
 	\item Dans cette fonction, la requête en attente de réponse se trouve toujours au sommet de la pile du fait de ces trois éléments :
 	\begin{itemize}
 		\item une pile {\ti sync\_answers} donnée n'est associée qu'à un seul process.
@@ -571,7 +571,7 @@ Deux types de tâches peuvent être reçus : soit une requête, soit une réponse.
 
 	\item Si {\tt send\_msg\_sync()} n'est pas appelée par le process principal, elle ne peut pas recevoir d'autre
 	message que celui qui est attendu.
-\end{enumerate}
+\end{itemize}
 
 \newgeometry{top=0cm, right=0cm, width=21cm, height=29.7cm}
 \begin{landscape}
@@ -617,12 +617,12 @@ Puis deux cas se présentent :
 		\item {\tt CNX\_GROUPS} ( fonction {\tt split()} )
 	\end{itemize}
 
-	L'émetteur empile alors la requête sur {\ti async\_answers} puis, lorsque plusieurs requêtes ont été émises,
+	L'émetteur empile alors la requête sur {\ti async\_answers} puis, lorsqu'un groupe de requêtes a été émis,
 	il appelle \hyperlink{WaitForCompletion}{{\tt wait\_for\_completion()}} pour arrêter le déroulement du programme jusqu'à ce que l'ensemble
 	des accusés réception ait été reçu. \footnote{voir détails de \hyperlink{WaitForCompletion}{\tt wait\_for\_completion()} plus loin}
 	C'est cette fonction qui dépile les requêtes de {\ti async\_answers} au fur et à mesure de leur réception
 	et comme \hyperlink{SendMsgSync}{{\tt send\_msg\_sync()}}, elle traite aussi tout ce qu'elle reçoit entre temps.
-
+\vspace{0.5cm}
 
 	\item[Pas d'accusé réception -]
 	Dans ce cas, l'appelant ne fait qu'exécuter {\tt send\_msg\_async()}.
@@ -723,7 +723,7 @@ Le cas échéant, la requête correspondante est retirée de la pile, le compteur de
 
 %***********************************************************************************************************************************
 
-\chapter{Échec d'une diffusion d'un verrou : solution}
+\chapter{Échec d'une diffusion d'un verrou : solution proposée}
 \hypertarget{CsReq}{}
 
 \paragraph{Rappel du problème}\hfill
@@ -752,7 +752,8 @@ Ensuite, l'idée générale de cette nouvelle proposition est de procéder en deux t
 	\item diffuser une première requête que j'appelle {\tt CS\_REQ}\footnote{Demande
 d'entrée en section critique}\\
 	Cette diffusion ne pose pas de verrou mais positionne simplement des variables qui sont
-	capables de revenir à leur état initial en cas d'échec, sans nouvelle diffusion.
+	capables de revenir à leur état initial en cas d'échec, sans nouvelle diffusion. Ces variables
+	ainsi positionnées permettent de n'autoriser que le {\tt SET\_UPDATE} correspondant.
 
 	\item si cette diffusion s'est bien passée, diffuser la pose de verrou proprement
 dit -- requête {\tt SET\_UPDATE}
@@ -765,7 +766,7 @@ Chaque n\oe ud possède un ensemble de variables d'état pour ce mécanisme:
 \begin{quote}
 \begin{description}
 	\item [{\ti cs\_req}:] Flag qui indique si une demande a été reçue ou pas
-	\item [{\ti cs\_req\_time}:] Heure à laquelle la demande a été reçue
+	\item [{\ti cs\_req\_time}:] Heure (locale) à laquelle la demande a été reçue
 	\item [{\ti cs\_new\_id}:] Id du nouveau n\oe ud pour lequel la demande a été faite
 	\item [{\ti cs\_new\_node\_prio}:] Niveau de priorité du nouveau n\oe ud
 \end{description}
@@ -925,12 +926,13 @@ que lors de l'arrivée d'un nouveau n\oe ud, les n\oe uds précédents avaient déjà
 On était alors souvent dans un cas quasi séquentiel ou les n\oe uds arrivent les uns derrière les autres.
 Ici, on simule bien mieux le cas de n\oe uds arrivant simultanément.
 
-\section{Reste à faire}
+\section{Pistes pour la suite}
 \begin{itemize}
 	\item voir s'il ne serait pas possible de diminuer la mémoire requise
-	\item inclure les algorithmes de départ de n\oe uds dans ces mécanismes
-	\item étudier la possibilité, en fin d'exécution de la simulation, de sortir l'ensemble des tables de routage sous la forme d'un fichier (XML, par exemple)
-	qui décrirait notre DST et qui pourrait servir de source pour un autre simulateur qui cette fois, simulerait un DST en fonctionnement, et pas
+	\item inclure les algorithmes de départ de n\oe uds (testés et fonctionnels en séquentiel) dans ces mécanismes. 
+	\item faire des statistiques pour analyser plus précisément ce qu'il se passe pendant la construction (par exemple, nombre d'échecs de {\tt GET\_REP}, nombre de messages moyen par n\oe ud pour rejoindre le DST, etc ...)
+	\item étudier la possibilité, en fin d'exécution de la simulation, de retourner l'ensemble des tables de routage sous la forme d'un fichier (XML, par exemple)
+	qui décrirait notre DST résultant et qui pourrait servir de source pour un autre simulateur qui cette fois, simulerait un DST en fonctionnement, et pas
 	simplement en construction.
 \end{itemize}
 
