@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/10/27
+ *  Written by Christophe Enderlin on 2014/11/17
  *
  */
 
@@ -6595,7 +6595,7 @@ static void update_upper_stage(node_t me, int stage, int pos2repl, int new_id, i
  * \param stage the stage where to delete a brother
  * \param bro2del the brother to delete
  */
-qtatic void del_bro(node_t me, int stage, int bro2del) {
+static void del_bro(node_t me, int stage, int bro2del) {
 
     XBT_IN();
     // 'me' can't be deleted
@@ -7912,6 +7912,7 @@ static void leave(node_t me) {
     // manage merges if necessary
     if (me->bro_index[0] <= a) {
 
+        // choose any member other than 'me'
         idx = 0;
         while (me->brothers[0][idx].id == me->self.id && idx < me->bro_index[0]) {
 
@@ -8080,7 +8081,7 @@ static void replace_bro(node_t me, int stage, int init_idx, int new_id, int new_
     u_req_args_t args;
     msg_error_t res;
 
-    // delete predecessor
+    // delete predecessor       //TODO : si bro_id désigne le noeud qui s'en va, alors c'est inutile
     if ((bro_id != me->self.id) && (init_idx < me->bro_index[stage])){
 
         args.del_pred.stage = stage;
@@ -9284,12 +9285,10 @@ int node(int argc, char *argv[]) {
 
                     //xbt_assert(1 == 0, "nb_ins_nodes = %d, nb_nodes = %d", nb_ins_nodes, nb_nodes);
                     xbt_log_control_set("msg_dst.thres:verbose");
-                    XBT_VERB("Node %d: Log Verbose - nb_ins_nodes = %d, nb_nodes = %d", node.self.id, nb_ins_nodes, nb_nodes);
+                    XBT_VERB("Node %d: Log Verbose - nb_ins_nodes = %d, nb_nodes = %d",
+                            node.self.id, nb_ins_nodes, nb_nodes);
                     mem_log++;
                 }
-
-                // Run remain tasks if any
-                //call_run_delayed_tasks(&node, node.self.id);
 
                 // TODO: remplacer les get_clock() par une variable ?
                 if (MSG_get_clock() >= node.deadline && state.active == 'a' && 1 == 0) {    //TODO : ne pas oublier
