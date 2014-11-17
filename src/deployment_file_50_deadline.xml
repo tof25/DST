@@ -2,53 +2,53 @@
 <!DOCTYPE platform SYSTEM "http://simgrid.gforge.inria.fr/simgrid.dtd">
 <platform version="3">
   <process host="c-0.me" function="node"><argument value="42"/><argument value="20000"/></process>
-  <process host="c-1.me" function="node"><argument value="9" /><argument value="42" /><argument value="10" /><argument value="740" /></process>
-  <process host="c-2.me" function="node"><argument value="47" /><argument value="9" /><argument value="20" /><argument value="830" /></process>
-  <process host="c-3.me" function="node"><argument value="31" /><argument value="47" /><argument value="30" /><argument value="730" /></process>
+  <process host="c-1.me" function="node"><argument value="9" /><argument value="42" /><argument value="10" /><argument value="1740" /></process>
+  <process host="c-2.me" function="node"><argument value="47" /><argument value="9" /><argument value="20" /><argument value="1830" /></process>
+  <process host="c-3.me" function="node"><argument value="31" /><argument value="47" /><argument value="30" /><argument value="1730" /></process>
   <process host="c-4.me" function="node"><argument value="51" /><argument value="31" /><argument value="40" /><argument value="20000" /></process>
   <process host="c-5.me" function="node"><argument value="1" /><argument value="47" /><argument value="50" /><argument value="20000" /></process>
-  <process host="c-6.me" function="node"><argument value="32" /><argument value="1" /><argument value="60" /><argument value="760" /></process>
-  <process host="c-7.me" function="node"><argument value="12" /><argument value="47" /><argument value="70" /><argument value="770" /></process>
-  <process host="c-8.me" function="node"><argument value="3" /><argument value="32" /><argument value="80" /><argument value="880" /></process>
+  <process host="c-6.me" function="node"><argument value="32" /><argument value="1" /><argument value="60" /><argument value="1760" /></process>
+  <process host="c-7.me" function="node"><argument value="12" /><argument value="47" /><argument value="70" /><argument value="1770" /></process>
+  <process host="c-8.me" function="node"><argument value="3" /><argument value="32" /><argument value="80" /><argument value="1880" /></process>
   <process host="c-9.me" function="node"><argument value="52" /><argument value="1" /><argument value="90" /><argument value="20000" /></process>
-  <process host="c-10.me" function="node"><argument value="21" /><argument value="52" /><argument value="100" /><argument value="820" /></process>
+  <process host="c-10.me" function="node"><argument value="21" /><argument value="52" /><argument value="100" /><argument value="1820" /></process>
   <process host="c-11.me" function="node"><argument value="25" /><argument value="47" /><argument value="110" /><argument value="20000" /></process>
-  <process host="c-12.me" function="node"><argument value="28" /><argument value="52" /><argument value="120" /><argument value="800" /></process>
-  <process host="c-13.me" function="node"><argument value="13" /><argument value="12" /><argument value="130" /><argument value="910" /></process>
-  <process host="c-14.me" function="node"><argument value="18" /><argument value="32" /><argument value="140" /><argument value="950" /></process>
-  <process host="c-15.me" function="node"><argument value="24" /><argument value="51" /><argument value="150" /><argument value="870" /></process>
+  <process host="c-12.me" function="node"><argument value="28" /><argument value="52" /><argument value="120" /><argument value="1800" /></process>
+  <process host="c-13.me" function="node"><argument value="13" /><argument value="12" /><argument value="130" /><argument value="1910" /></process>
+  <process host="c-14.me" function="node"><argument value="18" /><argument value="32" /><argument value="140" /><argument value="1950" /></process>
+  <process host="c-15.me" function="node"><argument value="24" /><argument value="51" /><argument value="150" /><argument value="1870" /></process>
   <process host="c-16.me" function="node"><argument value="0" /><argument value="25" /><argument value="160" /><argument value="20000" /></process>
   <process host="c-17.me" function="node"><argument value="54" /><argument value="28" /><argument value="170" /><argument value="20000" /></process>
-  <process host="c-18.me" function="node"><argument value="40" /><argument value="0" /><argument value="180" /><argument value="720" /></process>
-  <process host="c-19.me" function="node"><argument value="59" /><argument value="3" /><argument value="190" /><argument value="970" /></process>
-  <process host="c-20.me" function="node"><argument value="7" /><argument value="0" /><argument value="200" /><argument value="930" /></process>
-  <process host="c-21.me" function="node"><argument value="46" /><argument value="42" /><argument value="210" /><argument value="750" /></process>
-  <process host="c-22.me" function="node"><argument value="43" /><argument value="21" /><argument value="220" /><argument value="900" /></process>
+  <process host="c-18.me" function="node"><argument value="40" /><argument value="0" /><argument value="180" /><argument value="1720" /></process>
+  <process host="c-19.me" function="node"><argument value="59" /><argument value="3" /><argument value="190" /><argument value="1970" /></process>
+  <process host="c-20.me" function="node"><argument value="7" /><argument value="0" /><argument value="200" /><argument value="1930" /></process>
+  <process host="c-21.me" function="node"><argument value="46" /><argument value="42" /><argument value="210" /><argument value="1750" /></process>
+  <process host="c-22.me" function="node"><argument value="43" /><argument value="21" /><argument value="220" /><argument value="1900" /></process>
   <process host="c-23.me" function="node"><argument value="45" /><argument value="18" /><argument value="230" /><argument value="20000" /></process>
   <process host="c-24.me" function="node"><argument value="17" /><argument value="42" /><argument value="240" /><argument value="20000" /></process>
-  <process host="c-25.me" function="node"><argument value="63" /><argument value="28" /><argument value="250" /><argument value="780" /></process>
+  <process host="c-25.me" function="node"><argument value="63" /><argument value="28" /><argument value="250" /><argument value="1780" /></process>
   <process host="c-26.me" function="node"><argument value="48" /><argument value="42" /><argument value="260" /><argument value="20000" /></process>
-  <process host="c-27.me" function="node"><argument value="16" /><argument value="9" /><argument value="270" /><argument value="980" /></process>
+  <process host="c-27.me" function="node"><argument value="16" /><argument value="9" /><argument value="270" /><argument value="1980" /></process>
   <process host="c-28.me" function="node"><argument value="27" /><argument value="12" /><argument value="280" /><argument value="20000" /></process>
   <process host="c-29.me" function="node"><argument value="15" /><argument value="21" /><argument value="290" /><argument value="20000" /></process>
-  <process host="c-30.me" function="node"><argument value="50" /><argument value="28" /><argument value="300" /><argument value="790" /></process>
-  <process host="c-31.me" function="node"><argument value="61" /><argument value="1" /><argument value="310" /><argument value="810" /></process>
+  <process host="c-30.me" function="node"><argument value="50" /><argument value="28" /><argument value="300" /><argument value="1790" /></process>
+  <process host="c-31.me" function="node"><argument value="61" /><argument value="1" /><argument value="310" /><argument value="1810" /></process>
   <process host="c-32.me" function="node"><argument value="35" /><argument value="61" /><argument value="320" /><argument value="20000" /></process>
-  <process host="c-33.me" function="node"><argument value="34" /><argument value="40" /><argument value="330" /><argument value="960" /></process>
+  <process host="c-33.me" function="node"><argument value="34" /><argument value="40" /><argument value="330" /><argument value="1960" /></process>
   <process host="c-34.me" function="node"><argument value="26" /><argument value="42" /><argument value="340" /><argument value="20000" /></process>
   <process host="c-35.me" function="node"><argument value="62" /><argument value="35" /><argument value="350" /><argument value="20000" /></process>
   <process host="c-36.me" function="node"><argument value="14" /><argument value="52" /><argument value="360" /><argument value="20000" /></process>
-  <process host="c-37.me" function="node"><argument value="56" /><argument value="15" /><argument value="370" /><argument value="890" /></process>
-  <process host="c-38.me" function="node"><argument value="6" /><argument value="3" /><argument value="380" /><argument value="860" /></process>
+  <process host="c-37.me" function="node"><argument value="56" /><argument value="15" /><argument value="370" /><argument value="1890" /></process>
+  <process host="c-38.me" function="node"><argument value="6" /><argument value="3" /><argument value="380" /><argument value="1860" /></process>
   <process host="c-39.me" function="node"><argument value="60" /><argument value="28" /><argument value="390" /><argument value="20000" /></process>
   <process host="c-40.me" function="node"><argument value="39" /><argument value="15" /><argument value="400" /><argument value="20000" /></process>
   <process host="c-41.me" function="node"><argument value="29" /><argument value="17" /><argument value="410" /><argument value="20000" /></process>
   <process host="c-42.me" function="node"><argument value="19" /><argument value="39" /><argument value="420" /><argument value="20000" /></process>
   <process host="c-43.me" function="node"><argument value="5" /><argument value="48" /><argument value="430" /><argument value="20000" /></process>
-  <process host="c-44.me" function="node"><argument value="2" /><argument value="56" /><argument value="440" /><argument value="850" /></process>
+  <process host="c-44.me" function="node"><argument value="2" /><argument value="56" /><argument value="440" /><argument value="1850" /></process>
   <process host="c-45.me" function="node"><argument value="37" /><argument value="32" /><argument value="450" /><argument value="20000" /></process>
-  <process host="c-46.me" function="node"><argument value="8" /><argument value="39" /><argument value="460" /><argument value="940" /></process>
+  <process host="c-46.me" function="node"><argument value="8" /><argument value="39" /><argument value="460" /><argument value="1940" /></process>
   <process host="c-47.me" function="node"><argument value="20" /><argument value="34" /><argument value="470" /><argument value="20000" /></process>
-  <process host="c-48.me" function="node"><argument value="55" /><argument value="51" /><argument value="480" /><argument value="920" /></process>
-  <process host="c-49.me" function="node"><argument value="23" /><argument value="43" /><argument value="490" /><argument value="840" /></process>
+  <process host="c-48.me" function="node"><argument value="55" /><argument value="51" /><argument value="480" /><argument value="1920" /></process>
+  <process host="c-49.me" function="node"><argument value="23" /><argument value="43" /><argument value="490" /><argument value="1840" /></process>
 </platform>

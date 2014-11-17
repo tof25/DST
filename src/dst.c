@@ -6600,9 +6600,30 @@ static void del_bro(node_t me, int stage, int bro2del) {
     XBT_IN();
     // 'me' can't be deleted
     xbt_assert(bro2del != me->self.id,
-            "Node %d : can't delete 'me' !! - stage = %d",
+            "Node %d : [%s:%c] Can't delete 'me' !! - stage = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             stage);
+
+    // log
+    if (XBT_LOG_ISENABLED(msg_dst, xbt_log_priority_trace)) {
+
+        XBT_DEBUG("Node %d: [%s:%d] Before deletion - bro to del : %d",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                bro2del);
+
+        printf("me.brothers[%d] = { ", stage);
+
+        int j = 0;
+        for ( j = 0; j < me->bro_index[stage] - 1; j++ ) {
+
+            printf("%d , ", me->brothers[stage][j].id);
+        }
+        printf("%d }\n\n", me->brothers[stage][j].id);
+    }
 
     int size = me->bro_index[stage];
     int idx = index_bro(me, stage, bro2del);
@@ -6617,8 +6638,26 @@ static void del_bro(node_t me, int stage, int bro2del) {
     }
 
     me->brothers[stage][size - 1].id = -1;
-    set_mailbox(0, me->brothers[stage][size - 1].mailbox);
+    set_mailbox(-1, me->brothers[stage][size - 1].mailbox);
     me->bro_index[stage]--;
+
+    // log
+    if (XBT_LOG_ISENABLED(msg_dst, xbt_log_priority_trace)) {
+
+        XBT_DEBUG("Node %d: [%s:%d] After deletion",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
+
+        printf("me.brothers[%d] = { ", stage);
+
+        int j = 0;
+        for ( j = 0; j < me->bro_index[stage] - 1; j++ ) {
+
+            printf("%d , ", me->brothers[stage][j].id);
+        }
+        printf("%d }\n\n", me->brothers[stage][j].id);
+    }
 
     XBT_OUT();
 }
