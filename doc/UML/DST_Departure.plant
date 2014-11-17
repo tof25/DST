@@ -1,36 +1,41 @@
 @startuml 
 title DST : Node Departure\n
 
-group Node leaves
+loop Each Stage
 
 note left of Leaving_node: leave()
 activate Leaving_node #LightSeaGreen
 
+loop Each Pred
 Leaving_node -> Preds: DEL_BRO\nREPL_BRO
 
 activate Preds #Khaki
-note left of Preds: del_bro()\nreplace_bro()
-Preds ->>o Nodes : DEL_PRED
-activate Nodes #Red
-note right of Nodes: del_pred()
-Nodes -> Nodes
-deactivate Nodes
+note right of Preds: del_bro()\nreplace_bro()
+Preds ->>o Leaving_node : DEL_PRED
+activate Leaving_node #Red
+note right of Leaving_node: del_pred()
+Leaving_node -> Leaving_node
+deactivate Leaving_node
 
-Preds ->>o Nodes : ADD_PRED
-activate Nodes #Blue
-note right of Nodes: add_pred()
-Nodes -> Nodes
-deactivate Nodes
+Preds ->>o Any_Brother : ADD_PRED
+activate Any_Brother #Blue
+note right of Any_Brother: add_pred()
+Any_Brother -> Any_Brother
+deactivate Any_Brother
 
+end
 Preds -[#0000FF]->>o Leaving_node: ACK
 deactivate Preds
 
+loop Each Brother
 Leaving_node -> Brothers: DEL_PRED
 
 activate Brothers #Red
-note left of Brothers: del_pred()
+note right of Brothers: del_pred()
+end
 Brothers -[#0000FF]->>o Leaving_node: ACK_DEL_PRED
 deactivate Brothers
+end
 
 opt Merge requested
 
@@ -275,7 +280,6 @@ end
 end
 Any_Brother -[#0000FF]->>o Leaving_node: ACK_MERGE_REQ
 deactivate Any_Brother
-end
 end
 deactivate Leaving_node
 
