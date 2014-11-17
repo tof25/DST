@@ -6595,7 +6595,7 @@ static void update_upper_stage(node_t me, int stage, int pos2repl, int new_id, i
  * \param stage the stage where to delete a brother
  * \param bro2del the brother to delete
  */
-static void del_bro(node_t me, int stage, int bro2del) {
+qtatic void del_bro(node_t me, int stage, int bro2del) {
 
     XBT_IN();
     // 'me' can't be deleted
@@ -7403,7 +7403,8 @@ static int merge_or_transfer(node_t me, int stage) {
  *              0 (or 10) otherwise.
  * \param new_node_id the new involved coming node
  */
-static void merge(node_t me,
+static void merge(
+     node_t me,
         int *nodes_array,
         int nodes_array_size,
         int stage,
