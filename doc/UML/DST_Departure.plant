@@ -1,0 +1,282 @@
+@startuml 
+title DST : Node Departure\n
+
+group Node leaves
+
+note left of Leaving_node: leave()
+activate Leaving_node #LightSeaGreen
+
+Leaving_node -> Preds: DEL_BRO\nREPL_BRO
+
+activate Preds #Khaki
+note left of Preds: del_bro()\nreplace_bro()
+Preds ->>o Nodes : DEL_PRED
+activate Nodes #Red
+note right of Nodes: del_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Preds ->>o Nodes : ADD_PRED
+activate Nodes #Blue
+note right of Nodes: add_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Preds -[#0000FF]->>o Leaving_node: ACK
+deactivate Preds
+
+Leaving_node -> Brothers: DEL_PRED
+
+activate Brothers #Red
+note left of Brothers: del_pred()
+Brothers -[#0000FF]->>o Leaving_node: ACK_DEL_PRED
+deactivate Brothers
+
+opt Merge requested
+
+Leaving_node -> Any_Brother: MERGE_REQ
+
+activate Any_Brother #Khaki
+note left of Any_Brother: merge_request()
+
+loop Each concerned stage
+
+Any_Brother -> Any_Brother
+activate Any_Brother #Red
+note right of Any_Brother: merge_or_transfer()
+
+Any_Brother -> Other_Brother: GET_SIZE
+activate Other_Brother #Blue
+note right of Other_Brother: get_size()
+Other_Brother -> Any_Brother: GET_SIZE_ANS
+deactivate Other_Brother
+
+Any_Brother -> Any_Brother
+deactivate Any_Brother
+
+opt Merge
+
+Any_Brother -> Contact: MERGE
+activate Contact #Green
+note left of Contact: merge()
+
+Contact -> Nodes: ADD_PRED
+activate Nodes #Blue
+note left of Nodes: add_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Contact -[#0000FF]->>o Any_Brother: ACK_MERGE
+deactivate Contact
+
+Any_Brother -> Contact: BR_REQ_MERGE
+activate Contact #Green
+note left of Contact: broadcat_merge()
+
+Contact -> Sub_Tree: BR_MERGE
+activate Sub_Tree #Gold
+note right of Sub_Tree: merge()
+
+Sub_Tree -> Nodes: ADD_PRED
+activate Nodes #Blue
+note left of Nodes: add_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Sub_Tree -[#0000FF]->>o Contact: ACK_BR_MERGE
+deactivate Sub_Tree
+
+Contact -[#0000FF]->>o Any_Brother: ACK_BR_REQ_MERGE
+deactivate Contact
+
+Any_Brother -> Any_Brother
+activate Any_Brother #Gold
+note right of Any_Brother: clean_upper_stage()
+
+Any_Brother -> Nodes: DEL_PRED
+activate Nodes #Red
+note left of Nodes: del_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Any_Brother -> Any_Brother
+deactivate Any_Brother
+
+Any_Brother -> Sub_Tree: BR_CLEAN_STAGE
+activate Sub_Tree #Blue
+note right of Sub_Tree: clean_upper_stage()
+
+Sub_Tree -> Nodes: DEL_PRED
+activate Nodes #Red
+note left of Nodes: del_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Sub_Tree -[#0000FF]->>o Any_Brother: ACK_BR_CLEAN_STAGE
+deactivate Sub_Tree
+
+else Transfer
+
+Any_Brother -> Contact: TRANSFER
+activate Contact #Green
+note left of Contact: transfer()
+
+Contact -> Sub_Tree: BR_CUT_NODE
+activate Sub_Tree #Blue
+note left of Sub_Tree: cut_node()
+
+Sub_Tree -> Sub_Tree
+activate Sub_Tree #Red
+note right of Sub_Tree: shift_bro()
+
+Sub_Tree -> Nodes: ADD_PRED
+activate Nodes #Blue
+note left of Nodes: add_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Sub_Tree -> Nodes: DEL_PRED
+activate Nodes #Red
+note left of Nodes: del_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Sub_Tree -> Sub_Tree
+deactivate Sub_Tree
+
+Sub_Tree -> Sub_Tree
+activate Sub_Tree #Gold
+note right of Sub_Tree: del_member()
+
+Sub_Tree -> Nodes: DEL_PRED
+activate Nodes #Red
+note left of Nodes: del_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Sub_Tree -> Sub_Tree
+deactivate Sub_Tree
+
+Sub_Tree -[#0000FF]->>o Contact: ACK_BR_CUT_NODE
+deactivate Sub_Tree
+
+Contact -> Any_Brother: ACK_TRANSFER
+deactivate Contact
+
+Any_Brother -> Any_Brother
+activate Any_Brother #Blue
+note right of Any_Brother: br_add_bro_array()
+
+Any_Brother -> Sub_Tree: BR_ADD_BRO_ARRAY
+activate Sub_Tree #Red
+note right of Sub_Tree: add_bro_array()
+Sub_Tree -[#0000FF]->>o Any_Brother: ACK_BR_ADD_BRO_ARRAY
+deactivate Sub_Tree
+
+Any_Brother -> Any_Brother
+deactivate Any_Brother
+
+Any_Brother -> Contact2: BR_ADD_BRO_ARRAY
+activate Contact2 #Gold
+note right of Contact2: br_add_bro_array()
+
+Contact2 -> Sub_Tree: BR_ADD_BRO_ARRAY
+activate Sub_Tree #Red
+note left of Sub_Tree: add_bro_array()
+
+Sub_Tree -> Sub_Tree
+activate Sub_Tree #Blue
+note right of Sub_Tree: insert_bro()\nadd_bro()
+
+Sub_Tree -> Nodes: ADD_PRED
+activate Nodes #Blue
+note left of Nodes: add_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Sub_Tree -> Sub_Tree
+deactivate Sub_Tree
+
+Sub_Tree -[#0000FF]->>o Contact2: ACK_BR_ADD_BRO_ARRAY
+deactivate Sub_Tree
+
+Contact2 -> Any_Brother: ACK_BR_ADD_BRO_ARRAY
+deactivate Contact2
+
+Any_Brother -> Any_Brother
+activate Any_Brother #Red
+note right of Any_Brother: update_upper_stage()
+
+Any_Brother -> Any_Brother
+activate Any_Brother #Green
+note right of Any_Brother: replace_bro()
+
+Any_Brother -> Nodes: DEL_PRED
+activate Nodes #Red
+note left of Nodes: del_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Any_Brother -> Nodes: ADD_PRED
+activate Nodes #Blue
+note left of Nodes: add_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Any_Brother -> Any_Brother
+deactivate Any_Brother
+
+deactivate Any_Brother
+
+Any_Brother -> Sub_Tree: BR_UPDATE_UPPER_STAGE
+activate Sub_Tree #Gold
+note right of Sub_Tree: update_upper_stage()
+
+Sub_Tree -> Sub_Tree
+activate Sub_Tree #Green
+note right of Sub_Tree: replace_bro()
+
+Sub_Tree -> Nodes: DEL_PRED
+activate Nodes #Red
+note left of Nodes: del_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Sub_Tree -> Nodes: ADD_PRED
+activate Nodes #Blue
+note left of Nodes: add_pred()
+Nodes -> Nodes
+deactivate Nodes
+
+Sub_Tree -> Any_Brother
+deactivate Sub_Tree
+
+Sub_Tree -[#0000FF]->>o Any_Brother: ACK_BR_UPDATE_UPPER_STAGE
+deactivate Sub_Tree
+
+end
+
+Any_Brother -> Other_Brother: GET_SIZE
+activate Other_Brother #Blue
+note right of Other_Brother: get_size()
+Other_Brother -> Any_Brother: GET_SIZE_ANS
+deactivate Other_Brother
+
+opt Root to be deleted
+
+Any_Brother -> Tree: BR_DEL_ROOT
+activate Tree #Red
+note right of Tree: del_root()
+Tree -[#0000FF]->>o Any_Brother: ACK_BR_DEL_ROOT
+deactivate Tree
+
+end
+
+end
+Any_Brother -[#0000FF]->>o Leaving_node: ACK_MERGE_REQ
+deactivate Any_Brother
+end
+end
+deactivate Leaving_node
+
+@enduml
