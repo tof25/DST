@@ -1,0 +1,49 @@
+@startuml
+start
+
+:stage <-- 0;
+while (stage < height ?) is (yes)
+
+    :pred <-- 0;
+    while (pred < pred_index[stage] ?) is (yes)
+
+        if (preds[stage][pred] == me) then (no)
+
+            if (stage == 0 ?) then (yes)
+
+                :send_async DEL_BRO(me) to preds[stage][pred];
+            else (no)
+
+                :new_rep <-- brothers[0][rand()];
+                :send_async REPL_BRO(me, new_rep) to preds[stage][pred];
+            endif
+        else (yes)
+        endif
+        :pred ++;
+    endwhile (no)
+    :wait_for_completion();
+
+    :bro <-- 0;
+    while (bro < bro_index[stage] ?) is (yes)
+
+        if (brothers[stage][bro] == me) then (no)
+
+            :send_async DEL_PRED(me) to brothers[stage][bro];
+        else (yes)
+        endif
+
+        :bro ++;
+    endwhile (no)
+    :wait_for_completion();
+
+    :stage ++;
+endwhile (no)
+
+if (bro_index <= a ?) then (yes)
+    :send_sync MERGE_REQ(me) to any brother of mine;
+else (no)
+endif
+
+
+stop
+@enduml

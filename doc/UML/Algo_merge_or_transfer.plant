@@ -1,0 +1,28 @@
+@startuml
+start
+
+:idx_bro <-- 0;
+:merge <--0;
+
+while (merge == 0 && idx_bro < bro_index[stage + 1]) is (yes)
+
+    if (brothers[stage + 1][idx_bro] != me) then (yes)
+
+        :size <-- send_sync GET_SIZE(stage) to brothers[stage + 1][idx_bro];
+        if (size <= b - bro_index[stage]) then (yes)
+            :merge <-- 1;
+        else (no)
+        endif
+    else (no)
+    endif
+    :idx_bro++;
+endwhile (no)
+
+if (merge == 1) then (yes)
+    :return idx_bro - 1;
+else (no)
+    :return -1;
+endif
+
+stop
+@enduml
