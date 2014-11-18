@@ -8081,7 +8081,10 @@ static void replace_bro(node_t me, int stage, int init_idx, int new_id, int new_
     u_req_args_t args;
     msg_error_t res;
 
-    // delete predecessor       //TODO : si bro_id désigne le noeud qui s'en va, alors c'est inutile
+    // delete predecessor
+    // NOTE : si bro_id désigne le noeud qui s'en va, alors c'est inutile
+    //        mais comment détecter ce cas à tous les coups ?
+    //        Peut-être pas grave de le laisser
     if ((bro_id != me->self.id) && (init_idx < me->bro_index[stage])){
 
         args.del_pred.stage = stage;
