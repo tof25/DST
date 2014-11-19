@@ -1,0 +1,62 @@
+@startuml
+start
+
+:size_last_stage <-- 0;
+:stage <-- 0;
+:i <-- 0;
+:current_size <-- 0;
+:transfer <-- 0;
+
+while (bro_index[stage] < a && stage < height - 1) is (yes)
+    
+    :pos_contact <-- merge_or_transfer(stage);
+    if (pos_contact > -1) then (Merge)
+
+        :transfer <-- 0;
+        :pos_me <-- index_bro(stage + 1, me);
+
+        if (pos_me > pos_contact) then (yes)
+            :right <-- 1;
+        else (no)
+            :right <-- 0;
+        endif
+        :send_sync MERGE(stage, pos_me, pos_contact, right, new_node_id) to brothers[stage + 1][pos_contact];
+        :send_sync BROADCAST_MERGE(stage, pos_me, pos_contact, right, new_node_id) to brothers[stage + 1][pos_contact];
+        :clean_upper_stage(stage, pos_me, pos_contact, new_node_id);
+        :broadcast clean_upper_stage(stage, pos_me, pos_contact, new_node_id);
+    else (Transfer)
+
+        :transfer <-- 1;
+        :pos_me_up <-- index_bro(stage + 1), me);
+
+        if (pos_me_up == 0) then (yes)
+
+            :pos_contact <-- 1;
+            :right <-- 0;
+            :cut_pos <-- b - a - 1;
+        else (no)
+
+            :pos_contact <-- pos_me_up - 1;
+            :right <-- 1;
+            :cut_pos <-- a;
+        endif
+        :contact_id <-- brothers[stage + 1][pos_contact];
+        :send_sync TRANSFER(stage, right, cut_pos, me, new_node_id) to contact_id;
+
+        :current_bro <-- brothers[stage];
+        :current_size <-- bro_index[stage];
+
+        :br_add_bro_array(stage, rep_array, rep_array_size, (right + 1) % 2, new_node_id);
+        :send_sync BR_ADD_BRO_ARRAY(stage, current_bro, current_size, right, new_node_id) to rep_array[0]);
+
+        :update_upper_stage(stage, pos_contact, stay_id, new_node_id);
+        :broadcast update_upper_stage(stage, pos_contact, stay_id, new_node_id);
+
+    endif
+    :stage ++;
+endwhile (no)
+
+:GET CURRENT ROOT SIZE;
+
+stop
+@enduml

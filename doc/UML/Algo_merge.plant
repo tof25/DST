@@ -1,0 +1,54 @@
+@startuml
+start
+
+if (nodes_array_size == bro_index[stage]) then (yes)
+    stop
+else (no)
+    if (bro_index[stage] < a) then (yes)
+       :right <-- (right + 1) % 2;
+    endif
+
+    if (nodes_array_size >= bro_index[stage] ?) then (yes)
+
+        :loc_nodes_array_size <-- nodes_array_size - bro_index[stage];
+    else (no)
+
+        :loc_nodes_array_size <-- nodes_array_size;
+    endif
+
+    if (right == 0) then (right = 0)
+
+        if (loc_nodes array_size > 0) then (yes)
+
+            :loc_nodes_array <-- left part of nodes_array;
+        endif
+    else (right = 1)
+
+        if (loc_nodes_array_size > 0) then (yes)
+
+            :loc_nodes_array <-- right part of nodes_array;
+        endif
+    endif
+
+    if (loc_nodes_array_size > 0) then (yes)
+        if (right == 0) then (yes)
+            :i <-- loc_nodes_array_size - 1;
+            while (i >= 0) is (yes)
+                :insert_bro(stage, loc_nodes_array[i]);
+                :send_async ADD_PRED to loc_nodes_array[i];
+                :i--;
+            endwhile (no)
+        else (no)
+            :i <-- 0;
+            while (i < loc_nodes_array_size) is (yes)
+                :add_brother(stage, loc_nodes_array[i]);
+                :send_async ADD_PRED to loc_nodes_array[i];
+                :i++;
+            endwhile (no)
+        endif
+    else (no)
+    endif
+endif
+
+stop
+@enduml
