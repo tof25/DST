@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/11/17
+ *  Written by Christophe Enderlin on 2014/11/26
  *
  */
 
@@ -40,8 +40,8 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_WAIT_GET_REP 5000               // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
-#define MAX_CS_REQ 700                      // max time between cs_req and matching set_update
-#define MAX_CNX 200                         // max number of attempts to run CNX_REQ (before trying another contact)
+#define MAX_CS_REQ 2000                     // max time between cs_req and matching set_update
+#define MAX_CNX 500                         // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
 
@@ -3954,13 +3954,15 @@ static msg_error_t send_msg_sync(node_t me,
 
             // TODO : si TIMEOUT et GET_REP, il faut laisser tomber
             // reception failure
-            xbt_assert(1 == 0, "Node %d: Failed to receive the answer to my '%s' request from %s"
+            XBT_INFO("Node %d: Failed to receive the answer to my '%s' request from %s"
                     " result : %s (line %d)",
                     cpy_req_data->sender_id,
                     debug_msg[cpy_req_data->type],
                     cpy_req_data->sent_to,
                     debug_res_msg[res],
                     __LINE__);
+
+            xbt_assert(cpy_req_data->type != TASK_GET_REP, "STOP : task = %s", debug_msg[cpy_req_data->type]);
 
             task_free(&task_received);
         } else {
