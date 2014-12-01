@@ -2,6 +2,7 @@
  *  dst.c
  *
  *  Written by Christophe Enderlin on 2014/11/26
+ *  New branch (new_lock) created on 2014/12/01
  *
  */
 
@@ -173,7 +174,19 @@ typedef enum {
     IDLE
 } e_run_state_t;
 
+/**
+ * Possible values for running task name
+ */
+typedef enum {
+    NONE,
+    OTHER,
+    CS_REQ,
+    SET_UPD
+} e_name_run_t;
+
+
 typedef struct ans_data s_ans_data_t, *ans_data_t;
+
 
 /**
  * A recipient answer record                // see wait_for_completion()
@@ -203,6 +216,7 @@ typedef struct state {
 typedef struct {
     e_run_state_t run_state;
     e_val_ret_t   last_ret;
+    e_name_run_t  name;
 } s_run_task_t;
 
 /**
@@ -260,6 +274,16 @@ static const char* debug_res_msg[] = {
 static const char* debug_run_msg[] = {
     "RUNNING",
     "IDLE"
+};
+
+/**
+ * Array of debug messages for running task name
+ */
+static const char* debug_run_name_msg[] = {
+    "NONE",
+    "OTHER",
+    "CS_REQ",
+    "SET_UPD"
 };
 
 /**
@@ -2762,6 +2786,7 @@ static void run_tasks_queue(node_t me) {
     s_state_t state;
     me->run_task.run_state = IDLE;
     me->run_task.last_ret = UPDATE_NOK;
+    me->run_task.name = NONE;
     e_run_state_t prev_state = RUNNING;
     u_ans_data_t answer;
 
@@ -5418,6 +5443,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             // splits will be required
             if (n > 0) {
 
+                me->run_task.name = CS_REQ;
+
                 state = get_state(me);
                 XBT_INFO("Node %d: [%s:%d] '%c'/%d - **** MAKING ROOM FOR NODE %d ... ****",
                         me->self.id,
@@ -5475,6 +5502,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                 if (val_ret != UPDATE_NOK) {
 
+                    me->run_task.name = SET_UPD;
+
                     // set all concerned nodes as 'u' if cs_req succeeded
                     XBT_VERB("Node %d: set all concerned leaders as 'u'",
                             me->self.id);
@@ -5511,6 +5540,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                     xbt_free(args.broadcast.args);
                     args.broadcast.args = NULL;
+
+                    me->run_task.name = OTHER;
 
                     if (val_ret == UPDATE_NOK) {
 
@@ -5589,6 +5620,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                         handle_task(me, &task_sent);
 
+                        me->run_task.name = OTHER;
+
                         xbt_free(args.broadcast.args);
                         args.broadcast.args = NULL;
 
@@ -5604,6 +5637,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                 } else {
 
                     // cs_req returned NOK
+                    me->run_task.name = OTHER;
 
                     state = get_state(me);
                     //TODO : comptage des essais pas bon. A modifier ?
@@ -11017,6 +11051,7 @@ static int proc_handle_task(int argc, char* argv[]) {
     if (req_data->type == TASK_CNX_REQ) {
 
         proc_data->node->run_task.run_state = RUNNING;
+        proc_data->node->run_task.name = OTHER;
 
         XBT_VERB("Node %d: [%s:%d] set run_state = {%s - %s}",
                 proc_data->node->self.id,
@@ -11027,6 +11062,7 @@ static int proc_handle_task(int argc, char* argv[]) {
 
         proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task);
         proc_data->node->run_task.run_state = IDLE;
+        proc_data->node->run_task.name = NONE;
 
         XBT_VERB("Node %d: [%s:%d] set run_state = {%s - %s}",
                 proc_data->node->self.id,
