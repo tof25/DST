@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/11/26
+ *  Written by Christophe Enderlin on 2014/12/02
  *  New branch (new_lock) created on 2014/12/01
  *
  */
@@ -242,6 +242,7 @@ typedef struct node {
     float           cs_req_time;            // timestamp when cs_req was set
     int             cs_new_id;              // new node's id that set cs_req
     int             cs_new_node_prio;       // new node's priority
+    int             cs_req_br_source;       // node's id that started broadcast of cs_req
     float           last_check_time;        // last time when checking if cs_req has to be reset occured
     s_run_task_t    run_task;               // current running task state (delayed tasks)
     s_run_task_t    other_task_state;       // other task state
@@ -1533,52 +1534,63 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
     msg_error_t res;
 
     s_state_t state = get_state(me);
-    char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
+    //char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
 
-    /* to avoid dealocks : if CS has been requested and not answered for long
-       ago, or if new node's priority is lower, cancel this request */
-
-    /** TODO NE PAS OUBLIER **/
-    if (sender_id != me->self.id) {
-
-        res = send_msg_sync(me,
-                TASK_IRQ,
-                sender_id,
-                args,
-                &answer_data);
-
-        // send failure
-        xbt_assert(res == MSG_OK, "Node %d: Failed to send task '%s' to %d",
-                me->self.id,
-                debug_msg[TASK_IRQ],
-                sender_id);
-
-        answer = answer_data->answer;
-    } else {
-
-        /** NE PAS OUBLIER **/
-    }
-
-    XBT_VERB("Node %d: [%s:%d] irq answer received : %s",
-            me->self.id,
-            __FUNCTION__,
-            __LINE__,
-            (answer.irq.ans == 1 ? "Yes" : "No"));
+    /* to avoid dealocks : if new node's priority is lower, cancel the current request if broadcast
+     * initiator is ok */
 
     if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
-        (cs_new_node_prio < me->cs_new_node_prio || test == 1)) {        //TODO: à vérifier
+            cs_new_node_prio < me->cs_new_node_prio) {
 
-        me->cs_req = 0;
+        // asks initiator
+        if (me->cs_req_br_source != me->self.id) {
 
-        XBT_VERB("Node %d: '%c'/%d cs_req set at clock %f--> reset - node %d's priority : %d - node %d's priority : %d",
+            res = send_msg_sync(me,
+                    TASK_IRQ,
+                    me->cs_req_br_source,
+                    args,
+                    &answer_data);
+
+            // send failure
+            xbt_assert(res == MSG_OK, "Node %d: Failed to send task '%s' to %d",
+                    me->self.id,
+                    debug_msg[TASK_IRQ],
+                    me->cs_req_br_source);
+
+            answer = answer_data->answer;
+        } else {
+
+            //TODO : faire une fonction
+            answer.irq.ans = (me->run_task.name != SET_UPD);
+        }
+
+        XBT_VERB("Node %d: [%s:%d] irq answer received : %s",
                 me->self.id,
-                state.active,
-                state.new_id,
-                me->cs_req_time,
-                new_node_id,
-                cs_new_node_prio,
-                me->cs_new_id,
-                me->cs_new_node_prio);
+                __FUNCTION__,
+                __LINE__,
+                (answer.irq.ans == 1 ? "Yes" : "No"));
+
+        // initiator is ok
+        if (answer.irq.ans == 1) {
+
+            me->cs_req = 0;
+
+            XBT_VERB("Node %d: [%s:%d] '%c'/%d cs_req set at clock %f--> reset - node %d's priority : %d - node %d's priority : %d"
+                     " - run_state = %s - run_task.name = %s",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    state.active,
+                    state.new_id,
+                    me->cs_req_time,
+                    new_node_id,
+                    cs_new_node_prio,
+                    me->cs_new_id,
+                    me->cs_new_node_prio,
+                    debug_run_msg[me->run_task.run_state],
+                    debug_run_name_msg[me->run_task.name]);
+        }
+        data_ans_free(me, &answer_data);
     }
 
     if (me->cs_req == 1) {
@@ -1600,6 +1612,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
             me->cs_new_id = new_node_id;
             me->cs_req_time = MSG_get_clock();
             me->cs_new_node_prio = cs_new_node_prio;
+            me->cs_req_br_source = sender_id;
 
             val_ret = OK;
         } else {
@@ -3722,36 +3735,39 @@ static void  display_sc(node_t me, char mode) {
     s_state_t state = get_state(me);
     switch (mode) {
         case 'V':
-            XBT_VERB("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f cs_new_node_prio = %d",
+            XBT_VERB("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f cs_new_node_prio = %d cs_req_br_source = %d",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->cs_req,
                     me->cs_new_id,
                     me->cs_req_time,
-                    me->cs_new_node_prio);
+                    me->cs_new_node_prio,
+                    me->cs_req_br_source);
             break;
 
         case 'I':
-            XBT_INFO("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f cs_new_node_prio = %d",
+            XBT_INFO("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f cs_new_node_prio = %d cs_req_br_source = %d",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->cs_req,
                     me->cs_new_id,
                     me->cs_req_time,
-                    me->cs_new_node_prio);
+                    me->cs_new_node_prio,
+                    me->cs_req_br_source);
             break;
 
         case 'D':
-            XBT_DEBUG("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f cs_new_node_prio = %d",
+            XBT_DEBUG("Node %d: '%c'/%d - cs_req = %d cs_new_id = %d cs_req_time = %f cs_new_node_prio = %d cs_req_br_source = %d",
                     me->self.id,
                     state.active,
                     state.new_id,
                     me->cs_req,
                     me->cs_new_id,
                     me->cs_req_time,
-                    me->cs_new_node_prio);
+                    me->cs_new_node_prio,
+                    me->cs_req_br_source);
             break;
     }
 
@@ -4918,6 +4934,7 @@ static void init(node_t me) {
     me->cs_req_time = 0;
     me->cs_new_id = -1;
     me->cs_new_node_prio = 0;
+    me->cs_req_br_source = -1;
 
     // DST infos initialization
     me->dst_infos.order = 0;
@@ -10746,13 +10763,9 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_IRQ:
-            if (me->run_task.run_state == RUNNING && me->run_task.name == CS_REQ) {
+            //TODO : faire une fonction
+            answer.irq.ans = (me->run_task.name != SET_UPD);
 
-                answer.irq.ans = 1;
-            } else {
-
-                answer.irq.ans = 0;
-            }
             XBT_VERB("Node %d: [%s:%d] TASK_IRQ : run_state = %s - run_task name = %s",
                     me->self.id,
                     __FUNCTION__,
