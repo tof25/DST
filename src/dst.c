@@ -36,7 +36,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define COMM_SIZE 10                        // message size when creating a new task
 #define COMP_SIZE 0                         // compute duration when creating a new task
 #define MAILBOX_NAME_SIZE 50                // name size of a mailbox
-#define TYPE_NBR 38                         // number of task types
+#define TYPE_NBR 39                         // number of task types
 #define MAX_WAIT_COMPL 20000                // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 5000               // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 250                        // number of joining attempts
@@ -152,7 +152,8 @@ typedef enum {
     TASK_END_GET_REP,       // remove 'g' state after load balance
     TASK_REMOVE_STATE,      // remove given state from states dynar
     TASK_CS_REL,            // reset cs_req flag
-    TASK_CHECK_CS           // send back a CS_REL if not 'b' neither 'n'
+    TASK_CHECK_CS,          // send back a CS_REL if not 'b' neither 'n'
+    TASK_IRQ                // requests permission from initiator to interrupt a CS_REQ broadcast
 } e_task_type_t;
 
 /**
@@ -340,7 +341,8 @@ static const char* debug_msg[] = {
     "End Get Rep",
     "Pop State",
     "Critical Section Released",
-    "Check CS"
+    "Check CS",
+    "Interrupt Request"
 };
 
 /*
@@ -602,6 +604,10 @@ typedef struct {
     int new_node_id;
 } s_task_check_cs_t;           // send back a CS_REL if not 'b' neither 'n'
 
+typedef struct {
+    int new_node_id;
+} s_task_irq_t;                 // request permission to interrupt a broadcast of CS_REQ
+
 /**
  * Generic request args
  */
@@ -643,6 +649,7 @@ union req_args {
     s_task_remove_state_t       remove_state;
     s_task_cs_rel_t             cs_rel;
     s_task_check_cs_t           check_cs;
+    s_task_irq_t                irq;
 };
 
 /**
@@ -720,6 +727,11 @@ typedef struct {
     int id;
 } s_task_ans_get_new_contact_t;
 
+typedef struct {
+
+    char ans;
+} s_task_ans_irq_t;
+
 /**
  * Generic answer values
  */
@@ -734,6 +746,7 @@ typedef union answer {
     s_task_ans_is_brother_t         is_brother;
     s_task_ans_transfer_t           transfer;
     s_task_ans_get_new_contact_t    get_new_contact;
+    s_task_ans_irq_t                irq;
 } u_ans_data_t;
 
 /**
@@ -1510,11 +1523,47 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
     display_sc(me, 'D');
 
     e_val_ret_t val_ret = OK;
+
+    u_req_args_t args;
+    args.irq.new_node_id = new_node_id;
+
+    ans_data_t answer_data = NULL;
+    u_ans_data_t answer;
+
+    msg_error_t res;
+
     s_state_t state = get_state(me);
     char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
 
     /* to avoid dealocks : if CS has been requested and not answered for long
        ago, or if new node's priority is lower, cancel this request */
+
+    /** TODO NE PAS OUBLIER **/
+    if (sender_id != me->self.id) {
+
+        res = send_msg_sync(me,
+                TASK_IRQ,
+                sender_id,
+                args,
+                &answer_data);
+
+        // send failure
+        xbt_assert(res == MSG_OK, "Node %d: Failed to send task '%s' to %d",
+                me->self.id,
+                debug_msg[TASK_IRQ],
+                sender_id);
+
+        answer = answer_data->answer;
+    } else {
+
+        /** NE PAS OUBLIER **/
+    }
+
+    XBT_VERB("Node %d: [%s:%d] irq answer received : %s",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            (answer.irq.ans == 1 ? "Yes" : "No"));
 
     if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
         (cs_new_node_prio < me->cs_new_node_prio || test == 1)) {        //TODO: à vérifier
@@ -2798,12 +2847,13 @@ static void run_tasks_queue(node_t me) {
     double sleep_time = 0;
     int mem_head_id = -1;
 
-    XBT_DEBUG("Node %d: [%s:%d] set run_state = {%s - %s}",
+    XBT_DEBUG("Node %d: [%s:%d] set run_state = {%s - %s - %s}",
             me->self.id,
             __FUNCTION__,
             __LINE__,
             debug_run_msg[me->run_task.run_state],
-            debug_ret_msg[me->run_task.last_ret]);
+            debug_ret_msg[me->run_task.last_ret],
+            debug_run_name_msg[me->run_task.name]);
 
     do {
 
@@ -2847,14 +2897,15 @@ static void run_tasks_queue(node_t me) {
             if (me->run_task.run_state != prev_state) {
 
                 prev_state = me->run_task.run_state;
-                XBT_VERB("Node %d: [%s:%d] '%c'/%d - run_state = %s - last_ret = %s",
+                XBT_VERB("Node %d: [%s:%d] '%c'/%d - run_state = %s - last_ret = %s - name = %s",
                         me->self.id,
                         __FUNCTION__,
                         __LINE__,
                         state.active,
                         state.new_id,
                         debug_run_msg[me->run_task.run_state],
-                        debug_ret_msg[me->run_task.last_ret]);
+                        debug_ret_msg[me->run_task.last_ret],
+                        debug_run_name_msg[me->run_task.name]);
 
                 display_tasks_queue(me);
             }
@@ -10692,6 +10743,35 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             task_free(task);
 
             XBT_VERB("Node %d: TASK_CHECK_CS done", me->self.id);
+            break;
+
+        case TASK_IRQ:
+            if (me->run_task.run_state == RUNNING && me->run_task.name == CS_REQ) {
+
+                answer.irq.ans = 1;
+            } else {
+
+                answer.irq.ans = 0;
+            }
+            XBT_VERB("Node %d: [%s:%d] TASK_IRQ : run_state = %s - run_task name = %s",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    debug_run_msg[me->run_task.run_state],
+                    debug_run_name_msg[me->run_task.name]);
+
+            res = send_ans_sync(me,
+                    rcv_args.irq.new_node_id,
+                    type,
+                    rcv_req->sender_id,
+                    rcv_req->answer_to,
+                    answer);
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
+            XBT_VERB("Node %d: TASK_IRQ done", me->self.id);
+
             break;
     }
 
