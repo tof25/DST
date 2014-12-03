@@ -5452,7 +5452,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
         // me is the leader
         int n = 0;
-        me->cs_irq_ans = 0;
 
         XBT_INFO("Node %d: [%s:%d] '%c'/%d - I am the leader",
                 me->self.id,
@@ -5471,6 +5470,19 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
         /*** Ask for permission to get into the Critical Section ***/
         val_ret = cs_req(me, me->self.id, new_node_id, cs_new_node_prio);
+
+        XBT_VERB("Node %d: [%s:%d] IRQ answer = %s - val_ret = %s",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                (me->cs_irq_ans == 1 ? "Yes" : "No"),
+                debug_ret_msg[val_ret]);
+
+        if (me->cs_irq_ans == 1) {
+
+            val_ret = UPDATE_NOK;
+            me->cs_irq_ans = 0;
+        }
 
         XBT_DEBUG("Node %d: back to [%s:%d]", me->self.id, __FUNCTION__, __LINE__);
 
@@ -5564,6 +5576,19 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                 val_ret = handle_task(me, &task_sent);
 
+                XBT_VERB("Node %d: [%s:%d] IRQ answer = %s - val_ret = %s",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        (me->cs_irq_ans == 1 ? "Yes" : "No"),
+                        debug_ret_msg[val_ret]);
+
+                if (me->cs_irq_ans == 1) {
+
+                    val_ret = UPDATE_NOK;
+                    me->cs_irq_ans = 0;
+                }
+
                 // counting
                 if (val_ret == UPDATE_NOK) {
                     me->dst_infos.nb_cs_req_fail++;
@@ -5574,7 +5599,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
 
-                if (val_ret != UPDATE_NOK && me->cs_irq_ans == 0) {
+                if (val_ret != UPDATE_NOK) {
 
                     me->run_task.name = SET_UPD;
 
@@ -5622,8 +5647,10 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         /* Set_Update broadcast failed (probably because a cs_req has been reset meanwhile)
                            'u' leaders have to be reset to their former state */
 
-                        XBT_VERB("Node %d: Set_Update failed : reset all concerned leaders",
-                                me->self.id);
+                        XBT_VERB("Node %d: [%s:%d] Set_Update failed : reset all concerned leaders",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__);
 
                         args.broadcast.type = TASK_REMOVE_STATE;
 
@@ -5730,7 +5757,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         }
 
         // insert new node if request has not been rejected
-        if (val_ret != UPDATE_NOK && me->cs_irq_ans == 0) {
+        if (val_ret != UPDATE_NOK) {
 
             set_update(me, new_node_id, cs_new_node_prio);    // stay at 'u' until the end
 
@@ -5866,8 +5893,6 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         answer.cnx_req.val_ret = val_ret;
         answer.cnx_req.try = try;
     }
-
-    me->cs_irq_ans = 0;
 
     state = get_state(me);
     XBT_INFO("Node %d: [%s:%d] '%c'/%d - end - val_ret = '%s' - nb_attempts = %d, contact = %d",
