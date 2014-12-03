@@ -10771,6 +10771,11 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
         case TASK_REMOVE_STATE:
             remove_state(me, rcv_args.remove_state.new_node_id, rcv_args.remove_state.active);
+            // TODO NE PAS OUBLIER (set_upd échoue à cause de l'état 'p' - différer ?)
+            if (rcv_args.remove_state.active == 'u') {
+
+                cs_rel(me, rcv_args.remove_state.new_node_id);
+            }
 
             data_req_free(me, &rcv_req);
             task_free(task);
