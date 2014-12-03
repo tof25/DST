@@ -243,6 +243,7 @@ typedef struct node {
     int             cs_new_id;              // new node's id that set cs_req
     int             cs_new_node_prio;       // new node's priority
     int             cs_req_br_source;       // node's id that started broadcast of cs_req
+    char            cs_irq_ans;             // answer given to an interrupt request
     float           last_check_time;        // last time when checking if cs_req has to be reset occured
     s_run_task_t    run_task;               // current running task state (delayed tasks)
     s_run_task_t    other_task_state;       // other task state
@@ -1562,6 +1563,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
 
             //TODO : faire une fonction
             answer.irq.ans = (me->run_task.name != SET_UPD);
+            me->cs_irq_ans = answer.irq.ans;
         }
 
         XBT_VERB("Node %d: [%s:%d] irq answer received : %s",
@@ -4935,6 +4937,7 @@ static void init(node_t me) {
     me->cs_new_id = -1;
     me->cs_new_node_prio = 0;
     me->cs_req_br_source = -1;
+    me->cs_irq_ans = 0;
 
     // DST infos initialization
     me->dst_infos.order = 0;
@@ -5449,6 +5452,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
         // me is the leader
         int n = 0;
+        me->cs_irq_ans = 0;
 
         XBT_INFO("Node %d: [%s:%d] '%c'/%d - I am the leader",
                 me->self.id,
@@ -5495,6 +5499,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     __LINE__,
                     state.active,
                     state.new_id);
+
+            me->cs_irq_ans = 0;
 
             u_req_args_t args;
             msg_task_t task_sent = NULL;
@@ -5568,7 +5574,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                 xbt_free(args.broadcast.args);
                 args.broadcast.args = NULL;
 
-                if (val_ret != UPDATE_NOK) {
+                if (val_ret != UPDATE_NOK && me->cs_irq_ans == 0) {
 
                     me->run_task.name = SET_UPD;
 
@@ -5724,7 +5730,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         }
 
         // insert new node if request has not been rejected
-        if (val_ret != UPDATE_NOK) {
+        if (val_ret != UPDATE_NOK && me->cs_irq_ans == 0) {
 
             set_update(me, new_node_id, cs_new_node_prio);    // stay at 'u' until the end
 
@@ -5860,6 +5866,8 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
         answer.cnx_req.val_ret = val_ret;
         answer.cnx_req.try = try;
     }
+
+    me->cs_irq_ans = 0;
 
     state = get_state(me);
     XBT_INFO("Node %d: [%s:%d] '%c'/%d - end - val_ret = '%s' - nb_attempts = %d, contact = %d",
@@ -10765,6 +10773,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
         case TASK_IRQ:
             //TODO : faire une fonction
             answer.irq.ans = (me->run_task.name != SET_UPD);
+            me->cs_irq_ans = answer.irq.ans;
 
             XBT_VERB("Node %d: [%s:%d] TASK_IRQ : run_state = %s - run_task name = %s",
                     me->self.id,
