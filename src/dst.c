@@ -9317,10 +9317,11 @@ int node(int argc, char *argv[]) {
 
                 xbt_assert(index < nb_ins_nodes, "index = %d - nb_ins_nodes = %d", index, nb_ins_nodes);
 
-                contact_id = inserted_nodes[index];
+                //TODO : NE PAS OUBLIER (si on change de contact, il faudrait diffuser un cs_rel pour tout remettre en ordre avant de changer)
+                //contact_id = inserted_nodes[index];
 
                 // counts
-                node.dst_infos.nb_chg_contact++;
+                //node.dst_infos.nb_chg_contact++;
 
                 XBT_INFO("Node %d: [%s:%d] Try with another contact : %d",
                         node.self.id,
