@@ -5601,44 +5601,56 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                 if (val_ret != UPDATE_NOK) {
 
-                    me->run_task.name = SET_UPD;
+                    int nb_loops = 0;
+                    int nb_loops_max = 5;
 
-                    // set all concerned nodes as 'u' if cs_req succeeded
-                    XBT_VERB("Node %d: set all concerned leaders as 'u'",
-                            me->self.id);
+                    do {
+                        nb_loops++;
 
-                    args.broadcast.type = TASK_SET_UPDATE;
+                        me->run_task.name = SET_UPD;
 
-                    /* broadcast starts one level higher than highest splitted stage
-                       because of connect_splitted_groups */
-                    if (n == me->height) {
+                        // set all concerned nodes as 'u' if cs_req succeeded
+                        XBT_VERB("Node %d: [%s:%d] set all concerned leaders as 'u' (loop %d)",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__,
+                                nb_loops);
 
-                        args.broadcast.stage = n - 1;
-                    } else {
+                        args.broadcast.type = TASK_SET_UPDATE;
 
-                        args.broadcast.stage = n;
-                    }
-                    args.broadcast.first_call = 1;
-                    args.broadcast.source_id = me->self.id;
-                    args.broadcast.new_node_id = new_node_id;
-                    args.broadcast.lead_br = 1;     // broadcast only to leaders
+                        /* broadcast starts one level higher than highest splitted stage
+                           because of connect_splitted_groups */
+                        if (n == me->height) {
 
-                    args.broadcast.args = xbt_new0(u_req_args_t, 1);
-                    args.broadcast.args->set_update.new_node_id = new_node_id;
-                    args.broadcast.args->set_update.new_node_prio = cs_new_node_prio;
-                    make_broadcast_task(me, args, &task_sent);
+                            args.broadcast.stage = n - 1;
+                        } else {
 
-                    val_ret = handle_task(me, &task_sent);
+                            args.broadcast.stage = n;
+                        }
+                        args.broadcast.first_call = 1;
+                        args.broadcast.source_id = me->self.id;
+                        args.broadcast.new_node_id = new_node_id;
+                        args.broadcast.lead_br = 1;     // broadcast only to leaders
 
-                    // counting
-                    if (val_ret == UPDATE_NOK) {
-                        me->dst_infos.nb_set_update_fail++;
-                    } else {
-                        me->dst_infos.nb_set_update_success++;
-                    }
+                        args.broadcast.args = xbt_new0(u_req_args_t, 1);
+                        args.broadcast.args->set_update.new_node_id = new_node_id;
+                        args.broadcast.args->set_update.new_node_prio = cs_new_node_prio;
+                        make_broadcast_task(me, args, &task_sent);
 
-                    xbt_free(args.broadcast.args);
-                    args.broadcast.args = NULL;
+                        val_ret = handle_task(me, &task_sent);
+
+                        // counting
+                        if (val_ret == UPDATE_NOK) {
+                            me->dst_infos.nb_set_update_fail++;
+                        } else {
+                            me->dst_infos.nb_set_update_success++;
+                        }
+
+                        xbt_free(args.broadcast.args);
+                        args.broadcast.args = NULL;
+
+
+                    } while (val_ret == UPDATE_NOK && nb_loops < nb_loops_max);
 
                     me->run_task.name = OTHER;
 
@@ -10773,6 +10785,11 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             remove_state(me, rcv_args.remove_state.new_node_id, rcv_args.remove_state.active);
             // TODO NE PAS OUBLIER (set_upd échoue à cause de l'état 'p' - différer ?)
             if (rcv_args.remove_state.active == 'u') {
+
+                XBT_VERB("Node %d: [%s:%d] Release cs_req (update failed)",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
 
                 cs_rel(me, rcv_args.remove_state.new_node_id);
             }
