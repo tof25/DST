@@ -5650,14 +5650,27 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         args.broadcast.args = NULL;
 
 
-                    } while (val_ret == UPDATE_NOK && nb_loops < nb_loops_max);
+                    } while (val_ret == UPDATE_NOK && nb_loops < nb_loops_max && me->cs_irq_ans == 0);
+
+                    // if cs_req has been overwritten during the loop
+                    if (me->cs_irq_ans == 1) {
+
+                        XBT_VERB("Node %d: [%s:%d] Set_Update loop interrupted",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__);
+
+                        val_ret = UPDATE_NOK;
+                        me->cs_irq_ans = 0;
+                    }
 
                     me->run_task.name = OTHER;
 
                     if (val_ret == UPDATE_NOK) {
 
-                        /* Set_Update broadcast failed (probably because a cs_req has been reset meanwhile)
-                           'u' leaders have to be reset to their former state */
+                        /* Set_Update broadcast failed (probably because one of dest nodes has 'p' state
+                         * or because a cs_req has been overwritten meanwhile))
+                           'u' leaders have to be reset to their former state and cs_req has to be released */
 
                         XBT_VERB("Node %d: [%s:%d] Set_Update failed : reset all concerned leaders",
                                 me->self.id,
