@@ -1860,6 +1860,12 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                                 req->args.broadcast.args->cs_req.sender_id,
                                 req->args.broadcast.args->cs_req.new_node_id,
                                 req->args.broadcast.args->cs_req.cs_new_node_prio);
+
+                        // cs_req is mostly broadcasted among leaders
+                        s_state_t state = get_state(me);
+                        if (state.active != 'u') {
+                            cs_rel(me, req->args.broadcast.args->cs_req.new_node_id);
+                        }
                         break;
 
                     default:
