@@ -3040,6 +3040,7 @@ static void run_tasks_queue(node_t me) {
                 // sort queue by priority order
                 XBT_VERB("Node %d: [%s:%d] sort tasks queue", me->self.id, __FUNCTION__, __LINE__);
                 sort_tasks_queue(me);
+                display_tasks_queue(me);
 
                 state = get_state(me);
                 if (xbt_dynar_is_empty(me->tasks_queue) == 0 && state.active == 'a') {
@@ -3486,9 +3487,8 @@ static void display_tasks_queue(node_t me) {
         } else {
 
             xbt_assert(*task_ptr != NULL, "[%s:%d] STOP", __FUNCTION__, __LINE__);
-            XBT_VERB("Node %d: \t%p: task[%d] = {'%s - %s' from %d for new node %d} - prio = %d",
+            XBT_VERB("Node %d: \ttask[%d] = {'%s - %s' from %d for new node %d} - prio = %d",
                     me->self.id,
-                    *task_ptr,
                     k,
                     MSG_task_get_name(*task_ptr),
                     debug_msg[req_data->type],
@@ -3534,6 +3534,14 @@ static int compar_fn(const void *arg1, const void *arg2) {
             debug_msg[req_data1->type],
             debug_msg[req_data2->type]);
 
+    XBT_VERB("Node: [%s:%d] task1 new_node/prio : %d/%d - task2 new_node/prio = %d/%d",
+            __FUNCTION__,
+            __LINE__,
+            req_data1->args.cnx_req.new_node_id,
+            req_data1->args.cnx_req.cs_new_node_prio,
+            req_data2->args.cnx_req.new_node_id,
+            req_data2->args.cnx_req.cs_new_node_prio);
+
     return (req_data1->args.cnx_req.cs_new_node_prio > req_data2->args.cnx_req.cs_new_node_prio);
 
     XBT_OUT();
@@ -3548,18 +3556,21 @@ static void sort_tasks_queue(node_t me) {
 
     if (xbt_dynar_length(me->tasks_queue) > 1) {
 
-        XBT_DEBUG("Node %d: [%s:%d] sort tasks queue",
+        XBT_VERB("Node %d: [%s:%d] sort tasks queue",
                 me->self.id,
                 __FUNCTION__,
                 __LINE__);
 
-        XBT_DEBUG("Node %d: before sort", me->self.id);
-        //display_tasks_queue(me);
+        if (xbt_dynar_length(me->tasks_queue) >= 5) {
 
-        xbt_dynar_sort(me->tasks_queue, compar_fn);
+            XBT_VERB("Node %d: before sort", me->self.id);
+            display_tasks_queue(me);
 
-        XBT_DEBUG("Node %d: after sort", me->self.id);
-        //display_tasks_queue(me);
+            xbt_dynar_sort(me->tasks_queue, compar_fn);
+
+            XBT_VERB("Node %d: after sort", me->self.id);
+            display_tasks_queue(me);
+        }
     }
 
     XBT_OUT();
