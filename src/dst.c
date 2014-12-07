@@ -3032,6 +3032,7 @@ static void run_tasks_queue(node_t me) {
                 }
 
                 // sort queue by priority order
+                XBT_VERB("Node %d: [%s:%d] sort tasks queue", me->self.id, __FUNCTION__, __LINE__);
                 sort_tasks_queue(me);
 
                 state = get_state(me);
@@ -3039,7 +3040,7 @@ static void run_tasks_queue(node_t me) {
 
                     // run top request
 
-                    XBT_VERB("Node %d: [%s:%d] run head request",
+                    XBT_VERB("Node %d: [%s:%d] run head request (index 0)",
                             me->self.id,
                             __FUNCTION__,
                             __LINE__);
