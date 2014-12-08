@@ -2939,8 +2939,10 @@ static void run_tasks_queue(node_t me) {
 
                 if (me->run_task.last_ret != UPDATE_NOK) {
 
-                    XBT_VERB("Node %d: task done - ret = '%s' - may be shifted out",
+                    XBT_VERB("Node %d: [%s:%d] task done - ret = '%s' - may be shifted out",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
                             debug_ret_msg[me->run_task.last_ret]);
                 } else {
 
@@ -3561,13 +3563,15 @@ static void sort_tasks_queue(node_t me) {
                 __FUNCTION__,
                 __LINE__);
 
-        if (xbt_dynar_length(me->tasks_queue) >= 5) {
+        if (xbt_dynar_length(me->tasks_queue) >= 3) {
 
             XBT_VERB("Node %d: before sort", me->self.id);
             display_tasks_queue(me);
+        }
 
-            xbt_dynar_sort(me->tasks_queue, compar_fn);
+        xbt_dynar_sort(me->tasks_queue, compar_fn);
 
+        if (xbt_dynar_length(me->tasks_queue) >= 3) {
             XBT_VERB("Node %d: after sort", me->self.id);
             display_tasks_queue(me);
         }
