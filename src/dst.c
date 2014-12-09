@@ -1543,7 +1543,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
     if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
             cs_new_node_prio < me->cs_new_node_prio) {
 
-        // asks initiator
+        // asks initiator for permission (it will answer yes only if it's running BR_CS_REQ)
         if (me->cs_req_br_source != me->self.id) {
 
             res = send_msg_sync(me,
@@ -1561,7 +1561,7 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
             answer = answer_data->answer;
         } else {
 
-            //TODO : faire une fonction
+            // run IRQ locally
             answer.irq.ans = (me->run_task.name != SET_UPD);
             me->cs_irq_ans = answer.irq.ans;
         }
@@ -1636,22 +1636,22 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
 static void cs_rel(node_t me, int new_node_id) {
     XBT_IN();
 
-    if (me->cs_new_id == new_node_id) {
+    s_state_t state = get_state(me);
+
+    if (state.active != 'u' && me->cs_new_id == new_node_id) {
 
         me->cs_req = 0;
         me->cs_req_time = MSG_get_clock();
         me->cs_new_id = new_node_id;
     }
 
-    s_state_t state = get_state(me);
-    XBT_VERB("Node %d: '%c'/%d end of cs_rel()",
+    display_sc(me, 'V');
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d end of cs_rel()",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             state.active,
             state.new_id);
-
-    display_sc(me, 'V');
-
-    xbt_assert(state.active != 'u', "'u' state in cs_rel() !!");
 
     XBT_OUT();
 }
@@ -1672,8 +1672,10 @@ static void rec_async_answer(node_t me, int idx, ans_data_t ans) {
     (*elem_ptr)->recp.id = -1;
 
     xbt_assert((*elem_ptr)->answer_data == NULL,
-            "Node %d: rec answer_data %d not NULL !",
+            "Node %d: [%s:%d] rec answer_data %d not NULL !",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             idx);
 
     // record the answer
@@ -1862,10 +1864,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                                 req->args.broadcast.args->cs_req.cs_new_node_prio);
 
                         // cs_req is mostly broadcasted among leaders
-                        s_state_t state = get_state(me);
-                        if (state.active != 'u') {
-                            cs_rel(me, req->args.broadcast.args->cs_req.new_node_id);
-                        }
+                        cs_rel(me, req->args.broadcast.args->cs_req.new_node_id);
                         break;
 
                     default:
@@ -2148,17 +2147,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                         /* No, this answer is then expected by one of parent calls:
                            just record it in the dynar */
-
-                        // NOTE : comment peut-on arriver là si la réponse ne se trouve pas déjà dans le dynar ?
-                        // TODO : check point rencontré
-
-                        /*
-                        xbt_assert(1 == 0, "Node %d: [%s:%d] Check point",
-                                me->self.id,
-                                __FUNCTION__,
-                                __LINE__);
-                        */
-
                         rec_async_answer(me, dynar_idx, ans);
                     }
 
@@ -2247,7 +2235,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                 check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
                 dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
-                // TODO : ajout de l'ajustement de dynar_size. Vérifier que ça ne pose pas problème
 
                 XBT_DEBUG("After check : ans_cpt = %d - dynar_size = %d",
                         ans_cpt, (int) xbt_dynar_length(proc_data->async_answers));
@@ -3475,8 +3462,6 @@ static void display_tasks_queue(node_t me) {
 
     for (k = 0; k < nb_elems; k++) {
 
-        XBT_DEBUG("me->tasks_queue = %p", me->tasks_queue);    //TODO: ne pas oublier
-
         task_ptr = xbt_dynar_get_ptr(me->tasks_queue, k);
 
         XBT_DEBUG("*task_ptr = %p - name = %p/%s", *task_ptr, MSG_task_get_name(*task_ptr), MSG_task_get_name(*task_ptr));
@@ -3595,15 +3580,13 @@ static void display_delayed_tasks(node_t me) {
 
     for (k = 0; k < nb_elems; k++) {
 
-        XBT_DEBUG("me->delayed_tasks = %p", me->delayed_tasks);    //TODO: ne pas oublier
-
         task_ptr = xbt_dynar_get_ptr(me->delayed_tasks, k);
 
         XBT_DEBUG("*task_ptr = %p - name = %p/%s", *task_ptr, MSG_task_get_name(*task_ptr), MSG_task_get_name(*task_ptr));
 
         req_data = MSG_task_get_data(*task_ptr);
 
-        if (MSG_task_get_name(*task_ptr) == NULL) {                     //TODO : faire un try/catch ici ?
+        if (MSG_task_get_name(*task_ptr) == NULL) {
 
             XBT_VERB("Node %d: \ttask[%d] = NULL", me->self.id, k);
         } else {
@@ -4070,13 +4053,13 @@ static msg_error_t send_msg_sync(node_t me,
 
             // TODO : si TIMEOUT et GET_REP, il faut laisser tomber
             // reception failure
-            XBT_INFO("Node %d: Failed to receive the answer to my '%s' request from %s"
-                    " result : %s (line %d)",
+            XBT_INFO("Node %d: [%s:%d] Failed to receive the answer to my '%s' request from %s - result : %s",
                     cpy_req_data->sender_id,
+                    __FUNCTION__,
+                    __LINE__,
                     debug_msg[cpy_req_data->type],
                     cpy_req_data->sent_to,
-                    debug_res_msg[res],
-                    __LINE__);
+                    debug_res_msg[res]);
 
             xbt_assert(cpy_req_data->type != TASK_GET_REP, "STOP : task = %s", debug_msg[cpy_req_data->type]);
 
@@ -4139,17 +4122,16 @@ static msg_error_t send_msg_sync(node_t me,
                 } else {
 
                     // handle this received request
-                    //TODO : ne pas oublier (si du broadcast est reçu ici, il faut peut-être remplacer handle_task par launch_fork_process)
                     if (req->type == TASK_BROADCAST) {
-                        XBT_INFO("Node %d: [%s:%d] TASK_BROADCAST received in '%s' : '%s'",
+                        XBT_INFO("Node %d: [%s:%d] TASK_BROADCAST received : '%s'",
                                 me->self.id,
                                 __FUNCTION__,
                                 __LINE__,
-                                __FUNCTION__,
                                 debug_msg[req->args.broadcast.type]);
                         //xbt_assert(1 == 0);
                     }
-                    handle_task(me, &task_received);
+                    //handle_task(me, &task_received);
+                    launch_fork_process(me, task_received);
                 }
                 ans = NULL;
                 req = NULL;
@@ -4186,15 +4168,12 @@ static msg_error_t send_msg_sync(node_t me,
 
                     // pop record from dynar since it's now useless
                     xbt_dynar_pop(proc_data->sync_answers, &ans_elem);
-                    xbt_free(ans_elem);     //TODO: s'assurer que ça ne libère pas answer_data
+                    xbt_free(ans_elem);
 
                     XBT_VERB("Node %d: Yes. dynar length = %lu",
                             me->self.id,
                             xbt_dynar_length(proc_data->sync_answers));
 
-                    // run delayed tasks
-                    //call_run_delayed_tasks(me, req_data->args.cnx_req.new_node_id);
-                    //run_delayed_tasks(me);
                     break;
                 } else {
 
@@ -4305,12 +4284,16 @@ static msg_error_t send_msg_sync(node_t me,
             }         // task_received is an answer
         }             // reception success
 
+        /* NOTE : task_received n'est pas null ici si launch_fork_process l'a utilisé.
         xbt_assert(ans == NULL && task_received == NULL,
-                "Node %d in send_msg_sync(): ans and task_received should"
+                "Node %d: [%s:%d] ans and task_received should"
                 " be NULL here ! ans = %p - task_received = %p",
                 me->self.id,
+                __FUNCTION__,
+                __LINE__,
                 ans,
                 task_received);
+        */
 
     } // reception loop
 
@@ -4468,7 +4451,7 @@ static msg_error_t send_msg_async(node_t me,
         // only loop_cpt attemps are allowed
         if (res == MSG_TIMEOUT) loop_cpt++;
 
-    } while (res == MSG_TIMEOUT && loop_cpt < max_loops);    //TODO : task_sent est-elle à refaire après une tentative ?
+    } while (res == MSG_TIMEOUT && loop_cpt < max_loops);    //TODO : task_sent et req_data sont perdus à chaque boucle, il faut les refaire
 
 
     xbt_assert(loop_cpt < max_loops,
@@ -4685,13 +4668,20 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             me->self.id,
             args.broadcast.source_id);
 
-    //e_task_type_t mem_type = args.broadcast.type;
+    e_val_ret_t ret = OK;
+    e_val_ret_t local_ret = OK;
+
+    msg_task_t task_sent = NULL;
+    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
+    req_data_t req_data = NULL;
+    node_rep_t cpy_brothers = NULL;
 
     // cases where current broadcast musn't be interrupted by another one
     switch(args.broadcast.type) {
 
         case TASK_SET_UPDATE:
-            set_update(me, args.broadcast.args->set_update.new_node_id, args.broadcast.args->set_update.new_node_prio); //TODO: ne pas poursuivre si ret = NOK
+            ret = set_update(me, args.broadcast.args->set_update.new_node_id,
+                    args.broadcast.args->set_update.new_node_prio);
             break;
 
         case TASK_SET_ACTIVE:
@@ -4701,77 +4691,107 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         case TASK_REMOVE_STATE:
             remove_state(me, args.broadcast.args->remove_state.new_node_id, args.broadcast.args->remove_state.active);
             break;
-
-        /*
-        case TASK_CS_REQ:
-            cs_req(me,
-                    args.broadcast.args->cs_req.sender_id,
-                    args.broadcast.args->cs_req.new_node_id);
-            break;
-         */
     }
 
-    e_val_ret_t ret = OK;
-    e_val_ret_t local_ret = OK;
+    // continue if set_update succeeded
+    if (ret != UPDATE_NOK) {
 
-    /* works on a copy of brothers, in case they'd be modified by the
-       broadcasted function */
-    node_rep_t cpy_brothers = xbt_new0(s_node_rep_t, b);
-    int i;
-    for (i = 0; i < b; i++) {
+        /* works on a copy of brothers, in case they'd be modified by the
+           broadcasted function */
+        cpy_brothers = xbt_new0(s_node_rep_t, b);
+        int i;
+        for (i = 0; i < b; i++) {
 
-        cpy_brothers[i] = me->brothers[args.broadcast.stage][i];
-    }
+            cpy_brothers[i] = me->brothers[args.broadcast.stage][i];
+        }
 
-    int brother = 0;
-    int nb_bro = me->bro_index[args.broadcast.stage];
+        int brother = 0;
+        int nb_bro = me->bro_index[args.broadcast.stage];
 
-    // number of expected answers
-    int ans_cpt = nb_bro;
+        // number of expected answers
+        int ans_cpt = nb_bro;
 
-    msg_task_t task_sent = NULL;
-    proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
-    req_data_t req_data = NULL;
+        if (args.broadcast.stage > 0 ||
+                (args.broadcast.stage == 0 && args.broadcast.lead_br == 0)) {
 
-    if (args.broadcast.stage > 0 ||
-            (args.broadcast.stage == 0 && args.broadcast.lead_br == 0)) {
+            for (brother = 0; brother < nb_bro; brother++) {
 
-        for (brother = 0; brother < nb_bro; brother++) {
+                XBT_VERB("Node %d: [%s:%d] brother = %d, stage = %d",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        cpy_brothers[brother].id,
+                        args.broadcast.stage);
 
-            XBT_VERB("Node %d: [%s:%d] brother = %d, stage = %d",
-                    me->self.id,
-                    __FUNCTION__,
-                    __LINE__,
-                    cpy_brothers[brother].id,
-                    args.broadcast.stage);
+                if (cpy_brothers[brother].id == me->self.id) {
 
-            if (cpy_brothers[brother].id == me->self.id) {
+                    /* local direct call (no expected answer)
+                       to be handled at the end of function (see below) */
+                    ans_cpt--;
+                    make_broadcast_task(me, args, &task_sent);
 
-                /* local direct call (no expected answer)
-                   to be handled at the end of function (see below) */
-                ans_cpt--;
+                } else {
+
+                    //if (args.broadcast.first_call == 1) {
+
+                    //compteur[args.broadcast.type]++;
+                    //}
+
+                    // remote call
+                    msg_error_t res = send_msg_async(me,
+                            TASK_BROADCAST,
+                            cpy_brothers[brother].id,
+                            args);
+
+                    xbt_assert(res == MSG_OK, "Node %d: Broadcast error", me->self.id);
+
+                    // record recipient in expected answers dynar
+                    recp_rec_t elem = xbt_new0(s_recp_rec_t, 1);
+
+                    elem->type = TASK_BROADCAST;
+                    elem->recp = cpy_brothers[brother];
+                    elem->new_node_id = args.broadcast.new_node_id;
+                    elem->br_type = args.broadcast.type;
+                    elem->answer_data = NULL;
+
+                    xbt_assert(elem->recp.id > - 1,
+                            "Node %d: #1# recp.id is %d !!",
+                            me->self.id,
+                            elem->recp.id);
+
+                    xbt_dynar_push(proc_data->async_answers, &elem);
+                }
+            }
+        } else {
+            /* stage 0 is reached and a 'leaders-only' broadcast is requested
+             * only the leader has to do the work */
+            if (me->self.id == cpy_brothers[0].id) {
+
+                ans_cpt = 0;
                 make_broadcast_task(me, args, &task_sent);
-
             } else {
+
+                ans_cpt = 1;
 
                 //if (args.broadcast.first_call == 1) {
 
-                    //compteur[args.broadcast.type]++;
+                //compteur[args.broadcast.type]++;
                 //}
 
                 // remote call
                 msg_error_t res = send_msg_async(me,
                         TASK_BROADCAST,
-                        cpy_brothers[brother].id,
+                        cpy_brothers[0].id,
                         args);
 
-                xbt_assert(res == MSG_OK, "Node %d: Broadcast error", me->self.id);
+                xbt_assert(res == MSG_OK, "Node %d: Broadcast error 2",
+                        me->self.id);
 
                 // record recipient in expected answers dynar
                 recp_rec_t elem = xbt_new0(s_recp_rec_t, 1);
 
                 elem->type = TASK_BROADCAST;
-                elem->recp = cpy_brothers[brother];
+                elem->recp = cpy_brothers[0];
                 elem->new_node_id = args.broadcast.new_node_id;
                 elem->br_type = args.broadcast.type;
                 elem->answer_data = NULL;
@@ -4784,53 +4804,12 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                 xbt_dynar_push(proc_data->async_answers, &elem);
             }
         }
-    } else {
-        /* stage 0 is reached and a 'leaders-only' broadcast is requested
-         * only the leader has to do the work */
-        if (me->self.id == cpy_brothers[0].id) {
 
-            ans_cpt = 0;
-            make_broadcast_task(me, args, &task_sent);
-        } else {
+        // synchronize each stage
+        if (ans_cpt > 0) {
 
-            ans_cpt = 1;
-
-            //if (args.broadcast.first_call == 1) {
-
-                //compteur[args.broadcast.type]++;
-            //}
-
-            // remote call
-            msg_error_t res = send_msg_async(me,
-                    TASK_BROADCAST,
-                    cpy_brothers[0].id,
-                    args);
-
-            xbt_assert(res == MSG_OK, "Node %d: Broadcast error 2",
-                    me->self.id);
-
-            // record recipient in expected answers dynar
-            recp_rec_t elem = xbt_new0(s_recp_rec_t, 1);
-
-            elem->type = TASK_BROADCAST;
-            elem->recp = cpy_brothers[0];
-            elem->new_node_id = args.broadcast.new_node_id;
-            elem->br_type = args.broadcast.type;
-            elem->answer_data = NULL;
-
-            xbt_assert(elem->recp.id > - 1,
-                    "Node %d: #1# recp.id is %d !!",
-                    me->self.id,
-                    elem->recp.id);
-
-            xbt_dynar_push(proc_data->async_answers, &elem);
+            ret = wait_for_completion(me, ans_cpt, args.broadcast.new_node_id);
         }
-    }
-
-    // synchronize each stage
-    if (ans_cpt > 0) {
-
-        ret = wait_for_completion(me, ans_cpt, args.broadcast.new_node_id);
     }
 
     // Handle local task if OK
@@ -4869,7 +4848,10 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             task_free(&task_sent);
         }
     } else {
-        XBT_VERB("Node %d: STOP BROADCAST", me->self.id);
+        XBT_VERB("Node %d: [%s:%d] STOP BROADCAST",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
 
         if (task_sent != NULL) {
 
@@ -10854,7 +10836,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             break;
 
         case TASK_IRQ:
-            //TODO : faire une fonction
             answer.irq.ans = (me->run_task.name != SET_UPD);
             me->cs_irq_ans = answer.irq.ans;
 
