@@ -3436,7 +3436,7 @@ static int compar_fn(const void *arg1, const void *arg2) {
             debug_msg[req_data1->type],
             debug_msg[req_data2->type]);
 
-    return (req_data1->args.cnx_req.cs_new_node_prio > req_data2->args.cnx_req.cs_new_node_prio);
+    return (req_data1->args.cnx_req.cs_new_node_prio - req_data2->args.cnx_req.cs_new_node_prio);
 
     XBT_OUT();
 }
