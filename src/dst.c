@@ -3536,7 +3536,7 @@ static int compar_fn(const void *arg1, const void *arg2) {
             debug_msg[req_data1->type],
             debug_msg[req_data2->type]);
 
-    XBT_VERB("Node: [%s:%d] task1 new_node/prio : %d/%d - task2 new_node/prio = %d/%d",
+    XBT_DEBUG("Node: [%s:%d] task1 new_node/prio : %d/%d - task2 new_node/prio = %d/%d",
             __FUNCTION__,
             __LINE__,
             req_data1->args.cnx_req.new_node_id,
@@ -3544,7 +3544,7 @@ static int compar_fn(const void *arg1, const void *arg2) {
             req_data2->args.cnx_req.new_node_id,
             req_data2->args.cnx_req.cs_new_node_prio);
 
-    return (req_data1->args.cnx_req.cs_new_node_prio > req_data2->args.cnx_req.cs_new_node_prio);
+    return (req_data1->args.cnx_req.cs_new_node_prio - req_data2->args.cnx_req.cs_new_node_prio);
 
     XBT_OUT();
 }
@@ -3558,22 +3558,22 @@ static void sort_tasks_queue(node_t me) {
 
     if (xbt_dynar_length(me->tasks_queue) > 1) {
 
-        XBT_VERB("Node %d: [%s:%d] sort tasks queue",
+        XBT_DEBUG("Node %d: [%s:%d] sort tasks queue",
                 me->self.id,
                 __FUNCTION__,
                 __LINE__);
 
         if (xbt_dynar_length(me->tasks_queue) >= 3) {
 
-            XBT_VERB("Node %d: before sort", me->self.id);
-            display_tasks_queue(me);
+            XBT_DEBUG("Node %d: before sort", me->self.id);
+            //display_tasks_queue(me);
         }
 
         xbt_dynar_sort(me->tasks_queue, compar_fn);
 
         if (xbt_dynar_length(me->tasks_queue) >= 3) {
-            XBT_VERB("Node %d: after sort", me->self.id);
-            display_tasks_queue(me);
+            XBT_DEBUG("Node %d: after sort", me->self.id);
+            //display_tasks_queue(me);
         }
     }
 
