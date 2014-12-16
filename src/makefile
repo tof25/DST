@@ -10,7 +10,7 @@ PEDANTIC_PARANOID_FREAK =       -O0 -Wshadow -Wcast-align \
 				-Wpointer-arith -Wwrite-strings -finline-functions
 REASONABLY_CAREFUL_DUDE =	-Wall
 NO_PRAYER_FOR_THE_WICKED =	-w -O2
-FOR_VALGRIND = -g -O0
+FOR_VALGRIND = -g -O0 -Wno-switch
 #WARNINGS = 			$(PEDANTIC_PARANOID_FREAK)
 #WARNINGS = 			$(REASONABLY_CAREFUL_DUDE)
 #WARNINGS = 			$(NO_PRAYER_FOR_THE_WICKED)
