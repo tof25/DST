@@ -12,6 +12,7 @@
  *       gérer tous les timeout des comm_wait() */
 
 // TODO: voir si tout est OK pour les timers (peut-on remplacer des MSG_get_clock() par des clock ?)
+//       voir aussi xbt_os_time.h
 
 //TODO: introduire un indicateur de réponses à venir. On pourra s'en servir pour terminer la simulation.
 //      (à la place de WAIT_BEFORE_END)
@@ -21,8 +22,7 @@
 #include "msg/msg.h"                        // to use MSG API of Simgrid
 #include "xbt/log.h"                        // to get nice outputs
 #include "xbt/asserts.h"                    // to use xbt_assert()
-#include "xbt/xbt_os_time.h"                /* to use a timer (located in
-                                               Simgrid-3.9/src/include/xbt) */
+#include "xbt/xbt_os_time.h"                /* to use a timer (located in Simgrid-3.9/src/include/xbt) */
 #include "xbt/ex.h"                         // to use exceptions
 #include <time.h>
 #include <stdlib.h>                         // to use rand()
@@ -41,7 +41,7 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_WAIT_GET_REP 5000               // won't wait longer an answer to a GET_REP request
 #define MAX_JOIN 250                        // number of joining attempts
 #define TRY_STEP 50                         // number of tries before requesting a new contact
-#define MAX_CS_REQ 2000                     // max time between cs_req and matching set_update
+#define MAX_CS_REQ 2000                     // max time between cs_req and matching set_update      //TODO : constante plus utilisée
 #define MAX_CNX 500                         // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 
@@ -152,7 +152,7 @@ typedef enum {
     TASK_END_GET_REP,       // remove 'g' state after load balance
     TASK_REMOVE_STATE,      // remove given state from states dynar
     TASK_CS_REL,            // reset cs_req flag
-    TASK_CHECK_CS,          // send back a CS_REL if not 'b' neither 'n'
+    TASK_CHECK_CS,          // send back a CS_REL if not 'b' neither 'n'            //TODO : tâche plus utilisée
     TASK_IRQ                // requests permission from initiator to interrupt a CS_REQ broadcast
 } e_task_type_t;
 
@@ -1783,6 +1783,7 @@ static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_
  * \param me the current node
  * \param sender_id cs_rel has to be sent to this node
  */
+// TODO : fonction plus utilisée (ni tâche associée TASK_CHECK_CS)
 static void check_cs(node_t me, int sender_id) {
     XBT_IN();
 
@@ -9460,7 +9461,6 @@ int node(int argc, char *argv[]) {
                     mem_log++;
                 }
 
-                // TODO: remplacer les get_clock() par une variable ?
                 if (MSG_get_clock() >= node.deadline && state.active == 'a' && 1 == 0) {    //TODO : ne pas oublier
 
                     XBT_INFO("Node %d: deadline reached: time to leave !",
@@ -9473,6 +9473,7 @@ int node(int argc, char *argv[]) {
                     XBT_INFO("Node %d left ...", node.self.id);
                 } else {
 
+                    /*
                     if (node.cs_req == 1 &&
                         MSG_get_clock() - node.cs_req_time >= MAX_CS_REQ &&
                         MSG_get_clock() - node.last_check_time >= MAX_CS_REQ) {
@@ -9495,6 +9496,7 @@ int node(int argc, char *argv[]) {
                                 node.cs_new_id,
                                 args_chk);
                     }
+                    */
 
                     //XBT_DEBUG("Node %d: nothing else to do: sleep for a while", node.self.id);
 
@@ -10826,7 +10828,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             XBT_VERB("Node %d: TASK_CS_REL done", me->self.id);
             break;
 
-        case TASK_CHECK_CS:
+        case TASK_CHECK_CS:             //TODO : tâche plus utilisée
             check_cs(me, rcv_req->sender_id);
 
             data_req_free(me, &rcv_req);
