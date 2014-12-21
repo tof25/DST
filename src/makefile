@@ -26,7 +26,7 @@ LIBS =
 	$(CC) $(INCLUDES) $(DEFS) $(CFLAGS) $^ $(LIBS) $(LDADD) -o $@ 
 
 %.o: %.c
-	$(CC) $(INCLUDES) $(DEFS) $(CFLAGS) -c -o $@ $<
+	$(CC) $(INCLUDES) $(CFLAGS) -c -o $@ $<
 
 .PHONY : clean
 clean:
