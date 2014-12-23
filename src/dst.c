@@ -1509,7 +1509,7 @@ static u_ans_data_t is_brother(node_t me, int id, int new_node_id) {
  * \param sender_id sender node's id
  * \param new_node_id involved new coming node
  * \param cs_new_node_prio new node's priority
- * \return OK or UPDATE_NOK for permission granted or not
+ * \return OK or UPDATE_NOK for permission granted or not and sets cs_req parameters accordingly
  */
 static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_node_prio) {
     XBT_IN();
@@ -1534,13 +1534,21 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
     msg_error_t res;
 
     s_state_t state = get_state(me);
-    //char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
+
+    // to remember current cs_req state
+    int mem_cs_req = 0;
+
+    // refuse cs_req if waiting for an answer to TASK_IRQ
+    if (me->cs_req == -1) return UPDATE_NOK;
 
     /* to avoid dealocks : if new node's priority is lower, cancel the current request if broadcast
      * initiator is ok */
-
     if (me->cs_req == 1 && me->cs_new_id != new_node_id && state.active == 'a' &&
             cs_new_node_prio < me->cs_new_node_prio) {
+
+        // won't accept set_updates until the answer from initiator is received
+        mem_cs_req = me->cs_req;
+        me->cs_req = -1;
 
         // asks initiator for permission (it will answer yes only if it's running BR_CS_REQ)
         if (me->cs_req_br_source != me->self.id) {
@@ -1590,7 +1598,12 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
                     me->cs_new_node_prio,
                     debug_run_msg[me->run_task.run_state],
                     debug_run_name_msg[me->run_task.name]);
+        } else {
+
+            // restore former cs_req state
+            me->cs_req = mem_cs_req;
         }
+
         data_ans_free(me, &answer_data);
     }
 
@@ -2567,6 +2580,9 @@ static e_val_ret_t set_update(node_t me, int new_id, int new_node_prio) {
     display_sc(me, 'V');
     display_states(me, 'V');
 
+    // refuse set_update if waiting for an answer to TASK_IRQ
+    if (me->cs_req == -1) return UPDATE_NOK;
+
     do {
         nb_loops--;
 
@@ -2581,7 +2597,7 @@ static e_val_ret_t set_update(node_t me, int new_id, int new_node_prio) {
         }
 
         // if test = 0, check priority
-        if (new_node_prio > -1 && test == 0 && nb_loops > 0){
+        if (new_node_prio > -1 && test == 0 && nb_loops > 0) {
 
             cs_req(me, me->self.id, new_id, new_node_prio);
         }
