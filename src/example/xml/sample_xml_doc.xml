@@ -4,9 +4,11 @@
     <author>John Fleck</author>
     <datewritten>June 2, 2002</datewritten>
     <keyword>example keyword</keyword>
+    <keyword>second keyword</keyword>
   </storyinfo>
   <body>
     <headline>This is the headline</headline>
     <para>This is the body text.</para>
+    <keyword>third keyword</keyword>
   </body>
 </story>

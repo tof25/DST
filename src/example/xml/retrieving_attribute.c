@@ -8,9 +8,13 @@ void getReference (xmlDocPtr doc, xmlNodePtr cur) {
 
     xmlChar *uri;
     cur = cur->xmlChildrenNode;
+    cur = cur->next;
+    cur = cur->xmlChildrenNode;
+    cur = cur->next;
+    printf("cur->name = %s\n", cur->name);
     while (cur != NULL) {
         if ((!xmlStrcmp(cur->name, (const xmlChar *)"reference"))) {
-            uri = xmlGetProp(cur, "uri");
+            uri = xmlGetProp(cur, (const xmlChar *)"uri");
             printf("uri: %s\n", uri);
             xmlFree(uri);
         }

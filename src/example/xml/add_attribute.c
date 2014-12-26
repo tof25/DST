@@ -5,7 +5,7 @@
 #include <libxml/parser.h>
 
 
-xmlDocPtr parseDoc(char *docname, char *uri) {
+xmlDocPtr parseDoc(char *docname, const xmlChar *uri) {
 
     xmlDocPtr doc;
     xmlNodePtr cur;
@@ -33,15 +33,24 @@ xmlDocPtr parseDoc(char *docname, char *uri) {
         return (NULL);
     }
 
-    newnode = xmlNewTextChild (cur, NULL, "reference", NULL);
-    newattr = xmlNewProp (newnode, "uri", uri);
+    cur = cur->xmlChildrenNode;
+    while (cur != NULL && xmlStrcmp(cur->name, (const xmlChar *) "storyinfo")) {
+
+        cur = cur->next;
+    }
+
+    if (cur != NULL) {
+
+        newnode = xmlNewTextChild (cur, NULL, (const xmlChar *)"reference", NULL);
+        newattr = xmlNewProp (newnode, (const xmlChar *)"uri", uri);
+    }
     return(doc);
 }
 
 int main(int argc, char **argv) {
 
     char *docname;
-    char *uri;
+    xmlChar *uri;
     xmlDocPtr doc;
 
     if (argc <= 2) {
@@ -50,7 +59,7 @@ int main(int argc, char **argv) {
     }
 
     docname = argv[1];
-    uri = argv[2];
+    uri = (xmlChar*) argv[2];
     doc = parseDoc (docname, uri);
     if (doc != NULL) {
         xmlSaveFormatFile (docname, doc, 1);

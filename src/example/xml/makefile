@@ -1,6 +1,6 @@
-all: keyword
+all: xpath
 
-BIN_FILES = keyword
+BIN_FILES = xpath
 CC = gcc
 WARNINGS =	-Wall
 CFLAGS = `xml2-config --cflags`
