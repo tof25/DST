@@ -45,7 +45,7 @@ int main(int argc, char **argv) {
     xmlDocPtr doc;
     xmlChar *xpath;
     xmlNodeSetPtr nodeset;
-    xmlNodePtr cur;
+    xmlNodePtr cur, curNode, curStage, curBrother;
     xmlXPathObjectPtr result;
     int a, b, height, node, id, brother;
     xmlChar *keyword;
@@ -83,12 +83,12 @@ int main(int argc, char **argv) {
         nodeset = result->nodesetval;
         for (node=0; node < nodeset->nodeNr; node++) {
 
-            cur = nodeset->nodeTab[node];
+            curNode = nodeset->nodeTab[node];
 
-            if (cur != NULL) {
-                if (!xmlStrcmp(cur->name, (const xmlChar*)"node")) {
+            if (curNode != NULL) {
+                if (!xmlStrcmp(curNode->name, (const xmlChar*)"node")) {
 
-                    id = atoi((char*)xmlGetProp(cur, (const xmlChar*)"id"));
+                    id = atoi((char*)xmlGetProp(curNode, (const xmlChar*)"id"));
                     printf("node id : %d\n", id);
                 } else {
 
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
                             __FUNCTION__,
                             __LINE__,
                             node,
-                            cur->name);
+                            curNode->name);
                     return (0);
                 }
             } else {
@@ -108,28 +108,31 @@ int main(int argc, char **argv) {
                 return (0);
             }
 
-            cur = cur->xmlChildrenNode;
-            while (cur != NULL && xmlStrcmp(cur->name, (const xmlChar*) "stage")) {
-                cur = cur->next;
-            }
-            if (cur != NULL) {
-                brother = 0;
-                printf("stage %s: ", xmlGetProp(cur, (const xmlChar*)"value"));
-                cur = cur->xmlChildrenNode;
-                while (cur != NULL && xmlStrcmp(cur->name, (const xmlChar*) "argument")) {
-                    cur = cur->next;
+            curStage = curNode->xmlChildrenNode;
+            do {
+                while (curStage != NULL && xmlStrcmp(curStage->name, (const xmlChar*) "stage")) {
+                    curStage = curStage->next;
                 }
-                do {
-                    printf(" %d: %d | ",
-                            brother,
-                            atoi((char*)xmlGetProp(cur, (const xmlChar*)"value")));
-                    brother++;
-                    cur = cur->next;
-                } while (cur != NULL);
-                printf("\n");
-            } else {
-                printf("cur shouldn't be NULL here\n");
-            }
+                if (curStage != NULL) {
+                    brother = 0;
+                    printf("stage %s: ", xmlGetProp(curStage, (const xmlChar*)"value"));
+                    curBrother = curStage->xmlChildrenNode;
+                    while (cur != NULL && xmlStrcmp(curBrother->name, (const xmlChar*) "argument")) {
+                        curBrother = curBrother->next;
+                    }
+                    do {
+                        if (!xmlStrcmp(curBrother->name, (const xmlChar*) "argument")) {
+                            printf(" %d: %d | ",
+                                    brother,
+                                    atoi((char*)xmlGetProp(curBrother, (const xmlChar*)"value")));
+                            brother++;
+                        }
+                        curBrother = curBrother->next;
+                    } while (curBrother != NULL);
+                    printf("\n");
+                    curStage = curStage->next;
+                }
+            } while (curStage != NULL);
             //keyword = xmlNodeListGetString(doc, nodeset->nodeTab[i]->xmlChildrenNode, 1);
             //printf("keyword: %s\n", keyword);
             //xmlFree(keyword);

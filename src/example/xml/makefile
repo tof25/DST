@@ -4,12 +4,15 @@ BIN_FILES = add_attribute add_keyword encoding_conversion keyword reader1 retrie
 all: $(BIN_FILES)
 
 CC = gcc
-WARNINGS =	-Wall
+WARNINGS =	-Wall -g
 CFLAGS = `xml2-config --cflags`
 LIBS = `xml2-config --libs`
 
-%: %.c
+%: %.o
 	$(CC) $(WARNINGS) -o $@ $(CFLAGS) $(LIBS) $^
+
+%.o: %.c
+	$(CC) $(WARNINGS) -c $(CFLAGS) $^
 
 .PHONY : clean
 clean:
