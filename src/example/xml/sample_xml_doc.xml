@@ -5,7 +5,7 @@
     <datewritten>June 2, 2002</datewritten>
     <keyword>example keyword</keyword>
     <keyword>second keyword</keyword>
-  </storyinfo>
+  <reference uri="new attr"/></storyinfo>
   <body>
     <headline>This is the headline</headline>
     <para>This is the body text.</para>
