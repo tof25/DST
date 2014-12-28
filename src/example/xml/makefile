@@ -1,7 +1,7 @@
 BIN_FILES = add_attribute add_keyword encoding_conversion keyword reader1 retrieving_attribute retrieving_attribute xml_parser xpath
 
-all: $(BIN_FILES)
 .PHONY : all
+all: $(BIN_FILES)
 
 CC = gcc
 WARNINGS =	-Wall
