@@ -1,3 +1,4 @@
+#include <string.h>
 #include <stdlib.h>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
@@ -39,59 +40,70 @@ xmlXPathObjectPtr getnodeset (xmlDocPtr doc, xmlChar *xpath){
     return result;
 }
 
-int main(int argc, char **argv) {
+char* getProp(xmlNodePtr cur, char *prop) {
 
-    char *docname;
-    xmlDocPtr doc;
-    xmlChar *xpath;
+    // args must not be NULL
+    if (cur == NULL || prop == NULL) {
+
+        printf("args in %s mustn't be NULL\n", __FUNCTION__);
+        return NULL;
+    }
+
+    xmlChar *ret = xmlGetProp(cur, (xmlChar*)prop);
+    if (ret == NULL) {
+
+        // attribute not found
+        printf("attribute '%s' not found\n", prop);
+        return "";
+    } else {
+
+        // return attribute
+        return (char*)ret;
+    }
+}
+
+int getIntProp(xmlNodePtr cur, char *prop) {
+
+    int ret = -1;
+
+    // reads attribute
+    char *buf = getProp(cur, prop);
+
+    // converts it into integer
+    if (buf != NULL) {
+
+        ret = (!strcmp(buf, "") ? -1 : atoi(buf));
+    }
+
+    return ret;
+}
+
+int getMembers(xmlDocPtr doc, char *xpath) {
+
     xmlNodeSetPtr nodeset;
-    xmlNodePtr cur, curNode, curStage, curBrother;
-    xmlXPathObjectPtr result;
-    int a, b, height, node, id, brother;
-    xmlChar *keyword;
+    xmlNodePtr curNode, curStage, curBrother;
+    int node, stage, brother, id;
 
-    if (argc <= 1) {
-        printf("Usage: %s docname\n", argv[0]);
-        return(0);
-    }
+    // get nodes
+    xmlXPathObjectPtr result = getnodeset(doc, (xmlChar*)xpath);
 
-    docname = argv[1];
-    doc = getdoc(docname);
-    cur = xmlDocGetRootElement(doc);
-
-    if (cur == NULL) {
-        fprintf(stderr,"empty document\n");
-        xmlFreeDoc(doc);
-        return(0);
-    }
-
-    if (xmlStrcmp(cur->name, (const xmlChar *) "dst")) {
-        fprintf(stderr,"document of the wrong type, root node = %s", cur->name);
-        xmlFreeDoc(doc);
-        return(0);
-    }
-
-    a = atoi((char*)xmlGetProp(cur, (const xmlChar*)"a"));
-    b = atoi((char*)xmlGetProp(cur, (const xmlChar*)"b"));
-    height = atoi((char*)xmlGetProp(cur, (const xmlChar*)"height"));
-
-    printf("DST features : a = %d - b = %d - height = %d\n", a, b, height);
-
-    xpath = (xmlChar*) "//node";
-    result = getnodeset (doc, xpath);
     if (result) {
-        nodeset = result->nodesetval;
-        for (node=0; node < nodeset->nodeNr; node++) {
 
+        nodeset = result->nodesetval;
+        for (node = 0; node < nodeset->nodeNr; node++) {
+
+            // next node
             curNode = nodeset->nodeTab[node];
 
+            // print node's id
             if (curNode != NULL) {
                 if (!xmlStrcmp(curNode->name, (const xmlChar*)"node")) {
 
-                    id = atoi((char*)xmlGetProp(curNode, (const xmlChar*)"id"));
+                    id = getIntProp(curNode, "id");
                     printf("node id : %d\n", id);
                 } else {
 
+                    // error : wrong node name
                     printf("[%s:%d] node name should have been 'node' here (%d) but it is '%s'",
                             __FUNCTION__,
                             __LINE__,
@@ -101,45 +113,119 @@ int main(int argc, char **argv) {
                 }
             } else {
 
-                printf("[%s:%d] cur shouldn't be NULL in row %d",
+                // error : curNode is NULL
+                printf("[%s:%d] curNode shouldn't be NULL in row %d",
                         __FUNCTION__,
                         __LINE__,
                         node);
                 return (0);
             }
 
+            // parse node's stages
             curStage = curNode->xmlChildrenNode;
+
             do {
+
+                // only children named "stage" will be parsed
                 while (curStage != NULL && xmlStrcmp(curStage->name, (const xmlChar*) "stage")) {
                     curStage = curStage->next;
                 }
+
                 if (curStage != NULL) {
-                    brother = 0;
-                    printf("stage %s: ", xmlGetProp(curStage, (const xmlChar*)"value"));
+
+                    // read stage number
+                    stage = getIntProp(curStage, "value");
+                    printf("stage %d: ", stage);
+
+                    // parse stage's children
                     curBrother = curStage->xmlChildrenNode;
-                    while (cur != NULL && xmlStrcmp(curBrother->name, (const xmlChar*) "argument")) {
-                        curBrother = curBrother->next;
-                    }
+                    brother = 0;
+
+                    // parse brothers
                     do {
-                        if (!xmlStrcmp(curBrother->name, (const xmlChar*) "argument")) {
-                            printf(" %d: %d | ",
-                                    brother,
-                                    atoi((char*)xmlGetProp(curBrother, (const xmlChar*)"value")));
-                            brother++;
+
+                        // only children named "member" will be parsed
+                        while (curBrother != NULL && xmlStrcmp(curBrother->name, (const xmlChar*) "member")) {
+                            curBrother = curBrother->next;
                         }
-                        curBrother = curBrother->next;
-                    } while (curBrother != NULL);
+
+                        if (curBrother != NULL) {
+
+                            printf("\t%d", getIntProp(curBrother, "value"));
+
+                            // next brother
+                            brother++;
+                            curBrother = curBrother->next;
+                        }
+                    } while (curBrother != NULL);  // next brother
+
+                    // next stage
                     printf("\n");
                     curStage = curStage->next;
                 }
-            } while (curStage != NULL);
-            //keyword = xmlNodeListGetString(doc, nodeset->nodeTab[i]->xmlChildrenNode, 1);
-            //printf("keyword: %s\n", keyword);
-            //xmlFree(keyword);
-        }
+            } while (curStage != NULL);  // next stage
+            printf("\n");
+        } // next node
         xmlXPathFreeObject (result);
     }
+    return (1);
+}
+
+int main(int argc, char **argv) {
+
+    char *docname;
+    xmlDocPtr doc;
+    int ret = 0;
+    char *a, *b, *height;
+    xmlNodePtr cur;
+    //xmlChar *keyword;
+
+    // usage warning
+    if (argc <= 1) {
+        printf("Usage: %s docname\n", argv[0]);
+        return(0);
+    }
+
+    // parse document
+    docname = argv[1];
+    doc = getdoc(docname);
+    cur = xmlDocGetRootElement(doc);
+
+    // error : empty document
+    if (cur == NULL) {
+        fprintf(stderr,"empty document\n");
+        xmlFreeDoc(doc);
+        return(0);
+    }
+
+    // error : wrong document
+    if (xmlStrcmp(cur->name, (const xmlChar *) "dst")) {
+        fprintf(stderr,"document of the wrong type, root node = %s", cur->name);
+        xmlFreeDoc(doc);
+        return(0);
+    }
+
+    // gets dst attributes
+    a = getProp(cur, "a");
+    b = getProp(cur, "b");
+    height = getProp(cur, "height");
+
+    // error : wrong dst attributes
+    if (a == NULL || b == NULL || height == NULL) return(0);
+
+    printf("DST attributes : a = %s - b = %s - height = %s\n\n", a, b, height);
+
+    // print members
+    ret = getMembers(doc, "//node");
+    if (ret == 1) {
+
+        printf("dst parse succeeded\n");
+    } else {
+
+        printf("dst parse failed\n");
+    }
+
     xmlFreeDoc(doc);
     xmlCleanupParser();
-    return (1);
+    return (ret);
 }

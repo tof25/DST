@@ -1,55 +1,13 @@
 <?xml version="1.0"?>
-<dst a="3" b="6" height="4">
+<dst a="3" b="6" height="3">
     <node id="42">
-        <stage value="0">
-            <argument value="42"/>
-            <argument value="141"/>
-            <argument value="112"/>
-            <argument value="30"/>
-            <argument value=""/>
-            <argument value=""/>
-        </stage>
-        <stage value="1">
-            <argument value="42"/>
-            <argument value="119"/>
-            <argument value="130"/>
-            <argument value="248"/>
-            <argument value=""/>
-            <argument value=""/>
-        </stage>
-        <stage value="2">
-            <argument value="42"/>
-            <argument value="121"/>
-            <argument value="14"/>
-            <argument value="163"/>
-            <argument value="46"/>
-            <argument value=""/>
-        </stage>
+        <stage value="0"><member value="42"/><member value="141"/><member value="112"/><member value="30"/><member value=""/><member value=""/></stage>
+        <stage value="1"><member value="42"/><member value="119"/><member value="130"/><member value="248"/><member value=""/><member value=""/></stage>
+        <stage value="2"><member value="42"/><member value="121"/><member value="14"/><member value="163"/><member value="46"/><member value=""/></stage>
     </node>
     <node id="121">
-        <stage value="0">
-            <argument value="121"/>
-            <argument value="49"/>
-            <argument value="33"/>
-            <argument value="213"/>
-            <argument value="132"/>
-            <argument value="97"/>
-        </stage>
-        <stage value="1">
-            <argument value="121"/>
-            <argument value="253"/>
-            <argument value="62"/>
-            <argument value="1"/>
-            <argument value=""/>
-            <argument value=""/>
-        </stage>
-        <stage value="2">
-            <argument value="42"/>
-            <argument value="121"/>
-            <argument value="14"/>
-            <argument value="163"/>
-            <argument value="46"/>
-            <argument value=""/>
-        </stage>
+        <stage value="0"><member value="121"/><member value="49"/><member value="33"/><member value="213"/><member value="132"/><member value="97"/></stage>
+        <stage value="1"><member value="121"/><member value="253"/><member value="62"/><member value="1"/><member value=""/><member value=""/></stage>
+        <stage value="2"><member value="42"/><member value="121"/><member value="14"/><member value="163"/><member value="46"/><member value=""/></stage>
     </node>
 </dst>
