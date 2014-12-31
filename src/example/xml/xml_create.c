@@ -34,6 +34,47 @@ xmlChar* itox(int arg) {
     return (xmlChar*)str;
 }
 
+void stageToXml(int stage, int *row, int size, xmlNodePtr parent, int last) {
+
+    // children <stage>
+    xmlChar *xstage = itox(stage);
+    xmlNodePtr nptrStage = xmlNewTextChild(parent, NULL, (const xmlChar*)"stage", NULL);
+    xmlAttrPtr newattr = xmlNewProp(nptrStage, (const xmlChar*)"value", xstage);
+
+    if (last == 1) {
+        addTextSibling(nptrStage, "\n    ");
+    } else {
+        addTextSibling(nptrStage, "\n        ");
+    }
+
+    // children <member>
+    int member;
+    xmlChar *xmember;
+    xmlNodePtr nptrTemp;
+
+    for (member = 0; member < size; member++) {
+
+        xmember = itox(row[member]);
+        nptrTemp = xmlNewTextChild(nptrStage, NULL, (const xmlChar*)"member", NULL);
+        newattr = xmlNewProp(nptrTemp, (const xmlChar*)"value", xmember);
+    }
+}
+
+xmlNodePtr nodeToXml(int node_id, xmlNodePtr parent, int last) {
+
+    // children <node>
+    xmlChar *xid = itox(node_id);
+    xmlNodePtr nptrNode = xmlNewTextChild(parent, NULL, (const xmlChar*)"node", NULL);
+    xmlAttrPtr newattr = xmlNewProp(nptrNode, (const xmlChar*)"id", xid);
+    addTextChild(nptrNode, "\n        ");
+
+    if (last == 1) {
+        addTextSibling(nptrNode, "\n");
+    } else {
+        addTextSibling(nptrNode, "\n    ");
+    }
+    return nptrNode;
+}
 
 int main(int argc, char **argv) {
 
@@ -78,17 +119,6 @@ int main(int argc, char **argv) {
         addTextChild(nptrRoot, "\n    ");
 
         // ====================================
-        id = 42;
-        // ====================================
-
-        // children <node>
-        xid = itox(id);
-        nptrNode = xmlNewTextChild(nptrRoot, NULL, (const xmlChar*)"node", NULL);
-        newattr = xmlNewProp(nptrNode, (const xmlChar*)"id", xid);
-        addTextChild(nptrNode, "\n        ");
-        addTextSibling(nptrNode, "\n    ");
-
-        // ====================================
         stage = 0;
         member = 0;
 
@@ -99,22 +129,6 @@ int main(int argc, char **argv) {
         routing_table[stage][member++] = -1;
         routing_table[stage][member++] = -1;
         // ====================================
-
-        // children <stage>
-        xstage = itox(stage);
-        nptrStage = xmlNewTextChild(nptrNode, NULL, (const xmlChar*)"stage", NULL);
-        newattr = xmlNewProp(nptrStage, (const xmlChar*)"value", xstage);
-        addTextSibling(nptrStage, "\n        ");
-
-        // children <member>
-        for (member = 0; member < b; member++) {
-
-            xmember = itox(routing_table[stage][member]);
-            nptrTemp = xmlNewTextChild(nptrStage, NULL, (const xmlChar*)"member", NULL);
-            newattr = xmlNewProp(nptrTemp, (const xmlChar*)"value", xmember);
-        }
-
-        // ====================================
         stage = 1;
         member = 0;
 
@@ -124,22 +138,6 @@ int main(int argc, char **argv) {
         routing_table[stage][member++] = 248;
         routing_table[stage][member++] = -1;
         routing_table[stage][member++] = -1;
-        // ====================================
-
-        // children <stage>
-        xstage = itox(stage);
-        nptrStage = xmlNewTextChild(nptrNode, NULL, (const xmlChar*)"stage", NULL);
-        newattr = xmlNewProp(nptrStage, (const xmlChar*)"value", xstage);
-        addTextSibling(nptrStage, "\n        ");
-
-        // children <member>
-        for (member = 0; member < b; member++) {
-
-            xmember = itox(routing_table[stage][member]);
-            nptrTemp = xmlNewTextChild(nptrStage, NULL, (const xmlChar*)"member", NULL);
-            newattr = xmlNewProp(nptrTemp, (const xmlChar*)"value", xmember);
-        }
-
         // ====================================
         stage = 2;
         member = 0;
@@ -152,33 +150,17 @@ int main(int argc, char **argv) {
         routing_table[stage][member++] = -1;
         // ====================================
 
-        // children <stage>
-        xstage = itox(stage);
-        nptrStage = xmlNewTextChild(nptrNode, NULL, (const xmlChar*)"stage", NULL);
-        newattr = xmlNewProp(nptrStage, (const xmlChar*)"value", xstage);
-        addTextSibling(nptrStage, "\n    ");
 
-        // children <member>
-        for (member = 0; member < b; member++) {
+        // node 42
+        id = 42;
+        nptrNode = nodeToXml(id, nptrRoot, 0);
 
-            xmember = itox(routing_table[stage][member]);
-            nptrTemp = xmlNewTextChild(nptrStage, NULL, (const xmlChar*)"member", NULL);
-            newattr = xmlNewProp(nptrTemp, (const xmlChar*)"value", xmember);
+        for (stage = 0; stage < height; stage++) {
+
+            stageToXml(stage, routing_table[stage], b, nptrNode, stage == height - 1);
         }
 
         //*****************************************************************************************
-
-        // ====================================
-        id = 121;
-        // ====================================
-
-        // children <node>
-        xid = itox(id);
-        nptrNode = xmlNewTextChild(nptrRoot, NULL, (const xmlChar*)"node", NULL);
-        newattr = xmlNewProp(nptrNode, (const xmlChar*)"id", xid);
-        addTextChild(nptrNode, "\n        ");
-        //addTextSibling(nptrNode, "\n    ");
-        addTextSibling(nptrNode, "\n");
 
         // ====================================
         stage = 0;
@@ -191,22 +173,6 @@ int main(int argc, char **argv) {
         routing_table[stage][member++] = 132;
         routing_table[stage][member++] = 97;
         // ====================================
-
-        // children <stage>
-        xstage = itox(stage);
-        nptrStage = xmlNewTextChild(nptrNode, NULL, (const xmlChar*)"stage", NULL);
-        newattr = xmlNewProp(nptrStage, (const xmlChar*)"value", xstage);
-        addTextSibling(nptrStage, "\n        ");
-
-        // children <member>
-        for (member = 0; member < b; member++) {
-
-            xmember = itox(routing_table[stage][member]);
-            nptrTemp = xmlNewTextChild(nptrStage, NULL, (const xmlChar*)"member", NULL);
-            newattr = xmlNewProp(nptrTemp, (const xmlChar*)"value", xmember);
-        }
-
-        // ====================================
         stage = 1;
         member = 0;
 
@@ -216,22 +182,6 @@ int main(int argc, char **argv) {
         routing_table[stage][member++] = 1;
         routing_table[stage][member++] = -1;
         routing_table[stage][member++] = -1;
-        // ====================================
-
-        // children <stage>
-        xstage = itox(stage);
-        nptrStage = xmlNewTextChild(nptrNode, NULL, (const xmlChar*)"stage", NULL);
-        newattr = xmlNewProp(nptrStage, (const xmlChar*)"value", xstage);
-        addTextSibling(nptrStage, "\n        ");
-
-        // children <member>
-        for (member = 0; member < b; member++) {
-
-            xmember = itox(routing_table[stage][member]);
-            nptrTemp = xmlNewTextChild(nptrStage, NULL, (const xmlChar*)"member", NULL);
-            newattr = xmlNewProp(nptrTemp, (const xmlChar*)"value", xmember);
-        }
-
         // ====================================
         stage = 2;
         member = 0;
@@ -244,21 +194,14 @@ int main(int argc, char **argv) {
         routing_table[stage][member++] = -1;
         // ====================================
 
-        // children <stage>
-        xstage = itox(stage);
-        nptrStage = xmlNewTextChild(nptrNode, NULL, (const xmlChar*)"stage", NULL);
-        newattr = xmlNewProp(nptrStage, (const xmlChar*)"value", xstage);
-        addTextSibling(nptrStage, "\n    ");
+        // node 121
+        id = 121;
+        nptrNode = nodeToXml(id, nptrRoot, 1);
 
-        // children <member>
-        for (member = 0; member < b; member++) {
+        for (stage = 0; stage < height; stage++) {
 
-            xmember = itox(routing_table[stage][member]);
-            nptrTemp = xmlNewTextChild(nptrStage, NULL, (const xmlChar*)"member", NULL);
-            newattr = xmlNewProp(nptrTemp, (const xmlChar*)"value", xmember);
+            stageToXml(stage, routing_table[stage], b, nptrNode, stage == height - 1);
         }
-
-        // *****************************************************************************************
 
         // save doc to disk
         xmlSaveFormatFile (docname, doc, 0);
