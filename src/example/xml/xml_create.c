@@ -60,12 +60,12 @@ void stageToXml(int stage, int *row, int size, xmlNodePtr parent, int last) {
     }
 }
 
-xmlNodePtr nodeToXml(int node_id, xmlNodePtr parent, int last) {
+xmlNodePtr nodemkpToXml(int node_id, xmlNodePtr parent, int last) {
 
     // children <node>
     xmlChar *xid = itox(node_id);
     xmlNodePtr nptrNode = xmlNewTextChild(parent, NULL, (const xmlChar*)"node", NULL);
-    xmlAttrPtr newattr = xmlNewProp(nptrNode, (const xmlChar*)"id", xid);
+    xmlNewProp(nptrNode, (const xmlChar*)"id", xid);
     addTextChild(nptrNode, "\n        ");
 
     if (last == 1) {
@@ -80,9 +80,9 @@ int main(int argc, char **argv) {
 
     char *docname;
     xmlDocPtr doc;
-    xmlNodePtr nptrRoot, nptrNode, nptrStage, nptrTemp;
+    xmlNodePtr nptrRoot, nptrNode, nptrTemp;
     xmlAttrPtr newattr;
-    xmlChar *xa, *xb, *xheight, *xid, *xstage, *xmember;
+    xmlChar *xa, *xb, *xheight;
     int a, b, height, id, stage, member;
     a = 3; xa = itox(a);
     b = 6; xb = itox(b);
@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
 
         // node 42
         id = 42;
-        nptrNode = nodeToXml(id, nptrRoot, 0);
+        nptrNode = nodemkpToXml(id, nptrRoot, 0);
 
         for (stage = 0; stage < height; stage++) {
 
@@ -196,7 +196,7 @@ int main(int argc, char **argv) {
 
         // node 121
         id = 121;
-        nptrNode = nodeToXml(id, nptrRoot, 1);
+        nptrNode = nodemkpToXml(id, nptrRoot, 1);
 
         for (stage = 0; stage < height; stage++) {
 
