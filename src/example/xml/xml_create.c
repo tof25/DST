@@ -76,17 +76,44 @@ xmlNodePtr nodemkpToXml(int node_id, xmlNodePtr parent, int last) {
     return nptrNode;
 }
 
+void nodeToXml(int node_id, xmlNodePtr parent, int last, int **routing_table, int height, int row_size) {
+
+    xmlNodePtr nptrNode = nodemkpToXml(node_id, parent, last);
+
+    int stage;
+    for (stage = 0; stage < height; stage++) {
+
+        stageToXml(stage, routing_table[stage], row_size, nptrNode, stage == height - 1);
+    }
+}
+
+xmlNodePtr rootToXml(int a, int b, int height, xmlDocPtr doc) {
+
+    xmlChar *xa, *xb, *xheight;
+    xa = itox(a);
+    xb = itox(b);
+    xheight = itox(height);
+
+    // root <dst>
+    xmlNodePtr nptrRoot = xmlNewDocNode(doc, NULL, (const xmlChar*)"dst", NULL);
+    xmlNewProp(nptrRoot, (const xmlChar*)"a", xa);
+    xmlNewProp(nptrRoot, (const xmlChar*)"b", xb);
+    xmlNewProp(nptrRoot, (const xmlChar*)"height", xheight);
+    xmlDocSetRootElement(doc, nptrRoot);
+    addTextChild(nptrRoot, "\n    ");
+
+    return nptrRoot;
+}
+
 int main(int argc, char **argv) {
 
     char *docname;
     xmlDocPtr doc;
-    xmlNodePtr nptrRoot, nptrNode, nptrTemp;
-    xmlAttrPtr newattr;
-    xmlChar *xa, *xb, *xheight;
+    xmlNodePtr nptrRoot;
     int a, b, height, id, stage, member;
-    a = 3; xa = itox(a);
-    b = 6; xb = itox(b);
-    height = 3; xheight = itox(height);
+    a = 3;
+    b = 6;
+    height = 3;
 
     if (argc <= 1) {
         printf("Usage: %s docname\n", argv[0]);
@@ -111,12 +138,7 @@ int main(int argc, char **argv) {
     if (doc != NULL) {
 
         // root <dst>
-        nptrRoot = xmlNewDocNode(doc, NULL, (const xmlChar*)"dst", NULL);
-        newattr = xmlNewProp(nptrRoot, (const xmlChar*)"a", xa);
-        newattr = xmlNewProp(nptrRoot, (const xmlChar*)"b", xb);
-        newattr = xmlNewProp(nptrRoot, (const xmlChar*)"height", xheight);
-        nptrTemp = xmlDocSetRootElement(doc, nptrRoot);
-        addTextChild(nptrRoot, "\n    ");
+        nptrRoot = rootToXml(a, b, height, doc);
 
         // ====================================
         stage = 0;
@@ -153,12 +175,7 @@ int main(int argc, char **argv) {
 
         // node 42
         id = 42;
-        nptrNode = nodemkpToXml(id, nptrRoot, 0);
-
-        for (stage = 0; stage < height; stage++) {
-
-            stageToXml(stage, routing_table[stage], b, nptrNode, stage == height - 1);
-        }
+        nodeToXml(id, nptrRoot, 0, routing_table, height, b);
 
         //*****************************************************************************************
 
@@ -196,12 +213,7 @@ int main(int argc, char **argv) {
 
         // node 121
         id = 121;
-        nptrNode = nodemkpToXml(id, nptrRoot, 1);
-
-        for (stage = 0; stage < height; stage++) {
-
-            stageToXml(stage, routing_table[stage], b, nptrNode, stage == height - 1);
-        }
+        nodeToXml(id, nptrRoot, 1, routing_table, height, b);
 
         // save doc to disk
         xmlSaveFormatFile (docname, doc, 0);
