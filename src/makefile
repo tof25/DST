@@ -22,6 +22,9 @@ DEFS = -L$(INSTALL_PATH)/lib/
 LDADD = -lm -lsimgrid `xml2-config --libs`
 LIBS =
 
+vpath %.h xml
+vpath %.c xml
+
 %: %.o xml_create.o
 	$(CC) $(INCLUDES) $(DEFS) $(CFLAGS) $^ $(LIBS) $(LDADD) -o $@
 
