@@ -15,15 +15,15 @@ FOR_VALGRIND = -g -O0 -Wno-switch
 #WARNINGS = 			$(REASONABLY_CAREFUL_DUDE)
 #WARNINGS = 			$(NO_PRAYER_FOR_THE_WICKED)
 WARNINGS = 				$(FOR_VALGRIND)
-CFLAGS = $(WARNINGS) `xml2-config --cflags`
+CFLAGS = $(WARNINGS)
 
-INCLUDES = -I$(INSTALL_PATH)/include
+INCLUDES = -I$(INSTALL_PATH)/include `xml2-config --cflags`
 DEFS = -L$(INSTALL_PATH)/lib/
-LDADD = -lm -lsimgrid 
-LIBS = `xml2-config --libs`
+LDADD = -lm -lsimgrid `xml2-config --libs`
+LIBS =
 
 %: %.o
-	$(CC) $(INCLUDES) $(DEFS) $(CFLAGS) $^ $(LIBS) $(LDADD) -o $@ 
+	$(CC) $(INCLUDES) $(DEFS) $(CFLAGS) $^ $(LIBS) $(LDADD) -o $@
 
 %.o: %.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c -o $@ $<
