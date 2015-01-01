@@ -1081,6 +1081,19 @@ static void set_n_store_infos(node_t me) {
     me->dst_infos.routing_table = routing_table(me);
 
     // copy routing table ids into dst_infos table
+    if (me->dst_infos.height != me->height) {
+
+        int i;
+
+        // add stages if requested
+        me->dst_infos.brothers = realloc(me->dst_infos.brothers, me->height * sizeof(int*));        //TODO : vérifier la libération mémoire
+        for (i = me->dst_infos.height; i < me->height; i++) {
+
+            me->dst_infos.brothers[i] = xbt_new0(int, b);
+        }
+        me->dst_infos.height = me->height;
+    }
+
     int stage, brother;
     for (stage = 0; stage < me->height; stage++) {
         for (brother = 0; brother < b; brother++) {
@@ -1094,8 +1107,6 @@ static void set_n_store_infos(node_t me) {
             }
         }
     }
-
-    me->dst_infos.height = me->height;
 
     s_state_t state = get_state(me);
     me->dst_infos.active = state.active;
@@ -4984,9 +4995,9 @@ static void init(node_t me) {
     // routing table initialization
     me->bro_index = xbt_new0(int, me->height);
     me->brothers = xbt_new0(node_rep_t, me->height);
-    me->dst_infos.brothers = xbt_new0(int*, 10);                //NOTE : NE PAS OUBLIER
+    me->dst_infos.brothers = xbt_new0(int*, me->height);
 
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < me->height; i++) {
 
         me->brothers[i] = xbt_new0(s_node_rep_t, b);
         me->dst_infos.brothers[i] = xbt_new0(int, b);
