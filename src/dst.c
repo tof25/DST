@@ -25,6 +25,7 @@
 #include "xbt/ex.h"                         // to use exceptions
 #include <time.h>
 #include <stdlib.h>                         // to use rand()
+#include "xml/xml_create.h"                 // to create a final xml with routing tables
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
@@ -76,6 +77,15 @@ static int cpt_loop_proc[100] = {0};
 //static int *g_cpt = NULL;
 
 /**
+ * A node representative
+ */
+typedef struct node_rep {
+
+    int id;                                 // representative id
+    char mailbox[MAILBOX_NAME_SIZE];        /* representative main mailbox name */
+} s_node_rep_t, *node_rep_t;
+
+/**
  * Infos about the DST (for reporting purposes)
  */
 typedef struct s_dst_info {
@@ -83,6 +93,8 @@ typedef struct s_dst_info {
     int   node_id;                          // node id
     char  active;                           // node state
     char *routing_table;                    // string representation of a routing table
+    int **brothers;                         // node's routing table (only ids)
+    int   height;                           // number of stages
     int   attempts;                         // number of attempts to join the dst
     int   add_stage;                        /* boolean: was it necessary to add
                                                a stage to insert this node ? */
@@ -98,15 +110,6 @@ typedef struct s_dst_info {
     int   nb_task_remove;                   // number of BR_TASK_REMOVE
     int   nb_chg_contact;                   // number of contact changes
 } s_dst_infos_t, *dst_infos_t;
-
-/**
- * A node representative
- */
-typedef struct node_rep {
-
-    int id;                                 // representative id
-    char mailbox[MAILBOX_NAME_SIZE];        /* representative main mailbox name */
-} s_node_rep_t, *node_rep_t;
 
 /**
  * Types of request/answer tasks exchanged
@@ -1076,6 +1079,17 @@ static void set_n_store_infos(node_t me) {
     }
     */
     me->dst_infos.routing_table = routing_table(me);
+
+    // copy routing table ids into dst_infos table
+    int stage, brother;
+    for (stage = 0; stage < me->height; stage++) {
+        for (brother = 0; brother < b; brother++) {
+
+            me->dst_infos.brothers[stage][brother] = me->brothers[stage][brother].id;
+        }
+    }
+
+    me->dst_infos.height = me->height;
 
     s_state_t state = get_state(me);
     me->dst_infos.active = state.active;
@@ -4947,6 +4961,7 @@ static void init(node_t me) {
     me->dst_infos.order = 0;
     me->dst_infos.node_id = me->self.id;
     me->dst_infos.routing_table = NULL;
+    me->dst_infos.height = me->height;
     me->dst_infos.attempts = 0;
     //me->dst_infos.nb_messages = 0;
     me->dst_infos.add_stage = 0;
@@ -4963,10 +4978,12 @@ static void init(node_t me) {
     // routing table initialization
     me->bro_index = xbt_new0(int, me->height);
     me->brothers = xbt_new0(node_rep_t, me->height);
+    me->dst_infos.brothers = xbt_new0(int*, me->height);
 
     for (i = 0; i < me->height; i++) {
 
         me->brothers[i] = xbt_new0(s_node_rep_t, b);
+        me->dst_infos.brothers[i] = xbt_new0(int, b);
     }
 
     // predecessors table initilization
@@ -10899,7 +10916,7 @@ int main(int argc, char *argv[]) {
 
     if (argc < 3) {
 
-        printf("Usage: %s platform_file deployment_file"
+        printf("Usage: %s platform_file deployment_file xml_output_filename"
                 " --log=msg_dst.thres:info 2>&1 | tools/MSG_visualization/colorize.pl\n",
                 argv[0]);
         exit(1);
@@ -10931,9 +10948,14 @@ int main(int argc, char *argv[]) {
     // create timer
     xbt_os_timer_t timer = xbt_os_timer_new();
 
-    const char* platform_file = argv[1];
-    const char* deployment_file = argv[2];
-    //if (argc == 4) max_simulation_time = atoi(argv[3]);
+    const char *platform_file = argv[1];
+    const char *deployment_file = argv[2];
+    const char *xml_file;
+    if (argc == 4) {
+        const char *xml_file = argv[3];
+    } else {
+        xml_file = "routing_tables";
+    }
 
     nb_nodes = count_lines_of_file(deployment_file);
     XBT_INFO("START BUILDING A DST OF %d NODES", nb_nodes);
@@ -10991,8 +11013,31 @@ int main(int argc, char *argv[]) {
     fprintf(fp, "\n");
     */
 
+    // prepare xml output file
+    int rootDone = 0;
+    int last = 0;
+    xmlDocPtr doc = NULL;
+    xmlNodePtr nptrRoot = NULL;
+    doc = xmlNewDoc((const xmlChar*)"1.0");
+
+    // display loop
     xbt_dynar_foreach(infos_dst, cpt, elem) {
         if (elem != NULL) {
+
+            // xml root node (only once)
+            if (!rootDone) {
+
+                nptrRoot = rootToXml(a, b, elem->height, doc);
+                if (nptrRoot != NULL) rootDone = 1;
+            }
+
+            // xml <node> and children
+            if (nptrRoot != NULL) {
+
+                // last node ?
+                last = (cpt == xbt_dynar_length(infos_dst) - 1);
+                nodeToXml(elem->node_id, nptrRoot, last, elem->brothers, elem->height, b);
+            }
 
             loc_nb_nodes_tot++;
 
@@ -11104,6 +11149,11 @@ int main(int argc, char *argv[]) {
     }
 
     //fclose(fp);
+
+    // save xml file
+    xmlSaveFormatFile(xml_file, doc, 0);
+    xmlFreeDoc(doc);
+
 
     XBT_INFO("Number of elements in infos_dst = %d", cpt);
     XBT_INFO("Messages needed for %d active nodes / %d total nodes ( sent - broadcasted )",

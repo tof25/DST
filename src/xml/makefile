@@ -11,7 +11,7 @@ LIBS = `xml2-config --libs`
 %: %.o xml_create.o
 	$(CC) $(WARNINGS) -o $@ $(CFLAGS) $(LIBS) $^
 
-%.o: %.c
+%.o: %.c %.h
 	$(CC) $(WARNINGS) -c $(CFLAGS) $^
 
 .PHONY : clean
