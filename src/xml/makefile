@@ -12,7 +12,7 @@ LIBS = `xml2-config --libs`
 	$(CC) $(WARNINGS) -o $@ $(CFLAGS) $(LIBS) $^
 
 %.o: %.c %.h
-	$(CC) $(WARNINGS) -c $(CFLAGS) $^
+	$(CC) $(WARNINGS) -c $(CFLAGS) $<
 
 .PHONY : clean
 clean:

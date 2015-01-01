@@ -1085,7 +1085,13 @@ static void set_n_store_infos(node_t me) {
     for (stage = 0; stage < me->height; stage++) {
         for (brother = 0; brother < b; brother++) {
 
-            me->dst_infos.brothers[stage][brother] = me->brothers[stage][brother].id;
+            if (brother >= me->bro_index[stage]) {
+
+                me->dst_infos.brothers[stage][brother] = -1;
+            } else {
+
+                me->dst_infos.brothers[stage][brother] = me->brothers[stage][brother].id;
+            }
         }
     }
 
@@ -4920,7 +4926,7 @@ static void init(node_t me) {
 
     XBT_IN();
     XBT_INFO("Node %d: init() ...", me->self.id);
-    int i;
+    int i, j;
 
     me->height = 1;
     me->comm_received = NULL;
@@ -4978,9 +4984,9 @@ static void init(node_t me) {
     // routing table initialization
     me->bro_index = xbt_new0(int, me->height);
     me->brothers = xbt_new0(node_rep_t, me->height);
-    me->dst_infos.brothers = xbt_new0(int*, me->height);
+    me->dst_infos.brothers = xbt_new0(int*, 10);                //NOTE : NE PAS OUBLIER
 
-    for (i = 0; i < me->height; i++) {
+    for (i = 0; i < 10; i++) {
 
         me->brothers[i] = xbt_new0(s_node_rep_t, b);
         me->dst_infos.brothers[i] = xbt_new0(int, b);
@@ -10952,7 +10958,7 @@ int main(int argc, char *argv[]) {
     const char *deployment_file = argv[2];
     const char *xml_file;
     if (argc == 4) {
-        const char *xml_file = argv[3];
+        xml_file = argv[3];
     } else {
         xml_file = "routing_tables";
     }
