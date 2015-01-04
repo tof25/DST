@@ -101,11 +101,12 @@ int getIntProp(xmlNodePtr cur, char *prop) {
     return ret;
 }
 
-int getMembers(xmlDocPtr doc, char *xpath) {
+int** getMembers(xmlDocPtr doc, char *xpath) {
 
     xmlNodeSetPtr nodeset, stageset, memberset;
     xmlNodePtr curNode;
     int node, stage, member, id;
+    int **routing_table = NULL;
 
     // get nodes
     nodeset = getnodeset(doc, NULL, xpath);
@@ -118,51 +119,45 @@ int getMembers(xmlDocPtr doc, char *xpath) {
             curNode = nodeset->nodeTab[node];
 
             // print node's id
-            if (curNode != NULL) {
+            id = getIntProp(curNode, "id");
+            //printf("node id : %d\n", id);
 
-                id = getIntProp(curNode, "id");
-                printf("node id : %d\n", id);
-            } else {
-
-                // error : curNode is NULL
-                printf("[%s:%d] curNode shouldn't be NULL in row %d",
-                        __FUNCTION__,
-                        __LINE__,
-                        node);
-                return (0);
-            }
-
-            // parse node's stages
+            // get node's stages
             stageset = getnodeset(doc, curNode, "stage");
 
-            if (stageset == NULL) {
+            if (stageset) {
 
-                // error : no stage set
-                printf("[%s:%d] stage set shouldn't be NULL here",
-                        __FUNCTION__,
-                        __LINE__);
-                return (0);
-            } else {
+                routing_table = malloc(stageset->nodeNr * sizeof(int*));
 
                 for (stage = 0; stage < stageset->nodeNr; stage++) {
 
-                    printf("stage %d: ", getIntProp(stageset->nodeTab[stage], "value"));
-
-                    // get members
+                    // get stage's members
                     memberset = getnodeset(doc, stageset->nodeTab[stage], "member");
-                    for (member = 0; member < memberset->nodeNr; member++) {
 
-                        printf("\t%d", getIntProp(memberset->nodeTab[member], "value"));
+                    if (memberset) {
+
+                        routing_table[stage] = malloc(memberset->nodeNr * sizeof(int*));
+
+                        for (member = 0; member < memberset->nodeNr; member++) {
+
+                            routing_table[stage][member] = getIntProp(memberset->nodeTab[member], "value");
+                        }
+                        //printf("\n\n");
+
+                        xmlXPathFreeNodeSet(memberset);
+                    } else {
+
+                        free (routing_table);
+                        routing_table = NULL;
                     }
-                    printf("\n\n");
                 }
                 xmlXPathFreeNodeSet(stageset);
             }
-            printf("\n");
+            //printf("\n");
         } // next node
         xmlXPathFreeNodeSet (nodeset);
     }
-    return (1);
+    return(routing_table);
 }
 
 int main(int argc, char **argv) {
@@ -174,6 +169,7 @@ int main(int argc, char **argv) {
     xmlNodePtr cur;
     const int LenXPATH = 25;
     char xpath[LenXPATH] = "//node";
+    int **routing_table = NULL;
 
     // usage warning
     if (argc <= 1) {
@@ -222,16 +218,21 @@ int main(int argc, char **argv) {
     if (id != NULL) {
         char buf[LenXPATH];
         sprintf(buf, "[@id=%s]", id);
-        strncat(xpath, buf, LenXPATH) ;
+        strncat(xpath, buf, LenXPATH - strlen(buf)) ;
     }
 
-    ret = getMembers(doc, xpath);
-    if (ret == 1) {
+    routing_table = getMembers(doc, xpath);
 
-        printf("dst parse succeeded\n");
+    if (routing_table) {
+        int i, j;
+        printf("Node %s:\n", id);
+        for (i = 0; i < atoi(height); i++) {
+            for (j = 0; j < atoi(b); j++) {
+                printf("\t%d", routing_table[i][j]);
+            }
+            printf("\n");
+        }
     } else {
-
-        printf("dst parse failed\n");
     }
 
     xmlFreeDoc(doc);
