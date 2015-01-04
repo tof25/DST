@@ -1,4 +1,4 @@
-BIN_FILES = add_attribute add_keyword encoding_conversion keyword reader1 retrieving_attribute retrieving_attribute xml_parser xpath xml_to_array xml_create
+BIN_FILES = add_attribute add_keyword encoding_conversion keyword reader1 retrieving_attribute retrieving_attribute xml_parser xpath xml_to_array xml_create xpath_tests
 
 .PHONY : all
 all: $(BIN_FILES)
