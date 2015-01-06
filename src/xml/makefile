@@ -1,4 +1,4 @@
-BIN_FILES = xml_create_run
+BIN_FILES = xml_to_array_run
 
 .PHONY : all
 all: $(BIN_FILES)
@@ -8,10 +8,13 @@ WARNINGS =	-Wall -g
 CFLAGS = `xml2-config --cflags`
 LIBS = `xml2-config --libs`
 
-%: %.o xml_create.o
+%: %.o xml_to_array.o
 	$(CC) $(WARNINGS) -o $@ $(CFLAGS) $(LIBS) $^
 
 %.o: %.c %.h
+	$(CC) $(WARNINGS) -c $(CFLAGS) $<
+
+%.o: %.c
 	$(CC) $(WARNINGS) -c $(CFLAGS) $<
 
 .PHONY : clean
