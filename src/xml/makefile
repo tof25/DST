@@ -9,7 +9,7 @@ CFLAGS = `xml2-config --cflags`
 LIBS = `xml2-config --libs`
 
 %: %.o xml_to_array.o
-	$(CC) $(WARNINGS) -o $@ $(CFLAGS) $(LIBS) $^
+	$(CC) $(WARNINGS) -o $@ $(CFLAGS) $^ $(LIBS)
 
 %.o: %.c %.h
 	$(CC) $(WARNINGS) -c $(CFLAGS) $<
