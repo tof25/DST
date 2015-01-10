@@ -18,7 +18,7 @@ typedef struct node_id {
 /**
  *  parse xml document
  */
-xmlDocPtr getdoc (char *docname);
+xmlDocPtr getdoc (const char *docname);
 
 /**
  *  return a node set for a given xpath expression and a context node

@@ -26,6 +26,7 @@
 #include <time.h>
 #include <stdlib.h>                         // to use rand()
 #include "xml/xml_create.h"                 // to create a final xml with routing tables
+#include "xml/xml_to_array.h"               // to read an optional given xml routing tables input file
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
@@ -44,7 +45,18 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_CS_REQ 2000                     // max time between cs_req and matching set_update      //TODO : constante plus utilisée
 #define MAX_CNX 500                         // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
+#define LEN_XPATH 20                        // xpath size (for xml input file)
 
+
+/*
+   ============ FOR XML ROUTING TABLES INPUT FILE ===============
+*/
+static const char *xml_input_file = NULL;   // name of the optionnal xml input file (for routing tables)
+static xmlDocPtr doc_i = NULL;              // pointer to the parsed xml input file
+static int xml_height = -1;                 // dst height read from xml input file
+/*
+   ==============================================================
+*/
 
 static const int a = 3;                     /* min number of brothers in a node
                                                (except for the root node) */
@@ -830,6 +842,7 @@ static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
 static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id);
 static void         check_cs(node_t me, int sender_id);
 static void         launch_fork_process(node_t me, msg_task_t task);
+static xmlDocPtr    get_xml_input_file(const char *doc_name);
 
 /*
   ======================= COMMUNICATION FUNCTIONS =============================
@@ -1986,6 +1999,73 @@ static void launch_fork_process(node_t me, msg_task_t task) {
 
     XBT_OUT();
 }
+
+
+/**
+ * \brief Try to open the given xml input file.
+ * \param doc_name the file name to open
+ * \return a pointer to the document, NULL if failed
+ */
+static xmlDocPtr get_xml_input_file(const char *doc_name) {
+
+    xmlDocPtr doc;
+    xmlNodePtr cur;
+    int int_a, int_b, int_height;
+
+    // process all failure cases
+    if (doc_name == NULL) {
+
+        XBT_WARN("[%s:%d] xml input file is NULL", __FUNCTION__, __LINE__);
+        return NULL;
+    }
+
+    doc = getdoc(doc_name);
+    if (doc == NULL) {
+
+        XBT_WARN("[%s:%d] Document %s not parsed successfully", __FUNCTION__, __LINE__, doc_name);
+        return NULL;
+    }
+
+    cur = xmlDocGetRootElement(doc);
+    if (cur == NULL) {
+
+        XBT_WARN("[%s:%d] Document %s is empty", __FUNCTION__, __LINE__, doc_name);
+        return NULL;
+    }
+
+    if (xmlStrcmp(cur->name, (const xmlChar *)"dst")) {
+
+        XBT_WARN("[%s:%d] %s : wrong type of document", __FUNCTION__, __LINE__, doc_name);
+        return NULL;
+    }
+
+    int_a = getIntProp(cur, "a");
+    int_b = getIntProp(cur, "b");
+    int_height = getIntProp(cur, "height");
+    if (int_a == -1 || int_b == -1 || int_height == -1) {
+
+        XBT_WARN("[%s:%d] 'a', 'b' or 'height' attributes aren't well formed in document %s",
+                __FUNCTION__,
+                __LINE__,
+                doc_name);
+        return NULL;
+    }
+
+    if (int_a != a || int_b != b) {
+
+        XBT_WARN("[%s:%d] 'a' and 'b' attributes in document %s doesn't match current ones",
+                __FUNCTION__,
+                __LINE__,
+                doc_name);
+        return NULL;
+    }
+
+    // success
+    xml_height = int_height;
+
+    return doc;
+}
+
 
 /**
  * \brief Wait for the completion of a bunch of async sent tasks
@@ -9331,6 +9411,93 @@ int node(int argc, char *argv[]) {
         ans_data_t answer_data = NULL;
         msg_error_t res;
         int index = 0;
+        char xpath[LEN_XPATH + 1];
+
+        // try to fetch routing table from xml input file
+        if (xml_input_file != NULL) {
+
+            node_id_t node_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
+            node_table->id = -1;
+            node_table->routing_table = NULL;
+
+            snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
+            node_table = getMembers(doc_i, xpath);
+
+            if (node_table) {
+
+                XBT_VERB("Node %d: [%s:%d] routing table found in xml input file",
+                        node.self.id,
+                        __FUNCTION__,
+                        __LINE__);
+
+                /*
+                if (node_table) {
+                    int i, j;
+                    printf("Node %d:\n", node_table->id);
+                    for (i = 0; i < xml_height; i++) {
+                        for (j = 0; j < b; j++) {
+                            printf("\t%d", node_table->routing_table[i][j]);
+                        }
+                        //free(node_table->routing_table[i]);
+                        printf("\n");
+                    }
+                    //free(node_table->routing_table);
+                    //free(node_table);
+                }
+                */
+
+                // discard current tables
+                int stage;
+                for (stage = 0; stage < xml_height; stage++) {
+
+                    xbt_free(node.brothers[stage]);
+                }
+                xbt_free(node.brothers);
+                node.brothers = xbt_new0(node_rep_t, xml_height);
+
+                /* copy xml table into current one */
+
+                // brothers
+                int brother;
+                for (stage = 0; stage < xml_height; stage++) {
+
+                    node.brothers[stage] = xbt_new0(s_node_rep_t, b);
+                    for (brother = 0; brother < b; brother++) {
+
+                        node.brothers[stage][brother].id = node_table->routing_table[stage][brother];
+                        set_mailbox(node.brothers[stage][brother].id,
+                                    node.brothers[stage][brother].mailbox);
+                    }
+                }
+
+                // brothers indexes
+                xbt_free(node.bro_index);
+                node.bro_index = xbt_new0(int, xml_height);
+                for (stage = 0; stage < xml_height; stage++) {
+
+                    brother = 0;
+                    while (node.brothers[stage][brother].id != -1 && brother < b) {
+                        brother++;
+                    }
+                    node.bro_index[stage] = brother;
+                }
+
+                // height
+                node.height = xml_height;
+
+                XBT_VERB("Node %d: [%s:%d] routing table fetched from XML:",
+                        node.self.id,
+                        __FUNCTION__,
+                        __LINE__);
+                display_rout_table(&node, 'V');
+
+                /**************************************************************************
+                 * TODO : mettre en place la même chose pour les prédécesseurs
+                 *        mettre le noeud à l'état actif et en tenir compte pour la suite
+                 **************************************************************************/
+            }
+            xbt_assert(1 == 0);
+        }
 
         do {
 
@@ -10933,9 +11100,10 @@ int main(int argc, char *argv[]) {
 
     if (argc < 3) {
 
-        printf("Usage: %s platform_file deployment_file xml_output_filename"
+        printf("Usage: %s platform_file deployment_file [xml_output_filename] [xml_input_file]"
                 " --log=msg_dst.thres:info 2>&1 | tools/MSG_visualization/colorize.pl\n",
                 argv[0]);
+        printf("xml_output_filename defaults to routing_tables.xml\n");
         exit(1);
     }
 
@@ -10965,13 +11133,28 @@ int main(int argc, char *argv[]) {
     // create timer
     xbt_os_timer_t timer = xbt_os_timer_new();
 
+    // fetch arguments
     const char *platform_file = argv[1];
     const char *deployment_file = argv[2];
-    const char *xml_file;
-    if (argc == 4) {
-        xml_file = argv[3];
+    const char *xml_output_file;
+    if (argc >= 4) {
+        xml_output_file = argv[3];
     } else {
-        xml_file = "routing_tables";
+        xml_output_file = "routing_tables.xml";
+    }
+    if (argc >= 5) {
+        xml_input_file = argv[4];
+    } else {
+        xml_input_file = NULL;
+    }
+
+    // get xml input file
+    if (xml_input_file != NULL) {
+
+        doc_i = get_xml_input_file(xml_input_file);
+
+        // failed
+        if (doc_i == NULL) xml_input_file = NULL;
     }
 
     nb_nodes = count_lines_of_file(deployment_file);
@@ -11033,9 +11216,8 @@ int main(int argc, char *argv[]) {
     // prepare xml output file
     int rootDone = 0;
     int last = 0;
-    xmlDocPtr doc = NULL;
+    xmlDocPtr doc_o = xmlNewDoc((const xmlChar*)"1.0");
     xmlNodePtr nptrRoot = NULL;
-    doc = xmlNewDoc((const xmlChar*)"1.0");
 
     // display loop
     xbt_dynar_foreach(infos_dst, cpt, elem) {
@@ -11044,7 +11226,7 @@ int main(int argc, char *argv[]) {
             // xml root node (only once)
             if (!rootDone) {
 
-                nptrRoot = rootToXml(a, b, elem->height, doc);
+                nptrRoot = rootToXml(a, b, elem->height, doc_o);
                 if (nptrRoot != NULL) rootDone = 1;
             }
 
@@ -11168,8 +11350,8 @@ int main(int argc, char *argv[]) {
     //fclose(fp);
 
     // save xml file
-    xmlSaveFormatFile(xml_file, doc, 0);
-    xmlFreeDoc(doc);
+    xmlSaveFormatFile(xml_output_file, doc_o, 0);
+    xmlFreeDoc(doc_o);
 
 
     XBT_INFO("Number of elements in infos_dst = %d", cpt);

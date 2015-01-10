@@ -5,7 +5,7 @@
  * \param docname the document name
  * \return a pointer to the document
  */
-xmlDocPtr getdoc (char *docname) {
+xmlDocPtr getdoc (const char *docname) {
 
     xmlDocPtr doc;
     doc = xmlParseFile(docname);
