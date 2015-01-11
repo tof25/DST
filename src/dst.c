@@ -31,7 +31,7 @@
 XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
 /*
-   ========================  GLOBAL VALUES  ==================================
+   ===============================  GLOBAL VALUES  ================================================
 */
 
 #define COMM_SIZE 10                        // message size when creating a new task
@@ -49,13 +49,13 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
 
 /*
-   ============ FOR XML ROUTING TABLES INPUT FILE ===============
+   ======================= FOR XML ROUTING TABLES INPUT FILE =======================================
 */
 static const char *xml_input_file = NULL;   // name of the optionnal xml input file (for routing tables)
 static xmlDocPtr doc_i = NULL;              // pointer to the parsed xml input file
 static int xml_height = -1;                 // dst height read from xml input file
 /*
-   ==============================================================
+   =================================================================================================
 */
 
 static const int a = 3;                     /* min number of brothers in a node
@@ -9392,7 +9392,7 @@ int node(int argc, char *argv[]) {
     s_node_t node;
     node.self.id = atoi(argv[1]);
 
-    int join_success = 1;       // success by default
+    int join_success = 0;       // failed by default
     /*
     int tries = 0;
     int tries_mem = TRY_STEP;
@@ -9491,15 +9491,36 @@ int node(int argc, char *argv[]) {
                         __LINE__);
                 display_rout_table(&node, 'V');
 
+                // dst_infos
+                if (node.dst_infos.order == 0) {
+
+                    // only one order number per node
+                    node.dst_infos.order = order++;
+                }
+                node.dst_infos.node_id = node.self.id;
+                node.dst_infos.attempts = 1;
+                node.dst_infos.add_stage = -1;
+                node.dst_infos.nbr_split_stages = -1;
+                node.dst_infos.load = NULL;
+                node.dst_infos.nb_cs_req_fail = 0;
+                node.dst_infos.nb_cs_req_success = 0;
+                node.dst_infos.nb_set_update_fail = 0;
+                node.dst_infos.nb_set_update_success = 0;
+                node.dst_infos.nb_task_remove = 0;
+                node.dst_infos.nb_chg_contact = 0;
+
                 /**************************************************************************
                  * TODO : mettre en place la même chose pour les prédécesseurs
-                 *        mettre le noeud à l'état actif et en tenir compte pour la suite
+                 *        voir pour load (y compris dans les dst_infos) = pred_index ?
+                 *        penser aux dst_infos
                  **************************************************************************/
+
+                join_success = 1;
             }
             xbt_assert(1 == 0);
         }
 
-        do {
+        while (!join_success) {
 
             // sleep before first attempt to join
             if (MSG_get_clock() < sleep_time) {
@@ -9541,6 +9562,7 @@ int node(int argc, char *argv[]) {
                         __FUNCTION__,
                         __LINE__);
 
+                /*
                 // randomly choose another contact
                 srand(time(NULL));
                 index = (double)rand() * (double)(nb_ins_nodes) / (double)RAND_MAX;
@@ -9558,11 +9580,12 @@ int node(int argc, char *argv[]) {
                         __FUNCTION__,
                         __LINE__,
                         contact_id);
+                */
             } else {
 
                 //xbt_assert(node.self.id != 1521, "Node %d", node.self.id);
             }
-        } while (!join_success);
+        }
     } else {
 
         // first node
