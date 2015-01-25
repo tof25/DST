@@ -16,7 +16,6 @@
 //TODO: introduire un indicateur de réponses à venir. On pourra s'en servir pour terminer la simulation.
 //      (à la place de WAIT_BEFORE_END)
 
-//#define MSG_USE_DEPRECATED
 #include <stdio.h>                          // printf and friends
 #include "msg/msg.h"                        // to use MSG API of Simgrid
 #include "xbt/log.h"                        // to get nice outputs
@@ -46,14 +45,18 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_CNX 500                         // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 #define LEN_XPATH 20                        // xpath size (for xml input file)
+#define XML_NAME_SIZE 50                    // xml files names length
 
 
 /*
-   ======================= FOR XML ROUTING TABLES INPUT FILE =======================================
+   =========================== FOR XML ROUTING TABLES FILES =======================================
 */
-static const char *xml_input_file = NULL;   // name of the optionnal xml input file (for routing tables)
+static char *xml_input_file = NULL;         // name of the optionnal xml input file (for routing tables)
+static char *xml_output_file = NULL;        // name of the xml output file (for routing tables)
+static char *xml_output_pred_file = NULL;   // name of the xml output pred file (for preds tables)
 static xmlDocPtr doc_i = NULL;              // pointer to the parsed xml input file
 static int xml_height = -1;                 // dst height read from xml input file
+
 /*
    =================================================================================================
 */
@@ -106,6 +109,7 @@ typedef struct s_dst_info {
     char  active;                           // node state
     char *routing_table;                    // string representation of a routing table
     int **brothers;                         // node's routing table (only ids)
+    int **preds;                            // node's preds table (only ids)
     int   height;                           // number of stages
     int   attempts;                         // number of attempts to join the dst
     int   add_stage;                        /* boolean: was it necessary to add
@@ -843,6 +847,7 @@ static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, i
 static void         check_cs(node_t me, int sender_id);
 static void         launch_fork_process(node_t me, msg_task_t task);
 static xmlDocPtr    get_xml_input_file(const char *doc_name);
+static char*        filename(const char *file_name);
 
 /*
   ======================= COMMUNICATION FUNCTIONS =============================
@@ -1084,13 +1089,9 @@ static char* routing_table(node_t me) {
 static void set_n_store_infos(node_t me) {
     XBT_IN();
 
-    /*
-    // free string before replacing it
-    if (me->dst_infos.routing_table != NULL) {
-
-    xbt_free(me->dst_infos.routing_table);
-    }
-    */
+    /**
+     * update routing table
+     */
     me->dst_infos.routing_table = routing_table(me);
 
     // copy routing table ids into dst_infos table
@@ -1104,7 +1105,7 @@ static void set_n_store_infos(node_t me) {
 
             me->dst_infos.brothers[i] = xbt_new0(int, b);
         }
-        me->dst_infos.height = me->height;
+        //me->dst_infos.height = me->height;
     }
 
     int stage, brother;
@@ -1121,6 +1122,44 @@ static void set_n_store_infos(node_t me) {
         }
     }
 
+    /***********************************  TODO *********************************
+     * REMPLISSAGE PREDS NE MARCHE PAS
+     * *************************************************************************/
+
+    /**
+     * update preds table
+     */
+
+    // copy preds table ids into dst_infos table
+    for (stage = 0; stage < me->dst_infos.height; stage++) {
+
+        me->dst_infos.preds[stage] = realloc(me->dst_infos.preds[stage], me->pred_index[stage] * sizeof(int));
+    }
+
+    if (me->dst_infos.height != me->height) {
+
+        int i;
+
+        // add stages if requested
+        me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));        //TODO : vérifier la libération mémoire
+        for (i = me->dst_infos.height; i < me->height; i++) {
+
+            me->dst_infos.preds[i] = xbt_new0(int, me->pred_index[i]);
+        }
+        me->dst_infos.height = me->height;
+    }
+
+    int pred;
+    for (stage = 0; stage < me->height; stage++) {
+        for (pred = 0; pred < me->pred_index[stage]; pred++) {
+
+            me->dst_infos.preds[stage][pred] = me->preds[stage][pred].id;
+        }
+    }
+    /**/
+
+
+    // update other fields
     s_state_t state = get_state(me);
     me->dst_infos.active = state.active;
 
@@ -1128,16 +1167,7 @@ static void set_n_store_infos(node_t me) {
 
     dst_infos_t elem = xbt_new0(s_dst_infos_t, 1);
     *elem = me->dst_infos;
-    //if (xbt_dynar_member(infos_dst, elem) == 0) {
-
     xbt_dynar_replace(infos_dst, me->dst_infos.order, &elem);
-
-    /*} else {
-
-    XBT_INFO("number set = %d, order = %d", ++nb_calls2, me->dst_infos.order);
-        XBT_DEBUG("Set");
-        xbt_dynar_set(infos_dst, me->dst_infos.order, &elem);
-    } */
 
     XBT_OUT();
 }
@@ -2066,6 +2096,28 @@ static xmlDocPtr get_xml_input_file(const char *doc_name) {
     return doc;
 }
 
+/**
+ * \brief return file_name without suffix
+ * \param file_name the full file name
+ * \return name of file without suffix
+ */
+static char* filename(const char *file_name) {
+
+    char *output_filename;
+
+    int indexOf = strrchr(file_name, '.') - file_name + 1;
+
+    if (indexOf >= 0) {
+
+        output_filename = xbt_new0(char, indexOf);
+        snprintf(output_filename, indexOf, "%s", file_name);
+    } else {
+
+        output_filename = (char*)file_name;
+    }
+
+    return output_filename;
+}
 
 /**
  * \brief Wait for the completion of a bunch of async sent tasks
@@ -5086,10 +5138,12 @@ static void init(node_t me) {
     // predecessors table initilization
     me->pred_index = xbt_new0(int, me->height);
     me->preds = xbt_new0(node_rep_t, me->height);
+    me->dst_infos.preds = xbt_new0(int*, me->height);
 
     for (i = 0; i < me->height; i++) {
 
         me->preds[i] = xbt_new0(s_node_rep_t, b);
+        me->dst_infos.preds[i] = xbt_new0(int, b);
     }
 
     // set first elements
@@ -5226,14 +5280,7 @@ static int join(node_t me, int contact_id) {
 
         for (brother = 0; brother < b; brother++) {
 
-            me->brothers[stage][brother] =
-                answer_data->answer.cnx_req.brothers[stage][brother];
-
-                XBT_DEBUG("[%s] cnx_req_brothers[%d][%d] = %d",
-                __FUNCTION__,
-                stage,
-                brother,
-                answer_data->answer.cnx_req.brothers[stage][brother].id);
+            me->brothers[stage][brother] = answer_data->answer.cnx_req.brothers[stage][brother];
         }
 
         xbt_free(answer_data->answer.cnx_req.brothers[stage]);
@@ -6233,7 +6280,7 @@ static void add_stage(node_t me) {
     me->brothers[me->height-1] = xbt_new0(s_node_rep_t, b);
     add_brother(me, me->height-1, me->self.id);
 
-    // add stage to predecessors  
+    // add stage to predecessors
     me->pred_index = realloc(me->pred_index, me->height * sizeof(int));
     me->preds = realloc(me->preds, me->height * sizeof(node_rep_t));
 
@@ -6296,13 +6343,14 @@ static void add_pred(node_t me, int stage, int id) {
     // set the predecessors array bigger (by steps of b) if needed
     if ((me->pred_index[stage] % b == 0) && (me->pred_index[stage] > 0)) {
 
-        //node_rep_t backup = me->preds[stage];
         me->preds[stage] = realloc(me->preds[stage],
                 (me->pred_index[stage] + b) * sizeof(s_node_rep_t));
 
         xbt_assert(me->preds[stage] != NULL,
-                "Node %d: Realloc of preds[%d] failed",
+                "Node %d: [%s:%d] Realloc of preds[%d] failed",
                 me->self.id,
+                __FUNCTION__,
+                __LINE__,
                 stage);
 
         int i;
@@ -9517,7 +9565,7 @@ int node(int argc, char *argv[]) {
 
                 join_success = 1;
             }
-            xbt_assert(1 == 0);
+            //xbt_assert(1 == 0);
         }
 
         while (!join_success) {
@@ -9592,6 +9640,7 @@ int node(int argc, char *argv[]) {
         order = 0;
         node.dst_infos.order = order++;
         node.deadline = atoi(argv[2]);
+        join_success = 1;
     }
 
     if (join_success) {
@@ -11093,7 +11142,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
         // set and store DST infos
         set_n_store_infos(me);
 
-        display_preds(me, 'D');
+        display_preds(me, 'V');
     }
 
     XBT_DEBUG("Node %d end of handle_task(): val_ret = '%s'",
@@ -11156,17 +11205,38 @@ int main(int argc, char *argv[]) {
     // create timer
     xbt_os_timer_t timer = xbt_os_timer_new();
 
-    // fetch arguments
+    /* fetch arguments */
+
+    // platform and application files
     const char *platform_file = argv[1];
     const char *deployment_file = argv[2];
-    const char *xml_output_file;
+
+    // xml output files
+    xml_output_file = xbt_new0(char, XML_NAME_SIZE);
+    xml_output_pred_file = xbt_new0(char, XML_NAME_SIZE);
+
+
     if (argc >= 4) {
-        xml_output_file = argv[3];
+        snprintf(xml_output_file, XML_NAME_SIZE, "%s", argv[3]);
     } else {
-        xml_output_file = "routing_tables.xml";
+        snprintf(xml_output_file, XML_NAME_SIZE, "%s", "routing_tables");
     }
+
+    char *file_name = filename(xml_output_file);    // eventually take off suffix
+    snprintf(xml_output_pred_file, XML_NAME_SIZE, "%s", "pred_");
+    strncat(xml_output_pred_file, file_name, XML_NAME_SIZE - strlen(xml_output_pred_file));
+    strncat(xml_output_pred_file, ".xml", XML_NAME_SIZE - strlen(xml_output_pred_file));
+
+    snprintf(xml_output_file, XML_NAME_SIZE, "%s", file_name);
+    strncat(xml_output_file, ".xml", XML_NAME_SIZE - strlen(xml_output_file));
+
+    // xml input files
+    xml_input_file = xbt_new0(char, XML_NAME_SIZE);
+
     if (argc >= 5) {
-        xml_input_file = argv[4];
+        char *file_name = filename(argv[4]);    // eventually take off suffix
+        snprintf(xml_input_file, XML_NAME_SIZE, "%s", file_name);
+        strncat(xml_input_file, ".xml", XML_NAME_SIZE - strlen(xml_input_file));
     } else {
         xml_input_file = NULL;
     }
@@ -11236,11 +11306,14 @@ int main(int argc, char *argv[]) {
     fprintf(fp, "\n");
     */
 
-    // prepare xml output file
+    // prepare xml output files
     int rootDone = 0;
+    int rootDone_pred = 0;
     int last = 0;
     xmlDocPtr doc_o = xmlNewDoc((const xmlChar*)"1.0");
     xmlNodePtr nptrRoot = NULL;
+    xmlDocPtr doc_o_pred = xmlNewDoc((const xmlChar*)"1.0");
+    xmlNodePtr nptrRoot_pred = NULL;
 
     // display loop
     xbt_dynar_foreach(infos_dst, cpt, elem) {
@@ -11250,7 +11323,24 @@ int main(int argc, char *argv[]) {
             if (!rootDone) {
 
                 nptrRoot = rootToXml(a, b, elem->height, doc_o);
-                if (nptrRoot != NULL) rootDone = 1;
+
+                xbt_assert(nptrRoot != NULL, "Node %d: [%s:%d] XML Root error for routing table",
+                        elem->node_id,
+                        __FUNCTION__,
+                        __LINE__);
+
+                rootDone = 1;
+            }
+            if (!rootDone_pred) {
+
+                nptrRoot_pred = rootToXml(a, b, elem->height, doc_o_pred);
+
+                xbt_assert(nptrRoot_pred != NULL, "Node %d: [%s:%d] XML Root error for preds table",
+                        elem->node_id,
+                        __FUNCTION__,
+                        __LINE__);
+
+                rootDone_pred = 1;
             }
 
             // xml <node> and children
@@ -11259,6 +11349,12 @@ int main(int argc, char *argv[]) {
                 // last node ?
                 last = (cpt == xbt_dynar_length(infos_dst) - 1);
                 nodeToXml(elem->node_id, nptrRoot, last, elem->brothers, elem->height, b);
+            }
+            if (nptrRoot_pred != NULL) {
+
+                // last node ?
+                last = (cpt == xbt_dynar_length(infos_dst) - 1);
+                nodeToXml(elem->node_id, nptrRoot_pred, last, elem->preds, elem->height, b);
             }
 
             loc_nb_nodes_tot++;
@@ -11372,9 +11468,11 @@ int main(int argc, char *argv[]) {
 
     //fclose(fp);
 
-    // save xml file
+    // save xml files
     xmlSaveFormatFile(xml_output_file, doc_o, 0);
     xmlFreeDoc(doc_o);
+    xmlSaveFormatFile(xml_output_pred_file, doc_o_pred, 0);
+    xmlFreeDoc(doc_o_pred);
 
 
     XBT_INFO("Number of elements in infos_dst = %d", cpt);
@@ -11446,6 +11544,10 @@ int main(int argc, char *argv[]) {
     }
 
     xbt_os_timer_free(timer);
+
+    xbt_free(xml_output_file);
+    xbt_free(xml_output_pred_file);
+    xbt_free(xml_input_file);
 
     //MSG_clean();
     XBT_OUT();
