@@ -1130,6 +1130,7 @@ static void set_n_store_infos(node_t me) {
      * update preds table
      */
 
+    /*
     // copy preds table ids into dst_infos table
     for (stage = 0; stage < me->dst_infos.height; stage++) {
 
@@ -1156,6 +1157,7 @@ static void set_n_store_infos(node_t me) {
             me->dst_infos.preds[stage][pred] = me->preds[stage][pred].id;
         }
     }
+    */
     /**/
 
 
@@ -5240,10 +5242,12 @@ static int join(node_t me, int contact_id) {
 
         xbt_free(me->brothers[stage]);
         xbt_free(me->preds[stage]);
+        xbt_free(me->dst_infos.preds[stage]);
     }
 
     xbt_free(me->brothers);
     xbt_free(me->preds);
+    xbt_free(me->dst_infos.preds);
 
     // get the new contact and its height
     s_node_rep_t contact = answer_data->answer.cnx_req.new_contact;
@@ -5271,12 +5275,14 @@ static int join(node_t me, int contact_id) {
     // get contact's tables content
     me->brothers = xbt_new0(node_rep_t, me->height);
     me->preds = xbt_new0(node_rep_t, me->height);
+    me->dst_infos.preds = xbt_new0(int*, me->height);
 
     int brother;
     for (stage = 0; stage < me->height; stage++) {
 
         me->brothers[stage] = xbt_new0(s_node_rep_t, b);
         me->preds[stage] = xbt_new0(s_node_rep_t, b);
+        me->dst_infos.preds[stage] = xbt_new0(int, b);
 
         for (brother = 0; brother < b; brother++) {
 
@@ -5291,6 +5297,7 @@ static int join(node_t me, int contact_id) {
     for (brother = 0; brother < b; brother++ ) {
 
         me->preds[0][brother] = me->brothers[0][brother];
+        me->dst_infos.preds[0][brother] = me->brothers[0][brother].id;
     }
 
     // get other data
@@ -6291,6 +6298,7 @@ static void add_stage(node_t me) {
 
     // add stage to DST infos
     me->dst_infos.load = realloc(me->dst_infos.load, me->height * sizeof(int));
+    me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
 
     xbt_assert(me->dst_infos.load != NULL,
             "Node %d: Can't add stage %d to load table",
@@ -6298,11 +6306,12 @@ static void add_stage(node_t me) {
             me->height);
 
     me->pred_index[me->height-1] = 0;
-    //me->dst_infos.load[me->height-1] = 0;
+    //me->dst_infos.load[me->height-1] = 0;     //TODO : pourquoi avoir commenté ça ?
     me->preds[me->height-1] = xbt_new0(s_node_rep_t, b);
+    me->dst_infos.preds[me->height-1] = xbt_new0(int, b);
     add_pred(me, me->height-1, me->self.id);
 
-    XBT_VERB("Node %d: New stage %d added for me", me->self.id, me->height-1);
+    XBT_VERB("Node %d: [%s:%d] New stage %d added for me", me->self.id, __FUNCTION__, __LINE__, me->height-1);
     XBT_OUT();
 }
 
@@ -6335,10 +6344,35 @@ static void add_pred(node_t me, int stage, int id) {
     me->preds[stage][me->pred_index[stage]].id = id;
     set_mailbox(id, me->preds[stage][me->pred_index[stage]].mailbox);
 
-    me->pred_index[stage]++;
+    me->dst_infos.preds[stage][me->pred_index[stage]] = id;
 
-    // set DST infos
+    me->pred_index[stage]++;
     me->dst_infos.load[stage] = me->pred_index[stage];
+
+    // set dst_infos preds array bigger (by steps of b) if needed
+    if ((me->pred_index[stage] % b == 0) && (me->pred_index[stage] > 0)) {
+
+        me->dst_infos.preds[stage] = realloc(me->dst_infos.preds[stage],
+                (me->pred_index[stage] + b) * sizeof(int));
+
+        xbt_assert(me->dst_infos.preds[stage] != NULL,
+                "Node %d: [%s:%d] Realloc of dst_infos preds[%d] failed",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                stage);
+
+        int i;
+        for (i = me->pred_index[stage]; i < me->pred_index[stage] + b; i++) {
+
+            me->dst_infos.preds[stage][i] = -1;
+        }
+
+        XBT_DEBUG("Node %d: [%s:%d] dst_infos predecessors array has been set bigger",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
+    }
 
     // set the predecessors array bigger (by steps of b) if needed
     if ((me->pred_index[stage] % b == 0) && (me->pred_index[stage] > 0)) {
@@ -6356,8 +6390,8 @@ static void add_pred(node_t me, int stage, int id) {
         int i;
         for (i = me->pred_index[stage]; i < me->pred_index[stage] + b; i++) {
 
-            me->preds[stage][i].id = 0;
-            set_mailbox(0, me->preds[stage][i].mailbox);
+            me->preds[stage][i].id = -1;     //TODO : faut-il mettre -1 ?
+            set_mailbox(-1, me->preds[stage][i].mailbox);
         }
 
         XBT_DEBUG("Node %d: [%s:%d] Predecessors array has been set bigger",
@@ -6445,12 +6479,14 @@ static void del_pred(node_t me, int stage, int pred2del) {
             for (i = idx; i < size-1; i++) {
 
                 me->preds[stage][i] = me->preds[stage][i+1];
+                me->dst_infos.preds[stage][i] = me->dst_infos.preds[stage][i+1];
             }
             idx = i;
         }
 
         me->preds[stage][idx].id = -1;
         set_mailbox(-1, me->preds[stage][idx].mailbox);
+        me->dst_infos.preds[stage][idx] = -1;
         me->pred_index[stage]--;
 
         // set DST infos
@@ -8616,6 +8652,8 @@ static void del_root(node_t me, int init_height) {
         me->brothers[me->height - 1] = NULL;
         xbt_free(me->preds[me->height - 1]);
         me->preds[me->height - 1] = NULL;
+        xbt_free(me->dst_infos.preds[me->height - 1]);
+        me->dst_infos.preds[me->height - 1] = NULL;
 
         me->height--;
 
@@ -8624,6 +8662,7 @@ static void del_root(node_t me, int init_height) {
 
         me->brothers = realloc(me->brothers, me->height * sizeof(node_rep_t));
         me->preds = realloc(me->preds, me->height * sizeof(node_rep_t));
+        me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
 
         xbt_assert((me->preds != NULL) && (me->pred_index != NULL),
                 "Node %d: Can't delete root from predecessors table - height = %d",
