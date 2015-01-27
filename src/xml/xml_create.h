@@ -29,7 +29,7 @@ void stageToXml(int stage, int *row, int size, xmlNodePtr parent, int last);
 /**
  * \brief create an xml <node> node with all its stages and members, as a child of given parent root node
  */
-void nodeToXml(int node_id, xmlNodePtr parent, int last, int **routing_table, int height, int row_size);
+void nodeToXml(int node_id, xmlNodePtr parent, int last, int **routing_table, int height, int *row_sizes);
 
 /**
  * \brief create a root xml node into a given xml document

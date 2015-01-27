@@ -94,9 +94,9 @@ void stageToXml(int stage, int *row, int size, xmlNodePtr parent, int last) {
  * \param last equals to one if this is the last 'node' node to create
  * \param routing_table node's complete routing table
  * \param height number of stages
- * \param row_size number of members per stage
+ * \param row_sizes array of number of members per stage
  */
-void nodeToXml(int node_id, xmlNodePtr parent, int last, int **routing_table, int height, int row_size) {
+void nodeToXml(int node_id, xmlNodePtr parent, int last, int **routing_table, int height, int *row_sizes) {
 
     // <node> node
     xmlChar *xid = itox(node_id);
@@ -114,7 +114,7 @@ void nodeToXml(int node_id, xmlNodePtr parent, int last, int **routing_table, in
     int stage;
     for (stage = 0; stage < height; stage++) {
 
-        stageToXml(stage, routing_table[stage], row_size, nptrNode, stage == height - 1);
+        stageToXml(stage, routing_table[stage], row_sizes[stage], nptrNode, stage == height - 1);
     }
 }
 

@@ -1105,7 +1105,7 @@ static void set_n_store_infos(node_t me) {
 
             me->dst_infos.brothers[i] = xbt_new0(int, b);
         }
-        //me->dst_infos.height = me->height;
+        me->dst_infos.height = me->height;
     }
 
     int stage, brother;
@@ -11387,13 +11387,13 @@ int main(int argc, char *argv[]) {
 
                 // last node ?
                 last = (cpt == xbt_dynar_length(infos_dst) - 1);
-                nodeToXml(elem->node_id, nptrRoot, last, elem->brothers, elem->height, b);
+                nodeToXml(elem->node_id, nptrRoot, last, elem->brothers, elem->height, elem->size);
             }
             if (nptrRoot_pred != NULL) {
 
                 // last node ?
                 last = (cpt == xbt_dynar_length(infos_dst) - 1);
-                nodeToXml(elem->node_id, nptrRoot_pred, last, elem->preds, elem->height, b);
+                nodeToXml(elem->node_id, nptrRoot_pred, last, elem->preds, elem->height, elem->load);
             }
 
             loc_nb_nodes_tot++;
