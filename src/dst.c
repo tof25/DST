@@ -1122,45 +1122,6 @@ static void set_n_store_infos(node_t me) {
         }
     }
 
-    /***********************************  TODO *********************************
-     * REMPLISSAGE PREDS NE MARCHE PAS
-     * *************************************************************************/
-
-    /**
-     * update preds table
-     */
-
-    /*
-    // copy preds table ids into dst_infos table
-    for (stage = 0; stage < me->dst_infos.height; stage++) {
-
-        me->dst_infos.preds[stage] = realloc(me->dst_infos.preds[stage], me->pred_index[stage] * sizeof(int));
-    }
-
-    if (me->dst_infos.height != me->height) {
-
-        int i;
-
-        // add stages if requested
-        me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));        //TODO : vérifier la libération mémoire
-        for (i = me->dst_infos.height; i < me->height; i++) {
-
-            me->dst_infos.preds[i] = xbt_new0(int, me->pred_index[i]);
-        }
-        me->dst_infos.height = me->height;
-    }
-
-    int pred;
-    for (stage = 0; stage < me->height; stage++) {
-        for (pred = 0; pred < me->pred_index[stage]; pred++) {
-
-            me->dst_infos.preds[stage][pred] = me->preds[stage][pred].id;
-        }
-    }
-    */
-    /**/
-
-
     // update other fields
     s_state_t state = get_state(me);
     me->dst_infos.active = state.active;
@@ -3515,9 +3476,9 @@ static void node_free(node_t me) {
     me->dst_infos.load = NULL;
     */
 
-    //xbt_free(me->bro_index);          //TODO: pose problème pour dst_infos.size
+    // not necessary to free bro_index; dst_infos.size is the same pointer and will be freed
     me->bro_index = NULL;
-    //xbt_free(me->pred_index);         //TODO: pose problème pour dst_infos.load
+    xbt_free(me->pred_index);         //TODO: pose problème pour dst_infos.load
     me->pred_index = NULL;
     xbt_free(me->comm_received);
     me->comm_received = NULL;
