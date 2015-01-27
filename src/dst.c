@@ -3515,9 +3515,9 @@ static void node_free(node_t me) {
     me->dst_infos.load = NULL;
     */
 
-    xbt_free(me->bro_index);
+    //xbt_free(me->bro_index);          //TODO: pose problème pour dst_infos.size
     me->bro_index = NULL;
-    xbt_free(me->pred_index);
+    //xbt_free(me->pred_index);         //TODO: pose problème pour dst_infos.load
     me->pred_index = NULL;
     xbt_free(me->comm_received);
     me->comm_received = NULL;
