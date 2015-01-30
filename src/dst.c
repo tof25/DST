@@ -9436,19 +9436,136 @@ int node(int argc, char *argv[]) {
             "Node %d: Wrong number of arguments for this node",
             atoi(argv[1]));
 
-    //double init_time = MSG_get_clock();
+    char xpath[LEN_XPATH + 1];
+    int join_success = 0;       // failed by default
 
     // self init
     s_node_t node;
     node.self.id = atoi(argv[1]);
 
-    int join_success = 0;       // failed by default
-    /*
-    int tries = 0;
-    int tries_mem = TRY_STEP;
-    */
-
     init(&node);
+
+    // try to fetch routing table from xml input file
+    if (xml_input_file != NULL) {
+
+        // routing tables
+        node_id_t node_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
+        node_table->id = -1;
+        node_table->routing_table = NULL;
+        node_table->sizes = NULL;
+
+        snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
+        node_table = getMembers(doc_i, xpath);
+
+        // preds tables
+        node_id_t pred_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
+        pred_table->id = -1;
+        pred_table->routing_table = NULL;
+        pred_table->sizes = NULL;
+
+        //snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
+        pred_table = getMembers(doc_i_pred, xpath);
+
+        if (node_table && pred_table) {
+
+            XBT_VERB("Node %d: [%s:%d] routing and predecessors tables found in xml input files",
+                    node.self.id,
+                    __FUNCTION__,
+                    __LINE__);
+
+            // resize current tables
+            xbt_free(node.brothers[0]);
+            xbt_free(node.preds[0]);
+            node.brothers = realloc(node.brothers, xml_height * sizeof(node_rep_t));
+            node.preds = realloc(node.preds, xml_height * sizeof(node_rep_t));
+            node.dst_infos.preds = realloc(node.dst_infos.preds, xml_height * sizeof(int*));
+
+            /* copy xml tables into current ones */
+
+            // brothers
+            int stage, brother;
+            for (stage = 0; stage < xml_height; stage++) {
+
+                node.brothers[stage] = xbt_new0(s_node_rep_t, b);
+                for (brother = 0; brother < node_table->sizes[stage]; brother++) {
+
+                    node.brothers[stage][brother].id = node_table->routing_table[stage][brother];
+                    set_mailbox(node.brothers[stage][brother].id, node.brothers[stage][brother].mailbox);
+                }
+            }
+
+            // brothers indexes
+            node.bro_index = realloc(node.bro_index, xml_height * sizeof(int));
+            for (stage = 0; stage < xml_height; stage++) {
+
+                node.bro_index[stage] = node_table->sizes[stage];
+            }
+
+            // height
+            node.height = xml_height;
+
+            XBT_VERB("Node %d: [%s:%d] routing table fetched from XML:",
+                    node.self.id,
+                    __FUNCTION__,
+                    __LINE__);
+            display_rout_table(&node, 'V');
+
+            // dst_infos
+            if (node.dst_infos.order == 0) {
+
+                // only one order number per node
+                node.dst_infos.order = order++;
+            }
+
+            node.dst_infos.node_id = node.self.id;
+            node.dst_infos.attempts = 1;
+            node.dst_infos.add_stage = -1;
+            node.dst_infos.nbr_split_stages = -1;
+            node.dst_infos.nb_cs_req_fail = 0;
+            node.dst_infos.nb_cs_req_success = 0;
+            node.dst_infos.nb_set_update_fail = 0;
+            node.dst_infos.nb_set_update_success = 0;
+            node.dst_infos.nb_task_remove = 0;
+            node.dst_infos.nb_chg_contact = 0;
+
+            // predecessors
+            node.pred_index = realloc(node.pred_index, xml_height * sizeof(int));
+            node.dst_infos.load = realloc(node.dst_infos.load, xml_height * sizeof(int));
+            xbt_free(node.dst_infos.preds[0]);
+
+            for (stage = 0; stage < xml_height; stage++) {
+
+                node.pred_index[stage] = pred_table->sizes[stage];
+                node.dst_infos.load[stage] = node.pred_index[stage];
+
+                node.preds[stage] = xbt_new0(s_node_rep_t, pred_table->sizes[stage]);
+                node.dst_infos.preds[stage] = xbt_new0(int, pred_table->sizes[stage]);
+                for (brother = 0; brother < pred_table->sizes[stage]; brother++) {
+
+                    node.preds[stage][brother].id = pred_table->routing_table[stage][brother];
+                    set_mailbox(node.preds[stage][brother].id, node.preds[stage][brother].mailbox);
+                    node.dst_infos.preds[stage][brother] = pred_table->routing_table[stage][brother];
+                }
+            }
+
+            XBT_VERB("Node %d: [%s:%d] predecessors table fetched from XML:",
+                    node.self.id,
+                    __FUNCTION__,
+                    __LINE__);
+            display_preds(&node, 'V');
+
+            join_success = 1;
+        } else {
+
+            XBT_WARN("Node %d: [%s:%d] Failed to fetch tables from XML files",
+                    node.self.id,
+                    __FUNCTION__,
+                    __LINE__);
+
+            xbt_free(node_table);
+            xbt_free(pred_table);
+        }
+    }
 
     if (argc == 5) {            // all nodes but first one need to join
 
@@ -9460,147 +9577,6 @@ int node(int argc, char *argv[]) {
         u_req_args.get_new_contact.new_node_id = node.self.id;
         ans_data_t answer_data = NULL;
         msg_error_t res;
-        int index = 0;
-        char xpath[LEN_XPATH + 1];
-
-        // try to fetch routing table from xml input file
-        if (xml_input_file != NULL) {
-
-            // routing tables
-            node_id_t node_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
-            node_table->id = -1;
-            node_table->routing_table = NULL;
-            node_table->sizes = NULL;
-
-            snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
-            node_table = getMembers(doc_i, xpath);
-
-            // preds tables
-            node_id_t pred_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
-            pred_table->id = -1;
-            pred_table->routing_table = NULL;
-            pred_table->sizes = NULL;
-
-            //snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
-            pred_table = getMembers(doc_i_pred, xpath);
-
-            if (node_table && pred_table) {
-
-                XBT_VERB("Node %d: [%s:%d] routing and predecessors tables found in xml input files",
-                        node.self.id,
-                        __FUNCTION__,
-                        __LINE__);
-
-                // discard current tables
-                int stage;
-                for (stage = 0; stage < xml_height; stage++) {
-
-                    xbt_free(node.brothers[stage]);
-                    xbt_free(node.preds[stage]);
-                }
-                xbt_free(node.brothers);
-                xbt_free(node.preds);
-                node.brothers = xbt_new0(node_rep_t, xml_height);
-                node.preds = xbt_new0(node_rep_t, xml_height);
-
-                /* copy xml tables into current ones */
-
-                // brothers
-                int brother;
-                for (stage = 0; stage < xml_height; stage++) {
-
-                    node.brothers[stage] = xbt_new0(s_node_rep_t, b);
-                    //for (brother = 0; brother < b; brother++) {
-                    for (brother = 0; brother < node_table->sizes[stage]; brother++) {
-
-                        node.brothers[stage][brother].id = node_table->routing_table[stage][brother];
-                        set_mailbox(node.brothers[stage][brother].id, node.brothers[stage][brother].mailbox);
-                    }
-                }
-
-                // brothers indexes
-                xbt_free(node.bro_index);
-                node.bro_index = xbt_new0(int, xml_height);
-                for (stage = 0; stage < xml_height; stage++) {
-
-                    /*
-                    brother = 0;
-                    while (node.brothers[stage][brother].id != -1 && brother < b) {
-                        brother++;
-                    }
-                    node.bro_index[stage] = brother;
-                    */
-                    node.bro_index[stage] = node_table->sizes[stage];
-                }
-
-                // height
-                node.height = xml_height;
-
-                XBT_VERB("Node %d: [%s:%d] routing table fetched from XML:",
-                        node.self.id,
-                        __FUNCTION__,
-                        __LINE__);
-                display_rout_table(&node, 'V');
-
-                // dst_infos
-                if (node.dst_infos.order == 0) {
-
-                    // only one order number per node
-                    node.dst_infos.order = order++;
-                }
-                node.dst_infos.node_id = node.self.id;
-                node.dst_infos.attempts = 1;
-                node.dst_infos.add_stage = -1;
-                node.dst_infos.nbr_split_stages = -1;
-                node.dst_infos.load = NULL;
-                node.dst_infos.nb_cs_req_fail = 0;
-                node.dst_infos.nb_cs_req_success = 0;
-                node.dst_infos.nb_set_update_fail = 0;
-                node.dst_infos.nb_set_update_success = 0;
-                node.dst_infos.nb_task_remove = 0;
-                node.dst_infos.nb_chg_contact = 0;
-
-                // predecessors
-                xbt_free(node.pred_index);
-                node.pred_index = xbt_new0(int, xml_height);
-                node.dst_infos.load = xbt_new0(int, xml_height);
-
-                for (stage = 0; stage < xml_height; stage++) {
-
-                    node.pred_index[stage] = pred_table->sizes[stage];
-                    node.dst_infos.load[stage] = node.pred_index[stage];
-
-                    node.preds[stage] = xbt_new0(s_node_rep_t, pred_table->sizes[stage]);
-                    for (brother = 0; brother < pred_table->sizes[stage]; brother++) {
-
-                        node.preds[stage][brother].id = pred_table->routing_table[stage][brother];
-                        set_mailbox(node.preds[stage][brother].id, node.preds[stage][brother].mailbox);
-                    }
-                }
-
-                XBT_VERB("Node %d: [%s:%d] predecessors table fetched from XML:",
-                        node.self.id,
-                        __FUNCTION__,
-                        __LINE__);
-                display_preds(&node, 'V');
-
-                join_success = 1;
-            } else {
-
-                XBT_WARN("Node %d: [%s:%d] Failed to fetch tables from XML files",
-                        node.self.id,
-                        __FUNCTION__,
-                        __LINE__);
-
-                xbt_free(node_table);
-                xbt_free(pred_table);
-            }
-        }
-
-        /********************************************
-         * CONTINUER LA LECTURE DES XML
-         * NE PAS OUBLIER nb_ins_nodes
-         * ******************************************/
 
         while (!join_success) {
 
@@ -9658,10 +9634,10 @@ int node(int argc, char *argv[]) {
                 //node.dst_infos.nb_chg_contact++;
 
                 XBT_INFO("Node %d: [%s:%d] Try with another contact : %d",
-                        node.self.id,
-                        __FUNCTION__,
-                        __LINE__,
-                        contact_id);
+                node.self.id,
+                __FUNCTION__,
+                __LINE__,
+                contact_id);
                 */
             } else {
 
@@ -11291,7 +11267,7 @@ int main(int argc, char *argv[]) {
     if (xml_input_file != NULL) {
 
         doc_i = get_xml_input_file(xml_input_file);
-        doc_i_pred = get_xml_input_file(xml_input_file);
+        doc_i_pred = get_xml_input_file(xml_input_pred_file);
 
         // failed
         if (doc_i == NULL || doc_i_pred == NULL) {
