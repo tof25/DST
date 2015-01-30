@@ -52,9 +52,11 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
    =========================== FOR XML ROUTING TABLES FILES =======================================
 */
 static char *xml_input_file = NULL;         // name of the optionnal xml input file (for routing tables)
+static char *xml_input_pred_file = NULL;    // name of the optionnal xml input file (for preds tables)
 static char *xml_output_file = NULL;        // name of the xml output file (for routing tables)
 static char *xml_output_pred_file = NULL;   // name of the xml output pred file (for preds tables)
-static xmlDocPtr doc_i = NULL;              // pointer to the parsed xml input file
+static xmlDocPtr doc_i = NULL;              // pointer to the parsed xml input file for routing tables
+static xmlDocPtr doc_i_pred = NULL;         // pointer to the parsed xml input file for preds tables
 static int xml_height = -1;                 // dst height read from xml input file
 
 /*
@@ -9464,57 +9466,55 @@ int node(int argc, char *argv[]) {
         // try to fetch routing table from xml input file
         if (xml_input_file != NULL) {
 
+            // routing tables
             node_id_t node_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
             node_table->id = -1;
             node_table->routing_table = NULL;
+            node_table->sizes = NULL;
 
             snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
             node_table = getMembers(doc_i, xpath);
 
-            if (node_table) {
+            // preds tables
+            node_id_t pred_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
+            pred_table->id = -1;
+            pred_table->routing_table = NULL;
+            pred_table->sizes = NULL;
 
-                XBT_VERB("Node %d: [%s:%d] routing table found in xml input file",
+            //snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
+            pred_table = getMembers(doc_i_pred, xpath);
+
+            if (node_table && pred_table) {
+
+                XBT_VERB("Node %d: [%s:%d] routing and predecessors tables found in xml input files",
                         node.self.id,
                         __FUNCTION__,
                         __LINE__);
-
-                /*
-                if (node_table) {
-                    int i, j;
-                    printf("Node %d:\n", node_table->id);
-                    for (i = 0; i < xml_height; i++) {
-                        for (j = 0; j < b; j++) {
-                            printf("\t%d", node_table->routing_table[i][j]);
-                        }
-                        //free(node_table->routing_table[i]);
-                        printf("\n");
-                    }
-                    //free(node_table->routing_table);
-                    //free(node_table);
-                }
-                */
 
                 // discard current tables
                 int stage;
                 for (stage = 0; stage < xml_height; stage++) {
 
                     xbt_free(node.brothers[stage]);
+                    xbt_free(node.preds[stage]);
                 }
                 xbt_free(node.brothers);
+                xbt_free(node.preds);
                 node.brothers = xbt_new0(node_rep_t, xml_height);
+                node.preds = xbt_new0(node_rep_t, xml_height);
 
-                /* copy xml table into current one */
+                /* copy xml tables into current ones */
 
                 // brothers
                 int brother;
                 for (stage = 0; stage < xml_height; stage++) {
 
                     node.brothers[stage] = xbt_new0(s_node_rep_t, b);
-                    for (brother = 0; brother < b; brother++) {
+                    //for (brother = 0; brother < b; brother++) {
+                    for (brother = 0; brother < node_table->sizes[stage]; brother++) {
 
                         node.brothers[stage][brother].id = node_table->routing_table[stage][brother];
-                        set_mailbox(node.brothers[stage][brother].id,
-                                    node.brothers[stage][brother].mailbox);
+                        set_mailbox(node.brothers[stage][brother].id, node.brothers[stage][brother].mailbox);
                     }
                 }
 
@@ -9523,11 +9523,14 @@ int node(int argc, char *argv[]) {
                 node.bro_index = xbt_new0(int, xml_height);
                 for (stage = 0; stage < xml_height; stage++) {
 
+                    /*
                     brother = 0;
                     while (node.brothers[stage][brother].id != -1 && brother < b) {
                         brother++;
                     }
                     node.bro_index[stage] = brother;
+                    */
+                    node.bro_index[stage] = node_table->sizes[stage];
                 }
 
                 // height
@@ -9557,16 +9560,47 @@ int node(int argc, char *argv[]) {
                 node.dst_infos.nb_task_remove = 0;
                 node.dst_infos.nb_chg_contact = 0;
 
-                /**************************************************************************
-                 * TODO : mettre en place la même chose pour les prédécesseurs
-                 *        voir pour load (y compris dans les dst_infos) = pred_index ?
-                 *        penser aux dst_infos
-                 **************************************************************************/
+                // predecessors
+                xbt_free(node.pred_index);
+                node.pred_index = xbt_new0(int, xml_height);
+                node.dst_infos.load = xbt_new0(int, xml_height);
+
+                for (stage = 0; stage < xml_height; stage++) {
+
+                    node.pred_index[stage] = pred_table->sizes[stage];
+                    node.dst_infos.load[stage] = node.pred_index[stage];
+
+                    node.preds[stage] = xbt_new0(s_node_rep_t, pred_table->sizes[stage]);
+                    for (brother = 0; brother < pred_table->sizes[stage]; brother++) {
+
+                        node.preds[stage][brother].id = pred_table->routing_table[stage][brother];
+                        set_mailbox(node.preds[stage][brother].id, node.preds[stage][brother].mailbox);
+                    }
+                }
+
+                XBT_VERB("Node %d: [%s:%d] predecessors table fetched from XML:",
+                        node.self.id,
+                        __FUNCTION__,
+                        __LINE__);
+                display_preds(&node, 'V');
 
                 join_success = 1;
+            } else {
+
+                XBT_WARN("Node %d: [%s:%d] Failed to fetch tables from XML files",
+                        node.self.id,
+                        __FUNCTION__,
+                        __LINE__);
+
+                xbt_free(node_table);
+                xbt_free(pred_table);
             }
-            //xbt_assert(1 == 0);
         }
+
+        /********************************************
+         * CONTINUER LA LECTURE DES XML
+         * NE PAS OUBLIER nb_ins_nodes
+         * ******************************************/
 
         while (!join_success) {
 
@@ -11217,8 +11251,10 @@ int main(int argc, char *argv[]) {
 
 
     if (argc >= 4) {
+
         snprintf(xml_output_file, XML_NAME_SIZE, "%s", argv[3]);
     } else {
+
         snprintf(xml_output_file, XML_NAME_SIZE, "%s", "routing_tables");
     }
 
@@ -11232,22 +11268,41 @@ int main(int argc, char *argv[]) {
 
     // xml input files
     xml_input_file = xbt_new0(char, XML_NAME_SIZE);
+    xml_input_pred_file = xbt_new0(char, XML_NAME_SIZE);
 
     if (argc >= 5) {
+
         char *file_name = filename(argv[4]);    // eventually take off suffix
         snprintf(xml_input_file, XML_NAME_SIZE, "%s", file_name);
         strncat(xml_input_file, ".xml", XML_NAME_SIZE - strlen(xml_input_file));
+
+        snprintf(xml_input_pred_file, XML_NAME_SIZE, "%s", "pred_");
+        strncat(xml_input_pred_file, file_name, XML_NAME_SIZE - strlen(xml_input_pred_file));
+        strncat(xml_input_pred_file, ".xml", XML_NAME_SIZE - strlen(xml_input_pred_file));
     } else {
+
+        xbt_free(xml_input_file);
+        xbt_free(xml_input_pred_file);
         xml_input_file = NULL;
+        xml_input_pred_file = NULL;
     }
 
-    // get xml input file
+    // get xml input files
     if (xml_input_file != NULL) {
 
         doc_i = get_xml_input_file(xml_input_file);
+        doc_i_pred = get_xml_input_file(xml_input_file);
 
         // failed
-        if (doc_i == NULL) xml_input_file = NULL;
+        if (doc_i == NULL || doc_i_pred == NULL) {
+
+            XBT_WARN("[%s:%d] Failed to read XML input files", __FUNCTION__, __LINE__);
+
+            xbt_free(xml_input_file);
+            xbt_free(xml_input_pred_file);
+            xml_input_file = NULL;
+            xml_input_pred_file = NULL;
+        }
     }
 
     nb_nodes = count_lines_of_file(deployment_file);

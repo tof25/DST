@@ -13,6 +13,7 @@
 typedef struct node_id {
     int id;                 // Node's id
     int **routing_table;    // Node's routing table
+    int *sizes;             // number of members per stage
 } s_node_id_t, *node_id_t;
 
 /**

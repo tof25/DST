@@ -156,6 +156,7 @@ node_id_t getMembers(xmlDocPtr doc, char *xpath) {
         if (stageset) {
 
             node_table->routing_table = malloc(stageset->nodeNr * sizeof(int*));
+            node_table->sizes = malloc(stageset->nodeNr * sizeof(int));
 
             for (stage = 0; stage < stageset->nodeNr; stage++) {
 
@@ -170,12 +171,15 @@ node_id_t getMembers(xmlDocPtr doc, char *xpath) {
 
                         node_table->routing_table[stage][member] = getIntProp(memberset->nodeTab[member], "value");
                     }
+                    node_table->sizes[stage] = memberset->nodeNr;
 
                     xmlXPathFreeNodeSet(memberset);
                 } else {
 
                     free (node_table->routing_table);
                     node_table->routing_table = NULL;
+                    free(node_table->sizes);
+                    node_table->sizes = NULL;
                     free(node_table);
                     node_table = NULL;
                 }
