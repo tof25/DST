@@ -1102,7 +1102,7 @@ static void set_n_store_infos(node_t me) {
         int i;
 
         // add stages if requested
-        me->dst_infos.brothers = realloc(me->dst_infos.brothers, me->height * sizeof(int*));        //TODO : vérifier la libération mémoire
+        me->dst_infos.brothers = realloc(me->dst_infos.brothers, me->height * sizeof(int*));
         for (i = me->dst_infos.height; i < me->height; i++) {
 
             me->dst_infos.brothers[i] = xbt_new0(int, b);
@@ -3472,15 +3472,9 @@ static void node_free(node_t me) {
     proc_data = NULL;
     */
 
-    /*
-    // will be freed with dst_infos dynar
-    xbt_free(me->dst_infos.load);
-    me->dst_infos.load = NULL;
-    */
-
     // not necessary to free bro_index; dst_infos.size is the same pointer and will be freed
     me->bro_index = NULL;
-    xbt_free(me->pred_index);         //TODO: pose problème pour dst_infos.load
+    xbt_free(me->pred_index);
     me->pred_index = NULL;
     xbt_free(me->comm_received);
     me->comm_received = NULL;
@@ -5033,7 +5027,8 @@ static void send_completed(node_t me, e_task_type_t type, int recipient_id, char
 static void init(node_t me) {
 
     XBT_IN();
-    XBT_INFO("Node %d: init() ...", me->self.id);
+
+    XBT_INFO("Node %d: [%s:%d] init() ...", me->self.id, __FUNCTION__, __LINE__);
     int i, j;
 
     me->height = 1;
@@ -9445,40 +9440,50 @@ int node(int argc, char *argv[]) {
 
     init(&node);
 
-    // try to fetch routing table from xml input file
+    // try to fetch routing tables from xml input files
     if (xml_input_file != NULL) {
 
-        // routing tables
-        node_id_t node_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
-        node_table->id = -1;
-        node_table->routing_table = NULL;
-        node_table->sizes = NULL;
-
+        // set xpath
         snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
-        node_table = getMembers(doc_i, xpath);
+
+        // routing tables
+        node_id_t xml_node_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
+        xml_node_table->id = -1;
+        xml_node_table->routing_table = NULL;
+        xml_node_table->sizes = NULL;
+        xml_node_table = getMembers(doc_i, xpath);
 
         // preds tables
-        node_id_t pred_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
-        pred_table->id = -1;
-        pred_table->routing_table = NULL;
-        pred_table->sizes = NULL;
+        node_id_t xml_pred_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
+        xml_pred_table->id = -1;
+        xml_pred_table->routing_table = NULL;
+        xml_pred_table->sizes = NULL;
+        xml_pred_table = getMembers(doc_i_pred, xpath);
 
-        //snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
-        pred_table = getMembers(doc_i_pred, xpath);
+        if (xml_node_table && xml_pred_table) {
 
-        if (node_table && pred_table) {
-
-            XBT_VERB("Node %d: [%s:%d] routing and predecessors tables found in xml input files",
+            XBT_VERB("Node %d: [%s:%d] routing and predecessors tables found in xml input files ('%s' and '%s')",
                     node.self.id,
                     __FUNCTION__,
-                    __LINE__);
+                    __LINE__,
+                    xml_input_file,
+                    xml_input_pred_file);
 
             // resize current tables
             xbt_free(node.brothers[0]);
             xbt_free(node.preds[0]);
+
             node.brothers = realloc(node.brothers, xml_height * sizeof(node_rep_t));
+            node.bro_index = realloc(node.bro_index, xml_height * sizeof(int));
+
             node.preds = realloc(node.preds, xml_height * sizeof(node_rep_t));
+            node.pred_index = realloc(node.pred_index, xml_height * sizeof(int));
+
+            xbt_free(node.dst_infos.preds[0]);
             node.dst_infos.preds = realloc(node.dst_infos.preds, xml_height * sizeof(int*));
+            node.dst_infos.load = realloc(node.dst_infos.load, xml_height * sizeof(int));
+
+            // NOTE : dst_infos.brothers and size are processed in set_n_store_infos **/
 
             /* copy xml tables into current ones */
 
@@ -9486,19 +9491,13 @@ int node(int argc, char *argv[]) {
             int stage, brother;
             for (stage = 0; stage < xml_height; stage++) {
 
+                node.bro_index[stage] = xml_node_table->sizes[stage];
                 node.brothers[stage] = xbt_new0(s_node_rep_t, b);
-                for (brother = 0; brother < node_table->sizes[stage]; brother++) {
+                for (brother = 0; brother < xml_node_table->sizes[stage]; brother++) {
 
-                    node.brothers[stage][brother].id = node_table->routing_table[stage][brother];
+                    node.brothers[stage][brother].id = xml_node_table->routing_table[stage][brother];
                     set_mailbox(node.brothers[stage][brother].id, node.brothers[stage][brother].mailbox);
                 }
-            }
-
-            // brothers indexes
-            node.bro_index = realloc(node.bro_index, xml_height * sizeof(int));
-            for (stage = 0; stage < xml_height; stage++) {
-
-                node.bro_index[stage] = node_table->sizes[stage];
             }
 
             // height
@@ -9519,8 +9518,8 @@ int node(int argc, char *argv[]) {
 
             node.dst_infos.node_id = node.self.id;
             node.dst_infos.attempts = 1;
-            node.dst_infos.add_stage = -1;
-            node.dst_infos.nbr_split_stages = -1;
+            node.dst_infos.add_stage = 0;
+            node.dst_infos.nbr_split_stages = 0;
             node.dst_infos.nb_cs_req_fail = 0;
             node.dst_infos.nb_cs_req_success = 0;
             node.dst_infos.nb_set_update_fail = 0;
@@ -9529,22 +9528,18 @@ int node(int argc, char *argv[]) {
             node.dst_infos.nb_chg_contact = 0;
 
             // predecessors
-            node.pred_index = realloc(node.pred_index, xml_height * sizeof(int));
-            node.dst_infos.load = realloc(node.dst_infos.load, xml_height * sizeof(int));
-            xbt_free(node.dst_infos.preds[0]);
-
             for (stage = 0; stage < xml_height; stage++) {
 
-                node.pred_index[stage] = pred_table->sizes[stage];
+                node.pred_index[stage] = xml_pred_table->sizes[stage];
                 node.dst_infos.load[stage] = node.pred_index[stage];
 
-                node.preds[stage] = xbt_new0(s_node_rep_t, pred_table->sizes[stage]);
-                node.dst_infos.preds[stage] = xbt_new0(int, pred_table->sizes[stage]);
-                for (brother = 0; brother < pred_table->sizes[stage]; brother++) {
+                node.preds[stage] = xbt_new0(s_node_rep_t, xml_pred_table->sizes[stage]);
+                node.dst_infos.preds[stage] = xbt_new0(int, xml_pred_table->sizes[stage]);
+                for (brother = 0; brother < xml_pred_table->sizes[stage]; brother++) {
 
-                    node.preds[stage][brother].id = pred_table->routing_table[stage][brother];
+                    node.preds[stage][brother].id = xml_pred_table->routing_table[stage][brother];
                     set_mailbox(node.preds[stage][brother].id, node.preds[stage][brother].mailbox);
-                    node.dst_infos.preds[stage][brother] = pred_table->routing_table[stage][brother];
+                    node.dst_infos.preds[stage][brother] = xml_pred_table->routing_table[stage][brother];
                 }
             }
 
@@ -9562,8 +9557,8 @@ int node(int argc, char *argv[]) {
                     __FUNCTION__,
                     __LINE__);
 
-            xbt_free(node_table);
-            xbt_free(pred_table);
+            xbt_free(xml_node_table);
+            xbt_free(xml_pred_table);
         }
     }
 
@@ -9607,8 +9602,10 @@ int node(int argc, char *argv[]) {
                 node.dst_infos.order = order++;
             }
 
-            XBT_VERB("Node %d: order = %d",
+            XBT_INFO("Node %d: [%s:%d] order = %d",
                     node.self.id,
+                    __FUNCTION__,
+                    __LINE__,
                     node.dst_infos.order);
 
             join_success = join(&node, contact_id);
@@ -9648,14 +9645,23 @@ int node(int argc, char *argv[]) {
 
         // first node
         order = 0;
-        node.dst_infos.order = order++;
+        if (node.dst_infos.order == 0) {
+            node.dst_infos.order = order++;
+        }
+
+        XBT_INFO("Node %d: [%s:%d] order = %d",
+                node.self.id,
+                __FUNCTION__,
+                __LINE__,
+                node.dst_infos.order);
+
         node.deadline = atoi(argv[2]);
         join_success = 1;
     }
 
     if (join_success) {
 
-        XBT_INFO("Node %d: **** JOIN COMPLETED ****", node.self.id);
+        XBT_INFO("Node %d: **** JOIN COMPLETED **** - order = %d", node.self.id, node.dst_infos.order);
 
         // record inserted node id in global array
         inserted_nodes[nb_ins_nodes] = node.self.id;
