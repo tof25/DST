@@ -2096,6 +2096,14 @@ static int read_xml_files(node_t me, char *xpath) {
 
     XBT_IN();
 
+    xbt_assert(doc_i_pred != NULL && doc_i != NULL,
+            "Node %d: [%s:%d] documents not found ! doc_i = %p - doc_i_pred = %p",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            doc_i,
+            doc_i_pred);
+
     int join_success = 0;
 
     // routing tables
@@ -9579,6 +9587,12 @@ int node(int argc, char *argv[]) {
 
         snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
         join_success = read_xml_files(&node, xpath);
+
+        xbt_assert(join_success == 1,
+                "[%s:%d] Failed to fetch routing tables from file %s",
+                __FUNCTION__,
+                __LINE__,
+                xml_input_file);
     }
 
     if (argc == 5) {            // all nodes but first one need to join
@@ -9891,7 +9905,6 @@ int node(int argc, char *argv[]) {
         set_n_store_infos(&node);
     }
 
-    //MSG_process_sleep(1000.0);          //TODO : attente que les autres aient terminé. Peut mieux faire ?
     node_free(&node);
     XBT_OUT();
     return (!join_success);
@@ -11250,7 +11263,6 @@ int main(int argc, char *argv[]) {
     xml_output_file = xbt_new0(char, XML_NAME_SIZE);
     xml_output_pred_file = xbt_new0(char, XML_NAME_SIZE);
 
-
     if (argc >= 4) {
 
         snprintf(xml_output_file, XML_NAME_SIZE, "%s", argv[3]);
@@ -11259,13 +11271,9 @@ int main(int argc, char *argv[]) {
         snprintf(xml_output_file, XML_NAME_SIZE, "%s", "routing_tables");
     }
 
-    char *file_name = filename(xml_output_file);    // eventually take off suffix
+    // set xml_output_pred_file name
     snprintf(xml_output_pred_file, XML_NAME_SIZE, "%s", "pred_");
-    strncat(xml_output_pred_file, file_name, XML_NAME_SIZE - strlen(xml_output_pred_file));
-    strncat(xml_output_pred_file, ".xml", XML_NAME_SIZE - strlen(xml_output_pred_file));
-
-    snprintf(xml_output_file, XML_NAME_SIZE, "%s", file_name);
-    strncat(xml_output_file, ".xml", XML_NAME_SIZE - strlen(xml_output_file));
+    strncat(xml_output_pred_file, xml_output_file, XML_NAME_SIZE - strlen(xml_output_pred_file));
 
     // xml input files
     xml_input_file = xbt_new0(char, XML_NAME_SIZE);
@@ -11273,13 +11281,16 @@ int main(int argc, char *argv[]) {
 
     if (argc >= 5) {
 
-        char *file_name = filename(argv[4]);    // eventually take off suffix
-        snprintf(xml_input_file, XML_NAME_SIZE, "%s", file_name);
-        strncat(xml_input_file, ".xml", XML_NAME_SIZE - strlen(xml_input_file));
+        snprintf(xml_input_file, XML_NAME_SIZE, "%s", argv[4]);
 
         snprintf(xml_input_pred_file, XML_NAME_SIZE, "%s", "pred_");
-        strncat(xml_input_pred_file, file_name, XML_NAME_SIZE - strlen(xml_input_pred_file));
-        strncat(xml_input_pred_file, ".xml", XML_NAME_SIZE - strlen(xml_input_pred_file));
+        strncat(xml_input_pred_file, xml_input_file, XML_NAME_SIZE - strlen(xml_input_pred_file));
+
+        xbt_assert(strcmp(xml_input_file, xml_output_file) != 0,
+                "[%s:%d] xml output files and input files musn't have the same name !",
+                __FUNCTION__,
+                __LINE__);
+
     } else {
 
         xbt_free(xml_input_file);
