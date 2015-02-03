@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <libxml/parser.h>
+#include <libxml/xmlwriter.h>
 
 #ifndef XML_CREATE_H
 #define XML_CREATE_H

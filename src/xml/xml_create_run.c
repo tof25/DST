@@ -31,8 +31,31 @@ int main(int argc, char **argv) {
 
     if (doc != NULL) {
 
+    // conversions
+    xmlChar *xa, *xb, *xheight;
+    xa = itox(a);
+    xb = itox(b);
+    xheight = itox(height);
+
+    xmlTextWriterPtr writer = xmlNewTextWriterDoc(&doc, 0);
+    xmlTextWriterSetIndentString(writer, (xmlChar*)"  ");
+
+    xmlTextWriterStartElement(writer, (xmlChar*)"dst");
+        xmlTextWriterWriteAttribute(writer, (xmlChar*)"a", xa);
+        xmlTextWriterWriteAttribute(writer, (xmlChar*)"b", xb);
+        xmlTextWriterWriteAttribute(writer, (xmlChar*)"height", xheight);
+
+        xmlTextWriterSetIndent(writer, 1);
+
+        xmlTextWriterWriteElement(writer, (xmlChar*)"toto", (xmlChar*)"titi");
+
+    xmlTextWriterEndElement(writer);
+
+    xmlFreeTextWriter(writer);
+
         // root <dst>
-        nptrRoot = rootToXml(a, b, height, doc);
+        //nptrRoot = rootToXml(a, b, height, doc);
+        /*
 
         // ====================================
         stage = 0;
@@ -65,14 +88,18 @@ int main(int argc, char **argv) {
         routing_table[stage][member++] = 46;
         routing_table[stage][member++] = -1;
         // ====================================
+        // */
 
 
+        /*
         // node 42
         id = 42;
         nodeToXml(id, nptrRoot, 0, routing_table, height, b);
+        */
 
         //*****************************************************************************************
 
+        /*
         // ====================================
         stage = 0;
         member = 0;
@@ -108,6 +135,7 @@ int main(int argc, char **argv) {
         // node 121
         id = 121;
         nodeToXml(id, nptrRoot, 1, routing_table, height, b);
+        */
 
         // save doc to disk
         xmlSaveFormatFile (docname, doc, 0);

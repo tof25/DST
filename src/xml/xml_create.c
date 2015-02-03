@@ -58,7 +58,7 @@ xmlChar* itox(int arg) {
  * \param row members list (array of nodes ids as integers)
  * \param size number of members
  * \param parent xml node parent to this <stage> node
- * \param last equals to one if this is the last 'stage' node to create
+ * \param last equals to 1 if this is the last 'stage' node to create
  */
 void stageToXml(int stage, int *row, int size, xmlNodePtr parent, int last) {
 
