@@ -40,16 +40,67 @@ int main(int argc, char **argv) {
     xmlTextWriterPtr writer = xmlNewTextWriterDoc(&doc, 0);
     xmlTextWriterSetIndentString(writer, (xmlChar*)"  ");
 
+    xmlTextWriterSetIndent(writer, 1);
     xmlTextWriterStartElement(writer, (xmlChar*)"dst");
         xmlTextWriterWriteAttribute(writer, (xmlChar*)"a", xa);
         xmlTextWriterWriteAttribute(writer, (xmlChar*)"b", xb);
         xmlTextWriterWriteAttribute(writer, (xmlChar*)"height", xheight);
 
-        xmlTextWriterSetIndent(writer, 1);
+        xmlTextWriterStartElement(writer, (xmlChar*)"node");
+            xmlTextWriterWriteAttribute(writer, (xmlChar*)"id", (xmlChar*)"42");
 
-        xmlTextWriterWriteElement(writer, (xmlChar*)"toto", (xmlChar*)"titi");
+            xmlTextWriterStartElement(writer, (xmlChar*)"stage");
+                xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"0");
 
-    xmlTextWriterEndElement(writer);
+                xmlTextWriterSetIndent(writer, 0);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"42");
+                xmlTextWriterEndElement(writer);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"178");
+                xmlTextWriterEndElement(writer);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"92");
+                xmlTextWriterEndElement(writer);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"195");
+                xmlTextWriterEndElement(writer);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"30");
+                xmlTextWriterEndElement(writer);
+
+            xmlTextWriterSetIndentString(writer, "");
+            xmlTextWriterSetIndent(writer, 1);
+            xmlTextWriterEndElement(writer);    //stage
+
+            xmlTextWriterSetIndentString(writer, "  ");
+            xmlTextWriterStartElement(writer, (xmlChar*)"stage");
+                xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"1");
+
+                xmlTextWriterSetIndent(writer, 0);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"42");
+                xmlTextWriterEndElement(writer);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"178");
+                xmlTextWriterEndElement(writer);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"92");
+                xmlTextWriterEndElement(writer);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"195");
+                xmlTextWriterEndElement(writer);
+                xmlTextWriterStartElement(writer, (xmlChar*)"member");
+                    xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", (xmlChar*)"30");
+                xmlTextWriterEndElement(writer);
+
+            xmlTextWriterSetIndentString(writer, "");
+            xmlTextWriterSetIndent(writer, 1);
+            xmlTextWriterEndElement(writer);    //stage
+
+            xmlTextWriterSetIndentString(writer, "  ");
+        xmlTextWriterEndElement(writer);        //node
+    xmlTextWriterEndElement(writer);            //dst
 
     xmlFreeTextWriter(writer);
 
