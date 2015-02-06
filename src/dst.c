@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2014/12/23
+ *  Written by Christophe Enderlin on 2015/02/06
  *
  */
 
@@ -24,7 +24,7 @@
 #include "xbt/ex.h"                         // to use exceptions
 #include <time.h>
 #include <stdlib.h>                         // to use rand()
-#include "xml/xml_create.h"                 // to create a final xml with routing tables
+#include "xml/xml_create_writer.h"          // to create a final xml with routing tables
 #include "xml/xml_to_array.h"               // to read an optional given xml routing tables input file
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
@@ -11374,55 +11374,34 @@ int main(int argc, char *argv[]) {
     */
 
     // prepare xml output files
-    int rootDone = 0;
-    int rootDone_pred = 0;
-    int last = 0;
+    char header_done = 0;
+    char header_pred_done = 0;
+
     xmlDocPtr doc_o = xmlNewDoc((const xmlChar*)"1.0");
-    xmlNodePtr nptrRoot = NULL;
+    xmlTextWriterPtr writer = xmlNewTextWriterDoc(&doc_o, 0);
+
     xmlDocPtr doc_o_pred = xmlNewDoc((const xmlChar*)"1.0");
-    xmlNodePtr nptrRoot_pred = NULL;
+    xmlTextWriterPtr writer_pred = xmlNewTextWriterDoc(&doc_o_pred, 0);
 
     // display loop
     xbt_dynar_foreach(infos_dst, cpt, elem) {
         if (elem != NULL) {
 
-            // xml root node (only once)
-            if (!rootDone) {
+            if (!header_done) {
 
-                nptrRoot = rootToXml(a, b, elem->height, doc_o);
-
-                xbt_assert(nptrRoot != NULL, "Node %d: [%s:%d] XML Root error for routing table",
-                        elem->node_id,
-                        __FUNCTION__,
-                        __LINE__);
-
-                rootDone = 1;
+                xmlHeader(writer, a, b, elem->height);
+                header_done = 1;
             }
-            if (!rootDone_pred) {
 
-                nptrRoot_pred = rootToXml(a, b, elem->height, doc_o_pred);
+            if (!header_pred_done) {
 
-                xbt_assert(nptrRoot_pred != NULL, "Node %d: [%s:%d] XML Root error for preds table",
-                        elem->node_id,
-                        __FUNCTION__,
-                        __LINE__);
-
-                rootDone_pred = 1;
+                xmlHeader(writer_pred, a, b, elem->height);
+                header_pred_done = 1;
             }
 
             // xml <node> and children
-            if (nptrRoot != NULL) {
-
-                // last node ?
-                last = (cpt == xbt_dynar_length(infos_dst) - 1);
-                nodeToXml(elem->node_id, nptrRoot, last, elem->brothers, elem->height, elem->size);
-            }
-            if (nptrRoot_pred != NULL) {
-
-                // last node ?
-                last = (cpt == xbt_dynar_length(infos_dst) - 1);
-                nodeToXml(elem->node_id, nptrRoot_pred, last, elem->preds, elem->height, elem->load);
-            }
+            nodeToXml(writer, elem->node_id, elem->brothers, elem->size, elem->height);
+            nodeToXml(writer_pred, elem->node_id, elem->preds, elem->load, elem->height);
 
             loc_nb_nodes_tot++;
 
@@ -11536,11 +11515,13 @@ int main(int argc, char *argv[]) {
     //fclose(fp);
 
     // save xml files
+    xmlFooter(writer);
+    xmlFooter(writer_pred);
+
     xmlSaveFormatFile(xml_output_file, doc_o, 0);
     xmlFreeDoc(doc_o);
     xmlSaveFormatFile(xml_output_pred_file, doc_o_pred, 0);
     xmlFreeDoc(doc_o_pred);
-
 
     XBT_INFO("Number of elements in infos_dst = %d", cpt);
     XBT_INFO("Messages needed for %d active nodes / %d total nodes ( sent - broadcasted )",

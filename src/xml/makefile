@@ -8,7 +8,7 @@ WARNINGS =	-Wall -g
 CFLAGS = `xml2-config --cflags`
 LIBS = `xml2-config --libs`
 
-%: %.o xml_to_array.o xml_create.o
+%: %.o xml_to_array.o xml_create_writer.o
 	$(CC) $(WARNINGS) -o $@ $(CFLAGS) $^ $(LIBS)
 
 %.o: %.c %.h

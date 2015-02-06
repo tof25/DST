@@ -21,7 +21,7 @@ INCLUDES = -I$(INSTALL_PATH)/include `xml2-config --cflags`
 DEFS = -L$(INSTALL_PATH)/lib/
 LDADD = -lm -lsimgrid `xml2-config --libs`
 LIBS =
-OBJECTS = xml_create.o xml_to_array.o
+OBJECTS = xml_create_writer.o xml_to_array.o
 
 vpath %.h xml
 vpath %.c xml
