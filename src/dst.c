@@ -1092,44 +1092,48 @@ static char* routing_table(node_t me) {
 static void set_n_store_infos(node_t me) {
     XBT_IN();
 
-    /**
-     * update routing table
-     */
+    int stage, pred;
+
+     // update routing_table
     me->dst_infos.routing_table = routing_table(me);
 
-    // copy tables ids into dst_infos tables
-    if (me->dst_infos.height != me->height) {           //TODO : reprendre ces parties : la différence peut être dans l'autre sens si on perd un étage
+    // update preds table
+    for (stage = 0; stage < me->dst_infos.height; stage++) {
 
-        int i;
+        XBT_VERB("Node %d: avant xbt_free - stage: %d", me->self.id, stage);
+        xbt_free(me->dst_infos.preds[stage]);
+        XBT_VERB("Node %d: après xbt_free - stage: %d", me->self.id, stage);
+    }
+    me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
+    for (stage = 0; stage < me->height; stage++) {
+
+        me->dst_infos.preds[stage] = xbt_new0(int, me->pred_index[stage]);
+    }
+    me->dst_infos.load = realloc(me->dst_infos.load, me->height * sizeof(int));
+
+    for (stage = 0; stage < me->height; stage++) {
+        for (pred = 0; pred < me->pred_index[stage]; pred++) {
+            me->dst_infos.preds[stage][pred] = me->preds[stage][pred].id;
+        }
+        me->dst_infos.load[stage] = me->pred_index[stage];
+    }
+    XBT_VERB("Node %d: après écriture preds", me->self.id);
+
+    // update routing table
+    if (me->dst_infos.height != me->height) {           //TODO : reprendre ces parties : la différence peut être dans l'autre sens si on perd un étage
 
         // add stages to brothers if requested
         me->dst_infos.brothers = realloc(me->dst_infos.brothers, me->height * sizeof(int*));
-        for (i = me->dst_infos.height; i < me->height; i++) {
+        for (stage = me->dst_infos.height; stage < me->height; stage++) {
 
-            me->dst_infos.brothers[i] = xbt_new0(int, b);
+            me->dst_infos.brothers[stage] = xbt_new0(int, b);
         }
         me->dst_infos.size = realloc(me->dst_infos.size, me->height * sizeof(int));
-
-        /*
-        // add stages to preds if requested
-        for (i = 0; i < me->dst_infos.height; i++) {
-
-            xbt_free(me->dst_infos.preds[i]);
-        }
-
-        me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
-
-        for (i = 0; i < me->height; i++) {
-
-            me->dst_infos.preds[i] = xbt_new0(int, me->pred_index[i]);
-        }
-        me->dst_infos.load = realloc(me->dst_infos.load, me->height * sizeof(int));
-        */
 
         me->dst_infos.height = me->height;
     }
 
-    int stage, brother, pred;
+    int brother;
     for (stage = 0; stage < me->height; stage++) {
         for (brother = 0; brother < b; brother++) {
 
@@ -1144,15 +1148,6 @@ static void set_n_store_infos(node_t me) {
         me->dst_infos.size[stage] = me->bro_index[stage];
     }
 
-    /*
-    for (stage = 0; stage < me->height; stage++) {
-        for (pred = 0; pred < me->pred_index[stage]; pred++) {
-            me->dst_infos.preds[stage][pred] = me->preds[stage][pred].id;
-        }
-        me->dst_infos.load[stage] = me->pred_index[stage];
-    }
-    */
-
     // update other fields
     s_state_t state = get_state(me);
     me->dst_infos.active = state.active;
@@ -1160,6 +1155,14 @@ static void set_n_store_infos(node_t me) {
     dst_infos_t elem = xbt_new0(s_dst_infos_t, 1);
     *elem = me->dst_infos;
     xbt_dynar_replace(infos_dst, me->dst_infos.order, &elem);
+
+    XBT_VERB("Node %d: display dst_infos.preds", me->self.id);
+    int j, k;
+    for (j = 0; j < me->dst_infos.height; j++) {
+        for (k = 0; k < me->dst_infos.load[j]; k++) {
+            XBT_VERB("dst_infos.preds[%d][%d]: %d", j, k, me->dst_infos.preds[j][k]);
+        }
+    }
 
     XBT_OUT();
 }
@@ -6463,6 +6466,14 @@ static void add_pred(node_t me, int stage, int id) {
             state.new_id,
             id);
 
+    XBT_VERB("Node %d: début add_pred - display dst_infos.preds", me->self.id);
+    int j, k;
+    for (j = 0; j < me->dst_infos.height; j++) {
+        for (k = 0; k < me->dst_infos.load[j]; k++) {
+            XBT_VERB("dst_infos.preds[%d][%d]: %d", j, k, me->dst_infos.preds[j][k]);
+        }
+    }
+
     xbt_assert(stage < me->height,
             "Node %d: height error - stage = %d - height = %d",
             me->self.id,
@@ -6527,7 +6538,7 @@ static void add_pred(node_t me, int stage, int id) {
             set_mailbox(-1, me->preds[stage][i].mailbox);
         }
 
-        XBT_DEBUG("Node %d: [%s:%d] Predecessors array has been set bigger",
+        XBT_VERB("Node %d: [%s:%d] Predecessors array has been set bigger",
                 me->self.id,
                 __FUNCTION__,
                 __LINE__);
@@ -6583,6 +6594,12 @@ static void add_pred(node_t me, int stage, int id) {
                 new_state.new_id);
     }
     */
+    XBT_VERB("Node %d: fin add_pred - display dst_infos.preds", me->self.id);
+    for (j = 0; j < me->dst_infos.height; j++) {
+        for (k = 0; k < me->dst_infos.load[j]; k++) {
+            XBT_VERB("dst_infos.preds[%d][%d]: %d", j, k, me->dst_infos.preds[j][k]);
+        }
+    }
 
     XBT_OUT();
 }
