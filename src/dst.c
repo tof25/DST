@@ -1097,21 +1097,39 @@ static void set_n_store_infos(node_t me) {
      */
     me->dst_infos.routing_table = routing_table(me);
 
-    // copy routing table ids into dst_infos table
-    if (me->dst_infos.height != me->height) {
+    // copy tables ids into dst_infos tables
+    if (me->dst_infos.height != me->height) {           //TODO : reprendre ces parties : la différence peut être dans l'autre sens si on perd un étage
 
         int i;
 
-        // add stages if requested
+        // add stages to brothers if requested
         me->dst_infos.brothers = realloc(me->dst_infos.brothers, me->height * sizeof(int*));
         for (i = me->dst_infos.height; i < me->height; i++) {
 
             me->dst_infos.brothers[i] = xbt_new0(int, b);
         }
+        me->dst_infos.size = realloc(me->dst_infos.size, me->height * sizeof(int));
+
+        /*
+        // add stages to preds if requested
+        for (i = 0; i < me->dst_infos.height; i++) {
+
+            xbt_free(me->dst_infos.preds[i]);
+        }
+
+        me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
+
+        for (i = 0; i < me->height; i++) {
+
+            me->dst_infos.preds[i] = xbt_new0(int, me->pred_index[i]);
+        }
+        me->dst_infos.load = realloc(me->dst_infos.load, me->height * sizeof(int));
+        */
+
         me->dst_infos.height = me->height;
     }
 
-    int stage, brother;
+    int stage, brother, pred;
     for (stage = 0; stage < me->height; stage++) {
         for (brother = 0; brother < b; brother++) {
 
@@ -1123,13 +1141,21 @@ static void set_n_store_infos(node_t me) {
                 me->dst_infos.brothers[stage][brother] = me->brothers[stage][brother].id;
             }
         }
+        me->dst_infos.size[stage] = me->bro_index[stage];
     }
+
+    /*
+    for (stage = 0; stage < me->height; stage++) {
+        for (pred = 0; pred < me->pred_index[stage]; pred++) {
+            me->dst_infos.preds[stage][pred] = me->preds[stage][pred].id;
+        }
+        me->dst_infos.load[stage] = me->pred_index[stage];
+    }
+    */
 
     // update other fields
     s_state_t state = get_state(me);
     me->dst_infos.active = state.active;
-
-    me->dst_infos.size = me->bro_index;
 
     dst_infos_t elem = xbt_new0(s_dst_infos_t, 1);
     *elem = me->dst_infos;
@@ -1266,7 +1292,11 @@ static void display_rout_table(node_t me, char log) {
  */
 static void set_mailbox(int node_id, char* mailbox) {
 
+    XBT_IN();
+
     snprintf(mailbox, MAILBOX_NAME_SIZE, "%d", node_id);
+
+    XBT_OUT();
 }
 
 /**
@@ -2139,11 +2169,7 @@ static int read_xml_files(node_t me, char *xpath) {
         me->preds = realloc(me->preds, xml_height * sizeof(node_rep_t));
         me->pred_index = realloc(me->pred_index, xml_height * sizeof(int));
 
-        xbt_free(me->dst_infos.preds[0]);
-        me->dst_infos.preds = realloc(me->dst_infos.preds, xml_height * sizeof(int*));
-        me->dst_infos.load = realloc(me->dst_infos.load, xml_height * sizeof(int));
-
-        // NOTE : dst_infos.brothers and size are processed in set_n_store_infos **/
+        // NOTE : dst_infos.brothers, size, preds and load are processed in set_n_store_infos **/
 
         /* copy xml tables into current ones */
 
@@ -2191,15 +2217,15 @@ static int read_xml_files(node_t me, char *xpath) {
         for (stage = 0; stage < xml_height; stage++) {
 
             me->pred_index[stage] = xml_pred_table->sizes[stage];
-            me->dst_infos.load[stage] = me->pred_index[stage];
+            //me->dst_infos.load[stage] = me->pred_index[stage];
 
             me->preds[stage] = xbt_new0(s_node_rep_t, xml_pred_table->sizes[stage]);
-            me->dst_infos.preds[stage] = xbt_new0(int, xml_pred_table->sizes[stage]);
+            //me->dst_infos.preds[stage] = xbt_new0(int, xml_pred_table->sizes[stage]);
             for (brother = 0; brother < xml_pred_table->sizes[stage]; brother++) {
 
                 me->preds[stage][brother].id = xml_pred_table->routing_table[stage][brother];
                 set_mailbox(me->preds[stage][brother].id, me->preds[stage][brother].mailbox);
-                me->dst_infos.preds[stage][brother] = xml_pred_table->routing_table[stage][brother];
+                //me->dst_infos.preds[stage][brother] = xml_pred_table->routing_table[stage][brother];
             }
         }
 
@@ -2208,6 +2234,9 @@ static int read_xml_files(node_t me, char *xpath) {
                 __FUNCTION__,
                 __LINE__);
         display_preds(me, 'V');
+
+        // update dst_infos
+        set_n_store_infos(me);
 
         join_success = 1;
     } else {
@@ -5218,7 +5247,7 @@ static void init(node_t me) {
     me->dst_infos.add_stage = 0;
     me->dst_infos.nbr_split_stages = 0;
     me->dst_infos.load = xbt_new0(int, me->height);
-    me->dst_infos.size = NULL;
+    me->dst_infos.size = xbt_new0(int, me->height);
     me->dst_infos.nb_cs_req_fail = 0;
     me->dst_infos.nb_cs_req_success = 0;
     me->dst_infos.nb_set_update_fail = 0;
@@ -5342,12 +5371,12 @@ static int join(node_t me, int contact_id) {
 
         xbt_free(me->brothers[stage]);
         xbt_free(me->preds[stage]);
-        xbt_free(me->dst_infos.preds[stage]);
+        //xbt_free(me->dst_infos.preds[stage]);
     }
 
     xbt_free(me->brothers);
     xbt_free(me->preds);
-    xbt_free(me->dst_infos.preds);
+    //xbt_free(me->dst_infos.preds);
 
     // get the new contact and its height
     s_node_rep_t contact = answer_data->answer.cnx_req.new_contact;
@@ -5375,14 +5404,14 @@ static int join(node_t me, int contact_id) {
     // get contact's tables content
     me->brothers = xbt_new0(node_rep_t, me->height);
     me->preds = xbt_new0(node_rep_t, me->height);
-    me->dst_infos.preds = xbt_new0(int*, me->height);
+    //me->dst_infos.preds = xbt_new0(int*, me->height);
 
     int brother;
     for (stage = 0; stage < me->height; stage++) {
 
         me->brothers[stage] = xbt_new0(s_node_rep_t, b);
         me->preds[stage] = xbt_new0(s_node_rep_t, b);
-        me->dst_infos.preds[stage] = xbt_new0(int, b);
+        //me->dst_infos.preds[stage] = xbt_new0(int, b);
 
         for (brother = 0; brother < b; brother++) {
 
@@ -5397,16 +5426,16 @@ static int join(node_t me, int contact_id) {
     for (brother = 0; brother < b; brother++ ) {
 
         me->preds[0][brother] = me->brothers[0][brother];
-        me->dst_infos.preds[0][brother] = me->brothers[0][brother].id;
+        //me->dst_infos.preds[0][brother] = me->brothers[0][brother].id;
     }
 
     // get other data
     xbt_free(me->bro_index);
     xbt_free(me->pred_index);
-    xbt_free(me->dst_infos.load);
+    //xbt_free(me->dst_infos.load);
     me->bro_index = xbt_new0(int, me->height);
     me->pred_index = xbt_new0(int, me->height);
-    me->dst_infos.load = xbt_new0(int, me->height);
+    //me->dst_infos.load = xbt_new0(int, me->height);
 
     for (stage = 0; stage < me->height; stage++) {
 
@@ -5427,7 +5456,7 @@ static int join(node_t me, int contact_id) {
     }
 
     // set DST infos
-    me->dst_infos.load[0] = me->pred_index[0];
+    //me->dst_infos.load[0] = me->pred_index[0];
 
     // answer_data is not needed anymore
     data_ans_free(me, &answer_data);
@@ -6397,18 +6426,20 @@ static void add_stage(node_t me) {
             me->height);
 
     // add stage to DST infos
-    me->dst_infos.load = realloc(me->dst_infos.load, me->height * sizeof(int));
-    me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
+    //me->dst_infos.load = realloc(me->dst_infos.load, me->height * sizeof(int));
+    //me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
 
+    /*
     xbt_assert(me->dst_infos.load != NULL,
             "Node %d: Can't add stage %d to load table",
             me->self.id,
             me->height);
+    */
 
     me->pred_index[me->height-1] = 0;
-    //me->dst_infos.load[me->height-1] = 0;     //TODO : pourquoi avoir commenté ça ?
+    //me->dst_infos.load[me->height-1] = 0;
     me->preds[me->height-1] = xbt_new0(s_node_rep_t, b);
-    me->dst_infos.preds[me->height-1] = xbt_new0(int, b);
+    //me->dst_infos.preds[me->height-1] = xbt_new0(int, b);
     add_pred(me, me->height-1, me->self.id);
 
     XBT_VERB("Node %d: [%s:%d] New stage %d added for me", me->self.id, __FUNCTION__, __LINE__, me->height-1);
@@ -6444,11 +6475,12 @@ static void add_pred(node_t me, int stage, int id) {
     me->preds[stage][me->pred_index[stage]].id = id;
     set_mailbox(id, me->preds[stage][me->pred_index[stage]].mailbox);
 
-    me->dst_infos.preds[stage][me->pred_index[stage]] = id;
+    //me->dst_infos.preds[stage][me->pred_index[stage]] = id;
 
     me->pred_index[stage]++;
-    me->dst_infos.load[stage] = me->pred_index[stage];
+    //me->dst_infos.load[stage] = me->pred_index[stage];
 
+    /*
     // set dst_infos preds array bigger (by steps of b) if needed
     if ((me->pred_index[stage] % b == 0) && (me->pred_index[stage] > 0)) {
 
@@ -6473,6 +6505,7 @@ static void add_pred(node_t me, int stage, int id) {
                 __FUNCTION__,
                 __LINE__);
     }
+    */
 
     // set the predecessors array bigger (by steps of b) if needed
     if ((me->pred_index[stage] % b == 0) && (me->pred_index[stage] > 0)) {
@@ -6579,18 +6612,18 @@ static void del_pred(node_t me, int stage, int pred2del) {
             for (i = idx; i < size-1; i++) {
 
                 me->preds[stage][i] = me->preds[stage][i+1];
-                me->dst_infos.preds[stage][i] = me->dst_infos.preds[stage][i+1];
+                //me->dst_infos.preds[stage][i] = me->dst_infos.preds[stage][i+1];
             }
             idx = i;
         }
 
         me->preds[stage][idx].id = -1;
         set_mailbox(-1, me->preds[stage][idx].mailbox);
-        me->dst_infos.preds[stage][idx] = -1;
+        //me->dst_infos.preds[stage][idx] = -1;
         me->pred_index[stage]--;
 
         // set DST infos
-        me->dst_infos.load[stage] = me->pred_index[stage];
+        //me->dst_infos.load[stage] = me->pred_index[stage];
 
         /*
         // remove 'p' state
@@ -8752,8 +8785,10 @@ static void del_root(node_t me, int init_height) {
         me->brothers[me->height - 1] = NULL;
         xbt_free(me->preds[me->height - 1]);
         me->preds[me->height - 1] = NULL;
+        /*
         xbt_free(me->dst_infos.preds[me->height - 1]);
         me->dst_infos.preds[me->height - 1] = NULL;
+        */
 
         me->height--;
 
@@ -8762,7 +8797,7 @@ static void del_root(node_t me, int init_height) {
 
         me->brothers = realloc(me->brothers, me->height * sizeof(node_rep_t));
         me->preds = realloc(me->preds, me->height * sizeof(node_rep_t));
-        me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
+        //me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
 
         xbt_assert((me->preds != NULL) && (me->pred_index != NULL),
                 "Node %d: Can't delete root from predecessors table - height = %d",
@@ -9588,11 +9623,14 @@ int node(int argc, char *argv[]) {
         snprintf(xpath, LEN_XPATH, "//node[@id=%d]", node.self.id);
         join_success = read_xml_files(&node, xpath);
 
-        xbt_assert(join_success == 1,
-                "[%s:%d] Failed to fetch routing tables from file %s",
-                __FUNCTION__,
-                __LINE__,
-                xml_input_file);
+        if (!join_success) {
+
+            XBT_VERB("Node %d: [%s:%d] Failed to fetch routing tables from file %s",
+                    node.self.id,
+                    __FUNCTION__,
+                    __LINE__,
+                    xml_input_file);
+        }
     }
 
     if (argc == 5) {            // all nodes but first one need to join
