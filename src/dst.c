@@ -6484,39 +6484,10 @@ static void add_pred(node_t me, int stage, int id) {
     if (index_pred(me, stage, id) != -1) return;
 
     me->preds[stage][me->pred_index[stage]].id = id;
+
     set_mailbox(id, me->preds[stage][me->pred_index[stage]].mailbox);
 
-    //me->dst_infos.preds[stage][me->pred_index[stage]] = id;
-
     me->pred_index[stage]++;
-    //me->dst_infos.load[stage] = me->pred_index[stage];
-
-    /*
-    // set dst_infos preds array bigger (by steps of b) if needed
-    if ((me->pred_index[stage] % b == 0) && (me->pred_index[stage] > 0)) {
-
-        me->dst_infos.preds[stage] = realloc(me->dst_infos.preds[stage],
-                (me->pred_index[stage] + b) * sizeof(int));
-
-        xbt_assert(me->dst_infos.preds[stage] != NULL,
-                "Node %d: [%s:%d] Realloc of dst_infos preds[%d] failed",
-                me->self.id,
-                __FUNCTION__,
-                __LINE__,
-                stage);
-
-        int i;
-        for (i = me->pred_index[stage]; i < me->pred_index[stage] + b; i++) {
-
-            me->dst_infos.preds[stage][i] = -1;
-        }
-
-        XBT_DEBUG("Node %d: [%s:%d] dst_infos predecessors array has been set bigger",
-                me->self.id,
-                __FUNCTION__,
-                __LINE__);
-    }
-    */
 
     // set the predecessors array bigger (by steps of b) if needed
     if ((me->pred_index[stage] % b == 0) && (me->pred_index[stage] > 0)) {
@@ -6542,6 +6513,7 @@ static void add_pred(node_t me, int stage, int id) {
                 me->self.id,
                 __FUNCTION__,
                 __LINE__);
+
     }
 
     /* if current state is 'p', then it's an add_pred coming from load_balance() :
