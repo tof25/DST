@@ -1100,9 +1100,7 @@ static void set_n_store_infos(node_t me) {
     // update preds table
     for (stage = 0; stage < me->dst_infos.height; stage++) {
 
-        XBT_VERB("Node %d: avant xbt_free - stage: %d", me->self.id, stage);
         xbt_free(me->dst_infos.preds[stage]);
-        XBT_VERB("Node %d: après xbt_free - stage: %d", me->self.id, stage);
     }
     me->dst_infos.preds = realloc(me->dst_infos.preds, me->height * sizeof(int*));
     for (stage = 0; stage < me->height; stage++) {
@@ -1117,7 +1115,6 @@ static void set_n_store_infos(node_t me) {
         }
         me->dst_infos.load[stage] = me->pred_index[stage];
     }
-    XBT_VERB("Node %d: après écriture preds", me->self.id);
 
     // update routing table
     if (me->dst_infos.height != me->height) {           //TODO : reprendre ces parties : la différence peut être dans l'autre sens si on perd un étage
@@ -1155,14 +1152,6 @@ static void set_n_store_infos(node_t me) {
     dst_infos_t elem = xbt_new0(s_dst_infos_t, 1);
     *elem = me->dst_infos;
     xbt_dynar_replace(infos_dst, me->dst_infos.order, &elem);
-
-    XBT_VERB("Node %d: display dst_infos.preds", me->self.id);
-    int j, k;
-    for (j = 0; j < me->dst_infos.height; j++) {
-        for (k = 0; k < me->dst_infos.load[j]; k++) {
-            XBT_VERB("dst_infos.preds[%d][%d]: %d", j, k, me->dst_infos.preds[j][k]);
-        }
-    }
 
     XBT_OUT();
 }
@@ -2220,15 +2209,12 @@ static int read_xml_files(node_t me, char *xpath) {
         for (stage = 0; stage < xml_height; stage++) {
 
             me->pred_index[stage] = xml_pred_table->sizes[stage];
-            //me->dst_infos.load[stage] = me->pred_index[stage];
 
             me->preds[stage] = xbt_new0(s_node_rep_t, xml_pred_table->sizes[stage]);
-            //me->dst_infos.preds[stage] = xbt_new0(int, xml_pred_table->sizes[stage]);
             for (brother = 0; brother < xml_pred_table->sizes[stage]; brother++) {
 
                 me->preds[stage][brother].id = xml_pred_table->routing_table[stage][brother];
                 set_mailbox(me->preds[stage][brother].id, me->preds[stage][brother].mailbox);
-                //me->dst_infos.preds[stage][brother] = xml_pred_table->routing_table[stage][brother];
             }
         }
 
