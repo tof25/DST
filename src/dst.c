@@ -2210,7 +2210,7 @@ static int read_xml_files(node_t me, char *xpath) {
 
             me->pred_index[stage] = xml_pred_table->sizes[stage];
 
-            me->preds[stage] = xbt_new0(s_node_rep_t, xml_pred_table->sizes[stage]);
+            me->preds[stage] = xbt_new0(s_node_rep_t, xml_pred_table->sizes[stage] + b);
             for (brother = 0; brother < xml_pred_table->sizes[stage]; brother++) {
 
                 me->preds[stage][brother].id = xml_pred_table->routing_table[stage][brother];
@@ -6452,14 +6452,6 @@ static void add_pred(node_t me, int stage, int id) {
             state.new_id,
             id);
 
-    XBT_VERB("Node %d: début add_pred - display dst_infos.preds", me->self.id);
-    int j, k;
-    for (j = 0; j < me->dst_infos.height; j++) {
-        for (k = 0; k < me->dst_infos.load[j]; k++) {
-            XBT_VERB("dst_infos.preds[%d][%d]: %d", j, k, me->dst_infos.preds[j][k]);
-        }
-    }
-
     xbt_assert(stage < me->height,
             "Node %d: height error - stage = %d - height = %d",
             me->self.id,
@@ -6552,12 +6544,6 @@ static void add_pred(node_t me, int stage, int id) {
                 new_state.new_id);
     }
     */
-    XBT_VERB("Node %d: fin add_pred - display dst_infos.preds", me->self.id);
-    for (j = 0; j < me->dst_infos.height; j++) {
-        for (k = 0; k < me->dst_infos.load[j]; k++) {
-            XBT_VERB("dst_infos.preds[%d][%d]: %d", j, k, me->dst_infos.preds[j][k]);
-        }
-    }
 
     XBT_OUT();
 }
