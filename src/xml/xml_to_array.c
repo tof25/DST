@@ -24,45 +24,46 @@ xmlDocPtr getdoc (const char *docname) {
  * \param doc the document for the global context
  * \param ctxNode the context node (if NULL, evaluate xpath expression in the global context)
  * \param xpath the xpath expression
- * \return the result node set
+ * \return the object containing the result node set (has to be freed by the caller)
  */
-xmlNodeSetPtr getnodeset (xmlDocPtr doc, xmlNodePtr ctxNode, char *xpath){
+xmlXPathObjectPtr getnodeset (xmlDocPtr doc, xmlNodePtr ctxNode, char *xpath){
 
-    xmlXPathContextPtr context;
-    xmlNodeSetPtr result;
+    xmlXPathContextPtr context = NULL;
+    xmlXPathObjectPtr obj_res = NULL;
 
     // build context
     context = xmlXPathNewContext(doc);
     if (context == NULL) {
-        printf("Error in xmlXPathNewContext\n");
+        printf("[%s:%d] Error in xmlXPathNewContext\n", __FUNCTION__, __LINE__);
         return NULL;
     }
 
     // build node set
     if (ctxNode != NULL) {
 
-        result = (xmlXPathNodeEval(ctxNode, (xmlChar*)xpath, context))->nodesetval;
+        obj_res = xmlXPathNodeEval(ctxNode, (xmlChar*)xpath, context);
     } else {
 
-        result = (xmlXPathEvalExpression((xmlChar*)xpath, context))->nodesetval;
+        obj_res = xmlXPathEvalExpression((xmlChar*)xpath, context);
     }
     xmlXPathFreeContext(context);
 
     // errors processing
-    if (result == NULL) {
+    if (obj_res->nodesetval == NULL) {
 
+        xmlXPathFreeObject(obj_res);
         printf("Error in xmlXPathEvalExpression\n");
         return NULL;
     }
 
-    if (xmlXPathNodeSetIsEmpty(result)) {
+    if (xmlXPathNodeSetIsEmpty(obj_res->nodesetval)) {
 
-        xmlXPathFreeNodeSet(result);
+        xmlXPathFreeObject(obj_res);
         printf("No result\n");
         return NULL;
     }
 
-    return result;
+    return obj_res;
 }
 
 
@@ -126,15 +127,17 @@ int getIntProp(xmlNodePtr cur, char *prop) {
 node_id_t getMembers(xmlDocPtr doc, char *xpath) {
 
     xmlNodeSetPtr nodeset, stageset, memberset;
+    xmlXPathObjectPtr objNode, objStage, objMember;
     xmlNodePtr curNode;
     int stage, member;
     node_id_t node_table = NULL;
 
     // get nodes
-    nodeset = getnodeset(doc, NULL, xpath);
+    objNode = getnodeset(doc, NULL, xpath);
 
-    if (nodeset) {
+    if (objNode) {
 
+        nodeset = objNode->nodesetval;
         // stops if xpath expression returns more than one node
         if (nodeset->nodeNr > 1) {
 
@@ -151,20 +154,22 @@ node_id_t getMembers(xmlDocPtr doc, char *xpath) {
         node_table->id = getIntProp(curNode, "id");
 
         // get node's stages
-        stageset = getnodeset(doc, curNode, "stage");
+        objStage = getnodeset(doc, curNode, "stage");
 
-        if (stageset) {
+        if (objStage) {
 
+            stageset = objStage->nodesetval;
             node_table->routing_table = malloc(stageset->nodeNr * sizeof(int*));
             node_table->sizes = malloc(stageset->nodeNr * sizeof(int));
 
             for (stage = 0; stage < stageset->nodeNr; stage++) {
 
                 // get stage's members
-                memberset = getnodeset(doc, stageset->nodeTab[stage], "member");
+                objMember = getnodeset(doc, stageset->nodeTab[stage], "member");
 
-                if (memberset) {
+                if (objMember) {
 
+                    memberset = objMember->nodesetval;
                     node_table->routing_table[stage] = malloc(memberset->nodeNr * sizeof(int*));
 
                     for (member = 0; member < memberset->nodeNr; member++) {
@@ -173,7 +178,7 @@ node_id_t getMembers(xmlDocPtr doc, char *xpath) {
                     }
                     node_table->sizes[stage] = memberset->nodeNr;
 
-                    xmlXPathFreeNodeSet(memberset);
+                    xmlXPathFreeObject(objMember);
                 } else {
 
                     free (node_table->routing_table);
@@ -184,9 +189,9 @@ node_id_t getMembers(xmlDocPtr doc, char *xpath) {
                     node_table = NULL;
                 }
             }
-            xmlXPathFreeNodeSet(stageset);
+            xmlXPathFreeObject(objStage);
         }
-        xmlXPathFreeNodeSet (nodeset);
+        xmlXPathFreeObject(objNode);
     }
 
     return(node_table);

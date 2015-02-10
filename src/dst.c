@@ -2235,9 +2235,10 @@ static int read_xml_files(node_t me, char *xpath) {
                 __FUNCTION__,
                 __LINE__);
 
-        xbt_free(xml_node_table);
-        xbt_free(xml_pred_table);
     }
+
+    xbt_free(xml_node_table);
+    xbt_free(xml_pred_table);
 
     XBT_OUT();
 

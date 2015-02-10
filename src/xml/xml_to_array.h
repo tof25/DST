@@ -24,7 +24,7 @@ xmlDocPtr getdoc (const char *docname);
 /**
  *  return a node set for a given xpath expression and a context node
  */
-xmlNodeSetPtr getnodeset (xmlDocPtr doc, xmlNodePtr ctxNode, char *xpath);
+xmlXPathObjectPtr getnodeset (xmlDocPtr doc, xmlNodePtr ctxNode, char *xpath);
 
 /**
  *  reads a node's given attribute and returns it as a string

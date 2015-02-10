@@ -41,6 +41,10 @@ void xmlHeader(xmlTextWriterPtr writer, int a, int b, int height) {
         xmlTextWriterWriteAttribute(writer, (xmlChar*)"a", xa);
         xmlTextWriterWriteAttribute(writer, (xmlChar*)"b", xb);
         xmlTextWriterWriteAttribute(writer, (xmlChar*)"height", xheight);
+
+    free(xa);
+    free(xb);
+    free(xheight);
 }
 
 /**
@@ -82,12 +86,16 @@ void stageToXml(xmlTextWriterPtr writer, int stage_nr, int* row, int row_size) {
         xmlTextWriterStartElement(writer, (xmlChar*)"member");
         xmlTextWriterWriteAttribute(writer, (xmlChar*)"value", xMember);
         xmlTextWriterEndElement(writer);
+
+        free(xMember);
     }
 
     xmlTextWriterSetIndentString(writer, (xmlChar*)"");
     xmlTextWriterSetIndent(writer, 1);
 
     xmlTextWriterEndElement(writer);    //stage
+
+    free(xStage);
 }
 
 
@@ -117,4 +125,6 @@ void nodeToXml(xmlTextWriterPtr writer, int node_id, int **table, int *row_size,
 
         xmlTextWriterSetIndentString(writer, (xmlChar*)"  ");
     xmlTextWriterEndElement(writer);        //node
+
+    free(xNode_id);
 }
