@@ -2129,17 +2129,11 @@ static int read_xml_files(node_t me, char *xpath) {
     int join_success = 0;
 
     // routing tables
-    node_id_t xml_node_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
-    xml_node_table->id = -1;
-    xml_node_table->routing_table = NULL;
-    xml_node_table->sizes = NULL;
+    node_id_t xml_node_table = NULL;     // this type is defined in xml_to_array.h
     xml_node_table = getMembers(doc_i, xpath);
 
     // preds tables
-    node_id_t xml_pred_table = malloc(sizeof(s_node_id_t));     // this type is defined in xml_to_array.h
-    xml_pred_table->id = -1;
-    xml_pred_table->routing_table = NULL;
-    xml_pred_table->sizes = NULL;
+    node_id_t xml_pred_table = NULL;     // this type is defined in xml_to_array.h
     xml_pred_table = getMembers(doc_i_pred, xpath);
 
     if (xml_node_table && xml_pred_table) {
@@ -2228,6 +2222,22 @@ static int read_xml_files(node_t me, char *xpath) {
         set_n_store_infos(me);
 
         join_success = 1;
+
+        // free xml tables
+        int k;
+
+        for (k = 0; k < xml_height; k++) {
+
+            free(xml_node_table->routing_table[k]);
+            free(xml_pred_table->routing_table[k]);
+        }
+
+        free(xml_node_table->routing_table);
+        free(xml_node_table->sizes);
+        free(xml_pred_table->routing_table);
+        free(xml_pred_table->sizes);
+        free(xml_node_table);
+        free(xml_pred_table);
     } else {
 
         XBT_WARN("Node %d: [%s:%d] Failed to fetch tables from XML files",
@@ -2235,11 +2245,25 @@ static int read_xml_files(node_t me, char *xpath) {
                 __FUNCTION__,
                 __LINE__);
 
+       node_id_t temp_table = NULL;
+       if (xml_node_table) temp_table = xml_node_table;
+       if (xml_pred_table) temp_table = xml_pred_table;
+       if (temp_table) {
+
+           // free xml tables
+           int k;
+
+           for (k = 0; k < xml_height; k++) {
+
+               free(temp_table->routing_table[k]);
+           }
+
+           free(temp_table->routing_table);
+           free(temp_table);
+       }
+
     }
-
-    xbt_free(xml_node_table);
-    xbt_free(xml_pred_table);
-
+    
     XBT_OUT();
 
     return join_success;
@@ -3633,7 +3657,7 @@ static void node_free(node_t me) {
     proc_data = NULL;
     */
 
-    // not necessary to free bro_index; dst_infos.size is the same pointer and will be freed
+    xbt_free(me->bro_index);
     me->bro_index = NULL;
     xbt_free(me->pred_index);
     me->pred_index = NULL;
@@ -11494,15 +11518,17 @@ int main(int argc, char *argv[]) {
             xbt_free(elem->routing_table);
             elem->routing_table = NULL;
 
-            xbt_free(elem->load);
-            elem->load = NULL;
+            int j;
+            for (j = 0; j < elem->height; j++) {
+                
+                xbt_free(elem->brothers[j]);
+                xbt_free(elem->preds[j]);
+            }
 
-            /*
-            // has been freed in node_free
-            XBT_INFO("Size - %p", elem->size);
+            xbt_free(elem->brothers);
+            xbt_free(elem->preds);
             xbt_free(elem->size);
-            elem->size = NULL;
-            */
+            xbt_free(elem->load);
 
             xbt_free(elem);
             elem = NULL;

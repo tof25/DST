@@ -113,6 +113,7 @@ int getIntProp(xmlNodePtr cur, char *prop) {
     if (buf != NULL) {
 
         ret = (!strcmp(buf, "") ? -1 : atoi(buf));
+        free(buf);
     }
 
     return ret;
