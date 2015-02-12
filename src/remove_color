@@ -1,1 +1,2 @@
+#!/bin/bash
 sed -E "s/"$'\E'"\[..m//g"

@@ -16,16 +16,16 @@
 //TODO: introduire un indicateur de réponses à venir. On pourra s'en servir pour terminer la simulation.
 //      (à la place de WAIT_BEFORE_END)
 
-#include <stdio.h>                          // printf and friends
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include "msg/msg.h"                        // to use MSG API of Simgrid
 #include "xbt/log.h"                        // to get nice outputs
 #include "xbt/asserts.h"                    // to use xbt_assert()
-#include "xbt/xbt_os_time.h"                /* to use a timer (located in Simgrid-3.9/src/include/xbt) */
+#include "xbt/xbt_os_time.h"                // to use a timer (located in Simgrid-3.9/src/include/xbt)
 #include "xbt/ex.h"                         // to use exceptions
-#include <time.h>
-#include <stdlib.h>                         // to use rand()
-#include "xml/xml_create_writer.h"          // to create a final xml with routing tables
-#include "xml/xml_to_array.h"               // to read an optional given xml routing tables input file
+#include "xml/xml_create_writer.h"          // to create final xml files with routing tables
+#include "xml/xml_to_array.h"               // to get routing and predecessors tables from xml files
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
@@ -36,12 +36,9 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define COMM_SIZE 10                        // message size when creating a new task
 #define COMP_SIZE 0                         // compute duration when creating a new task
 #define MAILBOX_NAME_SIZE 50                // name size of a mailbox
-#define TYPE_NBR 39                         // number of task types
+#define TYPE_NBR 37                         // number of task types
 #define MAX_WAIT_COMPL 20000                // won't wait longer for broadcast completion
 #define MAX_WAIT_GET_REP 5000               // won't wait longer an answer to a GET_REP request
-#define MAX_JOIN 250                        // number of joining attempts
-#define TRY_STEP 50                         // number of tries before requesting a new contact
-#define MAX_CS_REQ 2000                     // max time between cs_req and matching set_update      //TODO : constante plus utilisée
 #define MAX_CNX 500                         // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 #define LEN_XPATH 20                        // xpath size (for xml input file)
@@ -49,34 +46,31 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
 
 /*
-   =========================== FOR XML ROUTING TABLES FILES =======================================
+   =================================== For XML files ==============================================
 */
-static char *xml_input_file = NULL;         // name of the optionnal xml input file (for routing tables)
-static char *xml_input_pred_file = NULL;    // name of the optionnal xml input file (for preds tables)
-static char *xml_output_file = NULL;        // name of the xml output file (for routing tables)
-static char *xml_output_pred_file = NULL;   // name of the xml output pred file (for preds tables)
-static xmlDocPtr doc_i = NULL;              // pointer to the parsed xml input file for routing tables
-static xmlDocPtr doc_i_pred = NULL;         // pointer to the parsed xml input file for preds tables
-static int xml_height = -1;                 // dst height read from xml input file
+static char     *xml_input_file = NULL;         // name of the optionnal xml input file (for routing tables)
+static char     *xml_input_pred_file = NULL;    // name of the optionnal xml input file (for preds tables)
+static char     *xml_output_file = NULL;        // name of the xml output file (for routing tables)
+static char     *xml_output_pred_file = NULL;   // name of the xml output pred file (for preds tables)
+static xmlDocPtr doc_i = NULL;                  // pointer to the parsed xml input file for routing tables
+static xmlDocPtr doc_i_pred = NULL;             // pointer to the parsed xml input file for preds tables
+static int       xml_height = -1;               // dst height read from xml input file
 
 /*
-   =================================================================================================
+   ================================================================================================
 */
 
-static const int a = 3;                     /* min number of brothers in a node
-                                               (except for the root node) */
-static const int b = 6;                     /* max number of brothers in a node
-                                               (must be twice a) */
+static const int   a = 3;                                   // min number of brothers in a node (except for the root node)
+static const int   b = 2 * a;                               // max number of brothers in a node (must be twice a)
 static int         COMM_TIMEOUT = 19000;                    // timeout for communications (mustn't be greater than MAX_WAIT_COMPL)
-static double      max_simulation_time = 10500;             // max default simulation time              //TODO : plus utile ?
 static xbt_dynar_t infos_dst;                               // to store all global DST infos
-static int         nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type
-static int         nb_br_messages[100000][TYPE_NBR] = {0};  // total number of broadcasted messages exchanged for each task type
+static int         nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type per node
+static int         nb_br_messages[100000][TYPE_NBR] = {0};  // total number of broadcasted messages exchanged for each task type per node
 static int         order = 0;                               // order number of nodes arrival
-static int         nb_nodes = 0;                            // total number of nodes
-static int         nb_ins_nodes = 0;                        // number of nodes already inserted
+static int         nb_nodes = 0;                            // total number of nodes to be inserted
+static int         nb_ins_nodes = 0;                        // number of nodes actually inserted
 static int         mem_log = -1;                            // ensures that log new setting occurs only once
-static int         inserted_nodes[100000] = {-1};           // to store a list of already inserted nodes
+static int         inserted_nodes[100000] = {-1};           // to store a list of currently inserted nodes
 
 typedef struct f_node {                     // node that failed to join
     int   id;
@@ -86,12 +80,6 @@ typedef struct f_node {                     // node that failed to join
 static int nb_abort = 0;                    // number of join abortions
 static s_f_node_t *failed_nodes = NULL;     // array of nodes that couldn't join the DST
 
-static int compteur[TYPE_NBR] = {0};
-static int compt_proc = 0;
-static int compt_proc_rest = 0;
-static int cpt_loop_proc[100] = {0};
-
-//static int *g_cpt = NULL;
 
 /**
  * A node representative
@@ -99,28 +87,25 @@ static int cpt_loop_proc[100] = {0};
 typedef struct node_rep {
 
     int id;                                 // representative id
-    char mailbox[MAILBOX_NAME_SIZE];        /* representative main mailbox name */
+    char mailbox[MAILBOX_NAME_SIZE];        // representative main mailbox name
 } s_node_rep_t, *node_rep_t;
 
 /**
- * Infos about the DST (for reporting purposes)
+ * Per node infos about the DST (for reporting purposes)
  */
 typedef struct s_dst_info {
     int   order;                            // arrival order
     int   node_id;                          // node id
     char  active;                           // node state
     char *routing_table;                    // string representation of a routing table
-    int **brothers;                         // node's routing table (only ids)
-    int **preds;                            // node's preds table (only ids)
+    int **brothers;                         // node's routing table (contains only ids)
+    int **preds;                            // node's preds table (contains only ids)
     int   height;                           // number of stages
     int   attempts;                         // number of attempts to join the dst
-    int   add_stage;                        /* boolean: was it necessary to add
-                                               a stage to insert this node ? */
-    int   nbr_split_stages;                 /* number of splitted stages to make
-                                               room for this node */
-    int  *load;                             /* load table (number of predecessors
-                                               per stage) */
-    int  *size;                             // number of brothers for each stage
+    int   add_stage;                        // boolean: was it necessary to add a stage to insert this node ?
+    int   nbr_split_stages;                 // number of splitted stages to make room for this node
+    int  *load;                             // load table (number of predecessors per stage)
+    int  *size;                             // number of brothers per stage
     int   nb_cs_req_fail;                   // number of failed BR_CS_REQ
     int   nb_cs_req_success;                // number of successful BR_CS_REQ
     int   nb_set_update_fail;               // number of failed BR_SET_UPDATE
@@ -130,11 +115,11 @@ typedef struct s_dst_info {
 } s_dst_infos_t, *dst_infos_t;
 
 /**
- * Types of request/answer tasks exchanged
+ * Types of request/answer tasks
  */
 typedef enum {
 
-    TASK_NULL,              // no task (for logging purposes)
+    TASK_NULL,              // no task
     TASK_GET_REP,           // get a node representative
     TASK_CNX_REQ,           // get the DST ready to receive a new node
     TASK_NEW_BROTHER_RCV,   // insert a new node in a node's first stage
@@ -146,8 +131,8 @@ typedef enum {
     TASK_ADD_PRED,          // add a predecessor
     TASK_DEL_PRED,          // delete a predecessor
     TASK_BROADCAST,         // broadcast a message
-    TASK_DISPLAY_VAR,       // display a variable of a remote node (for debugging purposes)
-    TASK_GET_SIZE,          // return the number of brothers on a given stage
+    TASK_DISPLAY_VAR,       // display a remote node's variable (for debugging purposes)
+    TASK_GET_SIZE,          // return the number of brothers of a given stage
     TASK_DEL_BRO,           // delete a brother in a given stage
     TASK_REPL_BRO,          // replace a brother by a new one
     TASK_MERGE,             // merge groups when a node leaves
@@ -167,12 +152,11 @@ typedef enum {
     TASK_CUT_NODE,          // cut node during a transfer
     TASK_BR_ADD_BRO_ARRAY,  // broadcast an add_bro_array task
     TASK_UPDATE_UPPER_STAGE,// update upper stage after a transfer
-    TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join too much
+    //TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join too much   // NOTE : mécanisme remplacé, plus utile
     TASK_CS_REQ,            // ask for permission to get into Critical Section (splitted area)
     TASK_END_GET_REP,       // remove 'g' state after load balance
     TASK_REMOVE_STATE,      // remove given state from states dynar
     TASK_CS_REL,            // reset cs_req flag
-    TASK_CHECK_CS,          // send back a CS_REL if not 'b' neither 'n'            //TODO : tâche plus utilisée
     TASK_IRQ                // requests permission from initiator to interrupt a CS_REQ broadcast
 } e_task_type_t;
 
@@ -257,16 +241,14 @@ typedef struct node {
     s_dst_infos_t   dst_infos;              // infos about the DST
     xbt_dynar_t     tasks_queue;            // CNX_REQ tasks queue
     xbt_dynar_t     delayed_tasks;          // delayed tasks dynar
-    int             prio;                   // priority to get into critical section (the lower the value, the highest priority)
-    char            cs_req;                 // Critical Section requested
+    int             prio;                   // priority to get into critical section (the lower the value, the higher the priority)
+    char            cs_req;                 // Critical Section requested (boolean)
     float           cs_req_time;            // timestamp when cs_req was set
     int             cs_new_id;              // new node's id that set cs_req
     int             cs_new_node_prio;       // new node's priority
     int             cs_req_br_source;       // node's id that started broadcast of cs_req
-    char            cs_irq_ans;             // answer given to an interrupt request
-    float           last_check_time;        // last time when checking if cs_req has to be reset occured
+    char            cs_irq_ans;             // answer given to an interrupt request (boolean)
     s_run_task_t    run_task;               // current running task state (delayed tasks)
-    s_run_task_t    other_task_state;       // other task state
 } s_node_t, *node_t;
 
 /**
@@ -358,12 +340,11 @@ static const char* debug_msg[] = {
     "Cut Node",
     "Brd Add_Bro_Array",
     "Update Upper Stage",
-    "Get New Contact",
+    //"Get New Contact",
     "Critical Section Request",
     "End Get Rep",
     "Pop State",
     "Critical Section Released",
-    "Check CS",
     "Interrupt Request"
 };
 
@@ -505,8 +486,7 @@ typedef struct {
     int stage;
     int pos_me;
     int pos_contact;
-} s_task_clean_stage_t;         /* clean useless nodes in a stage when a merge
-                                   occured in lower ones */
+} s_task_clean_stage_t;         // clean useless nodes in a stage when a merge occured in lower ones
 
 typedef struct {
 
@@ -596,10 +576,12 @@ typedef struct {
     int new_id;
 } s_task_update_upper_stage_t;  // update upper stage after a transfer
 
+/*
 typedef struct {
 
     int new_node_id;
 } s_task_get_new_contact_t;    // get new contact (in case of too much failures)
+*/
 
 typedef struct {
 
@@ -621,10 +603,6 @@ typedef struct {
 typedef struct {
     int new_node_id;
 } s_task_cs_rel_t;             // reset cs_req flag
-
-typedef struct {
-    int new_node_id;
-} s_task_check_cs_t;           // send back a CS_REL if not 'b' neither 'n'
 
 typedef struct {
     int new_node_id;
@@ -665,12 +643,11 @@ union req_args {
     s_task_cut_node_t           cut_node;
     s_task_br_add_bro_array_t   br_add_bro_array;
     s_task_update_upper_stage_t update_upper_stage;
-    s_task_get_new_contact_t    get_new_contact;
+    //s_task_get_new_contact_t    get_new_contact;
     s_task_cs_req_t             cs_req;
     s_task_end_get_rep_t        end_get_rep;
     s_task_remove_state_t       remove_state;
     s_task_cs_rel_t             cs_rel;
-    s_task_check_cs_t           check_cs;
     s_task_irq_t                irq;
 };
 
@@ -744,10 +721,12 @@ typedef struct {
     int        stay_id;
 } s_task_ans_transfer_t;
 
+/*
 typedef struct {
 
     int id;
 } s_task_ans_get_new_contact_t;
+*/
 
 typedef struct {
 
@@ -767,7 +746,7 @@ typedef union answer {
     s_task_ans_handle_t             handle;
     s_task_ans_is_brother_t         is_brother;
     s_task_ans_transfer_t           transfer;
-    s_task_ans_get_new_contact_t    get_new_contact;
+    //s_task_ans_get_new_contact_t    get_new_contact;
     s_task_ans_irq_t                irq;
 } u_ans_data_t;
 
@@ -802,7 +781,6 @@ static void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
 static int          index_pred(node_t me, int stage, int id);
 static e_val_ret_t  wait_for_completion(node_t me, int ans_cpt, int new_node_id);
-//static int          tot_msg_number(int id);
 static void         make_copy_brothers(node_t me,
                                        s_node_rep_t ***cpy_brothers,
                                        int **cpy_bro_index);
@@ -839,14 +817,11 @@ static int          expected_answers_search(node_t me,
                                             int new_node_id);
 static int          state_search(node_t me, char active, int new_id);
 static u_ans_data_t is_brother(node_t me, int id, int new_node_id);
-//static int          dst_xbt_dynar_search_or_negative(xbt_dynar_t dynar, const void *elem);
-//static char         dst_xbt_dynar_member(xbt_dynar_t dynar, void *elem);
 static e_val_ret_t  cs_req(node_t me, int sender_id, int new_node_id, int cs_new_node_prio);
 static void         cs_rel(node_t me, int new_node_id);
 static void         rec_async_answer(node_t me, int idx, ans_data_t ans);
 static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
 static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id);
-static void         check_cs(node_t me, int sender_id);
 static void         launch_fork_process(node_t me, msg_task_t task);
 static xmlDocPtr    get_xml_input_file(const char *doc_name);
 static char*        filename(const char *file_name);
@@ -961,7 +936,7 @@ static void         clean_upper_stage(node_t me,
                                       int new_node_id);
 static void         merge_request(node_t me, int new_node_id);
 static void         load_balance(node_t me, int contact_id);
-static u_ans_data_t get_new_contact(node_t me, int new_node_id);
+//static u_ans_data_t get_new_contact(node_t me, int new_node_id);
 
 /*
  ============================ PROCESS FUNCTIONS ===============================
@@ -978,7 +953,7 @@ static void        proc_data_cleanup(void* arg);
 */
 
 /**
- * \brief Count lines of a file
+ * \brief Count lines of a deployement file
  * \param file the name of the file
  * \return number of lines
  */
@@ -994,7 +969,7 @@ static int count_lines_of_file(const char *file) {
         }
     }
     fclose(fp);
-    return count - 4;
+    return count - 4;       // to remove xml header lines
 }
 
 /**
@@ -1009,7 +984,7 @@ static void display_var(node_t me) {
 /**
  * \brief Return a string representation of a routing table
  * \param me the current node
- * \return the routing table in text
+ * \return the string routing table
  */
 static char* routing_table(node_t me) {
 
@@ -1596,7 +1571,6 @@ static e_val_ret_t cs_req(node_t me, int sender_id, int new_node_id, int cs_new_
     msg_error_t res;
 
     s_state_t state = get_state(me);
-    //char test = (MSG_get_clock() - me->cs_req_time > MAX_CS_REQ);
 
     /* to avoid dealocks : if new node's priority is lower, cancel the current request if broadcast
      * initiator is ok */
@@ -1840,44 +1814,6 @@ static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_
 }
 
 /**
- * \brief If state is not 'n' nor 'b', sends a cs_rel to sender_id
- * \param me the current node
- * \param sender_id cs_rel has to be sent to this node
- */
-// TODO : fonction plus utilisée (ni tâche associée TASK_CHECK_CS)
-static void check_cs(node_t me, int sender_id) {
-    XBT_IN();
-
-    s_state_t state = get_state(me);
-    if (state.active != 'n' && state.active != 'b') {
-
-        XBT_VERB("Node %d: Yes, node %d's cs_req has to be reset",
-                me->self.id,
-                sender_id);
-
-        if (me->self.id != sender_id) {
-
-            // send a cs_rel if active
-            u_req_args_t args;
-            //args.cs_rel.new_node_id = me->self.id;
-            args.set_active.new_node_id = me->self.id;
-
-            msg_error_t res = send_msg_async(me,
-                    //TASK_CS_REL,
-                    TASK_SET_ACTIVE,
-                    sender_id,
-                    args);
-        } else {
-
-            set_active(me, me->self.id);
-        }
-    }
-
-    XBT_OUT();
-}
-
-
-/**
  * \brief Run a given task locally or with a fork process, according to its type
  * \param me the current node
  * \param task the task to be executed
@@ -1995,8 +1931,6 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                         __LINE__,
                         req->answer_to);
             }
-
-            //compteur[req->args.broadcast.type]--;
 
             // free unused memory
             data_req_free(me, &req);
@@ -2585,23 +2519,6 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 }
 
 /**
- * \brief Returns the total number of messages exchanged for a given node
- * \param id the node for which messages will be counted
- * \return The total number of messages
- */
-/*
-static int tot_msg_number(int id) {
-
-    int i, tot = 0;
-
-    for (i = 0; i < TYPE_NBR; i++) {
-        tot += nb_messages[id][i];
-    }
-    return tot;
-}
-*/
-
-/**
  * \brief Provide a copy of me's routing table
  * \param me the current node
  * \param cpy_brothers handler to the copy
@@ -2742,11 +2659,6 @@ static node_rep_t compare_tables(node_t me, s_node_rep_t ***table, int **table_i
 static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) {
 
     XBT_IN();
-
-    //if (args.broadcast.first_call == 1) {
-
-        //compteur[args.broadcast.type]++;
-    //}
 
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
 
@@ -3575,7 +3487,7 @@ static void run_delayed_tasks(node_t me) {
                         }
                         */
 
-                        XBT_VERB("Node %d: [%s:%c] task[%d] removed",
+                        XBT_VERB("Node %d: [%s:%d] task[%d] removed",
                                 me->self.id,
                                 __FUNCTION__,
                                 __LINE__,
@@ -5039,11 +4951,6 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
                 } else {
 
-                    //if (args.broadcast.first_call == 1) {
-
-                    //compteur[args.broadcast.type]++;
-                    //}
-
                     // remote call
                     msg_error_t res = send_msg_async(me,
                             TASK_BROADCAST,
@@ -5079,11 +4986,6 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             } else {
 
                 ans_cpt = 1;
-
-                //if (args.broadcast.first_call == 1) {
-
-                //compteur[args.broadcast.type]++;
-                //}
 
                 // remote call
                 msg_error_t res = send_msg_async(me,
@@ -5128,9 +5030,6 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             // return NOK if any of both answers is NOK
             if (task_sent != NULL) {
 
-                //req_data = MSG_task_get_data(task_sent);
-                //compteur[req_data->args.broadcast.type]--;
-
                 local_ret = handle_task(me, &task_sent);
                 if (local_ret == UPDATE_NOK || ret == UPDATE_NOK) {
 
@@ -5163,8 +5062,6 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         if (task_sent != NULL) {
 
             req_data = MSG_task_get_data(task_sent);
-            //compteur[req_data->args.broadcast.type]--;  //TODO : regarder si le type peut être CS_REQ ou pas
-            //compteur[mem_type]--;
             data_req_free(me, &req_data);
         }
         task_free(&task_sent);
@@ -5218,7 +5115,6 @@ static void init(node_t me) {
 
     me->height = 1;
     me->comm_received = NULL;
-    me->last_check_time = 0;
 
     // set mailbox
     set_mailbox(me->self.id, me->self.mailbox);
@@ -6081,7 +5977,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                     me->run_task.name = OTHER;
 
                     state = get_state(me);
-                    //TODO : comptage des essais pas bon. A modifier ?
+                    //TODO : vérifier le comptage des essais
                     XBT_INFO("Node %d: '%c'/%d - **** FAILED TO MAKE ROOM FOR NODE %d (try = %d) ****",
                             me->self.id,
                             state.active,
@@ -6780,7 +6676,7 @@ static void cut_node(node_t me, int stage, int right, int cut_pos, int new_node_
             break;
     }
 
-    // TODO : voir ce qu'il se passe lorsq'on est sur la racine
+    // TODO : voir ce qu'il se passe lorsqu'on est sur la racine
     XBT_VERB("Node %d: update upper stage - start = %d - end = %d"
             " - stage = %d - new_node = %d - right = %d",
             me->self.id,
@@ -9537,6 +9433,7 @@ static void load_balance(node_t me, int contact_id) {
  * \param me the current node
  * \param new_node_id the new coming node
  */
+/*
 static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
 
     XBT_IN();
@@ -9575,6 +9472,7 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
     XBT_OUT();
     return answer;
 }
+*/
 
 /**
  * \brief Node function
@@ -9625,8 +9523,8 @@ int node(int argc, char *argv[]) {
         node.prio = atoi(argv[3]);       // sleep time can be used to set priority
         node.deadline = atof(argv[4]);
         int contact_id = atoi(argv[2]);
-        u_req_args_t u_req_args;
-        u_req_args.get_new_contact.new_node_id = node.self.id;
+        //u_req_args_t u_req_args;
+        //u_req_args.get_new_contact.new_node_id = node.self.id;
         ans_data_t answer_data = NULL;
         msg_error_t res;
 
@@ -9754,7 +9652,6 @@ int node(int argc, char *argv[]) {
         msg_process_t elem = NULL;
         float wait = 0.0;
 
-        //while (MSG_get_clock() < max_simulation_time && state.active != 'n') {
         do {
 
             state = get_state(&node);
@@ -9818,31 +9715,6 @@ int node(int argc, char *argv[]) {
                     XBT_INFO("Node %d left ...", node.self.id);
                 } else {
 
-                    /*
-                    if (node.cs_req == 1 &&
-                        MSG_get_clock() - node.cs_req_time >= MAX_CS_REQ &&
-                        MSG_get_clock() - node.last_check_time >= MAX_CS_REQ) {
-
-                        // checks if cs_req has to be reset (avoids deadlocks)
-                        XBT_VERB("Node %d: asks node %d if cs_req has to be reset",
-                                node.self.id,
-                                node.cs_new_id);
-                        display_sc(&node, 'V');
-
-                        node.last_check_time = MSG_get_clock();
-
-                        u_req_args_t args_chk;
-                        args_chk.check_cs.new_node_id = node.cs_new_id; // not used
-
-                        xbt_assert(node.cs_new_id != node.self.id, "Check_cs error !!");
-
-                        msg_error_t res = send_msg_async(&node,
-                                TASK_CHECK_CS,
-                                node.cs_new_id,
-                                args_chk);
-                    }
-                    */
-
                     //XBT_DEBUG("Node %d: nothing else to do: sleep for a while", node.self.id);
 
                     // simulation time will increase a lot if sleep time is too long
@@ -9853,20 +9725,28 @@ int node(int argc, char *argv[]) {
             } else {
 
                 // some task has been received
-
-                XBT_DEBUG("some task has been received");
                 res = MSG_comm_get_status(node.comm_received);
 
                 MSG_comm_destroy(node.comm_received);
                 node.comm_received = NULL;
 
-                XBT_VERB("Node %d: Task received", node.self.id);       //TODO : ajouter l'id de l'émetteur du message
+                XBT_VERB("Node %d: [%s:%d] Task received ...",
+                        node.self.id,
+                        __FUNCTION__,
+                        __LINE__);       //TODO : ajouter l'id de l'émetteur du message
+
                 display_sc(&node, 'V');
 
                 if (res == MSG_OK) {
 
                     req_data_t req = MSG_task_get_data(task_received);
                     ans_data_t ans = (ans_data_t)req;
+
+                    XBT_VERB("Node %d: [%s:%d] ... from node %d",
+                            node.self.id,
+                            __FUNCTION__,
+                            __LINE__,
+                            req->sender_id);
 
                     if (strcmp(MSG_task_get_name(task_received), "ans") != 0) {
 
@@ -9877,8 +9757,10 @@ int node(int argc, char *argv[]) {
                             xbt_dynar_push(node.tasks_queue, &task_received);
                             task_received = NULL;
 
-                            XBT_VERB("Node %d: task %s(%d) pushed",
+                            XBT_VERB("Node %d: [%s:%d] task %s(%d) pushed",
                                     node.self.id,
+                                    __FUNCTION__,
+                                    __LINE__,
                                     debug_msg[req->type],
                                     req->args.cnx_req.new_node_id);
 
@@ -9900,14 +9782,20 @@ int node(int argc, char *argv[]) {
                 } else {
 
                     // reception failure
-                    XBT_WARN("Node %d: Failed to receive a task",
-                            node.self.id);
+                    XBT_WARN("Node %d: [%s:%d] Failed to receive a task",
+                            node.self.id,
+                            __FUNCTION__,
+                            __LINE__);
                 }
             }
             state = get_state(&node);
         } while (done == 0 || MSG_get_clock() < wait);
 
-        XBT_DEBUG("Node %d: End While loop - will quit node() - nb_ins_nodes = %d", node.self.id, nb_ins_nodes);
+        XBT_DEBUG("Node %d: [%s:%d] End While loop - will quit node() - nb_ins_nodes = %d",
+                node.self.id,
+                __FUNCTION__,
+                __LINE__,
+                nb_ins_nodes);
 
     } else {
 
@@ -10657,7 +10545,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
                         if (val_ret != STORED) {
 
-                            //compteur[rcv_args.broadcast.type]--;
                             data_req_free(me, &rcv_req);
                         }
                         // TODO : voir si cette libération ne pose pas de
@@ -11058,6 +10945,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             XBT_VERB("Node %d: TASK_UPDATE_UPPER_STAGE done", me->self.id);
             break;
 
+        /*
         case TASK_GET_NEW_CONTACT:
             answer = get_new_contact(me, rcv_args.get_new_contact.new_node_id);
 
@@ -11073,6 +10961,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
             XBT_VERB("Node %d: TASK_GET_NEW_CONTACT done", me->self.id);
             break;
+        */
 
         case TASK_CS_REQ:
             val_ret = cs_req(me,
@@ -11172,15 +11061,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             XBT_VERB("Node %d: TASK_CS_REL done", me->self.id);
             break;
 
-        case TASK_CHECK_CS:             //TODO : tâche plus utilisée
-            check_cs(me, rcv_req->sender_id);
-
-            data_req_free(me, &rcv_req);
-            task_free(task);
-
-            XBT_VERB("Node %d: TASK_CHECK_CS done", me->self.id);
-            break;
-
         case TASK_IRQ:
             answer.irq.ans = (me->run_task.name != SET_UPD);
             me->cs_irq_ans = answer.irq.ans;
@@ -11214,7 +11094,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
         // set and store DST infos
         set_n_store_infos(me);
 
-        display_preds(me, 'V');
+        display_preds(me, 'D');
     }
 
     XBT_DEBUG("Node %d end of handle_task(): val_ret = '%s'",
@@ -11359,8 +11239,6 @@ int main(int argc, char *argv[]) {
     XBT_INFO("************************************     PRINT ALL  (nb_ins_nodes = %d)    "
             "************************************\n", nb_ins_nodes);
     unsigned int cpt = 0, loc_nb_nodes = 0, loc_nb_nodes_tot = 0;
-
-    XBT_VERB("compt_proc_rest = %d - compt_proc = %d", compt_proc_rest, compt_proc);
 
     // to store non active nodes id
     int size = 100;
@@ -11513,14 +11391,14 @@ int main(int argc, char *argv[]) {
                 XBT_INFO("[Node %d]: Non active\n", elem->node_id);
                 non_active[size] = elem->node_id;
                 size++;
-                xbt_assert(size < 100, "Non_active array too small !");
+                xbt_assert(size < 100, "[%s:%d] Non_active array too small !", __FUNCTION__, __LINE__);
             }
             xbt_free(elem->routing_table);
             elem->routing_table = NULL;
 
             int j;
             for (j = 0; j < elem->height; j++) {
-                
+
                 xbt_free(elem->brothers[j]);
                 xbt_free(elem->preds[j]);
             }
@@ -11607,15 +11485,6 @@ int main(int argc, char *argv[]) {
 
     XBT_INFO("\nSimulation time %lf", xbt_os_timer_elapsed(timer));
     XBT_INFO("Simulated time: %g", MSG_get_clock());
-
-    XBT_INFO("compteur");
-    int z = 0;
-    for (z = 0; z < TYPE_NBR; z++) {
-        if (compteur[z] != 0) {
-
-                XBT_INFO("\tcpt[%s] = %d", debug_msg[z], compteur[z]);
-        }
-    }
 
     xbt_os_timer_free(timer);
 
