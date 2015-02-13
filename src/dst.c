@@ -8544,6 +8544,12 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
 }
 */
 
+static void action_node(const char *const *action) {
+    XBT_IN();
+    node(5, (char**)action);
+    XBT_OUT();
+}
+
 /**
  * \brief Node function
  * Arguments:
@@ -10217,7 +10223,10 @@ int main(int argc, char *argv[]) {
     }
 
     xbt_log_control_set("msg_dst.thres:TRACE");
+
     MSG_init(&argc, argv);
+    MSG_action_init();
+
     infos_dst = xbt_dynar_new(sizeof(dst_infos_t), &elem_free);
 
     // init array of failed nodes
@@ -10290,6 +10299,16 @@ int main(int argc, char *argv[]) {
 
     xbt_os_walltimer_start(timer);
     msg_error_t res = MSG_main();
+
+    // actions file
+    //if (argc >= 6) {
+
+        xbt_replay_action_register("node", action_node);
+        //msg_error_t res = MSG_action_trace_run(argv[5]);
+        res = MSG_action_trace_run("trace.txt");
+    //}
+
+    MSG_action_exit();
     xbt_os_walltimer_stop(timer);
 
 

@@ -15,6 +15,7 @@
 #include "xbt/ex.h"                         // to use exceptions
 #include "xml/xml_create_writer.h"          // to create final xml files with routing tables
 #include "xml/xml_to_array.h"               // to get routing and predecessors tables from xml files
+#include <xbt/replay.h>
 
 #ifndef DST_H
 #define DST_H
@@ -935,6 +936,7 @@ static void         load_balance(node_t me, int contact_id);
 */
 
 static int         node(int argc, char *argv[]);
+static void        action_node(const char *const *action);
 static e_val_ret_t handle_task(node_t me, msg_task_t* task);
 static int         proc_handle_task(int argc, char *argv[]);
 static int         proc_run_tasks(int argc, char* argv[]);
