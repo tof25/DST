@@ -10291,7 +10291,6 @@ int main(int argc, char *argv[]) {
     nb_nodes = count_lines_of_file(deployment_file);
     XBT_INFO("START BUILDING A DST OF %d NODES", nb_nodes);
 
-    //MSG_set_channel_number(0);         //TODO: je n'ai pas compris l'utilité de set_channel_number
     MSG_create_environment(platform_file);
 
     MSG_function_register("node", node);
@@ -10397,7 +10396,8 @@ int main(int argc, char *argv[]) {
 
                 nb_msg[i]    += nb_messages[elem->node_id][i];
                 nb_br_msg[i] += nb_br_messages[elem->node_id][i];
-                tot_msg      += nb_messages[elem->node_id][i];
+                //tot_msg      += nb_messages[elem->node_id][i];
+                tot_msg += (nb_messages[elem->node_id][i] + nb_br_messages[elem->node_id][i]);
             }
 
             /*
