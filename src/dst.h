@@ -36,6 +36,8 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 #define LEN_XPATH 20                        // xpath size (for xml input file)
 #define XML_NAME_SIZE 50                    // xml files names length
+#define a 3
+#define b 6
 
 
 /*
@@ -53,8 +55,8 @@ static int       xml_height = -1;               // dst height read from xml inpu
    ================================================================================================
 */
 
-static const int   a = 3;                                   // min number of brothers in a node (except for the root node)
-static const int   b = 2 * a;                               // max number of brothers in a node (must be twice a)
+//static const int   a = 3;                                   // min number of brothers in a node (except for the root node)
+//static const int   b = 2 * 3;                               // max number of brothers in a node (must be twice a)
 static int         COMM_TIMEOUT = 19000;                    // timeout for communications (mustn't be greater than MAX_WAIT_COMPL)
 static xbt_dynar_t infos_dst;                               // to store all global DST infos
 static int         nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type per node
