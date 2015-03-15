@@ -1,7 +1,7 @@
 /*
  *  dst.c
  *
- *  Written by Christophe Enderlin on 2015/02/13
+ *  Written by Christophe Enderlin on 2015/03/15
  *
  */
 
@@ -23,23 +23,39 @@
 */
 
 /**
- * \brief Count lines of a deployement file
+ * \brief Count dst description lines of a deployement file (i.e. number of nodes to be inserted)
  * \param file the name of the file
  * \return number of lines
  */
-static int count_lines_of_file(const char *file) {
-    int ch, count = 0;
+static int count_dst_nodes(const char *file) {
+    int count = 0;
     FILE *fp = fopen(file, "r");
     if(fp == NULL) {
         return -1;
     }
-    while((ch = fgetc(fp)) != EOF) {
-        if (ch == '\n') {
-            count++;
-        }
+
+    char line[LINE_MAX];
+    const char *keyword = "process";            // dst lines starts by the word "process"
+    const char *end_keyword = "END DST";        // end of dst description
+
+    while (fgets(line, LINE_MAX, fp) != NULL && !ferror(fp)) {
+
+        //end of dst platform deployment
+        if (strstr(line, end_keyword)) break;
+
+        //count dst nodes
+        if (strstr(line, keyword)) count++;
+
+        XBT_DEBUG("%d: %s", count, line);
     }
+    if (ferror(fp)) {
+
+        fclose(fp);
+        return -1;
+    }
+
     fclose(fp);
-    return count - 4;       // to remove xml header lines
+    return count;
 }
 
 /**
@@ -2380,7 +2396,7 @@ static void run_tasks_queue(node_t me) {
         sleep_time = ((double)rand() * (double)(max - min) / (double)RAND_MAX) + (double)min;
         MSG_process_sleep(sleep_time);
 
-    } while (nb_ins_nodes < nb_nodes);
+    } while (nb_ins_nodes < nb_nodes || !finished);
 
     XBT_OUT();
 }
@@ -8491,10 +8507,11 @@ static void load_balance(node_t me, int contact_id) {
     set_active(me, state.new_id);
 
     state = get_state(me);
-    XBT_INFO("Node %d: '%c'/%d  **** LOAD BALANCE COMPLETED ****",
+    XBT_INFO("Node %d: '%c'/%d  **** LOAD BALANCE COMPLETED **** (nb_ins_nodes = %d)",
             me->self.id,
             state.active,
-            state.new_id);
+            state.new_id,
+            nb_ins_nodes);
     XBT_OUT();
 }
 
@@ -8544,9 +8561,52 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
 }
 */
 
+static void action_finalize(const char *const *action) {
+    XBT_IN();
+
+    float sleep_time = action[2] == NULL ? 0: atof(action[2]);
+
+    XBT_INFO("%s: Action_%s - sleep: %f", action[0], action[1], sleep_time);
+
+    while (nb_ins_nodes < nb_nodes) {
+        MSG_process_sleep(sleep_time);
+    }
+    finished = 1;
+
+    XBT_INFO("%s: finished = %d - nb_ins_nodes = %d", action[0], finished, nb_ins_nodes);
+
+    XBT_OUT();
+}
+
 static void action_node(const char *const *action) {
     XBT_IN();
-    node(5, (char**)action);
+
+    XBT_INFO("%s: Action_%s", action[0], action[1]);
+    int i = 0;
+    int argv = 5;       // number of arguments
+    char **args;
+
+    args = xbt_new0(char*, argv);
+    for (i = 0; i < argv; i++) {
+        args[i] = xbt_new0(char, 20);
+    }
+
+    // delete action[1] (function name)
+    args[0] = (char*)action[0];
+
+    for (i = 1; i < argv; i++) {
+        args[i] = (char*)action[i+1];
+    }
+
+    node(argv, args);
+
+    /*
+    for (i = 0; i < argv; i++) {
+        xbt_free(args[i]);
+    }
+    xbt_free(args);
+    */
+
     XBT_OUT();
 }
 
@@ -8731,15 +8791,12 @@ int node(int argc, char *argv[]) {
         do {
 
             state = get_state(&node);
-            //if (state.active == 'n') break;
 
             proc_set = MSG_host_get_process_list(MSG_host_self());
             nb_proc = xbt_swag_size(proc_set);
 
-            //if (nb_proc == 1) XBT_VERB("NB_PROC = 1");
-
             if (done == 0) {
-                if (nb_proc > 1 || nb_ins_nodes < nb_nodes) {
+                if (nb_proc > 1 || nb_ins_nodes < nb_nodes || !finished) {
 
                     done = 0;
                 } else {
@@ -10245,24 +10302,24 @@ int main(int argc, char *argv[]) {
     // xml output files
     if (argc >= 4) {
 
-        xml_output_file = xbt_new0(char, XML_NAME_SIZE);
-        xml_output_pred_file = xbt_new0(char, XML_NAME_SIZE);
+        xml_output_file = xbt_new0(char, FILENAME_MAX);
+        xml_output_pred_file = xbt_new0(char, FILENAME_MAX);
 
-        snprintf(xml_output_file, XML_NAME_SIZE, "%s", argv[3]);
-        snprintf(xml_output_pred_file, XML_NAME_SIZE, "%s", "pred_");
-        strncat(xml_output_pred_file, xml_output_file, XML_NAME_SIZE - strlen(xml_output_pred_file));
+        snprintf(xml_output_file, FILENAME_MAX, "%s", argv[3]);
+        snprintf(xml_output_pred_file, FILENAME_MAX, "%s", "pred_");
+        strncat(xml_output_pred_file, xml_output_file, FILENAME_MAX - strlen(xml_output_pred_file));
     }
 
     // xml input files
     if (argc >= 5) {
 
-        xml_input_file = xbt_new0(char, XML_NAME_SIZE);
-        xml_input_pred_file = xbt_new0(char, XML_NAME_SIZE);
+        xml_input_file = xbt_new0(char, FILENAME_MAX);
+        xml_input_pred_file = xbt_new0(char, FILENAME_MAX);
 
-        snprintf(xml_input_file, XML_NAME_SIZE, "%s", argv[4]);
+        snprintf(xml_input_file, FILENAME_MAX, "%s", argv[4]);
 
-        snprintf(xml_input_pred_file, XML_NAME_SIZE, "%s", "pred_");
-        strncat(xml_input_pred_file, xml_input_file, XML_NAME_SIZE - strlen(xml_input_pred_file));
+        snprintf(xml_input_pred_file, FILENAME_MAX, "%s", "pred_");
+        strncat(xml_input_pred_file, xml_input_file, FILENAME_MAX - strlen(xml_input_pred_file));
 
         xbt_assert(strcmp(xml_input_file, xml_output_file) != 0,
                 "[%s:%d] xml output files and input files musn't have the same name !",
@@ -10288,7 +10345,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    nb_nodes = count_lines_of_file(deployment_file);
+    nb_nodes = count_dst_nodes(deployment_file);
     XBT_INFO("START BUILDING A DST OF %d NODES", nb_nodes);
 
     MSG_create_environment(platform_file);
@@ -10297,12 +10354,14 @@ int main(int argc, char *argv[]) {
     MSG_launch_application(deployment_file);
 
     xbt_os_walltimer_start(timer);
-    msg_error_t res = MSG_main();
+    //msg_error_t res = MSG_main();
+    msg_error_t res;
 
     // actions file
     //if (argc >= 6) {
 
         xbt_replay_action_register("node", action_node);
+        xbt_replay_action_register("finalize", action_finalize);
         //msg_error_t res = MSG_action_trace_run(argv[5]);
         res = MSG_action_trace_run("trace.txt");
     //}

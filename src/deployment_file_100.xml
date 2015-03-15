@@ -92,14 +92,16 @@
   <process host="c-87.me" function="node"><argument value="140" /><argument value="172" /><argument value="870" /><argument value="20000" /></process>
   <process host="c-88.me" function="node"><argument value="150" /><argument value="254" /><argument value="880" /><argument value="20000" /></process>
   <process host="c-89.me" function="node"><argument value="29" /><argument value="123" /><argument value="890" /><argument value="20000" /></process>
-  <process host="c-90.me" function="node"><argument value="170" /><argument value="64" /><argument value="900" /><argument value="20000" /></process>
-  <process host="c-91.me" function="node"><argument value="69" /><argument value="250" /><argument value="910" /><argument value="20000" /></process>
-  <process host="c-92.me" function="node"><argument value="19" /><argument value="170" /><argument value="920" /><argument value="20000" /></process>
-  <process host="c-93.me" function="node"><argument value="31" /><argument value="67" /><argument value="930" /><argument value="20000" /></process>
-  <process host="c-94.me" function="node"><argument value="205" /><argument value="164" /><argument value="940" /><argument value="20000" /></process>
-  <process host="c-95.me" function="node"><argument value="4" /><argument value="119" /><argument value="950" /><argument value="20000" /></process>
-  <process host="c-96.me" function="node"><argument value="145" /><argument value="62" /><argument value="960" /><argument value="20000" /></process>
-  <process host="c-97.me" function="node"><argument value="155" /><argument value="164" /><argument value="970" /><argument value="20000" /></process>
-  <process host="c-98.me" function="node"><argument value="194" /><argument value="40" /><argument value="980" /><argument value="20000" /></process>
-  <process host="c-99.me" function="node"><argument value="200" /><argument value="234" /><argument value="990" /><argument value="20000" /></process>
+  <process host="c-90.me" function="p0"></process>
+  <process host="c-91.me" function="p1"></process>
+  <process host="c-92.me" function="p2"></process>
+  <process host="c-93.me" function="p3"></process>
+  <process host="c-94.me" function="p4"></process>
+  <process host="c-95.me" function="p5"></process>
+  <process host="c-96.me" function="p6"></process>
+  <process host="c-97.me" function="p7"></process>
+  <process host="c-98.me" function="p8"></process>
+  <process host="c-99.me" function="p9"></process>
+  <!-- END DST -->
+  <process host="c-99.me" function="p10"></process>
 </platform>

@@ -35,7 +35,6 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_CNX 500                         // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
 #define LEN_XPATH 20                        // xpath size (for xml input file)
-#define XML_NAME_SIZE 50                    // xml files names length
 #define a 3
 #define b 6
 
@@ -66,6 +65,7 @@ static int         nb_nodes = 0;                            // total number of n
 static int         nb_ins_nodes = 0;                        // number of nodes actually inserted
 static int         mem_log = -1;                            // ensures that log new setting occurs only once
 static int         inserted_nodes[100000] = {-1};           // to store a list of currently inserted nodes
+static char        finished;                                // to end the simulation
 
 typedef struct f_node {                     // node that failed to join
     int   id;
@@ -763,7 +763,7 @@ struct ans_data {
   ==========================  UTILITY FUNCTIONS ===============================
 */
 
-static int          count_lines_of_file(const char *file);
+static int          count_dst_nodes(const char *file);
 static void         display_var(node_t me);
 static char*        routing_table(node_t me);
 static void         set_n_store_infos(node_t me);
