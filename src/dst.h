@@ -112,48 +112,51 @@ typedef struct s_dst_info {
 /**
  * Types of request/answer tasks
  */
-typedef enum {
 
-    TASK_NULL,              // no task
-    TASK_GET_REP,           // get a node representative
-    TASK_CNX_REQ,           // get the DST ready to receive a new node
-    TASK_NEW_BROTHER_RCV,   // insert a new node in a node's first stage
-    TASK_SPLIT_REQ,         // request a node to split
-    TASK_ADD_STAGE,         // add a new stage
-    TASK_CNX_GROUPS,        // make a node connect to his newly splitted sons
-    TASK_SPLIT,             // execute the splitting
-    TASK_NB_PRED,           // get the number of predecessors of a node, for a given stage
-    TASK_ADD_PRED,          // add a predecessor
-    TASK_DEL_PRED,          // delete a predecessor
-    TASK_BROADCAST,         // broadcast a message
-    TASK_DISPLAY_VAR,       // display a remote node's variable (for debugging purposes)
-    TASK_GET_SIZE,          // return the number of brothers of a given stage
-    TASK_DEL_BRO,           // delete a brother in a given stage
-    TASK_REPL_BRO,          // replace a brother by a new one
-    TASK_MERGE,             // merge groups when a node leaves
-    TASK_BROADCAST_MERGE,   // broadcast a merge task
-    TASK_DEL_ROOT,          // delete the root when a merge occurs
-    TASK_CLEAN_STAGE,       // clean useless nodes in a stage when a merge occured in lower ones
-    TASK_MERGE_REQ,         // request merges tasks
-    TASK_SET_ACTIVE,        // set 'active' state
-    TASK_SET_UPDATE,        // set 'update' state
-    TASK_SET_STATE,         // set any state
-    TASK_IS_BROTHER,        // test if a given id is a brother of mine
-    TASK_TRANSFER,          // transfer some nodes to another group
-    //TASK_DEL_MEMBER,        // delete a part of current group during a transfer  // TODO : plus besoin d'une tâche ? (voir DEL_MEMBER_REQ)
-    TASK_ADD_BRO_ARRAY,     // add an array of brothers
-    TASK_SHIFT_BRO,         // shift brothers to let a new one come in              // TODO : tâche pas utile si on ne l'exécute qu'en local
-    TASK_ADD_BRO,           // add a brother at a given stage
-    TASK_CUT_NODE,          // cut node during a transfer
-    TASK_BR_ADD_BRO_ARRAY,  // broadcast an add_bro_array task
-    TASK_UPDATE_UPPER_STAGE,// update upper stage after a transfer
-    //TASK_GET_NEW_CONTACT,   // get a new contact for a new coming node that failed to join too much   // NOTE : mécanisme remplacé, plus utile
-    TASK_CS_REQ,            // ask for permission to get into Critical Section (splitted area)
-    TASK_END_GET_REP,       // remove 'g' state after load balance
-    TASK_REMOVE_STATE,      // remove given state from states dynar
-    TASK_CS_REL,            // reset cs_req flag
-    TASK_IRQ                // requests permission from initiator to interrupt a CS_REQ broadcast
+#define X_TASK_TYPE_LIST \
+    X("...",                        0, TASK_NULL) \
+    X("Get Representative",         1, TASK_GET_REP) \
+    X("Connexion Request",          2, TASK_CNX_REQ) \
+    X("New Brother Received",       3, TASK_NEW_BROTHER_RCV) \
+    X("Split Request",              4, TASK_SPLIT_REQ) \
+    X("Add Stage",                  5, TASK_ADD_STAGE) \
+    X("Connect Groups",             6, TASK_CNX_GROUPS) \
+    X("Split",                      7, TASK_SPLIT) \
+    X("Number of Predecessors",     8, TASK_NB_PRED) \
+    X("Add Predecessor",            9, TASK_ADD_PRED) \
+    X("Delete Predecessor",        10, TASK_DEL_PRED) \
+    X("Broadcast",                 11, TASK_BROADCAST) \
+    X("Display Var",               12, TASK_DISPLAY_VAR) \
+    X("Get Size",                  13, TASK_GET_SIZE) \
+    X("Delete Brother",            14, TASK_DEL_BRO) \
+    X("Replace Brother",           15, TASK_REPL_BRO) \
+    X("Merge",                     16, TASK_MERGE) \
+    X("Broadcast Merge",           17, TASK_BROADCAST_MERGE) \
+    X("Delete Root",               18, TASK_DEL_ROOT) \
+    X("Clean Upper Stage",         19, TASK_CLEAN_STAGE) \
+    X("Merge Request",             20, TASK_MERGE_REQ) \
+    X("Set Active",                21, TASK_SET_ACTIVE) \
+    X("Set Update",                22, TASK_SET_UPDATE) \
+    X("Set State",                 23, TASK_SET_STATE) \
+    X("Is Brother",                24, TASK_IS_BROTHER) \
+    X("Transfer",                  25, TASK_TRANSFER) \
+    X("Add Brothers Array",        26, TASK_ADD_BRO_ARRAY) \
+    X("Shift Brothers",            27, TASK_SHIFT_BRO) \
+    X("Add Brother",               28, TASK_ADD_BRO) \
+    X("Cut Node",                  29, TASK_CUT_NODE) \
+    X("Brd Add_Bro_Array",         30, TASK_BR_ADD_BRO_ARRAY) \
+    X("Update Upper Stage",        31, TASK_UPDATE_UPPER_STAGE) \
+    X("Critical Section Request",  32, TASK_CS_REQ) \
+    X("End Get Rep",               33, TASK_END_GET_REP) \
+    X("Pop State",                 34, TASK_REMOVE_STATE) \
+    X("Critical Section Released", 35, TASK_CS_REL) \
+    X("Interrupt Request",         36, TASK_IRQ)
+
+#define X(str, val, id) id = val,
+typedef enum {
+    X_TASK_TYPE_LIST
 } e_task_type_t;
+#undef X
 
 /**
  * Values returned by handle_task()
@@ -300,48 +303,11 @@ static const char* debug_ret_msg[] = {
 /**
  * Array of debug task messages
  */
+#define X(str, val, id) str,
 static const char* debug_msg[] = {
-
-    "...",
-    "Get Representative",
-    "Connexion Request",
-    "New Brother Received",
-    "Split Request",
-    "Add Stage",
-    "Connect Groups",
-    "Split",
-    "Number of Predecessors",
-    "Add Predecessor",
-    "Delete Predecessor",
-    "Broadcast",
-    "Display Var",
-    "Get Size",
-    "Delete Brother",
-    "Replace Brother",
-    "Merge",
-    "Broadcast Merge",
-    "Delete Root",
-    "Clean Upper Stage",
-    "Merge Request",
-    "Set Active",
-    "Set Update",
-    "Set State",
-    "Is Brother",
-    "Transfer",
-    //"Delete Member",
-    "Add Brothers Array",
-    "Shift Brothers",
-    "Add Brother",
-    "Cut Node",
-    "Brd Add_Bro_Array",
-    "Update Upper Stage",
-    //"Get New Contact",
-    "Critical Section Request",
-    "End Get Rep",
-    "Pop State",
-    "Critical Section Released",
-    "Interrupt Request"
+    X_TASK_TYPE_LIST
 };
+#undef X
 
 /*
   =============================  REQUESTS ARGS  ===============================
@@ -821,6 +787,7 @@ static void         launch_fork_process(node_t me, msg_task_t task);
 static xmlDocPtr    get_xml_input_file(const char *doc_name);
 static char*        filename(const char *file_name);
 static int          read_xml_files(node_t me, char *xpath);
+static int          string2enum(const char *in_str);
 
 /*
   ======================= COMMUNICATION FUNCTIONS =============================

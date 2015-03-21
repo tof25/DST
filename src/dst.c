@@ -1283,10 +1283,23 @@ static int read_xml_files(node_t me, char *xpath) {
        }
 
     }
-    
+
     XBT_OUT();
 
     return join_success;
+}
+
+/**
+ * \brief convert a string to an enum task type value
+ * \param in_str the string to convert (task name)
+ * \return the matching type value
+ */
+static int string2enum(const char *in_str) {
+    if (0);
+#define X(str, val, id) else if (0 == strcmp(in_str, str)) return val;
+        X_TASK_TYPE_LIST
+#undef X
+        return -1;
 }
 
 /**
@@ -8566,7 +8579,10 @@ static void action_finalize(const char *const *action) {
 
     float sleep_time = action[2] == NULL ? 0: atof(action[2]);
 
-    XBT_INFO("%s: Action_%s - sleep: %f", action[0], action[1], sleep_time);
+    XBT_INFO("%s: Action_%s - sleep: %f",
+            action[0],
+            action[1],
+            sleep_time);
 
     while (nb_ins_nodes < nb_nodes) {
         MSG_process_sleep(sleep_time);
