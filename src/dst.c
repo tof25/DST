@@ -64,7 +64,7 @@ static int count_dst_nodes(const char *file) {
  */
 static void display_var(node_t me) {
 
-    XBT_DEBUG("Node %d: me->bro_index[0] = %d", me->self.id, me->bro_index[0]);
+    XBT_INFO("Node %d: me->bro_index[0] = %d", me->self.id, me->bro_index[0]);
 }
 
 /**
@@ -8571,6 +8571,72 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
 
     XBT_OUT();
     return answer;
+}
+*/
+
+/*
+static void action_send_sync(const char *const *action) {
+    XBT_IN();
+
+    while (nb_ins_nodes < nb_nodes) {
+        MSG_process_sleep(1000.0);
+    }
+
+    XBT_INFO("%s: Action_%s - Sending '%s' to node %d",
+            action[0],              // process name
+            action[1],              // action name
+            action[2],              // task type
+            action[3]);             // recipient id
+
+    e_task_type_t task_type = string2enum(action[2]);
+    int to = atoi(action[3]);
+
+    u_req_args_t req_args = NULL;
+    ans_data_t *answer_data = NULL;
+
+    if (task_type == -1) {
+
+        XBT_WARN("%s: Action_%s - Unknown task type",
+                action[0],
+                action[1]);
+    } else {
+
+        switch (task_type) {
+            case TASK_DISPLAY_VAR:
+                send_msg_sync(XXXXXXX,          //TODO : NE PAS OUBLIER
+                        task_type,
+                        to,
+                        req_args,
+                        &answer_data);
+                break;
+
+            case TASK_GET_SIZE:
+                req_args.get_size.new_node_id = -1;
+                req_args.get_size.stage = atoi(action[4]);
+
+                send_msg_sync(XXXXXXX,          //TODO : NE PAS OUBLIER
+                        task_type,
+                        to,
+                        req_args,
+                        &answer_data);
+
+                XBT_INFO("%s: Action_%s - Node %s stage %s size = %d",
+                        action[0],
+                        action[1],
+                        action[3],
+                        action[4],
+                        (answer_data->answer).get_size.size);
+                break;
+
+                else
+                    XBT_INFO("%s: Action_%s - Unknown action",
+                            action[0],
+                            action[1]);
+        }
+    }
+
+
+    XBT_OUT();
 }
 */
 
