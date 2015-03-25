@@ -1290,19 +1290,6 @@ static int read_xml_files(node_t me, char *xpath) {
 }
 
 /**
- * \brief convert a string to an enum task type value
- * \param in_str the string to convert (task name)
- * \return the matching type value
- */
-static int string2enum(const char *in_str) {
-    if (0);
-#define X(str, val, id) else if (0 == strcmp(in_str, str)) return val;
-        X_TASK_TYPE_LIST
-#undef X
-        return -1;
-}
-
-/**
  * \brief Wait for the completion of a bunch of async sent tasks
  * \param me the current node
  * \param ans_cpt the number of expected anwswers
@@ -8574,124 +8561,6 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
 }
 */
 
-/*
-static void action_send_sync(const char *const *action) {
-    XBT_IN();
-
-    while (nb_ins_nodes < nb_nodes) {
-        MSG_process_sleep(1000.0);
-    }
-
-    XBT_INFO("%s: Action_%s - Sending '%s' to node %d",
-            action[0],              // process name
-            action[1],              // action name
-            action[2],              // task type
-            action[3]);             // recipient id
-
-    e_task_type_t task_type = string2enum(action[2]);
-    int to = atoi(action[3]);
-
-    u_req_args_t req_args = NULL;
-    ans_data_t *answer_data = NULL;
-
-    if (task_type == -1) {
-
-        XBT_WARN("%s: Action_%s - Unknown task type",
-                action[0],
-                action[1]);
-    } else {
-
-        switch (task_type) {
-            case TASK_DISPLAY_VAR:
-                send_msg_sync(XXXXXXX,          //TODO : NE PAS OUBLIER
-                        task_type,
-                        to,
-                        req_args,
-                        &answer_data);
-                break;
-
-            case TASK_GET_SIZE:
-                req_args.get_size.new_node_id = -1;
-                req_args.get_size.stage = atoi(action[4]);
-
-                send_msg_sync(XXXXXXX,          //TODO : NE PAS OUBLIER
-                        task_type,
-                        to,
-                        req_args,
-                        &answer_data);
-
-                XBT_INFO("%s: Action_%s - Node %s stage %s size = %d",
-                        action[0],
-                        action[1],
-                        action[3],
-                        action[4],
-                        (answer_data->answer).get_size.size);
-                break;
-
-                else
-                    XBT_INFO("%s: Action_%s - Unknown action",
-                            action[0],
-                            action[1]);
-        }
-    }
-
-
-    XBT_OUT();
-}
-*/
-
-static void action_finalize(const char *const *action) {
-    XBT_IN();
-
-    float sleep_time = action[2] == NULL ? 0: atof(action[2]);
-
-    XBT_INFO("%s: Action_%s - sleep: %f",
-            action[0],
-            action[1],
-            sleep_time);
-
-    while (nb_ins_nodes < nb_nodes) {
-        MSG_process_sleep(sleep_time);
-    }
-    finished = 1;
-
-    XBT_INFO("%s: finished = %d - nb_ins_nodes = %d", action[0], finished, nb_ins_nodes);
-
-    XBT_OUT();
-}
-
-static void action_node(const char *const *action) {
-    XBT_IN();
-
-    XBT_INFO("%s: Action_%s", action[0], action[1]);
-    int i = 0;
-    int argv = 5;       // number of arguments
-    char **args;
-
-    args = xbt_new0(char*, argv);
-    for (i = 0; i < argv; i++) {
-        args[i] = xbt_new0(char, 20);
-    }
-
-    // delete action[1] (function name)
-    args[0] = (char*)action[0];
-
-    for (i = 1; i < argv; i++) {
-        args[i] = (char*)action[i+1];
-    }
-
-    node(argv, args);
-
-    /*
-    for (i = 0; i < argv; i++) {
-        xbt_free(args[i]);
-    }
-    xbt_free(args);
-    */
-
-    XBT_OUT();
-}
-
 /**
  * \brief Node function
  * Arguments:
@@ -8701,7 +8570,7 @@ static void action_node(const char *const *action) {
  * - deadline
  *   (see xml deployment files)
  */
-int node(int argc, char *argv[]) {
+static int node(int argc, char *argv[]) {
 
     XBT_IN();
     XBT_VERB("Node %d: node() ...", atoi(argv[1]));
@@ -10444,6 +10313,8 @@ int main(int argc, char *argv[]) {
 
         xbt_replay_action_register("node", action_node);
         xbt_replay_action_register("finalize", action_finalize);
+        xbt_replay_action_register("send", action_send);
+
         //msg_error_t res = MSG_action_trace_run(argv[5]);
         res = MSG_action_trace_run("trace.txt");
     //}

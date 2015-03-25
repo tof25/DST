@@ -902,13 +902,20 @@ static void         load_balance(node_t me, int contact_id);
 
 /*
  ============================ PROCESS FUNCTIONS ===============================
-*/
+ */
 
 static int         node(int argc, char *argv[]);
-static void        action_node(const char *const *action);
 static e_val_ret_t handle_task(node_t me, msg_task_t* task);
 static int         proc_handle_task(int argc, char *argv[]);
 static int         proc_run_tasks(int argc, char* argv[]);
 static void        proc_data_cleanup(void* arg);
+
+/*
+ =========================== ACTIONS FUNCTIONS =================================
+ */
+
+void        action_send(const char *const *action);
+void        action_node(const char *const *action);
+void        action_finalize(const char *const *action);
 
 #endif
