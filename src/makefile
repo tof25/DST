@@ -1,6 +1,6 @@
-all: dst
+all: actions
 
-BIN_FILES = dst
+BIN_FILES = actions
 INSTALL_PATH = /usr/local
 CC = gcc
 PEDANTIC_PARANOID_FREAK =       -O0 -Wshadow -Wcast-align \
@@ -21,7 +21,7 @@ INCLUDES = -I$(INSTALL_PATH)/include `xml2-config --cflags`
 DEFS = -L$(INSTALL_PATH)/lib/
 LDADD = -lm -lsimgrid `xml2-config --libs`
 LIBS =
-OBJECTS = xml_create_writer.o xml_to_array.o actions.o
+OBJECTS = xml_create_writer.o xml_to_array.o dst.o
 
 vpath %.h xml
 vpath %.c xml

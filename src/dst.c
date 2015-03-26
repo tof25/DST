@@ -17,6 +17,26 @@
 //      (à la place de WAIT_BEFORE_END)
 
 #include "dst.h"
+#include "xml/xml_to_array.h"
+
+/*
+ ========================== GLOBAL VALUES =====================================
+ */
+
+XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
+extern xbt_dynar_t infos_dst;
+extern char *xml_input_file;
+extern char *xml_input_pred_file;
+extern char *xml_output_file;
+extern char *xml_output_pred_file;
+extern xmlDocPtr doc_i;
+extern xmlDocPtr doc_i_pred;
+extern int xml_height;
+
+int nb_ins_nodes = 0;
+int nb_nodes = 0;
+int order = 0;
+char finished = 0;
 
 /*
  ========================== FUNCTIONS DEFINITIONS =============================
@@ -27,7 +47,7 @@
  * \param file the name of the file
  * \return number of lines
  */
-static int count_dst_nodes(const char *file) {
+int count_dst_nodes(const char *file) {
     int count = 0;
     FILE *fp = fopen(file, "r");
     if(fp == NULL) {
@@ -150,7 +170,7 @@ static char* routing_table(node_t me) {
  * Store DST infos with routing table
  * \param me the current node
  */
-static void set_n_store_infos(node_t me) {
+void set_n_store_infos(node_t me) {
     XBT_IN();
 
     int stage, pred;
@@ -221,7 +241,7 @@ static void set_n_store_infos(node_t me) {
  * \brief Display the predecessors of a node
  * \param me the current node
  */
-static void display_preds(node_t me, char log) {
+void display_preds(node_t me, char log) {
 
     //XBT_IN();
 
@@ -311,7 +331,7 @@ static void display_preds(node_t me, char log) {
  * \brief Display me's routing table
  * \param me the current node
  */
-static void display_rout_table(node_t me, char log) {
+void display_rout_table(node_t me, char log) {
 
     //XBT_IN();
 
@@ -343,7 +363,7 @@ static void display_rout_table(node_t me, char log) {
  * \param mailbox pointer to where the mailbox name should be written to
  *        (there must be enough space)
  */
-static void set_mailbox(int node_id, char* mailbox) {
+void set_mailbox(int node_id, char* mailbox) {
 
     XBT_IN();
 
@@ -1036,257 +1056,6 @@ static void launch_fork_process(node_t me, msg_task_t task) {
     }
 
     XBT_OUT();
-}
-
-
-/**
- * \brief Try to open the given xml input file.
- * \param doc_name the file name to open
- * \return a pointer to the document, NULL if failed
- */
-static xmlDocPtr get_xml_input_file(const char *doc_name) {
-
-    xmlDocPtr doc;
-    xmlNodePtr cur;
-    int int_a, int_b, int_height;
-
-    // process all failure cases
-    if (doc_name == NULL) {
-
-        XBT_WARN("[%s:%d] xml input file is NULL", __FUNCTION__, __LINE__);
-        return NULL;
-    }
-
-    doc = getdoc(doc_name);
-    if (doc == NULL) {
-
-        XBT_WARN("[%s:%d] Document %s not parsed successfully", __FUNCTION__, __LINE__, doc_name);
-        return NULL;
-    }
-
-    cur = xmlDocGetRootElement(doc);
-    if (cur == NULL) {
-
-        XBT_WARN("[%s:%d] Document %s is empty", __FUNCTION__, __LINE__, doc_name);
-        return NULL;
-    }
-
-    if (xmlStrcmp(cur->name, (const xmlChar *)"dst")) {
-
-        XBT_WARN("[%s:%d] %s : wrong type of document", __FUNCTION__, __LINE__, doc_name);
-        return NULL;
-    }
-
-    int_a = getIntProp(cur, "a");
-    int_b = getIntProp(cur, "b");
-    int_height = getIntProp(cur, "height");
-    if (int_a == -1 || int_b == -1 || int_height == -1) {
-
-        XBT_WARN("[%s:%d] 'a', 'b' or 'height' attributes aren't well formed in document %s",
-                __FUNCTION__,
-                __LINE__,
-                doc_name);
-        return NULL;
-    }
-
-    if (int_a != a || int_b != b) {
-
-        XBT_WARN("[%s:%d] 'a' and 'b' attributes in document %s doesn't match current ones",
-                __FUNCTION__,
-                __LINE__,
-                doc_name);
-        return NULL;
-    }
-
-    // success
-    xml_height = int_height;
-
-    return doc;
-}
-
-/**
- * \brief return file_name without suffix
- * \param file_name the full file name
- * \return name of file without suffix
- */
-static char* filename(const char *file_name) {
-
-    char *output_filename;
-
-    int indexOf = strrchr(file_name, '.') - file_name + 1;
-
-    if (indexOf >= 0) {
-
-        output_filename = xbt_new0(char, indexOf);
-        snprintf(output_filename, indexOf, "%s", file_name);
-    } else {
-
-        output_filename = (char*)file_name;
-    }
-
-    return output_filename;
-}
-
-/**
- * \brief fetch routing and predecessors tables from xml files
- *        (files are given in doc_i and doc_i_pred that are global variables)
- * \param me current node
- * \param xpath the xpath to search for in xml files
- * \return a boolean thats shows if it succeeded or not
- */
-static int read_xml_files(node_t me, char *xpath) {
-
-    XBT_IN();
-
-    xbt_assert(doc_i_pred != NULL && doc_i != NULL,
-            "Node %d: [%s:%d] documents not found ! doc_i = %p - doc_i_pred = %p",
-            me->self.id,
-            __FUNCTION__,
-            __LINE__,
-            doc_i,
-            doc_i_pred);
-
-    int join_success = 0;
-
-    // routing tables
-    node_id_t xml_node_table = NULL;     // this type is defined in xml_to_array.h
-    xml_node_table = getMembers(doc_i, xpath);
-
-    // preds tables
-    node_id_t xml_pred_table = NULL;     // this type is defined in xml_to_array.h
-    xml_pred_table = getMembers(doc_i_pred, xpath);
-
-    if (xml_node_table && xml_pred_table) {
-
-        XBT_VERB("Node %d: [%s:%d] routing and predecessors tables found in xml input files ('%s' and '%s')",
-                me->self.id,
-                __FUNCTION__,
-                __LINE__,
-                xml_input_file,
-                xml_input_pred_file);
-
-        // resize current tables
-        xbt_free(me->brothers[0]);
-        xbt_free(me->preds[0]);
-
-        me->brothers = realloc(me->brothers, xml_height * sizeof(node_rep_t));
-        me->bro_index = realloc(me->bro_index, xml_height * sizeof(int));
-
-        me->preds = realloc(me->preds, xml_height * sizeof(node_rep_t));
-        me->pred_index = realloc(me->pred_index, xml_height * sizeof(int));
-
-        // NOTE : dst_infos.brothers, size, preds and load are processed in set_n_store_infos **/
-
-        /* copy xml tables into current ones */
-
-        // brothers
-        int stage, brother;
-        for (stage = 0; stage < xml_height; stage++) {
-
-            me->bro_index[stage] = xml_node_table->sizes[stage];
-            me->brothers[stage] = xbt_new0(s_node_rep_t, b);
-            for (brother = 0; brother < xml_node_table->sizes[stage]; brother++) {
-
-                me->brothers[stage][brother].id = xml_node_table->routing_table[stage][brother];
-                set_mailbox(me->brothers[stage][brother].id, me->brothers[stage][brother].mailbox);
-            }
-        }
-
-        // height
-        me->height = xml_height;
-
-        XBT_VERB("Node %d: [%s:%d] routing table fetched from XML:",
-                me->self.id,
-                __FUNCTION__,
-                __LINE__);
-        display_rout_table(me, 'V');
-
-        // dst_infos
-        if (me->dst_infos.order == 0) {
-
-            // only one order number per node
-            me->dst_infos.order = order++;
-        }
-
-        me->dst_infos.node_id = me->self.id;
-        me->dst_infos.attempts = 1;
-        me->dst_infos.add_stage = 0;
-        me->dst_infos.nbr_split_stages = 0;
-        me->dst_infos.nb_cs_req_fail = 0;
-        me->dst_infos.nb_cs_req_success = 0;
-        me->dst_infos.nb_set_update_fail = 0;
-        me->dst_infos.nb_set_update_success = 0;
-        me->dst_infos.nb_task_remove = 0;
-        me->dst_infos.nb_chg_contact = 0;
-
-        // predecessors
-        for (stage = 0; stage < xml_height; stage++) {
-
-            me->pred_index[stage] = xml_pred_table->sizes[stage];
-
-            me->preds[stage] = xbt_new0(s_node_rep_t, xml_pred_table->sizes[stage] + b);
-            for (brother = 0; brother < xml_pred_table->sizes[stage]; brother++) {
-
-                me->preds[stage][brother].id = xml_pred_table->routing_table[stage][brother];
-                set_mailbox(me->preds[stage][brother].id, me->preds[stage][brother].mailbox);
-            }
-        }
-
-        XBT_VERB("Node %d: [%s:%d] predecessors table fetched from XML:",
-                me->self.id,
-                __FUNCTION__,
-                __LINE__);
-        display_preds(me, 'V');
-
-        // update dst_infos
-        set_n_store_infos(me);
-
-        join_success = 1;
-
-        // free xml tables
-        int k;
-
-        for (k = 0; k < xml_height; k++) {
-
-            free(xml_node_table->routing_table[k]);
-            free(xml_pred_table->routing_table[k]);
-        }
-
-        free(xml_node_table->routing_table);
-        free(xml_node_table->sizes);
-        free(xml_pred_table->routing_table);
-        free(xml_pred_table->sizes);
-        free(xml_node_table);
-        free(xml_pred_table);
-    } else {
-
-        XBT_WARN("Node %d: [%s:%d] Failed to fetch tables from XML files",
-                me->self.id,
-                __FUNCTION__,
-                __LINE__);
-
-       node_id_t temp_table = NULL;
-       if (xml_node_table) temp_table = xml_node_table;
-       if (xml_pred_table) temp_table = xml_pred_table;
-       if (temp_table) {
-
-           // free xml tables
-           int k;
-
-           for (k = 0; k < xml_height; k++) {
-
-               free(temp_table->routing_table[k]);
-           }
-
-           free(temp_table->routing_table);
-           free(temp_table);
-       }
-
-    }
-
-    XBT_OUT();
-
-    return join_success;
 }
 
 /**
@@ -2731,7 +2500,7 @@ static void data_req_free(node_t me, req_data_t *req_data) {
  * \brief Free an element of dynar infos_dst when a Replace occurs
  * \param elem_ptr a pointer to a dynar entry
  */
-static void elem_free(void *elem_ptr) {
+void elem_free(void *elem_ptr) {
 
     XBT_IN();
 
@@ -8562,6 +8331,168 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
 */
 
 /**
+ * \brief fetch routing and predecessors tables from xml files
+ *        (files are given in doc_i and doc_i_pred that are global variables)
+ * \param me current node
+ * \param xpath the xpath to search for in xml files
+ * \return a boolean thats shows if it succeeded or not
+ */
+static int read_xml_files(node_t me, char *xpath) {
+
+    XBT_IN();
+
+    xbt_assert(doc_i_pred != NULL && doc_i != NULL,
+            "Node %d: [%s:%d] documents not found ! doc_i = %p - doc_i_pred = %p",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            doc_i,
+            doc_i_pred);
+
+    int join_success = 0;
+
+    // routing tables
+    node_id_t xml_node_table = NULL;     // this type is defined in xml_to_array.h
+    xml_node_table = getMembers(doc_i, xpath);
+
+    // preds tables
+    node_id_t xml_pred_table = NULL;     // this type is defined in xml_to_array.h
+    xml_pred_table = getMembers(doc_i_pred, xpath);
+
+    if (xml_node_table && xml_pred_table) {
+
+        XBT_VERB("Node %d: [%s:%d] routing and predecessors tables found in xml input files ('%s' and '%s')",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                xml_input_file,
+                xml_input_pred_file);
+
+        // resize current tables
+        xbt_free(me->brothers[0]);
+        xbt_free(me->preds[0]);
+
+        me->brothers = realloc(me->brothers, xml_height * sizeof(node_rep_t));
+        me->bro_index = realloc(me->bro_index, xml_height * sizeof(int));
+
+        me->preds = realloc(me->preds, xml_height * sizeof(node_rep_t));
+        me->pred_index = realloc(me->pred_index, xml_height * sizeof(int));
+
+        // NOTE : dst_infos.brothers, size, preds and load are processed in set_n_store_infos **/
+
+        /* copy xml tables into current ones */
+
+        // brothers
+        int stage, brother;
+        for (stage = 0; stage < xml_height; stage++) {
+
+            me->bro_index[stage] = xml_node_table->sizes[stage];
+            me->brothers[stage] = xbt_new0(s_node_rep_t, b);
+            for (brother = 0; brother < xml_node_table->sizes[stage]; brother++) {
+
+                me->brothers[stage][brother].id = xml_node_table->routing_table[stage][brother];
+                set_mailbox(me->brothers[stage][brother].id, me->brothers[stage][brother].mailbox);
+            }
+        }
+
+        // height
+        me->height = xml_height;
+
+        XBT_VERB("Node %d: [%s:%d] routing table fetched from XML:",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
+        display_rout_table(me, 'V');
+
+        // dst_infos
+        if (me->dst_infos.order == 0) {
+
+            // only one order number per node
+            me->dst_infos.order = order++;
+        }
+
+        me->dst_infos.node_id = me->self.id;
+        me->dst_infos.attempts = 1;
+        me->dst_infos.add_stage = 0;
+        me->dst_infos.nbr_split_stages = 0;
+        me->dst_infos.nb_cs_req_fail = 0;
+        me->dst_infos.nb_cs_req_success = 0;
+        me->dst_infos.nb_set_update_fail = 0;
+        me->dst_infos.nb_set_update_success = 0;
+        me->dst_infos.nb_task_remove = 0;
+        me->dst_infos.nb_chg_contact = 0;
+
+        // predecessors
+        for (stage = 0; stage < xml_height; stage++) {
+
+            me->pred_index[stage] = xml_pred_table->sizes[stage];
+
+            me->preds[stage] = xbt_new0(s_node_rep_t, xml_pred_table->sizes[stage] + b);
+            for (brother = 0; brother < xml_pred_table->sizes[stage]; brother++) {
+
+                me->preds[stage][brother].id = xml_pred_table->routing_table[stage][brother];
+                set_mailbox(me->preds[stage][brother].id, me->preds[stage][brother].mailbox);
+            }
+        }
+
+        XBT_VERB("Node %d: [%s:%d] predecessors table fetched from XML:",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
+        display_preds(me, 'V');
+
+        // update dst_infos
+        set_n_store_infos(me);
+
+        join_success = 1;
+
+        // free xml tables
+        int k;
+
+        for (k = 0; k < xml_height; k++) {
+
+            free(xml_node_table->routing_table[k]);
+            free(xml_pred_table->routing_table[k]);
+        }
+
+        free(xml_node_table->routing_table);
+        free(xml_node_table->sizes);
+        free(xml_pred_table->routing_table);
+        free(xml_pred_table->sizes);
+        free(xml_node_table);
+        free(xml_pred_table);
+    } else {
+
+        XBT_WARN("Node %d: [%s:%d] Failed to fetch tables from XML files",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__);
+
+       node_id_t temp_table = NULL;
+       if (xml_node_table) temp_table = xml_node_table;
+       if (xml_pred_table) temp_table = xml_pred_table;
+       if (temp_table) {
+
+           // free xml tables
+           int k;
+
+           for (k = 0; k < xml_height; k++) {
+
+               free(temp_table->routing_table[k]);
+           }
+
+           free(temp_table->routing_table);
+           free(temp_table);
+       }
+
+    }
+
+    XBT_OUT();
+
+    return join_success;
+}
+
+/**
  * \brief Node function
  * Arguments:
  * - self id
@@ -8570,7 +8501,7 @@ static u_ans_data_t get_new_contact(node_t me, int new_node_id) {
  * - deadline
  *   (see xml deployment files)
  */
-static int node(int argc, char *argv[]) {
+int node(int argc, char *argv[]) {
 
     XBT_IN();
     XBT_VERB("Node %d: node() ...", atoi(argv[1]));
@@ -8703,18 +8634,21 @@ static int node(int argc, char *argv[]) {
 
     if (join_success) {
 
-        XBT_INFO("Node %d: **** JOIN COMPLETED **** - order = %d", node.self.id, node.dst_infos.order);
-
         // record inserted node id in global array
         inserted_nodes[nb_ins_nodes] = node.self.id;
         nb_ins_nodes++;
 
+        XBT_INFO("Node %d: **** JOIN COMPLETED **** - nb_ins_nodes = %d - order = %d",
+                node.self.id,
+                nb_ins_nodes,
+                node.dst_infos.order);
+
         //display inserted_nodes
         int iter = nb_ins_nodes - 10;
         if (iter < 0) iter = 0;
-        XBT_VERB("Node %d: last ten inserted nodes :", node.self.id);
+        XBT_DEBUG("Node %d: last ten inserted nodes :", node.self.id);
         for (; iter < nb_ins_nodes; iter++) {
-            XBT_VERB("\tinserted_nodes[%d] = %d", iter, inserted_nodes[iter]);
+            XBT_DEBUG("\tinserted_nodes[%d] = %d", iter, inserted_nodes[iter]);
         }
 
         // active state
@@ -10197,397 +10131,6 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 
     XBT_OUT();
     return val_ret;
-}
-
-/**
- * \brief Main function
- */
-int main(int argc, char *argv[]) {
-
-    XBT_IN();
-
-    if (argc < 3) {
-
-        printf("Usage: %s --log=msg_dst.thres:info platform_file deployment_file [xml_output_filename] [xml_input_file]"
-                " 2>&1 | tools/MSG_visualization/colorize.pl\n",
-                argv[0]);
-        exit(1);
-    }
-
-    int i;
-
-    /*
-       g_cpt = xbt_new0(int, TYPE_NBR);
-       for (i = 0; i < TYPE_NBR; i++) {
-
-       g_cpt[i] = 0;
-       }
-    */
-
-    if (b != 2 * a) {
-
-        printf("Bounds error : b should be twice a : a = %d, b = %d", a, b);
-        exit(1);
-    }
-
-    xbt_log_control_set("msg_dst.thres:TRACE");
-
-    MSG_init(&argc, argv);
-    MSG_action_init();
-
-    infos_dst = xbt_dynar_new(sizeof(dst_infos_t), &elem_free);
-
-    // init array of failed nodes
-    failed_nodes = xbt_new0(s_f_node_t, 1);
-
-    // create timer
-    xbt_os_timer_t timer = xbt_os_timer_new();
-
-    // get platform and application files names
-    const char *platform_file = argv[1];
-    const char *deployment_file = argv[2];
-
-
-    /****** PROCESS XML INPUT AND OUTPUT FILES ******/
-
-    // xml output files
-    if (argc >= 4) {
-
-        xml_output_file = xbt_new0(char, FILENAME_MAX);
-        xml_output_pred_file = xbt_new0(char, FILENAME_MAX);
-
-        snprintf(xml_output_file, FILENAME_MAX, "%s", argv[3]);
-        snprintf(xml_output_pred_file, FILENAME_MAX, "%s", "pred_");
-        strncat(xml_output_pred_file, xml_output_file, FILENAME_MAX - strlen(xml_output_pred_file));
-    }
-
-    // xml input files
-    if (argc >= 5) {
-
-        xml_input_file = xbt_new0(char, FILENAME_MAX);
-        xml_input_pred_file = xbt_new0(char, FILENAME_MAX);
-
-        snprintf(xml_input_file, FILENAME_MAX, "%s", argv[4]);
-
-        snprintf(xml_input_pred_file, FILENAME_MAX, "%s", "pred_");
-        strncat(xml_input_pred_file, xml_input_file, FILENAME_MAX - strlen(xml_input_pred_file));
-
-        xbt_assert(strcmp(xml_input_file, xml_output_file) != 0,
-                "[%s:%d] xml output files and input files musn't have the same name !",
-                __FUNCTION__,
-                __LINE__);
-    }
-
-    // parse xml input files
-    if (xml_input_file != NULL) {
-
-        doc_i = get_xml_input_file(xml_input_file);
-        doc_i_pred = get_xml_input_file(xml_input_pred_file);
-
-        // failed
-        if (doc_i == NULL || doc_i_pred == NULL) {
-
-            XBT_WARN("[%s:%d] Failed to parse XML input files", __FUNCTION__, __LINE__);
-
-            xbt_free(xml_input_file);
-            xbt_free(xml_input_pred_file);
-            xml_input_file = NULL;
-            xml_input_pred_file = NULL;
-        }
-    }
-
-    nb_nodes = count_dst_nodes(deployment_file);
-    XBT_INFO("START BUILDING A DST OF %d NODES", nb_nodes);
-
-    MSG_create_environment(platform_file);
-
-    MSG_function_register("node", node);
-    MSG_launch_application(deployment_file);
-
-    xbt_os_walltimer_start(timer);
-    //msg_error_t res = MSG_main();
-    msg_error_t res;
-
-    // actions file
-    //if (argc >= 6) {
-
-        xbt_replay_action_register("node", action_node);
-        xbt_replay_action_register("finalize", action_finalize);
-        xbt_replay_action_register("send", action_send);
-
-        //msg_error_t res = MSG_action_trace_run(argv[5]);
-        res = MSG_action_trace_run("trace.txt");
-    //}
-
-    MSG_action_exit();
-    xbt_os_walltimer_stop(timer);
-
-
-    // print all routing tables
-    XBT_INFO("************************************     PRINT ALL  (nb_ins_nodes = %d)    "
-            "************************************\n", nb_ins_nodes);
-    unsigned int cpt = 0, loc_nb_nodes = 0, loc_nb_nodes_tot = 0;
-
-    // to store non active nodes id
-    int size = 100;
-    int non_active[size];
-    for (i = 0; i < size; i++) {
-
-        non_active[i] = -1;
-    }
-    size = 0;
-
-    dst_infos_t elem;
-    int tot_msg_nodes = 0;              // total number of messages for all nodes
-    int tot_msg = 0;                    // number of messages for current node
-    int nb_msg[TYPE_NBR] = {0};         // total number of messages per task type
-    int nb_br_msg[TYPE_NBR] = {0};      // total number of messages per broadcasted task type
-    int max_msg_nodes = -1;             // max number of messages for one node
-    int max_node;                       // node that needed max number
-    int tot_cs_req_fail = 0;            // total number of cs_req broadcasts failures
-    int tot_cs_req_success = 0;         // total number of cs_req broadcasts sucess
-    int tot_set_update_fail = 0;        // total number of set_update broadcasts failures
-    int tot_set_update_success = 0;     // total number of set_update broadcasts sucess
-    int tot_task_remove = 0;            // total number of task_remove broadcasts
-    int tot_chg_contact = 0;            // total number of times contact have been changed
-
-    /*
-    // write it down to a file
-    FILE *fp;
-    fp = fopen("./log_nodes.txt", "w+");
-    fprintf(fp, "Node, Nb Msg, ");
-    for (i = 0; i < TYPE_NBR; i++) {
-
-        fprintf(fp, "%s, ", debug_msg[i]);
-    }
-    fprintf(fp, "\n");
-    */
-
-    // prepare xml output files
-    char header_done = 0;
-    char header_pred_done = 0;
-
-    xmlDocPtr doc_o = xmlNewDoc((const xmlChar*)"1.0");
-    xmlTextWriterPtr writer = xmlNewTextWriterDoc(&doc_o, 0);
-
-    xmlDocPtr doc_o_pred = xmlNewDoc((const xmlChar*)"1.0");
-    xmlTextWriterPtr writer_pred = xmlNewTextWriterDoc(&doc_o_pred, 0);
-
-    // display loop
-    xbt_dynar_foreach(infos_dst, cpt, elem) {
-        if (elem != NULL) {
-
-            if (!header_done) {
-
-                xmlHeader(writer, a, b, elem->height);
-                header_done = 1;
-            }
-
-            if (!header_pred_done) {
-
-                xmlHeader(writer_pred, a, b, elem->height);
-                header_pred_done = 1;
-            }
-
-            // xml <node> and children
-            nodeToXml(writer, elem->node_id, elem->brothers, elem->size, elem->height);
-            nodeToXml(writer_pred, elem->node_id, elem->preds, elem->load, elem->height);
-
-            loc_nb_nodes_tot++;
-
-            tot_cs_req_fail += elem->nb_cs_req_fail;
-            tot_cs_req_success += elem->nb_cs_req_success;
-            tot_set_update_fail += elem->nb_set_update_fail;
-            tot_set_update_success += elem->nb_set_update_success;
-            tot_task_remove += elem->nb_task_remove;
-            tot_chg_contact += elem->nb_chg_contact;
-
-            // sum messages counters
-            tot_msg = 0;
-            for (i = 0; i < TYPE_NBR; i++) {
-
-                nb_msg[i]    += nb_messages[elem->node_id][i];
-                nb_br_msg[i] += nb_br_messages[elem->node_id][i];
-                //tot_msg      += nb_messages[elem->node_id][i];
-                tot_msg += (nb_messages[elem->node_id][i] + nb_br_messages[elem->node_id][i]);
-            }
-
-            /*
-            fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-                    elem->node_id,
-                    tot_msg,
-                    nb_messages[elem->node_id][0],
-                    nb_messages[elem->node_id][1],
-                    nb_messages[elem->node_id][2],
-                    nb_messages[elem->node_id][3],
-                    nb_messages[elem->node_id][4],
-                    nb_messages[elem->node_id][5],
-                    nb_messages[elem->node_id][6],
-                    nb_messages[elem->node_id][7],
-                    nb_messages[elem->node_id][8],
-                    nb_messages[elem->node_id][9],
-                    nb_messages[elem->node_id][10],
-                    nb_messages[elem->node_id][11],
-                    nb_messages[elem->node_id][12],
-                    nb_messages[elem->node_id][13],
-                    nb_messages[elem->node_id][14],
-                    nb_messages[elem->node_id][15],
-                    nb_messages[elem->node_id][16],
-                    nb_messages[elem->node_id][17],
-                    nb_messages[elem->node_id][18],
-                    nb_messages[elem->node_id][19],
-                    nb_messages[elem->node_id][20],
-                    nb_messages[elem->node_id][21],
-                    nb_messages[elem->node_id][22],
-                    nb_messages[elem->node_id][23],
-                    nb_messages[elem->node_id][24],
-                    nb_messages[elem->node_id][25],
-                    nb_messages[elem->node_id][26],
-                    nb_messages[elem->node_id][27],
-                    nb_messages[elem->node_id][28],
-                    nb_messages[elem->node_id][29],
-                    nb_messages[elem->node_id][30],
-                    nb_messages[elem->node_id][31],
-                    nb_messages[elem->node_id][32],
-                    nb_messages[elem->node_id][33],
-                    nb_messages[elem->node_id][34],
-                    nb_messages[elem->node_id][35],
-                    nb_messages[elem->node_id][36],
-                    nb_messages[elem->node_id][37]);
-            */
-
-            if (elem->active == 'a') {
-
-                loc_nb_nodes++;
-                tot_msg_nodes += tot_msg;
-                if (tot_msg > max_msg_nodes) {
-
-                    max_msg_nodes = tot_msg;
-                    max_node = elem->node_id;
-                }
-
-                XBT_INFO("[Node %d]: \n%s\nNeeded to split %d stages\nNeeded"
-                        " %d messages to join\nNeeded %d attempt(s) to join\n%s\n",
-                        elem->node_id,
-                        (elem->add_stage == 0 ? "Didn't add any stage" :
-                         "Added a stage"),
-                        elem->nbr_split_stages,
-                        tot_msg,
-                        elem->attempts,
-                        elem->routing_table);
-            } else {
-
-                XBT_INFO("[Node %d]: Non active\n", elem->node_id);
-                non_active[size] = elem->node_id;
-                size++;
-                xbt_assert(size < 100, "[%s:%d] Non_active array too small !", __FUNCTION__, __LINE__);
-            }
-            xbt_free(elem->routing_table);
-            elem->routing_table = NULL;
-
-            int j;
-            for (j = 0; j < elem->height; j++) {
-
-                xbt_free(elem->brothers[j]);
-                xbt_free(elem->preds[j]);
-            }
-
-            xbt_free(elem->brothers);
-            xbt_free(elem->preds);
-            xbt_free(elem->size);
-            xbt_free(elem->load);
-
-            xbt_free(elem);
-            elem = NULL;
-
-        } else {
-            XBT_VERB("cpt: %d, elem = NULL", cpt);
-        }
-    }
-
-    //fclose(fp);
-
-    // save xml files
-    xmlFooter(writer);
-    xmlFooter(writer_pred);
-
-    xmlSaveFormatFile(xml_output_file, doc_o, 0);
-    xmlFreeDoc(doc_o);
-    xmlSaveFormatFile(xml_output_pred_file, doc_o_pred, 0);
-    xmlFreeDoc(doc_o_pred);
-
-    XBT_INFO("Number of elements in infos_dst = %d", cpt);
-    XBT_INFO("Messages needed for %d active nodes / %d total nodes ( sent - broadcasted )",
-            loc_nb_nodes,
-            loc_nb_nodes_tot);      //TODO : loc_nb_nodes_tot contient certainement la même valeur que cpt
-    for (i = 0; i < TYPE_NBR; i++) {
-        XBT_INFO("\t['%25s': %6d - %3d]",
-                debug_msg[i],
-                nb_msg[i],
-                nb_br_msg[i]);
-    }
-
-    if (loc_nb_nodes != loc_nb_nodes_tot) {
-
-        XBT_INFO(" ");
-        i = 0;
-        while (non_active[i] != -1) {
-
-            XBT_INFO("Node %d non active", non_active[i]);
-            i++;
-        }
-        XBT_INFO(" ");
-    }
-
-    XBT_INFO(" ");
-
-    /*
-       for (i = 0; i < TYPE_NBR; i++) {
-       XBT_INFO("g_cpt[%s] = %d", debug_msg[i], g_cpt[i]);
-       }
-       XBT_INFO("");
-       xbt_free(g_cpt);
-    */
-
-    XBT_INFO("Total number of BR_CS_REQ failures : %d", tot_cs_req_fail);
-    XBT_INFO("Total number of BR_CS_REQ success : %d", tot_cs_req_success);
-    XBT_INFO("Total number of BR_SET_UPDATE failures : %d", tot_set_update_fail);
-    XBT_INFO("Total number of BR_SET_UPDATE success : %d", tot_set_update_success);
-    XBT_INFO("Total number of BR_TASK_REMOVE : %d", tot_task_remove);
-    XBT_INFO("Total number of contact changes : %d", tot_chg_contact);
-
-    XBT_INFO("\nTotal number of messages: %d\n", tot_msg_nodes);
-    XBT_INFO("Max messages needed by node %d: %d\n",
-            max_node,
-            max_msg_nodes);
-    XBT_INFO("Total number of join abortions: %d - Details:", nb_abort);
-    for (i = 0; i < nb_abort; i++) {
-
-        XBT_INFO("\tnode %d failed at [%f]",
-                failed_nodes[i].id,
-                failed_nodes[i].f_time);
-    }
-    xbt_free(failed_nodes);
-
-    // all elements have already been freed during foreach
-    xbt_dynar_free_container(&infos_dst);
-
-    XBT_INFO("\nSimulation time %lf", xbt_os_timer_elapsed(timer));
-    XBT_INFO("Simulated time: %g", MSG_get_clock());
-
-    xbt_os_timer_free(timer);
-
-    xbt_free(xml_output_file);
-    xbt_free(xml_output_pred_file);
-    xbt_free(xml_input_file);
-
-    //MSG_clean();
-    XBT_OUT();
-
-    if (res == MSG_OK)
-        return 0;
-    else
-        return 1;
 }
 
 /*

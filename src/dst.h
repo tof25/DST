@@ -5,6 +5,9 @@
  *
  */
 
+#ifndef DST_H
+#define DST_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -13,14 +16,7 @@
 #include "xbt/asserts.h"                    // to use xbt_assert()
 #include "xbt/xbt_os_time.h"                // to use a timer (located in Simgrid-3.9/src/include/xbt)
 #include "xbt/ex.h"                         // to use exceptions
-#include "xml/xml_create_writer.h"          // to create final xml files with routing tables
-#include "xml/xml_to_array.h"               // to get routing and predecessors tables from xml files
 #include <xbt/replay.h>
-
-#ifndef DST_H
-#define DST_H
-
-XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 
 /*
    ===============================  GLOBAL VALUES  ================================================
@@ -34,21 +30,9 @@ XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
 #define MAX_WAIT_GET_REP 5000               // won't wait longer an answer to a GET_REP request
 #define MAX_CNX 500                         // max number of attempts to run CNX_REQ (before trying another contact)
 #define WAIT_BEFORE_END 2000                // Wait for last messages before ending simulation
-#define LEN_XPATH 20                        // xpath size (for xml input file)
 #define a 3
 #define b 6
-
-
-/*
-   =================================== For XML files ==============================================
-*/
-static char     *xml_input_file = NULL;         // name of the optionnal xml input file (for routing tables)
-static char     *xml_input_pred_file = NULL;    // name of the optionnal xml input file (for preds tables)
-static char     *xml_output_file = NULL;        // name of the xml output file (for routing tables)
-static char     *xml_output_pred_file = NULL;   // name of the xml output pred file (for preds tables)
-static xmlDocPtr doc_i = NULL;                  // pointer to the parsed xml input file for routing tables
-static xmlDocPtr doc_i_pred = NULL;             // pointer to the parsed xml input file for preds tables
-static int       xml_height = -1;               // dst height read from xml input file
+#define LEN_XPATH 20                        // xpath size (for xml input file reading)
 
 /*
    ================================================================================================
@@ -57,15 +41,15 @@ static int       xml_height = -1;               // dst height read from xml inpu
 //static const int   a = 3;                                   // min number of brothers in a node (except for the root node)
 //static const int   b = 2 * 3;                               // max number of brothers in a node (must be twice a)
 static int         COMM_TIMEOUT = 19000;                    // timeout for communications (mustn't be greater than MAX_WAIT_COMPL)
-static xbt_dynar_t infos_dst;                               // to store all global DST infos
+       xbt_dynar_t infos_dst;                               // to store all global DST infos
 static int         nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type per node
 static int         nb_br_messages[100000][TYPE_NBR] = {0};  // total number of broadcasted messages exchanged for each task type per node
-static int         order = 0;                               // order number of nodes arrival
-static int         nb_nodes = 0;                            // total number of nodes to be inserted
-static int         nb_ins_nodes = 0;                        // number of nodes actually inserted
+       int         order;                                   // order number of nodes arrival
+       int         nb_nodes;                                // total number of nodes to be inserted
+       int         nb_ins_nodes;                            // number of nodes actually inserted
 static int         mem_log = -1;                            // ensures that log new setting occurs only once
 static int         inserted_nodes[100000] = {-1};           // to store a list of currently inserted nodes
-static char        finished;                                // to end the simulation
+       char        finished;                                // to end the simulation
 
 typedef struct f_node {                     // node that failed to join
     int   id;
@@ -729,13 +713,13 @@ struct ans_data {
   ==========================  UTILITY FUNCTIONS ===============================
 */
 
-static int          count_dst_nodes(const char *file);
+       int          count_dst_nodes(const char *file);
 static void         display_var(node_t me);
 static char*        routing_table(node_t me);
-static void         set_n_store_infos(node_t me);
-static void         display_preds(node_t me, char log);
-static void         display_rout_table(node_t me, char log);
-static void         set_mailbox(int node_id, char* mailbox);
+       void         set_n_store_infos(node_t me);
+       void         display_preds(node_t me, char log);
+       void         display_rout_table(node_t me, char log);
+       void         set_mailbox(int node_id, char* mailbox);
 static void         set_proc_mailbox(char* proc_mailbox);
 static void         set_fork_mailbox(int node_id, int new_node_id, char* session, char* mailbox);
 static void         task_free(msg_task_t* task);
@@ -762,7 +746,7 @@ static void         run_tasks_queue(node_t me);
 static void         node_free(node_t me);
 static void         data_ans_free(node_t me, ans_data_t *answer_data);
 static void         data_req_free(node_t me, req_data_t *req_data);
-static void         elem_free(void* elem_ptr);
+       void         elem_free(void* elem_ptr);
 static void         display_tasks_queue(node_t me);
 static int          compar_fn(const void *arg1, const void *arg2);
 static void         sort_tasks_queue(node_t me);
@@ -784,10 +768,8 @@ static void         rec_async_answer(node_t me, int idx, ans_data_t ans);
 static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
 static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id);
 static void         launch_fork_process(node_t me, msg_task_t task);
-static xmlDocPtr    get_xml_input_file(const char *doc_name);
-static char*        filename(const char *file_name);
-static int          read_xml_files(node_t me, char *xpath);
 static int          string2enum(const char *in_str);
+static int          read_xml_files(node_t me, char *xpath);
 
 /*
   ======================= COMMUNICATION FUNCTIONS =============================
@@ -904,18 +886,10 @@ static void         load_balance(node_t me, int contact_id);
  ============================ PROCESS FUNCTIONS ===============================
  */
 
-static int         node(int argc, char *argv[]);
+       int         node(int argc, char *argv[]);
 static e_val_ret_t handle_task(node_t me, msg_task_t* task);
 static int         proc_handle_task(int argc, char *argv[]);
 static int         proc_run_tasks(int argc, char* argv[]);
 static void        proc_data_cleanup(void* arg);
-
-/*
- =========================== ACTIONS FUNCTIONS =================================
- */
-
-void        action_send(const char *const *action);
-void        action_node(const char *const *action);
-void        action_finalize(const char *const *action);
 
 #endif
