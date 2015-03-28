@@ -23,35 +23,62 @@ static int string2enum(const char *in_str) {
 
 // ================================= ACTIONS FUNCTIONS ============================================
 
+/**
+ * \brief Sends a task to some dst node. May receive an answer, depending on the sent task.
+ * \param action[0] current process name
+ * \param action[1] current action name
+ * \param action[2] waiting amount (won't start before this time)
+ * \param action[3] task type (must exist in dst enum e_task_type_t)
+ * \param action[4] id of the recipient
+ * \param action[...] task arguments
+ */
 void action_send(const char *const *action) {
     XBT_IN();
 
+    if (atof(action[2]) > 0.0) {
+
+        XBT_INFO("%s: Action_%s - Waiting %s ...",
+                action[0],
+                action[1],
+                action[2]);
+
+        // wait for starting point
+        MSG_process_sleep(atof(action[2]));
+    }
+
+    XBT_INFO("%s: Action_%s - Time to work !",
+            action[0],
+            action[1]);
+
+    // wait until dst building is finished
     while (nb_ins_nodes < nb_nodes) {
-        MSG_process_sleep(1000.0);
+        MSG_process_sleep(500.0);
     }
 
     XBT_INFO("%s: Action_%s - Sending '%s' to node %s",
             action[0],              // process name
             action[1],              // action name
-            action[2],              // task type
-            action[3]);             // recipient id
+            action[3],              // task type
+            action[4]);             // recipient id
 
     u_req_args_t req_args;
     ans_data_t answer_data = NULL;
     msg_task_t task = NULL;
 
-    xbt_assert(string2enum(action[2]) > -1, "%s: Action_%s - Task Type Error (%s)",
+    xbt_assert(string2enum(action[3]) > -1, "%s: Action_%s - Task Type Error (%s)",
             action[0],
             action[1],
-            action[2]);
+            action[3]);
 
-    e_task_type_t task_type = string2enum(action[2]);
+    // get task type
+    e_task_type_t task_type = string2enum(action[3]);
 
     req_data_t req_data = xbt_new0(s_req_data_t, 1);
 
+    // fill request data
     req_data->type = task_type;
     req_data->sender_id = -1;
-    req_data->recipient_id = atoi(action[3]);
+    req_data->recipient_id = atoi(action[4]);
     set_mailbox(req_data->recipient_id, req_data->sent_to);
     snprintf(req_data->answer_to, MAILBOX_NAME_SIZE, "%s", action[0]);
 
@@ -59,7 +86,7 @@ void action_send(const char *const *action) {
 
         case TASK_GET_SIZE:
             req_args.get_size.new_node_id = -1;
-            req_args.get_size.stage = atoi(action[4]);
+            req_args.get_size.stage = atoi(action[5]);
             req_data->args = req_args;
 
             XBT_INFO("%s: Action_%s - Sending ...",
@@ -81,8 +108,8 @@ void action_send(const char *const *action) {
             XBT_INFO("%s: Action_%s - Node %s stage %s size = %d",
                     action[0],
                     action[1],
-                    action[3],
                     action[4],
+                    action[5],
                     (answer_data->answer).get_size.size);
             break;
 
@@ -96,6 +123,12 @@ void action_send(const char *const *action) {
     XBT_OUT();
 }
 
+/**
+ * \brief Ends the simulation
+ * \param action[0] current process name
+ * \param action[1] current action name
+ * \param action[2] waiting amount (won't start before this time)
+ */
 void action_finalize(const char *const *action) {
     XBT_IN();
 
@@ -116,6 +149,15 @@ void action_finalize(const char *const *action) {
     XBT_OUT();
 }
 
+/**
+ * \brief Gets inserted into dst (merely call the dst 'node' function)
+ * \param action[0] current process name
+ * \param action[1] current action name
+ * \param action[2] contact id (a working member of dst)
+ * \param action[3] current node's id
+ * \param action[4] waiting amount (won't start before this time)
+ * \param action[5] deadline (will leave the dst at this time)
+ */
 void action_node(const char *const *action) {
     XBT_IN();
 
@@ -130,6 +172,7 @@ void action_node(const char *const *action) {
     }
 
     // remove action[1] from actions array (function name)
+    // so that node will be called with proper arguments
     args[0] = (char*)action[0];
 
     for (i = 1; i < argv; i++) {
@@ -257,7 +300,7 @@ int main(int argc, char *argv[]) {
 
     if (argc < 3) {
 
-        printf("Usage: %s --log=msg_dst.thres:info platform_file deployment_file [xml_output_filename] [xml_input_file]"
+        printf("Usage: %s --log=msg_dst.thres:info platform_file deployment_file [xml_output_filename [xml_input_file][trace_file]]"
                 " 2>&1 | tools/MSG_visualization/colorize.pl\n",
                 argv[0]);
         exit(1);
@@ -295,6 +338,7 @@ int main(int argc, char *argv[]) {
     // get platform and application files names
     const char *platform_file = argv[1];
     const char *deployment_file = argv[2];
+    const char *actions_file = NULL;
 
 
     /****** PROCESS XML INPUT AND OUTPUT FILES ******/
@@ -310,21 +354,30 @@ int main(int argc, char *argv[]) {
         strncat(xml_output_pred_file, xml_output_file, FILENAME_MAX - strlen(xml_output_pred_file));
     }
 
-    // xml input files
+    // xml input file ?
     if (argc >= 5) {
 
-        xml_input_file = xbt_new0(char, FILENAME_MAX);
-        xml_input_pred_file = xbt_new0(char, FILENAME_MAX);
+        // is it an action file or an xml input file ?
+        if (strstr(argv[4], ".txt")) {
 
-        snprintf(xml_input_file, FILENAME_MAX, "%s", argv[4]);
+            actions_file = argv[4];
+        } else {
 
-        snprintf(xml_input_pred_file, FILENAME_MAX, "%s", "pred_");
-        strncat(xml_input_pred_file, xml_input_file, FILENAME_MAX - strlen(xml_input_pred_file));
+            // get xml input files names
+            xml_input_file = xbt_new0(char, FILENAME_MAX);
+            xml_input_pred_file = xbt_new0(char, FILENAME_MAX);
 
-        xbt_assert(strcmp(xml_input_file, xml_output_file) != 0,
-                "[%s:%d] xml output files and input files musn't have the same name !",
-                __FUNCTION__,
-                __LINE__);
+            snprintf(xml_input_file, FILENAME_MAX, "%s", argv[4]);
+
+            snprintf(xml_input_pred_file, FILENAME_MAX, "%s", "pred_");
+            strncat(xml_input_pred_file, xml_input_file, FILENAME_MAX - strlen(xml_input_pred_file));
+
+            // output and input files mustn't be the same
+            xbt_assert(strcmp(xml_input_file, xml_output_file) != 0,
+                    "[%s:%d] xml output files and input files musn't have the same name !",
+                    __FUNCTION__,
+                    __LINE__);
+        }
     }
 
     // parse xml input files
@@ -343,6 +396,10 @@ int main(int argc, char *argv[]) {
             xml_input_file = NULL;
             xml_input_pred_file = NULL;
         }
+
+        if (argc >= 6) {
+            actions_file = argv[5];
+        }
     }
 
     nb_nodes = count_dst_nodes(deployment_file);
@@ -354,19 +411,21 @@ int main(int argc, char *argv[]) {
     MSG_launch_application(deployment_file);
 
     xbt_os_walltimer_start(timer);
-    //msg_error_t res = MSG_main();
     msg_error_t res;
 
-    // actions file
-    //if (argc >= 6) {
+    // actions file ?
+    if (actions_file != NULL) {
 
         xbt_replay_action_register("node", action_node);
         xbt_replay_action_register("finalize", action_finalize);
         xbt_replay_action_register("send", action_send);
 
-        //msg_error_t res = MSG_action_trace_run(argv[5]);
-        res = MSG_action_trace_run("trace.txt");
-    //}
+        res = MSG_action_trace_run((char*)actions_file);
+        //res = MSG_action_trace_run("trace.txt");
+    } else {
+        finished = 1;           // will end when building is done
+        res = MSG_main();
+    }
 
     MSG_action_exit();
     xbt_os_walltimer_stop(timer);

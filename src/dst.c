@@ -1074,8 +1074,10 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             ans_cpt);
 
     xbt_assert(ans_cpt >= 0,
-            "Node %d: in wait_for_completion() - ans_cpt should be >= 0 : %d",
+            "Node %d: [%s:%d] - ans_cpt should be >= 0 : %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             ans_cpt);
 
     // inits
@@ -1083,8 +1085,10 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     int dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
-    XBT_DEBUG("Node %d: in wait_for_completion - async_answers dynar size = %d",
+    XBT_DEBUG("Node %d: [%s:%d] - async_answers dynar size = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             dynar_size);
 
     recp_rec_t *elem_ptr = NULL;
@@ -1102,16 +1106,21 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
     xbt_assert(ans_cpt >= 0,
-            "Node %d: in wait_for_completion - ack reception error",
-            me->self.id);
+            "Node %d: [%s:%d] - ack reception error",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__);
 
     int dynar_idx = -1;
     msg_comm_t comm = NULL;
+
     // waiting loop
     while (MSG_get_clock() <= max_wait && ans_cpt > 0) {
 
-        XBT_VERB("Node %d: Waiting for completion on mailbox '%s' ... - ans_cpt = %d",
+        XBT_VERB("Node %d: [%s:%d] Waiting for completion on mailbox '%s' ... - ans_cpt = %d",
                 me->self.id,
+                __FUNCTION__,
+                __LINE__,
                 proc_mailbox,
                 ans_cpt);
 
@@ -1161,16 +1170,17 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
             // reception success, extract data from task
             ans = MSG_task_get_data(task_received);
-
             req_data_t req = (req_data_t)ans;
 
             // log
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
                 // answer
-                XBT_VERB("Node %d: Received message : '%s - %s %s'"
+                XBT_VERB("Node %d: [%s:%d] Received message : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         MSG_task_get_name(task_received),
                         debug_msg[ans->type],
                         debug_msg[ans->br_type],
@@ -1180,9 +1190,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
             } else {
 
                 // request
-                XBT_VERB("Node %d: Received message  : '%s - %s %s'"
+                XBT_VERB("Node %d: [%s:%d] Received message  : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         MSG_task_get_name(task_received),
                         debug_msg[req->type],
                         debug_msg[(req->type == TASK_BROADCAST ?
@@ -1209,9 +1221,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         ans->sender_id,
                         ans->new_node_id);
 
-                XBT_VERB("Node %d in wait_for_completion(): matching record%sfound"
+                XBT_VERB("Node %d: [%s:%d] matching record%sfound"
                         " in async answers dynar: idx = %d - dynar size = %d",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         (dynar_idx == -1 ? " not " : " "),
                         dynar_idx,
                         dynar_size);
@@ -1252,9 +1266,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         rec_async_answer(me, dynar_idx, ans);
                     }
 
-                    XBT_VERB("Node %d: answer '%s - %s' received from %d -"
+                    XBT_VERB("Node %d: [%s:%d] answer '%s - %s' received from %d -"
                             " ans_cpt = %d",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
                             debug_msg[ans->type],
                             debug_msg[ans->br_type],
                             ans->sender_id,
@@ -1272,9 +1288,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                             ans->sender_id,
                             ans->new_node_id);
 
-                    XBT_VERB("Node %d in wait_for_completion(): matching record%sfound"
+                    XBT_VERB("Node %d: [%s:%d] matching record%sfound"
                             " in sync answers dynar: idx = %d",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
                             (dynar_idx == -1 ? " not " : " "),
                             dynar_idx);
 
@@ -1286,7 +1304,10 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                     } else {
 
                         /* No, this answer wasn't expected. Ignore it. */
-                        XBT_DEBUG("Node %d: not found in dynars. Ignore it", me->self.id);
+                        XBT_DEBUG("Node %d: [%s:%d] not found in dynars. Ignore it",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__);
                     }
                 }
 
@@ -1299,7 +1320,10 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                 /* the received message is a request
                  * *********************************/
 
-                XBT_VERB("Node %d: This is not an answer", me->self.id);
+                XBT_VERB("Node %d: [%s:%d] This is not an answer",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
 
                 /*NOTE: il ne semble pas nécessaire de récupérer la valeur de
                   retour de handle_task() ici */
@@ -1326,24 +1350,35 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                    Si la tâche traitée envoie un message, c'est le
                    destinataire qui doit détruire ces données */
 
-                XBT_VERB("Node %d: back to wait_for_completion()."
+                XBT_VERB("Node %d: back to [%s:%d]."
                         " Answers received meanwhile ?",
-                        me->self.id);
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
 
                 // async expected answers received meanwhile ?
 
-                XBT_DEBUG("Before check : ans_cpt = %d - dynar_size = %d",
-                        ans_cpt, (int) xbt_dynar_length(proc_data->async_answers));
+                XBT_DEBUG("[%s:%d] Before check : ans_cpt = %d - dynar_size = %d",
+                        __FUNCTION__,
+                        __LINE__,
+                        ans_cpt,
+                        (int) xbt_dynar_length(proc_data->async_answers));
 
                 check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
                 dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
-                XBT_DEBUG("After check : ans_cpt = %d - dynar_size = %d",
-                        ans_cpt, (int) xbt_dynar_length(proc_data->async_answers));
+                XBT_DEBUG("[%s:%d] After check : ans_cpt = %d - dynar_size = %d",
+                        __FUNCTION__,
+                        __LINE__,
+                        ans_cpt,
+                        (int) xbt_dynar_length(proc_data->async_answers));
 
                 xbt_assert(ans_cpt >= 0,
-                        "Node %d: ack reception error",
-                        me->self.id);
+                        "Node %d: [%s:%d] ack reception error",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
+
             } // task_received is a request
         } // task reception OK
     } // reception loop
@@ -1353,17 +1388,23 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
         display_async_answers(me, 'I');
     }
-    xbt_assert(ans_cpt == 0, "Node %d: [:%d] Wait error - cpt = %d",
+    xbt_assert(ans_cpt == 0, "Node %d: [%s:%d] Wait error - cpt = %d",
             me->self.id,
+            __FUNCTION__,
             __LINE__,
             ans_cpt);
 
-    XBT_VERB("Node %d: wait completed\n", me->self.id);
+    XBT_VERB("Node %d: [%s:%d] wait completed\n",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__);
 
     display_async_answers(me, 'D');
 
-    XBT_VERB("Node %d: end of wait_for_completion(): val_ret = '%s' - nok_id = %d",
+    XBT_VERB("Node %d: end of %s:%d - val_ret = '%s' - nok_id = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             (ret == UPDATE_NOK ? "NOK" : "OK"),
             (ret == UPDATE_NOK ? nok_id : -1));
 
