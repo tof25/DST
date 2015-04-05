@@ -373,11 +373,11 @@ void set_mailbox(int node_id, char* mailbox) {
 }
 
 /**
- * \brief Sets the mailbox name of current process
+ * \brief Gets the mailbox name of current process
  * \param proc_mailbox pointer to where the mailbox name should be written to
  *        (there must be enough space)
  */
-static void set_proc_mailbox(char* proc_mailbox) {
+static void get_proc_mailbox(char* proc_mailbox) {
 
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     snprintf(proc_mailbox, MAILBOX_NAME_SIZE, "%s", proc_data->proc_mailbox);
@@ -845,8 +845,10 @@ static void rec_sync_answer(node_t me, int idx, ans_data_t ans) {
     recp_rec_t *elem_ptr = xbt_dynar_get_ptr(proc_data->sync_answers, idx);
 
     xbt_assert((*elem_ptr)->answer_data == NULL,
-            "Node %d in rec_sync_answer(): dynar rec %d data not null",
+            "Node %d: [%s:%d] dynar rec %d data not null",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             idx);
 
     // record answer
@@ -874,12 +876,19 @@ static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     int dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
-    // ans_cpt musn't be greater than dynar
+    // ans_cpt musn't be greater than dynar size
     xbt_assert(*ans_cpt <= dynar_size,
-            "Node %d: in check_async_nok() - ans_cpt = %d - dynar_size = %d",
+            "Node %d: [%s:%d] - ans_cpt = %d - dynar_size = %d",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             *ans_cpt,
             dynar_size);
+
+    XBT_DEBUG("Node %d: [%s:%d] parse async_answers dynar",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__);
 
     for (idx = dynar_size - 1; idx >= dynar_size - *ans_cpt; idx--) {
 
@@ -999,7 +1008,10 @@ static void launch_fork_process(node_t me, msg_task_t task) {
                     proc_data,
                     MSG_host_self());
 
-            XBT_VERB("Node %d: process created", me->self.id);
+            XBT_VERB("Node %d: [%s:%d] process created",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__);
         } else {
 
             // cs_req failed
@@ -1099,7 +1111,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     int k, idx, nok_id;
     s_state_t state;
     char proc_mailbox[MAILBOX_NAME_SIZE];
-    set_proc_mailbox(proc_mailbox);
+    get_proc_mailbox(proc_mailbox);
 
     // async answers already received ? (from other recursive calls of this function)
     check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
@@ -1569,7 +1581,7 @@ static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) 
     req_data->recipient_id = me->self.id;
 
     //set_mailbox(me->self.id, req_data->answer_to);
-    set_proc_mailbox(req_data->answer_to);
+    get_proc_mailbox(req_data->answer_to);
     set_mailbox(me->self.id, req_data->sent_to);
 
     req_data->args = args;
@@ -1577,8 +1589,10 @@ static void make_broadcast_task(node_t me, u_req_args_t args, msg_task_t *task) 
     (*task) = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
     //MSG_task_set_name((*task), "async");
 
-    XBT_DEBUG("Node %d in make_broadcast_task(): br_stage = %d - br_type = '%s - lead_br = %d'",
+    XBT_DEBUG("Node %d: [%s:%d] br_stage = %d - br_type = '%s - lead_br = %d'",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             args.broadcast.stage,
             debug_msg[args.broadcast.type],
             args.broadcast.lead_br);
@@ -3009,7 +3023,7 @@ static msg_error_t send_msg_sync(node_t me,
 
     // create mailboxes
     set_mailbox(req_data->recipient_id, req_data->sent_to);
-    set_proc_mailbox(req_data->answer_to);
+    get_proc_mailbox(req_data->answer_to);
 
     // req_data may be altered during loops
     *cpy_req_data = *req_data;
@@ -3512,7 +3526,7 @@ static msg_error_t send_msg_async(node_t me,
 
     // create mailboxes
     set_mailbox(req_data->recipient_id, req_data->sent_to);
-    set_proc_mailbox(req_data->answer_to);
+    get_proc_mailbox(req_data->answer_to);
 
     // create and send task with data
     msg_task_t task_sent = MSG_task_create("async", COMP_SIZE, COMM_SIZE, req_data);
@@ -9525,7 +9539,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                     req_data->type = rcv_args.broadcast.type;
                                     req_data->sender_id = me->self.id;
                                     req_data->recipient_id = me->self.id;
-                                    set_proc_mailbox(req_data->answer_to);
+                                    get_proc_mailbox(req_data->answer_to);
                                     //set_mailbox(me->self.id, req_data->answer_to);
                                     set_mailbox(me->self.id, req_data->sent_to);
 

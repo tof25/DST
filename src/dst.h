@@ -720,7 +720,7 @@ static char*        routing_table(node_t me);
        void         display_preds(node_t me, char log);
        void         display_rout_table(node_t me, char log);
        void         set_mailbox(int node_id, char* mailbox);
-static void         set_proc_mailbox(char* proc_mailbox);
+static void         get_proc_mailbox(char* proc_mailbox);
 static void         set_fork_mailbox(int node_id, int new_node_id, char* session, char* mailbox);
 static void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
