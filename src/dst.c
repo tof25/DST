@@ -8373,13 +8373,15 @@ static s_task_ans_search_t search_for_item(node_t me, int source_id, const char 
     //pointeur vers une fonction de recherche)
     s_answer.search_ret = FOUND;
     s_answer.s_ret_id = me->self.id;
+    s_answer.source_id = source_id;
 
-    XBT_DEBUG("Node %d: [%s:%d] item '%s' %s",
+    XBT_DEBUG("Node %d: [%s:%d] item '%s' %s - source_id = %d",
             me->self.id,
             __FUNCTION__,
             __LINE__,
             item,
-            debug_ret_msg[s_answer.search_ret]);
+            debug_ret_msg[s_answer.search_ret],
+            source_id);
 
     XBT_OUT();
 
@@ -9608,7 +9610,12 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_da
                                             req_data);
                                     //MSG_task_set_name(br_task, "async");
 
-                                    val_ret = handle_task(me, &br_task, NULL);
+                                    // broadcasting TASK_SEARCH need answer data
+                                    if (req_data->type == TASK_SEARCH) {
+
+                                        ans_data = xbt_new0(u_ans_data_t, 1);
+                                    }
+                                    val_ret = handle_task(me, &br_task, ans_data);
 
                                     /* if br_task has to be delayed, store the whole
                                        broadcasted task */
@@ -9648,6 +9655,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_da
                                 answer.handle.val_ret = val_ret;
                                 answer.handle.val_ret_id = me->self.id;
                                 answer.handle.br_type = rcv_args.broadcast.type;
+                                answer.handle.u_ans_data = ans_data;
 
                                 res = send_ans_sync(me,
                                         rcv_args.broadcast.new_node_id,
@@ -10221,13 +10229,14 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_da
             if (ans_data == NULL) {
 
                 answer.search = search_for_item(me, rcv_args.search.source_id, rcv_args.search.item);
-                XBT_VERB("Node %d: [%s:%d] item '%s' %s - ret_id = %d",
+                XBT_VERB("Node %d: [%s:%d] item '%s' %s - ret_id = %d - source_id = %d",
                         me->self.id,
                         __FUNCTION__,
                         __LINE__,
                         rcv_args.search.item,
                         debug_ret_msg[answer.search.search_ret],
-                        answer.search.s_ret_id);
+                        answer.search.s_ret_id,
+                        answer.search.source_id);
 
                 if (rcv_req->sender_id != me->self.id) {
 
