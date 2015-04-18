@@ -113,6 +113,37 @@ void action_send(const char *const *action) {
                     (answer_data->answer).get_size.size);
             break;
 
+        case TASK_SEARCH:
+            req_data->sender_id = 125000;
+            req_args.search.source_id = req_data->sender_id;
+            req_args.search.item = action[5];
+            req_data->args = req_args;
+
+            XBT_INFO("%s: Action_%s - Sending ...",
+                    action[0],
+                    action[1]);
+
+            MSG_task_send(MSG_task_create("ext", COMP_SIZE, COMM_SIZE, req_data), req_data->sent_to);
+
+            XBT_INFO("%s: Action_%s - Receiving ...",
+                    action[0],
+                    action[1]);
+
+            MSG_task_receive(&task, action[0]);
+            xbt_assert(task != NULL, "%s: Action_%s - Receive Error", action[0], action[1]);
+
+            answer_data = MSG_task_get_data(task);
+            xbt_assert(answer_data != NULL, "%s: Action_%s - Get Data Error", action[0], action[1]);
+
+            XBT_INFO("%s: Action_%s - item '%s' %s in node %s (%d)",
+                    action[0],
+                    action[1],
+                    action[5],
+                    debug_ret_msg[(answer_data->answer).search.search_ret],
+                    req_data->sent_to,
+                    (answer_data->answer).search.s_ret_id);
+            break;
+
         default:
             XBT_INFO("%s: Action_%s - Unknown action",
                     action[0],

@@ -134,7 +134,8 @@ typedef struct s_dst_info {
     X("End Get Rep",               33, TASK_END_GET_REP) \
     X("Pop State",                 34, TASK_REMOVE_STATE) \
     X("Critical Section Released", 35, TASK_CS_REL) \
-    X("Interrupt Request",         36, TASK_IRQ)
+    X("Interrupt Request",         36, TASK_IRQ) \
+    X("Search",                    37, TASK_SEARCH)
 
 #define X(str, val, id) id = val,
 typedef enum {
@@ -150,7 +151,9 @@ typedef enum {
     STORED,                 // task stored
     UPDATE_OK,              // set_update ok
     UPDATE_NOK,             // set_update not ok
-    FAILED                  // task failed
+    FAILED,                 // task failed
+    FOUND,                  // item found (search task)
+    NOT_FOUND               // item not found (search task)
 } e_val_ret_t;
 
 /**
@@ -281,7 +284,9 @@ static const char* debug_ret_msg[] = {
     "STORED",
     "UPDATE_OK",
     "UPDATE_NOK",
-    "FAILED"
+    "FAILED",
+    "FOUND",
+    "NOT FOUND"
 };
 
 /**
@@ -553,6 +558,11 @@ typedef struct {
     int new_node_id;
 } s_task_irq_t;                 // request permission to interrupt a broadcast of CS_REQ
 
+typedef struct {
+    int source_id;
+    const char *item;          // the name of the searched item
+} s_task_search_t;
+
 /**
  * Generic request args
  */
@@ -594,6 +604,7 @@ union req_args {
     s_task_remove_state_t       remove_state;
     s_task_cs_rel_t             cs_rel;
     s_task_irq_t                irq;
+    s_task_search_t             search;
 };
 
 /**
@@ -613,6 +624,8 @@ typedef struct req_data {
 /*
   ================================  ANSWERS ARGS =============================
 */
+
+typedef union answer u_ans_data_t, *pu_ans_data_t;
 
 typedef struct {
 
@@ -652,6 +665,7 @@ typedef struct {
     e_val_ret_t   val_ret;
     e_task_type_t br_type;
     int           val_ret_id;
+    pu_ans_data_t u_ans_data;
 } s_task_ans_handle_t;
 
 typedef struct {
@@ -678,10 +692,15 @@ typedef struct {
     char ans;
 } s_task_ans_irq_t;
 
+typedef struct {
+    e_val_ret_t search_ret;
+    int         s_ret_id;
+} s_task_ans_search_t;
+
 /**
  * Generic answer values
  */
-typedef union answer {
+union answer {
 
     char                            fill[48];       // to allow direct assignment
     s_task_ans_get_rep_t            get_rep;
@@ -693,7 +712,8 @@ typedef union answer {
     s_task_ans_transfer_t           transfer;
     //s_task_ans_get_new_contact_t    get_new_contact;
     s_task_ans_irq_t                irq;
-} u_ans_data_t;
+    s_task_ans_search_t             search;
+};
 
 /**
  * Generic answer data type
@@ -880,6 +900,7 @@ static void         clean_upper_stage(node_t me,
                                       int new_node_id);
 static void         merge_request(node_t me, int new_node_id);
 static void         load_balance(node_t me, int contact_id);
+static s_task_ans_search_t search_for_item(node_t me, int source_id, const char *item);
 //static u_ans_data_t get_new_contact(node_t me, int new_node_id);
 
 /*
@@ -887,7 +908,7 @@ static void         load_balance(node_t me, int contact_id);
  */
 
        int         node(int argc, char *argv[]);
-static e_val_ret_t handle_task(node_t me, msg_task_t* task);
+static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_data);
 static int         proc_handle_task(int argc, char *argv[]);
 static int         proc_run_tasks(int argc, char* argv[]);
 static void        proc_data_cleanup(void* arg);

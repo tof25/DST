@@ -541,9 +541,11 @@ static int expected_answers_search(node_t me,
 
     xbt_dynar_foreach(dynar, iter, elem) {
 
-        XBT_DEBUG("Node %d dynar traversal: iter = %d - idx = %d --> {type:"
+        XBT_DEBUG("Node %d: [%s:%d] dynar traversal: iter = %d - idx = %d --> {type:"
                 " '%s | %s' - recipient: %d - data: %p - new_node: %d}",
                 me->self.id,
+                __FUNCTION__,
+                __LINE__,
                 iter,
                 pos,
                 debug_msg[elem->type],
@@ -941,7 +943,8 @@ static void launch_fork_process(node_t me, msg_task_t task) {
 
     if (req->type == TASK_CNX_REQ ||
         (req->type == TASK_BROADCAST && (req->args.broadcast.type == TASK_SPLIT ||
-                                         req->args.broadcast.type == TASK_CS_REQ))) {
+                                         req->args.broadcast.type == TASK_CS_REQ ||
+                                         req->args.broadcast.type == TASK_SEARCH))) {
 
         // handle the task with a fork process ..
         proc_data_t proc_data = xbt_new0(s_proc_data_t, 1);
@@ -978,6 +981,10 @@ static void launch_fork_process(node_t me, msg_task_t task) {
 
                         // cs_req is mostly broadcasted among leaders
                         cs_rel(me, req->args.broadcast.args->cs_req.new_node_id);
+                        break;
+
+                    case TASK_SEARCH:
+                        snprintf(proc_label, 10, "Br_Search");
                         break;
 
                     default:
@@ -1064,7 +1071,7 @@ static void launch_fork_process(node_t me, msg_task_t task) {
         xbt_assert(!(req->type == TASK_BROADCAST && req->args.broadcast.type == TASK_CS_REQ),
                 "[:%d] STOP !! - task %s", __LINE__, debug_msg[req->args.broadcast.type]);
 
-        handle_task(me, &task);
+        handle_task(me, &task, NULL);
     }
 
     XBT_OUT();
@@ -1248,7 +1255,11 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
                     if (dynar_idx <= dynar_size - 1 && dynar_idx >= dynar_size - ans_cpt) {
 
-                        // look if a set_update task has failed
+                           /* TODO:
+                              le test sur SET_UPDATE doit être inutile ici puisqu'on ne l'envoie que
+                              via une diffusion */
+
+                        // look if a broadcast or set_update task has failed
                         if (ans->type == TASK_BROADCAST || ans->type == TASK_SET_UPDATE) {
                             if (ret != UPDATE_NOK) {
 
@@ -2287,7 +2298,7 @@ static void run_delayed_tasks(node_t me) {
                     // run CNX_GROUPS
                     xbt_dynar_remove_at(me->delayed_tasks, cpt, &elem);
                     cpt--;
-                    handle_task(me, &elem);
+                    handle_task(me, &elem, NULL);
 
                     /*TODO : il semble qu'il y ait ici une possiblité de boucle infinie si les
                              CNX_GROUPS sont à nouveau stockées. Possible ? */
@@ -2354,7 +2365,7 @@ static void run_delayed_tasks(node_t me) {
                     buf_new_node_id = req->args.cnx_req.new_node_id;
 
                     // run task
-                    val_ret = handle_task(me, &elem);
+                    val_ret = handle_task(me, &elem, NULL);
 
                     XBT_VERB("Node %d: [%s:%d] back to run_delayed_tasks : val_ret = %s",
                             me->self.id,
@@ -3259,7 +3270,6 @@ static msg_error_t send_msg_sync(node_t me,
                                 debug_msg[req->args.broadcast.type]);
                         //xbt_assert(1 == 0);
                     }
-                    //handle_task(me, &task_received);
                     launch_fork_process(me, task_received);
                 }
                 ans = NULL;
@@ -3867,7 +3877,10 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                             cpy_brothers[brother].id,
                             args);
 
-                    xbt_assert(res == MSG_OK, "Node %d: Broadcast error", me->self.id);
+                    xbt_assert(res == MSG_OK, "Node %d: [%s:%d] Broadcast error",
+                            me->self.id,
+                            __FUNCTION__,
+                            __LINE__);
 
                     // record recipient in expected answers dynar
                     recp_rec_t elem = xbt_new0(s_recp_rec_t, 1);
@@ -3879,8 +3892,10 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                     elem->answer_data = NULL;
 
                     xbt_assert(elem->recp.id > - 1,
-                            "Node %d: #1# recp.id is %d !!",
+                            "Node %d: [%s:%d] #1# recp.id is %d !!",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
                             elem->recp.id);
 
                     xbt_dynar_push(proc_data->async_answers, &elem);
@@ -3903,8 +3918,10 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
                         cpy_brothers[0].id,
                         args);
 
-                xbt_assert(res == MSG_OK, "Node %d: Broadcast error 2",
-                        me->self.id);
+                xbt_assert(res == MSG_OK, "Node %d: [%s:%d] Broadcast error 2",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
 
                 // record recipient in expected answers dynar
                 recp_rec_t elem = xbt_new0(s_recp_rec_t, 1);
@@ -3940,7 +3957,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             // return NOK if any of both answers is NOK
             if (task_sent != NULL) {
 
-                local_ret = handle_task(me, &task_sent);
+                local_ret = handle_task(me, &task_sent, NULL);
                 if (local_ret == UPDATE_NOK || ret == UPDATE_NOK) {
 
                     ret = UPDATE_NOK;
@@ -4695,7 +4712,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
 
                 make_broadcast_task(me, args, &task_sent);
 
-                val_ret = handle_task(me, &task_sent);
+                val_ret = handle_task(me, &task_sent, NULL);
 
                 XBT_VERB("Node %d: [%s:%d] IRQ answer = %s - val_ret = %s",
                         me->self.id,
@@ -4758,7 +4775,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         args.broadcast.args->set_update.new_node_prio = cs_new_node_prio;
                         make_broadcast_task(me, args, &task_sent);
 
-                        val_ret = handle_task(me, &task_sent);
+                        val_ret = handle_task(me, &task_sent, NULL);
 
                         // counting
                         if (val_ret == UPDATE_NOK) {
@@ -4819,7 +4836,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         args.broadcast.args->remove_state.active = 'u';
                         make_broadcast_task(me, args, &task_sent);
 
-                        handle_task(me, &task_sent);
+                        handle_task(me, &task_sent, NULL);
 
                         // counts
                         me->dst_infos.nb_task_remove++;
@@ -4865,7 +4882,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
                         args.broadcast.args->set_active.new_node_id = new_node_id;
                         make_broadcast_task(me, args, &task_sent);
 
-                        handle_task(me, &task_sent);
+                        handle_task(me, &task_sent, NULL);
 
                         me->run_task.name = OTHER;
 
@@ -5159,7 +5176,7 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
             broadcast_args.broadcast.args = NULL;
 
             make_broadcast_task(me, broadcast_args, &task_sent);
-            handle_task(me, &task_sent);
+            handle_task(me, &task_sent, NULL);
         }
 
         XBT_VERB("Node %d: In split_request - stage = %d",
@@ -5206,7 +5223,7 @@ static void split_request(node_t me, int stage_nbr, int new_node_id) {
         broadcast_args.broadcast.args->split.new_node_id = new_node_id;
         make_broadcast_task(me, broadcast_args, &task_sent);
 
-        handle_task(me, &task_sent);
+        handle_task(me, &task_sent, NULL);
 
         xbt_free(broadcast_args.broadcast.args);
         broadcast_args.broadcast.args = NULL;
@@ -5824,7 +5841,7 @@ static void br_add_bro_array(node_t me, int stage, node_rep_t bro, int array_siz
     args.broadcast.args->add_bro_array.new_node_id = new_node_id;
 
     make_broadcast_task(me, args, &task_sent);
-    handle_task(me, &task_sent);
+    handle_task(me, &task_sent, NULL);
 
     xbt_free(args.broadcast.args);
     args.broadcast.args = NULL;
@@ -7005,7 +7022,7 @@ static void broadcast_merge(node_t me, int stage, int pos_me, int pos_contact, i
     args.broadcast.args->merge.new_node_id = new_node_id;
     make_broadcast_task(me, args, &task_sent);
 
-    handle_task(me, &task_sent);
+    handle_task(me, &task_sent, NULL);
 
     xbt_free(args.broadcast.args->merge.nodes_array);
     args.broadcast.args->merge.nodes_array = NULL;
@@ -7321,7 +7338,7 @@ static u_ans_data_t transfer(node_t me, int st, int right, int cut_pos, s_node_r
 
     msg_task_t task_sent = NULL;
     make_broadcast_task(me, args, &task_sent);
-    handle_task(me, &task_sent);
+    handle_task(me, &task_sent, NULL);
 
     xbt_free(args.broadcast.args);
     args.broadcast.args = NULL;
@@ -7826,7 +7843,7 @@ static void merge_request(node_t me, int new_node_id) {
 
             msg_task_t task_sent = NULL;
             make_broadcast_task(me, args, &task_sent);
-            handle_task(me, &task_sent);
+            handle_task(me, &task_sent, NULL);
 
             xbt_free(args.broadcast.args);
             args.broadcast.args = NULL;
@@ -7973,7 +7990,7 @@ static void merge_request(node_t me, int new_node_id) {
             args.broadcast.args->update_upper_stage.new_node_id = new_node_id;
 
             make_broadcast_task(me, args, &task_sent);
-            handle_task(me, &task_sent);
+            handle_task(me, &task_sent, NULL);
 
             xbt_free(args.broadcast.args);
             args.broadcast.args = NULL;
@@ -8060,7 +8077,7 @@ static void merge_request(node_t me, int new_node_id) {
 
         msg_task_t task_sent = NULL;
         make_broadcast_task(me, args, &task_sent);
-        handle_task(me, &task_sent);
+        handle_task(me, &task_sent, NULL);
         task_free(&task_sent);
 
         xbt_free(args.broadcast.args);
@@ -8086,7 +8103,7 @@ static void merge_request(node_t me, int new_node_id) {
         args.broadcast.args->del_root.new_node_id = new_node_id;
         make_broadcast_task(me, args, &task_sent);
 
-        handle_task(me, &task_sent);
+        handle_task(me, &task_sent, NULL);
 
         xbt_free(args.broadcast.args);
     }
@@ -8337,6 +8354,36 @@ static void load_balance(node_t me, int contact_id) {
             state.new_id,
             nb_ins_nodes);
     XBT_OUT();
+}
+
+/**
+ * \brief Search for a given item
+ * \param me the current node
+ * \param source_id the node that launched the search    //TODO: utile ?
+ * \param item the name of the searched item
+ * \return a structure containing the answer
+ */
+static s_task_ans_search_t search_for_item(node_t me, int source_id, const char *item) {
+
+    XBT_IN();
+
+    s_task_ans_search_t s_answer;
+
+    //TODO : introduire ici une fonction aléatoire de recherche (ou sinon, on peut aussi passer un
+    //pointeur vers une fonction de recherche)
+    s_answer.search_ret = FOUND;
+    s_answer.s_ret_id = me->self.id;
+
+    XBT_DEBUG("Node %d: [%s:%d] item '%s' %s",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__,
+            item,
+            debug_ret_msg[s_answer.search_ret]);
+
+    XBT_OUT();
+
+    return s_answer;
 }
 
 /**
@@ -8899,9 +8946,10 @@ int node(int argc, char *argv[]) {
  * \brief This function is called by the current node when it receives a task
  * \param me the current node
  * \param task pointer to the task to be handled
+ * \param ans_data pointer to answer data to be used localy
  * \return A value indicating if things went right or not
  */
-static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
+static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_data) {
 
     XBT_IN();
 
@@ -9348,8 +9396,10 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                         if (rcv_args.broadcast.type == TASK_SET_ACTIVE ||
                             rcv_args.broadcast.type == TASK_SET_UPDATE) {
 
-                            XBT_VERB("Don't accept '%s' here - current new_id = %d"
+                            XBT_VERB("[%s:%d] Don't accept '%s' here - current new_id = %d"
                                     " - rcv_new_id = %d",
+                                    __FUNCTION__,
+                                    __LINE__,
                                     debug_msg[rcv_args.broadcast.type],
                                     state.new_id,
                                     (rcv_args.broadcast.type == TASK_SET_UPDATE ?
@@ -9558,16 +9608,18 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                             req_data);
                                     //MSG_task_set_name(br_task, "async");
 
-                                    val_ret = handle_task(me, &br_task);
+                                    val_ret = handle_task(me, &br_task, NULL);
 
                                     /* if br_task has to be delayed, store the whole
                                        broadcasted task */
                                     if (val_ret == STORED) {
 
                                         // store task
-                                        XBT_VERB("Node %d - active = '%c': store "
+                                        XBT_VERB("Node %d: [%s:%d] active = '%c': store "
                                                 "broadcasted task for later execution",
                                                 me->self.id,
+                                                __FUNCTION__,
+                                                __LINE__,
                                                 state.active);
 
                                         xbt_dynar_push(me->delayed_tasks, task);
@@ -9604,14 +9656,18 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
                                         rcv_req->answer_to,
                                         answer);
 
-                                XBT_DEBUG("Node %d: answer '%s' sent to %d",
+                                XBT_DEBUG("Node %d: [%s:%d] answer '%s' sent to %d",
                                         me->self.id,
+                                        __FUNCTION__,
+                                        __LINE__,
                                         (val_ret == UPDATE_NOK ? "UPDATE_NOK" : "OK"),
                                         rcv_req->sender_id);
                             } else {
 
-                                XBT_DEBUG("Node %d: No answer after broadcast - answer_to: %s",
+                                XBT_DEBUG("Node %d: [%s:%d] No answer after broadcast - answer_to: %s",
                                         me->self.id,
+                                        __FUNCTION__,
+                                        __LINE__,
                                         rcv_req->answer_to);
                             }
                         }
@@ -10158,6 +10214,48 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
             XBT_VERB("Node %d: TASK_IRQ done", me->self.id);
 
             break;
+
+        case TASK_SEARCH:
+
+            // broadcasted task or not ?
+            if (ans_data == NULL) {
+
+                answer.search = search_for_item(me, rcv_args.search.source_id, rcv_args.search.item);
+                XBT_VERB("Node %d: [%s:%d] item '%s' %s - ret_id = %d",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        rcv_args.search.item,
+                        debug_ret_msg[answer.search.search_ret],
+                        answer.search.s_ret_id);
+
+                if (rcv_req->sender_id != me->self.id) {
+
+                    res = send_ans_sync(me,
+                            rcv_args.search.source_id,
+                            type,
+                            rcv_req->sender_id,
+                            rcv_req->answer_to,
+                            answer);
+                }
+            } else {
+
+                ans_data->search = search_for_item(me, rcv_args.search.source_id, rcv_args.search.item);
+                XBT_VERB("Node %d: [%s:%d] item '%s' %s - ret_id = %d",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        rcv_args.search.item,
+                        debug_ret_msg[ans_data->search.search_ret],
+                        ans_data->search.s_ret_id);
+            }
+
+            data_req_free(me, &rcv_req);
+            task_free(task);
+
+            XBT_VERB("Node %d: TASK_SEARCH done", me->self.id);
+
+            break;
     }
 
     if (type != TASK_BROADCAST) {
@@ -10193,7 +10291,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task) {
 */
 
 /*
- * \brief Function run by one of Handle_task process (Cnx_req, Br_Split, Br_Cs_Req)
+ * \brief Function run by one of Handle_task process (Cnx_req, Br_Split, Br_Cs_Req, Br_Search)
  */
 static int proc_handle_task(int argc, char* argv[]) {
 
@@ -10231,7 +10329,7 @@ static int proc_handle_task(int argc, char* argv[]) {
                 debug_run_msg[proc_data->node->run_task.run_state],
                 debug_ret_msg[proc_data->node->run_task.last_ret]);
 
-        proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task);
+        proc_data->node->run_task.last_ret = handle_task(proc_data->node, &proc_task, NULL);
         proc_data->node->run_task.run_state = IDLE;
         proc_data->node->run_task.name = NONE;
 
@@ -10243,7 +10341,7 @@ static int proc_handle_task(int argc, char* argv[]) {
                 debug_ret_msg[proc_data->node->run_task.last_ret]);
     } else {
 
-        handle_task(proc_data->node, &proc_task);
+        handle_task(proc_data->node, &proc_task, NULL);
     }
 
     XBT_VERB("Node %d: [%s:%d] process '%s' dies",
