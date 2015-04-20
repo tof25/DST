@@ -869,11 +869,13 @@ static void rec_sync_answer(node_t me, int idx, ans_data_t ans) {
  * \param ret return value (OK or UPDATE_NOK)
  * \param nok_id the first met node's id that answered NOK
  * \param new_node_id the current new coming node
+ * \param ans_dynar a dynar to store possible answer data
  */
-static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id) {
+static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id, xbt_dynar_t ans_dynar) {
     XBT_IN();
 
     recp_rec_t *elem_ptr = NULL;
+    pu_ans_data_t buf_ptr_u_ans_data = NULL;
     int idx;
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     int dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
@@ -908,10 +910,24 @@ static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_
 
                     *ret = (*elem_ptr)->answer_data->answer.handle.val_ret;
                     *nok_id = (*ret == UPDATE_NOK ?
-                               (*elem_ptr)->answer_data->answer.handle.val_ret_id : -1);
+                            (*elem_ptr)->answer_data->answer.handle.val_ret_id : -1);
                 }
             }
 
+            // fetch possible answers data
+            buf_ptr_u_ans_data = (*elem_ptr)->answer_data->answer.handle.u_ans_data;
+
+            xbt_assert(!(buf_ptr_u_ans_data != NULL && ans_dynar == NULL),
+                    "Node %d: [%s:%d] got answer data but dynar is uninitialized !",
+                    me->self.id,
+                    __FUNCTION__,
+                    __LINE__);
+
+            if (ans_dynar != NULL && buf_ptr_u_ans_data != NULL) {
+                xbt_dynar_push(ans_dynar, &buf_ptr_u_ans_data);
+            }
+
+            // free answer_data
             if ((*elem_ptr)->answer_data != NULL) {
 
                 xbt_free((*elem_ptr)->answer_data);
@@ -1082,9 +1098,10 @@ static void launch_fork_process(node_t me, msg_task_t task) {
  * \param me the current node
  * \param ans_cpt the number of expected anwswers
  * \param new_node_id the involved new coming node
+ * \param ans_dynar a dynar to store possible answers data
  * \return A value indicating if tasks succeeded or not
  */
-static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) {
+static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id, xbt_dynar_t ans_dynar) {
 
     XBT_IN("\tNode %d: [%s:%d] waiting for %d answers",
             me->self.id,
@@ -1101,6 +1118,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
 
     // inits
     e_val_ret_t ret = OK;
+    pu_ans_data_t buf_ptr_u_ans_data = NULL;
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     int dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
@@ -1121,7 +1139,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
     get_proc_mailbox(proc_mailbox);
 
     // async answers already received ? (from other recursive calls of this function)
-    check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
+    check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id, ans_dynar);
     dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
     xbt_assert(ans_cpt >= 0,
@@ -1268,6 +1286,19 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                             }
                         }
 
+                        // fetch possible answers data
+                        buf_ptr_u_ans_data = ans->answer.handle.u_ans_data;
+
+                        xbt_assert(!(buf_ptr_u_ans_data != NULL && ans_dynar == NULL),
+                                "Node %d: [%s:%d] got answer data but dynar is uninitialized !",
+                                me->self.id,
+                                __FUNCTION__,
+                                __LINE__);
+
+                        if (ans_dynar != NULL && buf_ptr_u_ans_data != NULL) {
+                            xbt_dynar_push(ans_dynar, &buf_ptr_u_ans_data);
+                        }
+
                         // yes, this answer is one of the current expected acknowledgments
                         ans_cpt--;
 
@@ -1387,7 +1418,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id) 
                         ans_cpt,
                         (int) xbt_dynar_length(proc_data->async_answers));
 
-                check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id);
+                check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id, NULL);
                 dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
                 XBT_DEBUG("[%s:%d] After check : ans_cpt = %d - dynar_size = %d",
@@ -3799,9 +3830,10 @@ static msg_error_t send_ans_sync(node_t me,
  * \brief Broadcast a message to the whole structure
  * \param me the current node
  * \param args the message - and its data - to be broadcasted
+ * \param ans_dynar a dynar to collect possible answers data
  * \return A value indicating if broadcast succeeded or not
  */
-static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
+static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t ans_dynar) {
 
     XBT_IN(" - Node %d: broadcast source = %d",
             me->self.id,
@@ -3809,6 +3841,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
 
     e_val_ret_t ret = OK;
     e_val_ret_t local_ret = OK;
+    pu_ans_data_t loc_ans_data = NULL;
 
     msg_task_t task_sent = NULL;
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
@@ -3944,7 +3977,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
         // synchronize each stage
         if (ans_cpt > 0) {
 
-            ret = wait_for_completion(me, ans_cpt, args.broadcast.new_node_id);
+            ret = wait_for_completion(me, ans_cpt, args.broadcast.new_node_id, ans_dynar);
         }
     }
 
@@ -3957,10 +3990,29 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args) {
             // return NOK if any of both answers is NOK
             if (task_sent != NULL) {
 
-                local_ret = handle_task(me, &task_sent, NULL);
+                // local call to handle_task
+                if (args.broadcast.type == TASK_SEARCH) {
+
+                    loc_ans_data = xbt_new0(u_ans_data_t, 1);
+                } else {
+
+                    loc_ans_data = NULL;
+                }
+                local_ret = handle_task(me, &task_sent, loc_ans_data);
+
+                // process return values from handle_task
                 if (local_ret == UPDATE_NOK || ret == UPDATE_NOK) {
 
                     ret = UPDATE_NOK;
+                }
+                xbt_assert(!(loc_ans_data != NULL && ans_dynar == NULL),
+                        "Node %d: [%s:%d] loc_ans_data not NULL and ans_dynar is NULL !!",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
+
+                if (loc_ans_data != NULL && ans_dynar != NULL) {
+                    xbt_dynar_push(ans_dynar, &loc_ans_data);
                 }
             }
         } else {
@@ -4994,7 +5046,7 @@ static u_ans_data_t connection_request(node_t me, int new_node_id, int cs_new_no
             // synchro (5)
             if (cpt > 0) {
 
-                wait_for_completion(me, cpt, new_node_id);
+                wait_for_completion(me, cpt, new_node_id, NULL);
             }
 
             // answer construction
@@ -6198,7 +6250,7 @@ static void connect_splitted_groups(node_t me,
     //synchro (4)
     if (cpt > 0) {
 
-        wait_for_completion(me, cpt, new_node_id);
+        wait_for_completion(me, cpt, new_node_id, NULL);
     }
 
     /*
@@ -6405,7 +6457,7 @@ static void split(node_t me, int stage, int new_node_id) {
     // synchro (2)
     if (cpt > 0) {
 
-        wait_for_completion(me, cpt, new_node_id);
+        wait_for_completion(me, cpt, new_node_id, NULL);
     }
 
     xbt_assert(idx <= b, "[%s:%d] DST out of bounds. idx = %d", __FUNCTION__, __LINE__, idx);
@@ -6618,8 +6670,8 @@ static void split(node_t me, int stage, int new_node_id) {
     // synchro (3)
     if (ans_cpt > 0) {
 
-        //wait_for_completion(me, ans_cpt, recp_array, cpy_pred_index);
-        wait_for_completion(me, ans_cpt, new_node_id);
+        //wait_for_completion(me, ans_cpt, recp_array, cpy_pred_index, NULL);
+        wait_for_completion(me, ans_cpt, new_node_id, NULL);
     }
 
     // wait until state is not 'p' anymore to launch local call of connect_splitted_groups
@@ -7163,7 +7215,7 @@ static void leave(node_t me) {
         // synchro
         if (cpt > 0) {
 
-            wait_for_completion(me, cpt, me->self.id);
+            wait_for_completion(me, cpt, me->self.id, NULL);
         }
 
         cpt = 0;
@@ -7209,7 +7261,7 @@ static void leave(node_t me) {
         // synchro
         if (cpt > 0) {
 
-            wait_for_completion(me, cpt, me->self.id);
+            wait_for_completion(me, cpt, me->self.id, NULL);
         }
         cpt = 0;
     }
@@ -9496,7 +9548,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_da
                                 task_free(task);                            //TODO : vérifier cette libération
 
                                 rcv_args.broadcast.first_call = 0;
-                                val_ret = broadcast(me, rcv_args);
+                                val_ret = broadcast(me, rcv_args, NULL);
                             } else {
 
                                 // forward broadcast request to the leader
@@ -9571,7 +9623,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_da
 
                                 // Transmit the message to lower stage.
                                 rcv_args.broadcast.stage--;
-                                val_ret = broadcast(me, rcv_args);
+                                val_ret = broadcast(me, rcv_args, NULL);
                             } else {
 
                                 /* stage 0 reached: handle the broadcasted task */

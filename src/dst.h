@@ -746,7 +746,7 @@ static void         set_fork_mailbox(int node_id, int new_node_id, char* session
 static void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
 static int          index_pred(node_t me, int stage, int id);
-static e_val_ret_t  wait_for_completion(node_t me, int ans_cpt, int new_node_id);
+static e_val_ret_t  wait_for_completion(node_t me, int ans_cpt, int new_node_id, xbt_dynar_t ans_dynar);
 static void         make_copy_brothers(node_t me,
                                        s_node_rep_t ***cpy_brothers,
                                        int **cpy_bro_index);
@@ -787,7 +787,7 @@ static e_val_ret_t  cs_req(node_t me, int sender_id, int new_node_id, int cs_new
 static void         cs_rel(node_t me, int new_node_id);
 static void         rec_async_answer(node_t me, int idx, ans_data_t ans);
 static void         rec_sync_answer(node_t me, int idx, ans_data_t ans);
-static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id);
+static void         check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id, xbt_dynar_t ans_dynar);
 static void         launch_fork_process(node_t me, msg_task_t task);
 static int          string2enum(const char *in_str);
 static int          read_xml_files(node_t me, char *xpath);
@@ -814,7 +814,7 @@ static msg_error_t send_ans_sync(node_t me,
                                  char* recipient_mailbox,
                                  u_ans_data_t u_ans_data);
 
-static e_val_ret_t broadcast(node_t me, u_req_args_t args);
+static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t ans_dynar);
 static void        send_completed(node_t        me,
                                   e_task_type_t type,
                                   int           recipient_id,
