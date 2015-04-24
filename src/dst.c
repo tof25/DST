@@ -869,9 +869,9 @@ static void rec_sync_answer(node_t me, int idx, ans_data_t ans) {
  * \param ret return value (OK or UPDATE_NOK)
  * \param nok_id the first met node's id that answered NOK
  * \param new_node_id the current new coming node
- * \param ans_dynar a dynar to store possible answer data
+ * \param dyn_ans_data a dynar to store possible answer data
  */
-static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id, xbt_dynar_t ans_dynar) {
+static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_id, int new_node_id, xbt_dynar_t dyn_ans_data) {
     XBT_IN();
 
     recp_rec_t *elem_ptr = NULL;
@@ -915,16 +915,15 @@ static void check_async_nok(node_t me, int *ans_cpt, e_val_ret_t *ret, int *nok_
             }
 
             // fetch possible answers data
-            buf_ptr_u_ans_data = (*elem_ptr)->answer_data->answer.handle.u_ans_data;
+            if ((*elem_ptr)->answer_data->answer.handle.dyn_ans_data != NULL) {
 
-            xbt_assert(!(buf_ptr_u_ans_data != NULL && ans_dynar == NULL),
-                    "Node %d: [%s:%d] got answer data but dynar is uninitialized !",
-                    me->self.id,
-                    __FUNCTION__,
-                    __LINE__);
+                xbt_assert(dyn_ans_data != NULL,
+                        "Node %d: [%s:%d] got answer data but dynar is uninitialized !",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
 
-            if (ans_dynar != NULL && buf_ptr_u_ans_data != NULL) {
-                xbt_dynar_push(ans_dynar, &buf_ptr_u_ans_data);
+                xbt_dynar_merge(dyn_ans_data, (*elem_ptr)->answer_data->answer.handle.dyn_ans_data);
             }
 
             // free answer_data
@@ -1098,10 +1097,10 @@ static void launch_fork_process(node_t me, msg_task_t task) {
  * \param me the current node
  * \param ans_cpt the number of expected anwswers
  * \param new_node_id the involved new coming node
- * \param ans_dynar a dynar to store possible answers data
+ * \param dyn_ans_data a dynar to store possible answers data
  * \return A value indicating if tasks succeeded or not
  */
-static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id, xbt_dynar_t ans_dynar) {
+static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id, xbt_dynar_t dyn_ans_data) {
 
     XBT_IN("\tNode %d: [%s:%d] waiting for %d answers",
             me->self.id,
@@ -1139,7 +1138,7 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id, 
     get_proc_mailbox(proc_mailbox);
 
     // async answers already received ? (from other recursive calls of this function)
-    check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id, ans_dynar);
+    check_async_nok(me, &ans_cpt, &ret, &nok_id, new_node_id, dyn_ans_data);
     dynar_size = (int) xbt_dynar_length(proc_data->async_answers);
 
     xbt_assert(ans_cpt >= 0,
@@ -1287,16 +1286,15 @@ static e_val_ret_t wait_for_completion(node_t me, int ans_cpt, int new_node_id, 
                         }
 
                         // fetch possible answers data
-                        buf_ptr_u_ans_data = ans->answer.handle.u_ans_data;
+                        if (ans->answer.handle.dyn_ans_data != NULL) {
 
-                        xbt_assert(!(buf_ptr_u_ans_data != NULL && ans_dynar == NULL),
-                                "Node %d: [%s:%d] got answer data but dynar is uninitialized !",
-                                me->self.id,
-                                __FUNCTION__,
-                                __LINE__);
+                            xbt_assert(dyn_ans_data != NULL,
+                                    "Node %d: [%s:%d] got answer data but dynar is uninitialized !",
+                                    me->self.id,
+                                    __FUNCTION__,
+                                    __LINE__);
 
-                        if (ans_dynar != NULL && buf_ptr_u_ans_data != NULL) {
-                            xbt_dynar_push(ans_dynar, &buf_ptr_u_ans_data);
+                            xbt_dynar_merge(dyn_ans_data, ans->answer.handle.dyn_ans_data);
                         }
 
                         // yes, this answer is one of the current expected acknowledgments
@@ -3830,10 +3828,10 @@ static msg_error_t send_ans_sync(node_t me,
  * \brief Broadcast a message to the whole structure
  * \param me the current node
  * \param args the message - and its data - to be broadcasted
- * \param ans_dynar a dynar to collect possible answers data
+ * \param dyn_ans_data a dynar to collect possible answers data
  * \return A value indicating if broadcast succeeded or not
  */
-static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t ans_dynar) {
+static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t dyn_ans_data) {
 
     XBT_IN(" - Node %d: broadcast source = %d",
             me->self.id,
@@ -3841,7 +3839,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t ans_dynar
 
     e_val_ret_t ret = OK;
     e_val_ret_t local_ret = OK;
-    pu_ans_data_t loc_ans_data = NULL;
+    xbt_dynar_t loc_dyn_ans_data = NULL;
 
     msg_task_t task_sent = NULL;
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
@@ -3977,7 +3975,7 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t ans_dynar
         // synchronize each stage
         if (ans_cpt > 0) {
 
-            ret = wait_for_completion(me, ans_cpt, args.broadcast.new_node_id, ans_dynar);
+            ret = wait_for_completion(me, ans_cpt, args.broadcast.new_node_id, dyn_ans_data);
         }
     }
 
@@ -3993,27 +3991,30 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t ans_dynar
                 // local call to handle_task
                 if (args.broadcast.type == TASK_SEARCH) {
 
-                    loc_ans_data = xbt_new0(u_ans_data_t, 1);
+                    loc_dyn_ans_data = xbt_dynar_new(sizeof(pu_ans_data_t), &xbt_free_ref);
                 } else {
 
-                    loc_ans_data = NULL;
+                    loc_dyn_ans_data = NULL;
                 }
-                local_ret = handle_task(me, &task_sent, loc_ans_data);
+                local_ret = handle_task(me, &task_sent, loc_dyn_ans_data);
 
                 // process return values from handle_task
                 if (local_ret == UPDATE_NOK || ret == UPDATE_NOK) {
 
                     ret = UPDATE_NOK;
                 }
-                xbt_assert(!(loc_ans_data != NULL && ans_dynar == NULL),
-                        "Node %d: [%s:%d] loc_ans_data not NULL and ans_dynar is NULL !!",
-                        me->self.id,
-                        __FUNCTION__,
-                        __LINE__);
 
-                if (loc_ans_data != NULL && ans_dynar != NULL) {
-                    xbt_dynar_push(ans_dynar, &loc_ans_data);
+                if (loc_dyn_ans_data != NULL) {
+
+                    xbt_assert(dyn_ans_data != NULL,
+                            "Node %d: [%s:%d] loc_dyn_ans_data not NULL and dyn_ans_data is NULL !!",
+                            me->self.id,
+                            __FUNCTION__,
+                            __LINE__);
+
+                    xbt_dynar_merge(dyn_ans_data, loc_dyn_ans_data);
                 }
+
             }
         } else {
 
@@ -9000,10 +9001,10 @@ int node(int argc, char *argv[]) {
  * \brief This function is called by the current node when it receives a task
  * \param me the current node
  * \param task pointer to the task to be handled
- * \param ans_data pointer to answer data to be used localy
+ * \param dyn_ans_data a dynar to store possible answer data
  * \return A value indicating if things went right or not
  */
-static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_data) {
+static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t dyn_ans_data) {
 
     XBT_IN();
 
@@ -9548,7 +9549,12 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_da
                                 task_free(task);                            //TODO : vérifier cette libération
 
                                 rcv_args.broadcast.first_call = 0;
-                                val_ret = broadcast(me, rcv_args, NULL);
+
+                                if (rcv_args.broadcast.type == TASK_SEARCH) {
+
+                                    dyn_ans_data = xbt_dynar_new(sizeof(pu_ans_data_t), &xbt_free_ref);
+                                }
+                                val_ret = broadcast(me, rcv_args, dyn_ans_data);
                             } else {
 
                                 // forward broadcast request to the leader
@@ -9664,10 +9670,12 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_da
 
                                     // broadcasting TASK_SEARCH need answer data
                                     if (req_data->type == TASK_SEARCH) {
+                                        if (dyn_ans_data == NULL) {
 
-                                        ans_data = xbt_new0(u_ans_data_t, 1);
+                                            dyn_ans_data = xbt_dynar_new(sizeof(pu_ans_data_t), &xbt_free_ref);
+                                        }
                                     }
-                                    val_ret = handle_task(me, &br_task, ans_data);
+                                    val_ret = handle_task(me, &br_task, dyn_ans_data);
 
                                     /* if br_task has to be delayed, store the whole
                                        broadcasted task */
@@ -10278,7 +10286,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_da
         case TASK_SEARCH:
 
             // broadcasted task or not ?
-            if (ans_data == NULL) {
+            if (dyn_ans_data == NULL) {
 
                 answer.search = search_for_item(me, rcv_args.search.source_id, rcv_args.search.item);
                 XBT_VERB("Node %d: [%s:%d] item '%s' %s - ret_id = %d - source_id = %d",
@@ -10301,14 +10309,23 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_da
                 }
             } else {
 
-                ans_data->search = search_for_item(me, rcv_args.search.source_id, rcv_args.search.item);
+                pu_ans_data_t ptr_u_ans_data = xbt_new0(u_ans_data_t, 1);
+                ptr_u_ans_data->search = search_for_item(me, rcv_args.search.source_id, rcv_args.search.item);
                 XBT_VERB("Node %d: [%s:%d] item '%s' %s - ret_id = %d",
                         me->self.id,
                         __FUNCTION__,
                         __LINE__,
                         rcv_args.search.item,
-                        debug_ret_msg[ans_data->search.search_ret],
-                        ans_data->search.s_ret_id);
+                        debug_ret_msg[ptr_u_ans_data->search.search_ret],
+                        ptr_u_ans_data->search.s_ret_id);
+
+                xbt_assert(dyn_ans_data != NULL,
+                        "Node %d: [%s:%d] dyn_ans_data shouldn't be NULL !",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__);
+
+                xbt_dynar_push(dyn_ans_data, &ptr_u_ans_data);
             }
 
             data_req_free(me, &rcv_req);

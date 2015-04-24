@@ -665,7 +665,7 @@ typedef struct {
     e_val_ret_t   val_ret;
     e_task_type_t br_type;
     int           val_ret_id;
-    pu_ans_data_t u_ans_data;
+    xbt_dynar_t   dyn_ans_data;
 } s_task_ans_handle_t;
 
 typedef struct {
@@ -746,7 +746,7 @@ static void         set_fork_mailbox(int node_id, int new_node_id, char* session
 static void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
 static int          index_pred(node_t me, int stage, int id);
-static e_val_ret_t  wait_for_completion(node_t me, int ans_cpt, int new_node_id, xbt_dynar_t ans_dynar);
+static e_val_ret_t  wait_for_completion(node_t me, int ans_cpt, int new_node_id, xbt_dynar_t dyn_ans_data);
 static void         make_copy_brothers(node_t me,
                                        s_node_rep_t ***cpy_brothers,
                                        int **cpy_bro_index);
@@ -814,7 +814,7 @@ static msg_error_t send_ans_sync(node_t me,
                                  char* recipient_mailbox,
                                  u_ans_data_t u_ans_data);
 
-static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t ans_dynar);
+static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t dyn_ans_data);
 static void        send_completed(node_t        me,
                                   e_task_type_t type,
                                   int           recipient_id,
@@ -909,7 +909,7 @@ static s_task_ans_search_t search_for_item(node_t me, int source_id, const char 
  */
 
        int         node(int argc, char *argv[]);
-static e_val_ret_t handle_task(node_t me, msg_task_t* task, pu_ans_data_t ans_data);
+static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t dyn_ans_data);
 static int         proc_handle_task(int argc, char *argv[]);
 static int         proc_run_tasks(int argc, char* argv[]);
 static void        proc_data_cleanup(void* arg);
