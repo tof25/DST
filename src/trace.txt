@@ -8,5 +8,5 @@ p6 node 145 62 960 20000
 p7 node 155 164 970 20000
 p8 node 194 40 980 20000
 p9 node 200 234 990 20000
-p10 send 1000 "Search" 170 "TOKEN"
+p10 send 1000 "Broadcast Search" 170 "TOKEN"
 p10 finalize 1000

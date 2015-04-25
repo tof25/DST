@@ -124,7 +124,6 @@ void action_send(const char *const *action) {
                     action[1]);
 
             MSG_task_send(MSG_task_create("ext", COMP_SIZE, COMM_SIZE, req_data), req_data->sent_to);
-
             XBT_INFO("%s: Action_%s - Receiving ...",
                     action[0],
                     action[1]);
@@ -142,6 +141,26 @@ void action_send(const char *const *action) {
                     debug_ret_msg[(answer_data->answer).search.search_ret],
                     req_data->sent_to,
                     (answer_data->answer).search.s_ret_id);
+            break;
+
+        case TASK_BROADCAST_SEARCH:
+            req_data->sender_id = 125000;
+            req_args.broad_search.source_id = req_data->sender_id;
+            req_args.broad_search.item = action[5];
+            req_data->args = req_args;
+
+            XBT_INFO("%s: Action_%s - Sending ...",
+                    action[0],
+                    action[1]);
+
+            MSG_task_send(MSG_task_create("ext", COMP_SIZE, COMM_SIZE, req_data), req_data->sent_to);
+            XBT_INFO("%s: Action_%s - Receiving ...",
+                    action[0],
+                    action[1]);
+
+            MSG_task_receive(&task, action[0]);
+
+            XBT_INFO("%s: Action_%s - DONE", action[0], action[1]);
             break;
 
         default:
