@@ -1002,4 +1002,6 @@
   <process host="c-997.me" function="node"><argument value="442" /><argument value="968" /><argument value="9970" /><argument value="20000" /></process>
   <process host="c-998.me" function="node"><argument value="571" /><argument value="524" /><argument value="9980" /><argument value="20000" /></process>
   <process host="c-999.me" function="node"><argument value="975" /><argument value="770" /><argument value="9990" /><argument value="20000" /></process>
+  <!-- END DST -->
+  <process host="c-999.me" function="p10"></process>
 </platform>

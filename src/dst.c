@@ -3756,12 +3756,12 @@ static msg_error_t send_ans_sync(node_t me,
         if (MSG_get_clock() > max_wait || comm == NULL) {
 
             res = MSG_TRANSFER_FAILURE;
-            xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - clock = %f - comm = %p",
+            xbt_assert(1 == 0, "Node %d: [%s:%d] TRANSFER FAILURE - max_wait = %f - sent_to = '%s' - comm = %p",
                     me->self.id,
                     __FUNCTION__,
                     __LINE__,
                     max_wait,
-                    MSG_get_clock(),
+                    ans_data->sent_to,
                     comm);
         } else {
 
