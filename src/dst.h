@@ -33,6 +33,7 @@
 #define a 3
 #define b 6
 #define LEN_XPATH 20                        // xpath size (for xml input file reading)
+#define MAX_NODE_ID 100000                  // Max node id
 
 /*
    ================================================================================================
@@ -42,13 +43,13 @@
 //static const int   b = 2 * 3;                               // max number of brothers in a node (must be twice a)
 static int         COMM_TIMEOUT = 19000;                    // timeout for communications (mustn't be greater than MAX_WAIT_COMPL)
        xbt_dynar_t infos_dst;                               // to store all global DST infos
-static int         nb_messages[100000][TYPE_NBR] = {0};     // total number of messages exchanged for each task type per node
-static int         nb_br_messages[100000][TYPE_NBR] = {0};  // total number of broadcasted messages exchanged for each task type per node
+       int         nb_messages[MAX_NODE_ID][TYPE_NBR];      // total number of messages exchanged for each task type per node
+       int         nb_br_messages[MAX_NODE_ID][TYPE_NBR];   // total number of broadcasted messages exchanged for each task type per node
        int         order;                                   // order number of nodes arrival
        int         nb_nodes;                                // total number of nodes to be inserted
        int         nb_ins_nodes;                            // number of nodes actually inserted
 static int         mem_log = -1;                            // ensures that log new setting occurs only once
-static int         inserted_nodes[100000] = {-1};           // to store a list of currently inserted nodes
+static int         inserted_nodes[MAX_NODE_ID] = {-1};      // to store a list of currently inserted nodes
        char        finished;                                // to end the simulation
 
 typedef struct f_node {                     // node that failed to join

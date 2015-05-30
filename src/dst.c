@@ -37,6 +37,9 @@ int nb_ins_nodes = 0;
 int nb_nodes = 0;
 int order = 0;
 char finished = 0;
+int nb_messages[MAX_NODE_ID][TYPE_NBR] = {0};
+int nb_br_messages[MAX_NODE_ID][TYPE_NBR] = {0};
+
 
 /*
  ========================== FUNCTIONS DEFINITIONS =============================
@@ -3192,7 +3195,9 @@ static msg_error_t send_msg_sync(node_t me,
     nb_messages[args.get_rep.new_node_id][cpy_req_data->type]++;
     if (cpy_req_data->type == TASK_BROADCAST) {
 
-        nb_br_messages[args.get_rep.new_node_id][cpy_req_data->args.broadcast.type]++;
+        if (args.get_rep.new_node_id < MAX_NODE_ID) {
+            nb_br_messages[args.get_rep.new_node_id][cpy_req_data->args.broadcast.type]++;
+        }
     }
 
 
@@ -3669,7 +3674,9 @@ static msg_error_t send_msg_async(node_t me,
     if (mem_type == TASK_BROADCAST) {
 
         //nb_br_messages[req_data->args.get_rep.new_node_id][mem_br_type]++;
-        nb_br_messages[new_node_id][mem_br_type]++;
+        if (new_node_id < MAX_NODE_ID) {
+            nb_br_messages[new_node_id][mem_br_type]++;
+        }
     }
 
     XBT_OUT();
@@ -3826,7 +3833,9 @@ static msg_error_t send_ans_sync(node_t me,
     nb_messages[new_node_id][type]++;
     if (type == TASK_BROADCAST) {
 
-        nb_br_messages[new_node_id][br_type]++;
+        if (new_node_id < MAX_NODE_ID) {
+            nb_br_messages[new_node_id][br_type]++;
+        }
     }
 
     XBT_OUT();
