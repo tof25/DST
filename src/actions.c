@@ -6,6 +6,8 @@ XBT_LOG_EXTERNAL_DEFAULT_CATEGORY(msg_dst);
 extern int nb_ins_nodes;
 extern int nb_nodes;
 extern char finished;
+extern int nb_messages[MAX_NODE_ID][TYPE_NBR];
+extern int nb_br_messages[MAX_NODE_ID][TYPE_NBR];
 
 // ================================ UTILITY FUNCTIONS =============================================
 /**
