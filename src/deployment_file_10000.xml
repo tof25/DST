@@ -10001,4 +10001,6 @@
   <process host="c-9997.me" function="node"><argument value="6615" /><argument value="26465" /><argument value="99970" /><argument value="110000" /></process>
   <process host="c-9998.me" function="node"><argument value="534" /><argument value="37477" /><argument value="99980" /><argument value="110000" /></process>
   <process host="c-9999.me" function="node"><argument value="5506" /><argument value="58147" /><argument value="99990" /><argument value="110000" /></process>
+  <!-- END DST -->
+  <process host="c-9999.me" function="p10"></process>
 </platform>

@@ -1,2 +1,1 @@
-p10 send 3000 "Broadcast Search" 170 "TOKEN"
 p10 finalize 10000
