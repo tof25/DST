@@ -1,13 +1,7 @@
 #include "actions.h"
 #include "dst.h"
 
-// ================================ GLOBAL VALUES =================================================
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY(msg_dst);
-extern int nb_ins_nodes;
-extern int nb_nodes;
-extern char finished;
-extern int nb_messages[MAX_NODE_ID][TYPE_NBR];
-extern int nb_br_messages[MAX_NODE_ID][TYPE_NBR];
 
 // ================================ UTILITY FUNCTIONS =============================================
 /**
@@ -29,7 +23,7 @@ static int string2enum(const char *in_str) {
  * \brief Sends a task to some dst node. May receive an answer, depending on the sent task.
  * \param action[0] current process name
  * \param action[1] current action name
- * \param action[2] waiting amount (won't start before this time)
+ * \param action[2] start time (won't start before this time)
  * \param action[3] task type (must exist in dst enum e_task_type_t)
  * \param action[4] id of the recipient
  * \param action[...] task arguments
@@ -179,7 +173,7 @@ void action_send(const char *const *action) {
  * \brief Ends the simulation
  * \param action[0] current process name
  * \param action[1] current action name
- * \param action[2] waiting amount (won't start before this time)
+ * \param action[2] start time (won't start before this time)
  */
 void action_finalize(const char *const *action) {
     XBT_IN();
@@ -207,7 +201,7 @@ void action_finalize(const char *const *action) {
  * \param action[1] current action name
  * \param action[2] contact id (a working member of dst)
  * \param action[3] current node's id
- * \param action[4] waiting amount (won't start before this time)
+ * \param action[4] start time (won't start before this time)
  * \param action[5] deadline (will leave the dst at this time)
  */
 void action_node(const char *const *action) {
@@ -352,7 +346,7 @@ int main(int argc, char *argv[]) {
 
     if (argc < 3) {
 
-        printf("Usage: %s --log=msg_dst.thres:info platform_file deployment_file [xml_output_filename [xml_input_file][trace_file]]"
+        printf("Usage: %s --log=msg_dst.thres:info platform_file.xml deployment_file.xml xml_output_file.xml [xml_input_file.xml] trace_file.txt"
                 " 2>&1 | tools/MSG_visualization/colorize.pl\n",
                 argv[0]);
         exit(1);
@@ -409,13 +403,14 @@ int main(int argc, char *argv[]) {
     // xml input file ?
     if (argc >= 5) {
 
-        // is it an action file or an xml input file ?
+        // is the fourth argument an action file or an xml input file ?
         if (strstr(argv[4], ".txt")) {
 
+            // actions file
             actions_file = argv[4];
         } else {
 
-            // get xml input files names
+            //  xml input files
             xml_input_file = xbt_new0(char, FILENAME_MAX);
             xml_input_pred_file = xbt_new0(char, FILENAME_MAX);
 
@@ -426,7 +421,7 @@ int main(int argc, char *argv[]) {
 
             // output and input files mustn't be the same
             xbt_assert(strcmp(xml_input_file, xml_output_file) != 0,
-                    "[%s:%d] xml output files and input files musn't have the same name !",
+                    "[%s:%d] xml output files and input files can't have the same name !",
                     __FUNCTION__,
                     __LINE__);
         }
@@ -447,10 +442,17 @@ int main(int argc, char *argv[]) {
             xbt_free(xml_input_pred_file);
             xml_input_file = NULL;
             xml_input_pred_file = NULL;
+
+            return 1;
         }
 
         if (argc >= 6) {
+
             actions_file = argv[5];
+        } else {
+
+            XBT_WARN("[%s:%d] No action file have been provided", __FUNCTION__, __LINE__);
+            return 1;
         }
     }
 

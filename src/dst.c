@@ -8947,7 +8947,7 @@ int node(int argc, char *argv[]) {
                 state = get_state(&node);
 
                 // set log details
-                if ((nb_ins_nodes >= 0.99 * nb_nodes) && (mem_log == -1)) {
+                if ((nb_ins_nodes >= 0.99 * nb_nodes) && (mem_log == -1) && nb_ins_nodes < nb_nodes) {
 
                     //xbt_assert(1 == 0, "nb_ins_nodes = %d, nb_nodes = %d", nb_ins_nodes, nb_nodes);
                     xbt_log_control_set("msg_dst.thres:verbose");
