@@ -3214,6 +3214,7 @@ static msg_error_t send_msg_sync(node_t me,
 
     while (res != MSG_TIMEOUT || cpy_req_data->type != TASK_GET_REP) {
 
+        task_received = NULL;
         dynar_idx = -1;
 
         // sync reception
@@ -3306,6 +3307,7 @@ static msg_error_t send_msg_sync(node_t me,
 
                     // handle this received request
                     if (req->type == TASK_BROADCAST) {
+
                         XBT_INFO("Node %d: [%s:%d] TASK_BROADCAST received : '%s'",
                                 me->self.id,
                                 __FUNCTION__,
@@ -4116,6 +4118,8 @@ static void init(node_t me) {
 
     me->height = 1;
     me->comm_received = NULL;
+
+    me->search_ret = (int)rand() % 2 == 0 ? FOUND : NOT_FOUND;
 
     // set mailbox
     set_mailbox(me->self.id, me->self.mailbox);
@@ -8445,7 +8449,8 @@ static s_task_ans_search_t search_for_item(node_t me, int source_id, const char 
 
     //TODO : introduire ici une fonction aléatoire de recherche (ou sinon, on peut aussi passer un
     //pointeur vers une fonction de recherche)
-    s_answer.search_ret = FOUND;
+
+    s_answer.search_ret = (me->search_ret);
     s_answer.s_ret_id = me->self.id;
     s_answer.source_id = source_id;
 

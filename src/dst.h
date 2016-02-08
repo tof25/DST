@@ -60,6 +60,18 @@ typedef struct f_node {                     // node that failed to join
 static int nb_abort = 0;                    // number of join abortions
 static s_f_node_t *failed_nodes = NULL;     // array of nodes that couldn't join the DST
 
+/**
+ * Values returned by handle_task()
+ */
+typedef enum {
+    OK,                     // no problem
+    STORED,                 // task stored
+    UPDATE_OK,              // set_update ok
+    UPDATE_NOK,             // set_update not ok
+    FAILED,                 // task failed
+    FOUND,                  // item found (search task)
+    NOT_FOUND               // item not found (search task)
+} e_val_ret_t;
 
 /**
  * A node representative
@@ -146,19 +158,6 @@ typedef enum {
 #undef X
 
 /**
- * Values returned by handle_task()
- */
-typedef enum {
-    OK,                     // no problem
-    STORED,                 // task stored
-    UPDATE_OK,              // set_update ok
-    UPDATE_NOK,             // set_update not ok
-    FAILED,                 // task failed
-    FOUND,                  // item found (search task)
-    NOT_FOUND               // item not found (search task)
-} e_val_ret_t;
-
-/**
  * Possible values for task run state
  */
 typedef enum {
@@ -236,6 +235,7 @@ typedef struct node {
     int             cs_req_br_source;       // node's id that started broadcast of cs_req
     char            cs_irq_ans;             // answer given to an interrupt request (boolean)
     s_run_task_t    run_task;               // current running task state (delayed tasks)
+    e_val_ret_t     search_ret;             // search result (see search_for_item)
 } s_node_t, *node_t;
 
 /**
