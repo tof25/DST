@@ -416,7 +416,7 @@ static void set_fork_mailbox(int node_id, int new_node_id, char* session, char* 
  *        before calling this function.
  * \param task pointer to the MSG task to destroy
  */
-static void task_free(msg_task_t *task) {
+void task_free(msg_task_t *task) {
 
     //XBT_IN();
 
@@ -3720,7 +3720,7 @@ static msg_error_t send_ans_sync(node_t me,
     // create task with answer data
     msg_task_t task_sent = MSG_task_create("ans", COMP_SIZE, COMM_SIZE, ans_data);
 
-    XBT_VERB("Node %d: [%s:%d] {%d} Answering '%s - %s' to %d - '%s'",
+    XBT_VERB("Node %d: [%s:%d] {%d} Answering '%s - %s' to %d - '%s' val_ret = %s",
             ans_data->sender_id,
             __FUNCTION__,
             __LINE__,
@@ -3728,7 +3728,9 @@ static msg_error_t send_ans_sync(node_t me,
             debug_msg[ans_data->type],
             debug_msg[ans_data->br_type],
             ans_data->recipient_id,
-            ans_data->sent_to);
+            ans_data->sent_to,
+            (ans_data->type == TASK_BROADCAST ||
+             ans_data->type == TASK_BROADCAST_SEARCH) ? debug_ret_msg[u_ans_data.handle.val_ret] : "-");          //NOTE : pas sûr que ce soit juste dans tous les cas
 
     float max_wait = MSG_get_clock() + COMM_TIMEOUT;
     msg_comm_t comm = NULL;
@@ -3775,7 +3777,11 @@ static msg_error_t send_ans_sync(node_t me,
         } else {
 
             res = MSG_comm_get_status(comm);
-            XBT_DEBUG("RES = %s - loop_cpt = %d", debug_res_msg[res], loop_cpt);
+            XBT_DEBUG("[%s:%d] RES = %s - loop_cpt = %d",
+                    __FUNCTION__,
+                    __LINE__,
+                    debug_res_msg[res],
+                    loop_cpt);
         }
 
         // only loop_cpt attemps are allowed
@@ -4022,6 +4028,9 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t dyn_ans_d
                 if (local_ret == UPDATE_NOK || ret == UPDATE_NOK) {
 
                     ret = UPDATE_NOK;
+                } else {
+
+                    ret = local_ret;
                 }
 
                 if (loc_dyn_ans_data != NULL) {
@@ -4070,6 +4079,10 @@ static e_val_ret_t broadcast(node_t me, u_req_args_t args, xbt_dynar_t dyn_ans_d
     xbt_free(cpy_brothers);
     cpy_brothers = NULL;
 
+    XBT_VERB("Node %d: [%s:%d]",
+            me->self.id,
+            __FUNCTION__,
+            __LINE__);
     display_sc(me, 'V');
 
     XBT_OUT();
@@ -8472,13 +8485,15 @@ static s_task_ans_search_t search_for_item(node_t me, int source_id, const char 
  * \param me the current node
  * \param source_id the node that launched the search
  * \param item the name of the searched item
+ * \return broacast status (OK or not)
  */
-static void broadcast_search(node_t me, int source_id, const char *item) {
+static e_val_ret_t broadcast_search(node_t me, int source_id, const char *item) {
     XBT_IN();
 
     u_req_args_t args;
     msg_task_t task_sent = NULL;
     xbt_dynar_t dyn_ans_data = NULL;
+    e_val_ret_t ret = OK;
 
     // broadcast a 'search' task
     args.broadcast.type = TASK_SEARCH;
@@ -8493,35 +8508,46 @@ static void broadcast_search(node_t me, int source_id, const char *item) {
     args.broadcast.args->search.item = item;
 
     make_broadcast_task(me, args, &task_sent);
-    handle_task(me, &task_sent, &dyn_ans_data);
+    ret = handle_task(me, &task_sent, &dyn_ans_data);
 
-    // print answers dynar
-    unsigned int cpt = 0;
-    pu_ans_data_t elem = NULL;
-
-    XBT_INFO("Node %d: [%s:%d] Item '%s' search results:",
+    XBT_VERB("Node %d: [%s:%d] ret = %s",
             me->self.id,
             __FUNCTION__,
             __LINE__,
-            item);
+            debug_ret_msg[ret]);
 
-    xbt_dynar_foreach(dyn_ans_data, cpt, elem) {
-        if (elem != NULL) {
 
-            XBT_INFO("\tnode %d: %s",
-                    elem->search.s_ret_id,
-                    debug_ret_msg[elem->search.search_ret]);
-        } else {
+    if (ret == OK) {
 
-            XBT_WARN("Node %d: [%s:%d] elem[%d] is NULL",
-                    me->self.id,
-                    __FUNCTION__,
-                    __LINE__,
-                    cpt);
+        // print answers dynar
+        unsigned int cpt = 0;
+        pu_ans_data_t elem = NULL;
+
+        XBT_INFO("Node %d: [%s:%d] Item '%s' search results:",
+                me->self.id,
+                __FUNCTION__,
+                __LINE__,
+                item);
+
+        xbt_dynar_foreach(dyn_ans_data, cpt, elem) {
+            if (elem != NULL) {
+
+                XBT_INFO("\tnode %d: %s",
+                        elem->search.s_ret_id,
+                        debug_ret_msg[elem->search.search_ret]);
+            } else {
+
+                XBT_WARN("Node %d: [%s:%d] elem[%d] is NULL",
+                        me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
+                        cpt);
+            }
         }
     }
 
     XBT_OUT();
+    return ret;
 }
 
 /**
@@ -9532,7 +9558,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
 
                         /* for refused broadcasted tasks, either send an answer back ... */
                         if (rcv_args.broadcast.type == TASK_SET_ACTIVE ||
-                            rcv_args.broadcast.type == TASK_SET_UPDATE) {
+                            rcv_args.broadcast.type == TASK_SET_UPDATE ||
+                            rcv_args.broadcast.type == TASK_SEARCH) {
 
                             XBT_VERB("[%s:%d] Don't accept '%s' here - current new_id = %d"
                                     " - rcv_new_id = %d",
@@ -9547,7 +9574,8 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
                             /* if set_update is refused, tell the caller.
                                if set_active is refused, nevermind, it'll work another
                                time */
-                            val_ret = (rcv_args.broadcast.type == TASK_SET_UPDATE ?
+                            val_ret = ((rcv_args.broadcast.type == TASK_SET_UPDATE ||
+                                        rcv_args.broadcast.type == TASK_SEARCH) ?
                                     UPDATE_NOK : OK);
 
                             if (rcv_req->sender_id != me->self.id) {
@@ -9712,6 +9740,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
                             }
 
                             /* send a message back (in case of sync call of TASK_BROADCAST) */
+                            /*
                             if (rcv_req->sender_id != me->self.id) {
 
                                 answer.handle.val_ret = val_ret;
@@ -9726,11 +9755,14 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
                                         rcv_req->answer_to,
                                         answer);
 
-                                XBT_DEBUG("Node %d: answer '%s' sent to %d",
+                                XBT_DEBUG("Node %d: [%s:%d] answer '%s' sent to %d",
                                         me->self.id,
+                                        __FUNCTION__,
+                                        __LINE__,
                                         (val_ret == UPDATE_NOK ? "UPDATE NOK" : "OK"),
                                         rcv_req->sender_id);
                             }
+                            */
 
                             task_free(task);
                         } else {
@@ -9881,7 +9913,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
                                         rcv_req->sender_id);
                             } else {
 
-                                XBT_DEBUG("Node %d: [%s:%d] No answer after broadcast - answer_to: %s",
+                                XBT_VERB("Node %d: [%s:%d] No answer after broadcast - answer_to: %s",
                                         me->self.id,
                                         __FUNCTION__,
                                         __LINE__,
@@ -10472,7 +10504,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
                         me->self.id,
                         __FUNCTION__,
                         __LINE__,
-                        rcv_args.search.item,
+                        rcv_args.search.item,       //NOTE : problème d'affichage ici
                         debug_ret_msg[ptr_u_ans_data->search.search_ret],
                         ptr_u_ans_data->search.s_ret_id);
 
@@ -10488,7 +10520,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
             break;
 
         case TASK_BROADCAST_SEARCH:
-            broadcast_search(me,
+            answer.handle.val_ret = broadcast_search(me,
                     rcv_args.broad_search.source_id,
                     rcv_args.broad_search.item);
 
@@ -10497,7 +10529,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
                     type,
                     rcv_req->sender_id,
                     rcv_req->answer_to,
-                    answer);          //TODO : answer pas initialisé
+                    answer);          //TODO : answer pas complètement initialisé
 
             data_req_free(me, &rcv_req);
             task_free(task);
@@ -10546,6 +10578,7 @@ static int proc_handle_task(int argc, char* argv[]) {
     setId_proc_mailbox();
     proc_data_t proc_data = MSG_process_get_data(MSG_process_self());
     req_data_t  req_data  = MSG_task_get_data(proc_data->task);
+    e_val_ret_t ret = OK;
 
     msg_task_t  proc_task = proc_data->task;
 
@@ -10589,14 +10622,15 @@ static int proc_handle_task(int argc, char* argv[]) {
                 debug_ret_msg[proc_data->node->run_task.last_ret]);
     } else {
 
-        handle_task(proc_data->node, &proc_task, NULL);
+        ret = handle_task(proc_data->node, &proc_task, NULL);
     }
 
-    XBT_VERB("Node %d: [%s:%d] process '%s' dies",
+    XBT_VERB("Node %d: [%s:%d] process '%s' dies with ret = %s",
             proc_data->node->self.id,
             __FUNCTION__,
             __LINE__,
-            proc_data->proc_mailbox);
+            proc_data->proc_mailbox,
+            debug_ret_msg[ret]);
 
     XBT_DEBUG("task = %p", proc_task);
 

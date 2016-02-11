@@ -47,9 +47,11 @@ void action_send(const char *const *action) {
             action[1]);
 
     // wait until dst building is finished
+    /*
     while (nb_ins_nodes < nb_nodes) {
         MSG_process_sleep(500.0);
     }
+    */
 
     XBT_INFO("%s: Action_%s - Sending '%s' to node %s",
             action[0],              // process name
@@ -57,6 +59,8 @@ void action_send(const char *const *action) {
             action[3],              // task type
             action[4]);             // recipient id
 
+    int loop = 0;
+    e_val_ret_t ret = OK;
     u_req_args_t req_args;
     ans_data_t answer_data = NULL;
     msg_task_t task = NULL;
@@ -140,23 +144,51 @@ void action_send(const char *const *action) {
             break;
 
         case TASK_BROADCAST_SEARCH:
-            req_data->sender_id = 125000;
-            req_args.broad_search.source_id = req_data->sender_id;
-            req_args.broad_search.item = action[5];
-            req_data->args = req_args;
 
-            XBT_INFO("%s: Action_%s - Sending ...",
-                    action[0],
-                    action[1]);
+            do {
+                loop++;
 
-            MSG_task_send(MSG_task_create("ext", COMP_SIZE, COMM_SIZE, req_data), req_data->sent_to);
-            XBT_INFO("%s: Action_%s - Receiving ...",
-                    action[0],
-                    action[1]);
+                req_data->sender_id = 125000;
+                req_args.broad_search.source_id = req_data->sender_id;
+                req_args.broad_search.item = action[5];
+                req_data->args = req_args;
 
-            MSG_task_receive(&task, action[0]);
+                XBT_INFO("%s: Action_%s - Sending ... (attempt %d)",
+                        action[0],
+                        action[1],
+                        loop);
 
-            XBT_INFO("%s: Action_%s - DONE", action[0], action[1]);
+                MSG_task_send(MSG_task_create("ext", COMP_SIZE, COMM_SIZE, req_data), req_data->sent_to);
+                XBT_INFO("%s: Action_%s - Receiving ... (attempt %d)",
+                        action[0],
+                        action[1],
+                        loop);
+
+                MSG_task_receive(&task, action[0]);
+                xbt_assert(task != NULL, "%s: Action_%s - Receive Error", action[0], action[1]);
+
+                answer_data = MSG_task_get_data(task);
+                xbt_assert(answer_data != NULL, "%s: Action_%s - Get Data Error", action[0], action[1]);
+
+                ret = (answer_data->answer).handle.val_ret;
+                XBT_INFO("%s: Action_%s - DONE with ret = %s (attempt %d)",
+                        action[0],
+                        action[1],
+                        debug_ret_msg[ret],
+                        loop);
+
+                if (ret != OK) {
+                    MSG_process_sleep(500.0);
+                    task_free(&task);
+                    req_data = xbt_new0(s_req_data_t, 1);
+                    req_data->type = TASK_BROADCAST_SEARCH;
+                    req_data->recipient_id = atoi(action[4]);
+                    set_mailbox(req_data->recipient_id, req_data->sent_to);
+                    snprintf(req_data->answer_to, MAILBOX_NAME_SIZE, "%s", action[0]);
+                }
+
+            } while (ret != OK && loop < 5);
+
             break;
 
         default:

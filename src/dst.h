@@ -752,7 +752,7 @@ static char*        routing_table(node_t me);
        void         set_mailbox(int node_id, char* mailbox);
 static void         get_proc_mailbox(char* proc_mailbox);
 static void         set_fork_mailbox(int node_id, int new_node_id, char* session, char* mailbox);
-static void         task_free(msg_task_t* task);
+       void         task_free(msg_task_t* task);
 static int          index_bro(node_t me, int stage, int id);
 static int          index_pred(node_t me, int stage, int id);
 static e_val_ret_t  wait_for_completion(node_t me, int ans_cpt, int new_node_id, xbt_dynar_t dyn_ans_data);
@@ -911,7 +911,7 @@ static void         clean_upper_stage(node_t me,
 static void         merge_request(node_t me, int new_node_id);
 static void         load_balance(node_t me, int contact_id);
 static s_task_ans_search_t search_for_item(node_t me, int source_id, const char *item);
-static void broadcast_search(node_t me, int source_id, const char *item);
+static e_val_ret_t broadcast_search(node_t me, int source_id, const char *item);
 //static u_ans_data_t get_new_contact(node_t me, int new_node_id);
 
 /*
