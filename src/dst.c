@@ -3083,8 +3083,10 @@ static msg_error_t send_msg_sync(node_t me,
     // create and send task with data
     msg_task_t task_sent = MSG_task_create("sync", COMP_SIZE, COMM_SIZE, req_data);
 
-    XBT_VERB("Node %d: Sending sync request '%s %s' to %d for new node %d",
+    XBT_VERB("Node %d:[%s:%d] Sending sync request '%s %s' to %d for new node %d",
             req_data->sender_id,
+            __FUNCTION__,
+            __LINE__,
             debug_msg[req_data->type],
             debug_msg[(req_data->type == TASK_BROADCAST ? req_data->args.broadcast.type : TASK_NULL)],
             req_data->recipient_id,
@@ -3219,8 +3221,10 @@ static msg_error_t send_msg_sync(node_t me,
 
         // sync reception
         state = get_state(me);
-        XBT_VERB("Node %d: '%c'/%d - Waiting for sync answer ... - task_sent = %p",
+        XBT_VERB("Node %d: [%s:%d] '%c'/%d - Waiting for sync answer ... - task_sent = %p",
                 cpy_req_data->sender_id,
+                __FUNCTION__,
+                __LINE__,
                 state.active,
                 state.new_id,
                 task_sent);
@@ -3261,9 +3265,11 @@ static msg_error_t send_msg_sync(node_t me,
             if (!strcmp(MSG_task_get_name(task_received), "ans")) {
 
                 // answer
-                XBT_VERB("Node %d: Received message : '%s - %s %s'"
+                XBT_VERB("Node %d: [%s:%d] Received message : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         MSG_task_get_name(task_received),
                         debug_msg[ans->type],
                         debug_msg[ans->br_type],
@@ -3273,9 +3279,11 @@ static msg_error_t send_msg_sync(node_t me,
             } else {
 
                 // request
-                XBT_VERB("Node %d: Received message : '%s - %s %s'"
+                XBT_VERB("Node %d: [%s:%d] Received message : '%s - %s %s'"
                         " from %d to %d -> %s",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         MSG_task_get_name(task_received),
                         debug_msg[req->type],
                         debug_msg[(req->type == TASK_BROADCAST ?
@@ -3290,9 +3298,11 @@ static msg_error_t send_msg_sync(node_t me,
                 /* the received message is a request
                  * *********************************/
 
-                XBT_VERB("Node %d: This is not the expected answer"
+                XBT_VERB("Node %d: [%s:%d] This is not the expected answer"
                         " {'%s' from %d}, it's a '%s' request from %d",
                         me->self.id,
+                        __FUNCTION__,
+                        __LINE__,
                         debug_msg[cpy_req_data->type],
                         cpy_req_data->recipient_id,
                         debug_msg[req->type],
@@ -3389,9 +3399,11 @@ static msg_error_t send_msg_sync(node_t me,
 
                     // this is the expected answer
                     state = get_state(me);
-                    XBT_DEBUG("Node %d: This is the expected answer -"
+                    XBT_DEBUG("Node %d: [%s:%d] This is the expected answer -"
                             " active = '%c'",
                             me->self.id,
+                            __FUNCTION__,
+                            __LINE__,
                             state.active);
 
                     // pop the answer from dynar sync_answers
@@ -4237,8 +4249,10 @@ static int join(node_t me, int contact_id) {
 
     XBT_IN();
     s_state_t state = get_state(me);
-    XBT_VERB("Node %d: '%c'/%d - join() ...",
+    XBT_VERB("Node %d: [%s:%d] '%c'/%d - join() ...",
             me->self.id,
+            __FUNCTION__,
+            __LINE__,
             state.active,
             state.new_id);
 
@@ -9574,9 +9588,7 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
                             /* if set_update is refused, tell the caller.
                                if set_active is refused, nevermind, it'll work another
                                time */
-                            val_ret = ((rcv_args.broadcast.type == TASK_SET_UPDATE ||
-                                        rcv_args.broadcast.type == TASK_SEARCH) ?
-                                    UPDATE_NOK : OK);
+                            val_ret = ((rcv_args.broadcast.type == TASK_SET_UPDATE) ? UPDATE_NOK : OK);
 
                             if (rcv_req->sender_id != me->self.id) {
 
@@ -10520,9 +10532,19 @@ static e_val_ret_t handle_task(node_t me, msg_task_t* task, xbt_dynar_t *dyn_ans
             break;
 
         case TASK_BROADCAST_SEARCH:
-            answer.handle.val_ret = broadcast_search(me,
-                    rcv_args.broad_search.source_id,
-                    rcv_args.broad_search.item);
+
+            // don't launch broadcast_search if not ready
+            if (state.active == 'u' || state.active == 'b') {
+
+                val_ret = UPDATE_NOK;
+            } else {
+
+                val_ret = broadcast_search(me,
+                        rcv_args.broad_search.source_id,
+                        rcv_args.broad_search.item);
+            }
+
+            answer.handle.val_ret = val_ret;
 
             res = send_ans_sync(me,
                     rcv_args.broad_search.source_id,
