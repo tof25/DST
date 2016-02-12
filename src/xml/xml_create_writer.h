@@ -10,7 +10,7 @@
 xmlChar* itox(int arg);
 void stageToXml(xmlTextWriterPtr writer, int stage_nr, int* row, int row_size);
 void nodeToXml(xmlTextWriterPtr writer, int node_id, int **table, int *row_size, int height);
-void xmlHeader(xmlTextWriterPtr writer, int a, int b, int height);
+void xmlHeader(xmlTextWriterPtr writer, int aa, int bb, int height);
 void xmlFooter(xmlTextWriterPtr writer);
 
 #endif

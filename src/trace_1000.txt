@@ -1,1 +1,3 @@
-p10 finalize 100
+p10 send 5000 "Broadcast Search" 383 "TOKEN"
+p10 send 0 "Broadcast Search" 170 "TOKEN"
+p10 finalize 1000

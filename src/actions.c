@@ -1,3 +1,6 @@
+#include "xml/xml_create_writer.h"          // to create final xml files with routing tables
+#include "xml/xml_to_array.h"               // to get routing and predecessors tables from xml files
+
 #include "actions.h"
 #include "dst.h"
 
@@ -187,7 +190,7 @@ void action_send(const char *const *action) {
                     snprintf(req_data->answer_to, MAILBOX_NAME_SIZE, "%s", action[0]);
                 }
 
-            } while (ret != OK && loop < 5);
+            } while (ret != OK && loop < 15);
 
             break;
 

@@ -1,9 +1,6 @@
 #ifndef ACTIONS_H
 #define ACTIONS_H
 
-#include "xml/xml_create_writer.h"          // to create final xml files with routing tables
-#include "xml/xml_to_array.h"               // to get routing and predecessors tables from xml files
-
 
 /*
    =================================== For XML files ==============================================

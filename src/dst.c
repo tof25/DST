@@ -16,23 +16,17 @@
 //TODO: introduire un indicateur de réponses à venir. On pourra s'en servir pour terminer la simulation.
 //      (à la place de WAIT_BEFORE_END)
 
+#include "xml/xml_create_writer.h"          // to create final xml files with routing tables
+#include "xml/xml_to_array.h"               // to get routing and predecessors tables from xml files
+
 #include "dst.h"
-#include "xml/xml_to_array.h"
+#include "actions.h"
 
 /*
  ========================== GLOBAL VALUES =====================================
  */
 
 XBT_LOG_NEW_DEFAULT_CATEGORY(msg_dst, "Messages specific for the DST");
-extern xbt_dynar_t infos_dst;
-extern char *xml_input_file;
-extern char *xml_input_pred_file;
-extern char *xml_output_file;
-extern char *xml_output_pred_file;
-extern xmlDocPtr doc_i;
-extern xmlDocPtr doc_i_pred;
-extern int xml_height;
-
 int nb_ins_nodes = 0;
 int nb_nodes = 0;
 int order = 0;
